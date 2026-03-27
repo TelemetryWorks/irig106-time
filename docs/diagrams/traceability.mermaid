@@ -1,0 +1,29 @@
+graph TB
+    subgraph Standards
+        std1["IRIG 106-17\nChapter 10"]
+        std2["RCC 123-20\nProgrammer's Handbook"]
+    end
+
+    subgraph "L1 — 37 Requirements"
+        l1["What the crate SHALL do\nTraced to standard sections\nL1-RTC, L1-ABS, L1-CSDW,\nL1-BCD, L1-SEC, L1-IPT,\nL1-COR, L1-ERR, L1-API"]
+    end
+
+    subgraph "L2 — 78 Requirements"
+        l2["Testable functional behaviors\nFunction signatures, enums, invariants\nEach traces to exactly one L1"]
+    end
+
+    subgraph "L3 — 65 Specifications"
+        l3["Struct layouts, algorithms, constants\nMaps directly to source files\nModule map, byte offsets, formulas"]
+    end
+
+    subgraph Implementation
+        code["Source Code\n8 modules, ~1500 lines Rust"]
+        tests["124 Tests\n104 unit + 10 integration\n+ 10 property-based\nEach test traces to L3"]
+    end
+
+    std1 --> l1
+    std2 --> l1
+    l1 --> l2
+    l2 --> l3
+    l3 --> code
+    l3 --> tests

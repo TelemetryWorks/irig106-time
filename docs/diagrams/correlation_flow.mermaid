@@ -1,0 +1,25 @@
+sequenceDiagram
+    participant File as Ch10 File
+    participant Parser as Packet Parser
+    participant CSDW as CSDW Decoder
+    participant BCD as BCD Decoder
+    participant Corr as TimeCorrelator
+    participant User as Analysis Code
+
+    Note over File,User: Phase 1 — Build Reference Points
+    File->>Parser: Read packet header
+    Parser->>Parser: DataType == 0x11?
+    Parser->>CSDW: Parse 4-byte CSDW
+    CSDW-->>Parser: TimeSource=GPS, DateFmt=DOY
+    Parser->>BCD: Parse 8-byte BCD message
+    BCD-->>Parser: Day 100, 12:30:25.340
+    Parser->>Corr: add_reference(ch=3, rtc=1M, time)
+    Note over Corr: Sorted insert by RTC
+
+    Note over File,User: Phase 2 — Resolve Data Packets
+    File->>Parser: Read 1553 data packet
+    Parser->>Parser: Extract RTC from header[16..22]
+    Parser->>Corr: correlate(rtc=1.15M, channel=3)
+    Corr->>Corr: Find nearest ref (rtc=1M)
+    Corr->>Corr: delta = 150K ticks x 100ns = 15ms
+    Corr-->>User: Day 100, 12:30:25.355

@@ -1,0 +1,31 @@
+graph LR
+    subgraph "irig106-time crate"
+        lib["lib.rs\nre-exports"]
+        error["error\nTimeError, Result"]
+        rtc["rtc\nRtc (48-bit)"]
+        absolute["absolute\nAbsoluteTime\nCh4BinaryTime\nIeee1588Time\nErtc"]
+        csdw["csdw\nTimeF1Csdw\nTimeSource\nTimeFormat\nDateFormat"]
+        bcd["bcd\nDayFormatTime\nDmyFormatTime"]
+        secondary["secondary\nSecondaryHeaderTime\nchecksum validation"]
+        intra["intra_packet\nIntraPacketTime\nformat dispatch"]
+        corr["correlation\nTimeCorrelator\nReferencePoint\nTimeJump"]
+    end
+
+    lib --> error
+    lib --> rtc
+    lib --> absolute
+    lib --> csdw
+    lib --> bcd
+    lib --> secondary
+    lib --> intra
+    lib --> corr
+    bcd --> error
+    bcd --> absolute
+    secondary --> error
+    secondary --> absolute
+    intra --> error
+    intra --> rtc
+    intra --> absolute
+    corr --> error
+    corr --> rtc
+    corr --> absolute

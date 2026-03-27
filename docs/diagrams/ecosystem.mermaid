@@ -1,0 +1,40 @@
+graph TB
+    subgraph "Layer 0 — Foundation"
+        types["irig106-types\nRtc, Ertc, Ch4BinaryTime,\nIeee1588Time, TimeSource"]
+    end
+
+    subgraph "Layer 1 — Core Infrastructure"
+        time["irig106-time\nBCD decode, correlation,\nsecondary headers"]
+        core["irig106-core\nPacket header parsing,\nstructural traversal"]
+    end
+
+    subgraph "Layer 2 — Semantic Processing"
+        decode["irig106-decode\nPayload decoding:\n1553, PCM, ARINC, etc."]
+        write["irig106-write\nPacket serialization"]
+        tmats["irig106-tmats\nChapter 9 TMATS"]
+    end
+
+    subgraph "Layer 3 — Applications"
+        reader["irig106-ch10-reader\nFile analysis"]
+        cli["irig106-cli\nCommand-line tools"]
+        studio["irig106-studio\nWASM browser viewer"]
+        index["irig106-index\nData lake indexing"]
+    end
+
+    types --> time
+    types --> core
+    types --> decode
+    types --> write
+    core --> reader
+    core --> decode
+    core --> cli
+    time --> decode
+    time --> reader
+    time --> cli
+    time --> studio
+    decode --> cli
+    decode --> studio
+    tmats --> reader
+    tmats --> cli
+    write --> cli
+    index --> cli
