@@ -1,7 +1,25 @@
 [package]
 name = "irig106-time"
-version = "0.0.1"
-edition = "2024"
+version = "0.1.0"
+edition = "2021"
 description = "Precision time interpretation and format conversion for IRIG 106 telemetry data."
 repository = "https://github.com/TelemetryWorks/irig106-time"
 license = "Apache-2.0"
+categories = ["aerospace", "parser-implementations", "no-std"]
+keywords = ["irig106", "telemetry", "time", "chapter10", "flight-test"]
+
+[features]
+default = ["std"]
+std = []
+
+[dependencies]
+# Zero required dependencies — core/alloc only.
+
+[dev-dependencies]
+# criterion is recommended for benchmarking on your local machine:
+# criterion = { version = "0.5", features = ["html_reports"] }
+# Run: cargo bench
+
+[[bench]]
+name = "time_benchmarks"
+harness = false
