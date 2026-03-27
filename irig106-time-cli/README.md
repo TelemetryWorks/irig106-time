@@ -4,11 +4,24 @@ A command-line tool for inspecting IRIG 106 Chapter 10 time data. Reads a Ch10 f
 
 ## Install
 
+## From the root of irig106-time, build it with:
 ```sh
-cargo install --path .
+cargo build --manifest-path irig106-time-cli/Cargo.toml
 ```
 
-This produces the `ch10time` binary.
+For a release build:
+```sh
+cargo build --release --manifest-path irig106-time-cli/Cargo.toml
+```
+
+This produces the `ch10time` binary:
+- debug: irig106-time-cli/target/debug/ch10time
+- release: irig106-time-cli/target/release/ch10time
+
+## You can also run it directly from the root with:
+```sh
+cargo run --manifest-path irig106-time-cli/Cargo.toml -- --help
+```
 
 ## Commands
 

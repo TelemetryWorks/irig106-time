@@ -11,5 +11,5 @@ name = "ch10time"
 path = "src/main.rs"
 
 [dependencies]
-irig106-time = { path = "../irig106-time" }
+irig106-time = { path = ".." }
 memmap2 = "0.9"
