@@ -1,0 +1,55 @@
+[package]
+name = "irig106-time-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.irig106-time]
+path = ".."
+
+# Fuzz targets
+[[bin]]
+name = "fuzz_bcd_day"
+path = "fuzz_targets/fuzz_bcd_day.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_bcd_dmy"
+path = "fuzz_targets/fuzz_bcd_dmy.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_rtc"
+path = "fuzz_targets/fuzz_rtc.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_secondary_header"
+path = "fuzz_targets/fuzz_secondary_header.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_intra_packet"
+path = "fuzz_targets/fuzz_intra_packet.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_ieee1588"
+path = "fuzz_targets/fuzz_ieee1588.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_csdw"
+path = "fuzz_targets/fuzz_csdw.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_correlation"
+path = "fuzz_targets/fuzz_correlation.rs"
+doc = false
