@@ -43,10 +43,9 @@ fn from_le_bytes_all_zeros() {
 
 #[test]
 fn from_le_bytes_known_value() {
-    // 0x00_00_01_00_00_00 in LE = [0x00, 0x00, 0x00, 0x01, 0x00, 0x00]
-    // = 0x0000_0001_0000_00 = 16_777_216
+    // LE bytes [0x00, 0x00, 0x00, 0x01, 0x00, 0x00] → u64 0x0000_0000_0100_0000 = 16_777_216
     let rtc = Rtc::from_le_bytes([0x00, 0x00, 0x00, 0x01, 0x00, 0x00]);
-    assert_eq!(rtc.as_raw(), 0x0000_0001_0000_00);
+    assert_eq!(rtc.as_raw(), 0x0000_0000_0100_0000);
 }
 
 #[test]
@@ -139,9 +138,10 @@ fn debug_display() {
 extern crate alloc;
 
 #[test]
+#[allow(clippy::clone_on_copy)]
 fn clone_copy_eq() {
     let rtc = Rtc::from_raw(999);
-    let cloned = rtc.clone();
+    let cloned = rtc.clone(); // intentionally testing Clone impl
     let copied = rtc; // Copy
     assert_eq!(rtc, cloned);
     assert_eq!(rtc, copied);

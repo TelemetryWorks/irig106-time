@@ -90,9 +90,9 @@ fn main() {
 
     // BCD
     let db = day100_bytes();
-    r.push(bench("bcd_day_parse", || { black_box(DayFormatTime::from_le_bytes(black_box(&db))); }));
+    r.push(bench("bcd_day_parse", || { let _ = black_box(DayFormatTime::from_le_bytes(black_box(&db))); }));
     let dmb = dmy_bytes();
-    r.push(bench("bcd_dmy_parse", || { black_box(DmyFormatTime::from_le_bytes(black_box(&dmb))); }));
+    r.push(bench("bcd_dmy_parse", || { let _ = black_box(DmyFormatTime::from_le_bytes(black_box(&dmb))); }));
     let dt = DayFormatTime::from_le_bytes(&db).unwrap();
     r.push(bench("bcd_day_to_absolute", || { black_box(black_box(dt).to_absolute()); }));
     r.push(bench("bcd_day_full_pipeline", || {
@@ -112,25 +112,25 @@ fn main() {
 
     // Secondary header
     let sb = sec_hdr_buf();
-    r.push(bench("sec_checksum_validate", || { black_box(validate_secondary_checksum(black_box(&sb))); }));
-    r.push(bench("sec_parse_ieee1588", || { black_box(parse_secondary_header(black_box(&sb), SecHdrTimeFormat::Ieee1588)); }));
+    r.push(bench("sec_checksum_validate", || { let _ = black_box(validate_secondary_checksum(black_box(&sb))); }));
+    r.push(bench("sec_parse_ieee1588", || { let _ = black_box(parse_secondary_header(black_box(&sb), SecHdrTimeFormat::Ieee1588)); }));
 
     // Intra-packet
     let mut rb = [0u8; 8]; rb[0..6].copy_from_slice(&0xABCD1234u64.to_le_bytes()[0..6]);
-    r.push(bench("ipt_parse_rtc48", || { black_box(parse_intra_packet_time(black_box(&rb), IntraPacketTimeFormat::Rtc48)); }));
+    r.push(bench("ipt_parse_rtc48", || { let _ = black_box(parse_intra_packet_time(black_box(&rb), IntraPacketTimeFormat::Rtc48)); }));
     let mut ib = [0u8; 8];
     ib[0..4].copy_from_slice(&123_456_789u32.to_le_bytes());
     ib[4..8].copy_from_slice(&42u32.to_le_bytes());
-    r.push(bench("ipt_parse_ieee1588", || { black_box(parse_intra_packet_time(black_box(&ib), IntraPacketTimeFormat::Ieee1588)); }));
+    r.push(bench("ipt_parse_ieee1588", || { let _ = black_box(parse_intra_packet_time(black_box(&ib), IntraPacketTimeFormat::Ieee1588)); }));
 
     // Correlation
     let sm = build_correlator(100);
     let mt = Rtc::from_raw(50 * 10_000_000 + 5_000_000);
-    r.push(bench("corr_100refs_any", || { black_box(sm.correlate(black_box(mt), None)); }));
-    r.push(bench("corr_100refs_by_ch", || { black_box(sm.correlate(black_box(mt), Some(1))); }));
+    r.push(bench("corr_100refs_any", || { let _ = black_box(sm.correlate(black_box(mt), None)); }));
+    r.push(bench("corr_100refs_by_ch", || { let _ = black_box(sm.correlate(black_box(mt), Some(1))); }));
     let lg = build_correlator(3600);
     let lt = Rtc::from_raw(3500 * 10_000_000 + 7_500_000);
-    r.push(bench("corr_3600refs_any", || { black_box(lg.correlate(black_box(lt), None)); }));
+    r.push(bench("corr_3600refs_any", || { let _ = black_box(lg.correlate(black_box(lt), None)); }));
     // Use reduced iterations for O(n) scan
     let start = Instant::now();
     for _ in 0..1_000 { black_box(lg.detect_time_jump(black_box(1), black_box(1_000_000_000))); }

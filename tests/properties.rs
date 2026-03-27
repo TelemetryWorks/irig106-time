@@ -130,15 +130,15 @@ mod tests {
         let mut rng = Xorshift::new(0xFEED_FACE);
         for _ in 0..ITERATIONS {
             let doy = (rng.next_u16() % 366) + 1;
-            let h = (rng.next_u8() % 24) as u8;
-            let m = (rng.next_u8() % 60) as u8;
-            let s = (rng.next_u8() % 60) as u8;
+            let h = rng.next_u8() % 24;
+            let m = rng.next_u8() % 60;
+            let s = rng.next_u8() % 60;
             let ns = rng.next_u32() % 1_000_000_000;
 
             let t = AbsoluteTime::new(doy, h, m, s, ns).unwrap();
 
             // Add then subtract a small amount (< 1 day to avoid day wrap complexity)
-            let delta = (rng.next_u64() % 1_000_000_000) as u64; // < 1 second
+            let delta = rng.next_u64() % 1_000_000_000; // < 1 second
             let added = t.add_nanos(delta);
             let restored = added.sub_nanos(delta);
 
@@ -155,13 +155,13 @@ mod tests {
         let mut rng = Xorshift::new(0x0BAD_F00D);
         for _ in 0..ITERATIONS {
             let doy = (rng.next_u16() % 300) + 1; // avoid day-wrap edge
-            let h = (rng.next_u8() % 23) as u8;
-            let m = (rng.next_u8() % 59) as u8;
-            let s = (rng.next_u8() % 59) as u8;
+            let h = rng.next_u8() % 23;
+            let m = rng.next_u8() % 59;
+            let s = rng.next_u8() % 59;
             let ns = rng.next_u32() % 999_000_000;
 
             let t = AbsoluteTime::new(doy, h, m, s, ns).unwrap();
-            let delta = ((rng.next_u64() % 3_600_000_000_000) + 1) as u64; // up to 1 hour
+            let delta = (rng.next_u64() % 3_600_000_000_000) + 1; // up to 1 hour
             let t2 = t.add_nanos(delta);
 
             let ns1 = (t.day_of_year as u64 - 1) * 86_400_000_000_000 + t.total_nanos_of_day();
