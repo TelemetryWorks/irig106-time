@@ -13,28 +13,28 @@ irig106-time/
 ├── src/
 │   ├── lib.rs                          # #![no_std], module wiring, re-exports
 │   ├── error.rs                        # TimeError enum, Result<T>, Display
-│   ├── error_tests.rs                  # 7 unit tests
+│   ├── error_tests.rs                  # unit tests
 │   ├── rtc.rs                          # Rtc newtype (48-bit, 10 MHz)
-│   ├── rtc_tests.rs                    # 18 unit tests
+│   ├── rtc_tests.rs                    # unit tests
 │   ├── absolute.rs                     # AbsoluteTime, Ch4BinaryTime, Ieee1588Time, Ertc
-│   ├── absolute_tests.rs              # 23 unit tests
+│   ├── absolute_tests.rs               # unit tests
 │   ├── csdw.rs                         # TimeF1Csdw, TimeSource, TimeFormat, DateFormat
-│   ├── csdw_tests.rs                   # 14 unit tests
+│   ├── csdw_tests.rs                   # unit tests
 │   ├── bcd.rs                          # DayFormatTime, DmyFormatTime (BCD wire format)
-│   ├── bcd_tests.rs                    # 13 unit tests
+│   ├── bcd_tests.rs                    # unit tests
 │   ├── secondary.rs                    # Secondary header time, checksum validation
-│   ├── secondary_tests.rs             # 10 unit tests
-│   ├── intra_packet.rs                # IntraPacketTime, 4-format dispatch
-│   ├── intra_packet_tests.rs          # 8 unit tests
+│   ├── secondary_tests.rs              # unit tests
+│   ├── intra_packet.rs                 # IntraPacketTime, 4-format dispatch
+│   ├── intra_packet_tests.rs           # unit tests
 │   ├── correlation.rs                  # TimeCorrelator, ReferencePoint, TimeJump
-│   └── correlation_tests.rs           # 11 unit tests
+│   └── correlation_tests.rs            # unit tests
 │
 ├── tests/
-│   ├── pipeline.rs                     # 10 integration tests
-│   └── properties.rs                  # 10 property-based tests (10K iters, zero deps)
+│   ├── pipeline.rs                     # integration tests
+│   └── properties.rs                   # property-based tests (10K iters, zero deps)
 │
 ├── benches/
-│   └── time_benchmarks.rs             # 23 benchmarks (zero-dep, std::time::Instant)
+│   └── time_benchmarks.rs              # benchmarks (zero-dep, std::time::Instant)
 │
 ├── fuzz/
 │   ├── Cargo.toml                      # libfuzzer-sys harness
