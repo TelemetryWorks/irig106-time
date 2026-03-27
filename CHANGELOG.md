@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] - 2026-03-26
+## [0.1.0](https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.1.0) - 2026-03-26
 
 ### Added
 
@@ -26,7 +26,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **10 property-based tests** in `tests/properties.rs` (10,000 iterations each, zero external dependencies).
 - **23 benchmarks** in `benches/time_benchmarks.rs` (zero-dependency, `std::time::Instant`).
 - **8 fuzz targets** in `fuzz/fuzz_targets/` covering all parsing entry points.
-- **Documentation**: L1/L2/L3 requirements (37/78/65), architecture doc, security doc, test index, project structure, shared types migration plan, roadmap, and rationale for separate repo.
-- **13-slide technical presentation** (PPTX).
-
-[0.1.0]: https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.1.0
+- **Companion CLI crate**: `irig106-time-cli` with the `ch10time` binary for file summaries, channel inventory, jump detection, timelines, CSV export, and one-off RTC correlation.
+- **Documentation**: L1/L2/L3 requirements, architecture doc, security doc, usage guide, test index, project structure, roadmap, changelog, shared types migration plan, and rationale for separate repo.
