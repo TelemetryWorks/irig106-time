@@ -197,7 +197,7 @@ impl AbsoluteTime {
             // Borrow from previous days
             let nanos_per_day: u64 = 86_400 * 1_000_000_000;
             let deficit = nanos - current_ns;
-            let days_back = ((deficit + nanos_per_day - 1) / nanos_per_day) as u16;
+            let days_back = deficit.div_ceil(nanos_per_day) as u16;
             let remaining = (days_back as u64) * nanos_per_day - deficit;
             let nanos_per_second: u64 = 1_000_000_000;
             let total_seconds = remaining / nanos_per_second;

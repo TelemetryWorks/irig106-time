@@ -368,7 +368,7 @@ impl DmyFormatTime {
 /// Convert month/day to day-of-year.
 #[inline]
 fn month_day_to_doy(year: u16, month: u8, day: u8) -> u16 {
-    let is_leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+    let is_leap = (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400);
     let days_before: [u16; 12] = [
         0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334,
     ];
