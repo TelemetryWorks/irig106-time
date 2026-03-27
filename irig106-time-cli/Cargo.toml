@@ -1,0 +1,15 @@
+[package]
+name = "irig106-time-cli"
+version = "0.1.0"
+edition = "2021"
+description = "CLI tool for inspecting IRIG 106 Chapter 10 time data — summary, correlation, jump detection, and CSV export."
+license = "Apache-2.0"
+publish = false
+
+[[bin]]
+name = "ch10time"
+path = "src/main.rs"
+
+[dependencies]
+irig106-time = { path = "../irig106-time" }
+memmap2 = "0.9"
