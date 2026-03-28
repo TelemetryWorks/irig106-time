@@ -150,6 +150,40 @@ fn main() {
         black_box(corr.correlate(rtc, None).unwrap());
     }));
 
+    // NTP
+    let mut ntp_buf = [0u8; 8];
+    ntp_buf[0..4].copy_from_slice(&3_944_678_400u32.to_le_bytes());
+    ntp_buf[4..8].copy_from_slice(&(1u32 << 31).to_le_bytes());
+    r.push(bench("ntp_from_le_bytes", || {
+        let _ = black_box(irig106_time::network_time::NtpTime::from_le_bytes(black_box(&ntp_buf)));
+    }));
+    let ntp = irig106_time::network_time::NtpTime::from_le_bytes(&ntp_buf).unwrap();
+    r.push(bench("ntp_to_absolute", || { black_box(black_box(ntp).to_absolute()); }));
+
+    // PTP
+    let mut ptp_buf = [0u8; 10];
+    ptp_buf[0..6].copy_from_slice(&1_735_689_637u64.to_le_bytes()[0..6]);
+    ptp_buf[6..10].copy_from_slice(&500_000_000u32.to_le_bytes());
+    r.push(bench("ptp_from_le_bytes", || {
+        let _ = black_box(irig106_time::network_time::PtpTime::from_le_bytes(black_box(&ptp_buf)));
+    }));
+    let ptp = irig106_time::network_time::PtpTime::from_le_bytes(&ptp_buf).unwrap();
+    r.push(bench("ptp_to_absolute", || { black_box(black_box(ptp).to_absolute(black_box(37))); }));
+
+    // Leap second table lookup
+    let lst = irig106_time::network_time::LeapSecondTable::builtin();
+    r.push(bench("leap_table_lookup", || {
+        black_box(lst.offset_at_unix(black_box(1_718_409_600)));
+    }));
+
+    // Full F2 payload parse
+    let mut f2_payload = [0u8; 12];
+    f2_payload[0..4].copy_from_slice(&0u32.to_le_bytes());
+    f2_payload[4..8].copy_from_slice(&3_944_678_400u32.to_le_bytes());
+    r.push(bench("f2_ntp_payload_parse", || {
+        let _ = black_box(irig106_time::network_time::parse_time_f2_payload(black_box(&f2_payload)));
+    }));
+
     // Report
     println!();
     println!("================================================================");
