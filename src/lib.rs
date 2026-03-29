@@ -36,35 +36,35 @@ extern crate std;
 
 extern crate alloc;
 
-/// Error types and `Result` alias for time parsing operations.
-pub mod error;
-/// 48-bit Relative Time Counter (RTC) newtype.
-pub mod rtc;
 /// Absolute time representations: `AbsoluteTime`, `Ch4BinaryTime`, `Ieee1588Time`, `Ertc`.
 pub mod absolute;
-/// Time Data Format 1 (0x11) Channel-Specific Data Word parsing.
-pub mod csdw;
 /// BCD-encoded Day-of-Year and Day-Month-Year time message decoding.
 pub mod bcd;
-/// Secondary header time extraction and checksum validation.
-pub mod secondary;
-/// Intra-packet timestamp format dispatch (RTC, Ch4, IEEE-1588, ERTC).
-pub mod intra_packet;
 /// RTC-to-absolute-time correlation engine with multi-channel support.
 pub mod correlation;
+/// Time Data Format 1 (0x11) Channel-Specific Data Word parsing.
+pub mod csdw;
+/// Error types and `Result` alias for time parsing operations.
+pub mod error;
+/// Intra-packet timestamp format dispatch (RTC, Ch4, IEEE-1588, ERTC).
+pub mod intra_packet;
 /// Time Data Format 2 (0x12) Network Time: NTP, PTP, and leap-second table.
 pub mod network_time;
+/// 48-bit Relative Time Counter (RTC) newtype.
+pub mod rtc;
+/// Secondary header time extraction and checksum validation.
+pub mod secondary;
 
 // Re-export key types at crate root for convenience.
-pub use error::{TimeError, Result};
-pub use rtc::Rtc;
-pub use absolute::{AbsoluteTime, Ch4BinaryTime, Ieee1588Time, Ertc};
-pub use csdw::{TimeF1Csdw, TimeSource, TimeFormat, DateFormat};
+pub use absolute::{AbsoluteTime, Ch4BinaryTime, Ertc, Ieee1588Time};
 pub use bcd::{DayFormatTime, DmyFormatTime};
-pub use secondary::{SecHdrTimeFormat, SecondaryHeaderTime};
+pub use correlation::{ReferencePoint, TimeCorrelator, TimeJump};
+pub use csdw::{DateFormat, TimeF1Csdw, TimeFormat, TimeSource};
+pub use error::{Result, TimeError};
 pub use intra_packet::{IntraPacketTime, IntraPacketTimeFormat};
-pub use correlation::{TimeCorrelator, ReferencePoint, TimeJump};
 pub use network_time::{
-    TimeF2Csdw, NetworkTimeProtocol, NtpTime, PtpTime, NetworkTime,
-    LeapSecondTable, LeapSecondEntry, NTP_UNIX_EPOCH_OFFSET, DEFAULT_TAI_UTC_OFFSET,
+    LeapSecondEntry, LeapSecondTable, NetworkTime, NetworkTimeProtocol, NtpTime, PtpTime,
+    TimeF2Csdw, DEFAULT_TAI_UTC_OFFSET, NTP_UNIX_EPOCH_OFFSET,
 };
+pub use rtc::Rtc;
+pub use secondary::{SecHdrTimeFormat, SecondaryHeaderTime};

@@ -210,9 +210,7 @@ impl PtpTime {
                 actual: buf.len(),
             });
         }
-        let seconds = u64::from_le_bytes([
-            buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], 0, 0,
-        ]);
+        let seconds = u64::from_le_bytes([buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], 0, 0]);
         let nanoseconds = u32::from_le_bytes([buf[6], buf[7], buf[8], buf[9]]);
 
         if nanoseconds >= 1_000_000_000 {
@@ -342,34 +340,118 @@ impl LeapSecondTable {
         // Selected entries since 1972 (when the modern leap-second system began).
         // Prior to 1972, the TAI-UTC relationship was more complex.
         let entries = alloc::vec![
-            LeapSecondEntry { effective_unix: 63_072_000,       tai_utc_offset: 10 },  // 1972-01-01
-            LeapSecondEntry { effective_unix: 78_796_800,       tai_utc_offset: 11 },  // 1972-07-01
-            LeapSecondEntry { effective_unix: 94_694_400,       tai_utc_offset: 12 },  // 1973-01-01
-            LeapSecondEntry { effective_unix: 126_230_400,      tai_utc_offset: 13 },  // 1974-01-01
-            LeapSecondEntry { effective_unix: 157_766_400,      tai_utc_offset: 14 },  // 1975-01-01
-            LeapSecondEntry { effective_unix: 189_302_400,      tai_utc_offset: 15 },  // 1976-01-01
-            LeapSecondEntry { effective_unix: 220_924_800,      tai_utc_offset: 16 },  // 1977-01-01
-            LeapSecondEntry { effective_unix: 252_460_800,      tai_utc_offset: 17 },  // 1978-01-01
-            LeapSecondEntry { effective_unix: 283_996_800,      tai_utc_offset: 18 },  // 1979-01-01
-            LeapSecondEntry { effective_unix: 315_532_800,      tai_utc_offset: 19 },  // 1980-01-01
-            LeapSecondEntry { effective_unix: 362_793_600,      tai_utc_offset: 20 },  // 1981-07-01
-            LeapSecondEntry { effective_unix: 394_329_600,      tai_utc_offset: 21 },  // 1982-07-01
-            LeapSecondEntry { effective_unix: 425_865_600,      tai_utc_offset: 22 },  // 1983-07-01
-            LeapSecondEntry { effective_unix: 489_024_000,      tai_utc_offset: 23 },  // 1985-07-01
-            LeapSecondEntry { effective_unix: 567_993_600,      tai_utc_offset: 24 },  // 1988-01-01
-            LeapSecondEntry { effective_unix: 631_152_000,      tai_utc_offset: 25 },  // 1990-01-01
-            LeapSecondEntry { effective_unix: 662_688_000,      tai_utc_offset: 26 },  // 1991-01-01
-            LeapSecondEntry { effective_unix: 709_948_800,      tai_utc_offset: 27 },  // 1992-07-01
-            LeapSecondEntry { effective_unix: 741_484_800,      tai_utc_offset: 28 },  // 1993-07-01
-            LeapSecondEntry { effective_unix: 773_020_800,      tai_utc_offset: 29 },  // 1994-07-01
-            LeapSecondEntry { effective_unix: 820_454_400,      tai_utc_offset: 30 },  // 1996-01-01
-            LeapSecondEntry { effective_unix: 867_715_200,      tai_utc_offset: 31 },  // 1997-07-01
-            LeapSecondEntry { effective_unix: 915_148_800,      tai_utc_offset: 32 },  // 1999-01-01
-            LeapSecondEntry { effective_unix: 1_136_073_600,    tai_utc_offset: 33 },  // 2006-01-01
-            LeapSecondEntry { effective_unix: 1_230_768_000,    tai_utc_offset: 34 },  // 2009-01-01
-            LeapSecondEntry { effective_unix: 1_341_100_800,    tai_utc_offset: 35 },  // 2012-07-01
-            LeapSecondEntry { effective_unix: 1_435_708_800,    tai_utc_offset: 36 },  // 2015-07-01
-            LeapSecondEntry { effective_unix: 1_483_228_800,    tai_utc_offset: 37 },  // 2017-01-01
+            LeapSecondEntry {
+                effective_unix: 63_072_000,
+                tai_utc_offset: 10
+            }, // 1972-01-01
+            LeapSecondEntry {
+                effective_unix: 78_796_800,
+                tai_utc_offset: 11
+            }, // 1972-07-01
+            LeapSecondEntry {
+                effective_unix: 94_694_400,
+                tai_utc_offset: 12
+            }, // 1973-01-01
+            LeapSecondEntry {
+                effective_unix: 126_230_400,
+                tai_utc_offset: 13
+            }, // 1974-01-01
+            LeapSecondEntry {
+                effective_unix: 157_766_400,
+                tai_utc_offset: 14
+            }, // 1975-01-01
+            LeapSecondEntry {
+                effective_unix: 189_302_400,
+                tai_utc_offset: 15
+            }, // 1976-01-01
+            LeapSecondEntry {
+                effective_unix: 220_924_800,
+                tai_utc_offset: 16
+            }, // 1977-01-01
+            LeapSecondEntry {
+                effective_unix: 252_460_800,
+                tai_utc_offset: 17
+            }, // 1978-01-01
+            LeapSecondEntry {
+                effective_unix: 283_996_800,
+                tai_utc_offset: 18
+            }, // 1979-01-01
+            LeapSecondEntry {
+                effective_unix: 315_532_800,
+                tai_utc_offset: 19
+            }, // 1980-01-01
+            LeapSecondEntry {
+                effective_unix: 362_793_600,
+                tai_utc_offset: 20
+            }, // 1981-07-01
+            LeapSecondEntry {
+                effective_unix: 394_329_600,
+                tai_utc_offset: 21
+            }, // 1982-07-01
+            LeapSecondEntry {
+                effective_unix: 425_865_600,
+                tai_utc_offset: 22
+            }, // 1983-07-01
+            LeapSecondEntry {
+                effective_unix: 489_024_000,
+                tai_utc_offset: 23
+            }, // 1985-07-01
+            LeapSecondEntry {
+                effective_unix: 567_993_600,
+                tai_utc_offset: 24
+            }, // 1988-01-01
+            LeapSecondEntry {
+                effective_unix: 631_152_000,
+                tai_utc_offset: 25
+            }, // 1990-01-01
+            LeapSecondEntry {
+                effective_unix: 662_688_000,
+                tai_utc_offset: 26
+            }, // 1991-01-01
+            LeapSecondEntry {
+                effective_unix: 709_948_800,
+                tai_utc_offset: 27
+            }, // 1992-07-01
+            LeapSecondEntry {
+                effective_unix: 741_484_800,
+                tai_utc_offset: 28
+            }, // 1993-07-01
+            LeapSecondEntry {
+                effective_unix: 773_020_800,
+                tai_utc_offset: 29
+            }, // 1994-07-01
+            LeapSecondEntry {
+                effective_unix: 820_454_400,
+                tai_utc_offset: 30
+            }, // 1996-01-01
+            LeapSecondEntry {
+                effective_unix: 867_715_200,
+                tai_utc_offset: 31
+            }, // 1997-07-01
+            LeapSecondEntry {
+                effective_unix: 915_148_800,
+                tai_utc_offset: 32
+            }, // 1999-01-01
+            LeapSecondEntry {
+                effective_unix: 1_136_073_600,
+                tai_utc_offset: 33
+            }, // 2006-01-01
+            LeapSecondEntry {
+                effective_unix: 1_230_768_000,
+                tai_utc_offset: 34
+            }, // 2009-01-01
+            LeapSecondEntry {
+                effective_unix: 1_341_100_800,
+                tai_utc_offset: 35
+            }, // 2012-07-01
+            LeapSecondEntry {
+                effective_unix: 1_435_708_800,
+                tai_utc_offset: 36
+            }, // 2015-07-01
+            LeapSecondEntry {
+                effective_unix: 1_483_228_800,
+                tai_utc_offset: 37
+            }, // 2017-01-01
         ];
         Self { entries }
     }

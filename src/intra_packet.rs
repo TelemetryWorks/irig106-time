@@ -68,10 +68,7 @@ pub enum IntraPacketTime {
 /// Parse an 8-byte intra-packet time stamp buffer.
 ///
 /// **Traces:** L3-IPT-002 ← L2-IPT-001..L2-IPT-004
-pub fn parse_intra_packet_time(
-    buf: &[u8],
-    fmt: IntraPacketTimeFormat,
-) -> Result<IntraPacketTime> {
+pub fn parse_intra_packet_time(buf: &[u8], fmt: IntraPacketTimeFormat) -> Result<IntraPacketTime> {
     if buf.len() < 8 {
         return Err(TimeError::BufferTooShort {
             expected: 8,

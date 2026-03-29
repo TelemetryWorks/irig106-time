@@ -147,13 +147,17 @@ fn multi_channel_correlation() {
     correlator.add_reference(2, Rtc::from_raw(10_000_000), gps_time);
 
     // Correlate at RTC=20M (1 sec later) using IRIG-B (channel 1)
-    let via_irig = correlator.correlate(Rtc::from_raw(20_000_000), Some(1)).unwrap();
+    let via_irig = correlator
+        .correlate(Rtc::from_raw(20_000_000), Some(1))
+        .unwrap();
     assert_eq!(via_irig.hours, 12);
     assert_eq!(via_irig.minutes, 0);
     assert_eq!(via_irig.seconds, 1); // 12:00:01 per IRIG-B
 
     // Same RTC using GPS (channel 2)
-    let via_gps = correlator.correlate(Rtc::from_raw(20_000_000), Some(2)).unwrap();
+    let via_gps = correlator
+        .correlate(Rtc::from_raw(20_000_000), Some(2))
+        .unwrap();
     assert_eq!(via_gps.hours, 12);
     assert_eq!(via_gps.minutes, 0);
     assert_eq!(via_gps.seconds, 4); // 12:00:04.5 per GPS
@@ -195,11 +199,9 @@ fn gps_lock_time_jump_detection() {
 #[test]
 fn secondary_header_to_correlation() {
     let sec_buf = encode_ieee1588_secondary(86400, 500_000_000);
-    let parsed = irig106_time::secondary::parse_secondary_header(
-        &sec_buf,
-        SecHdrTimeFormat::Ieee1588,
-    )
-    .unwrap();
+    let parsed =
+        irig106_time::secondary::parse_secondary_header(&sec_buf, SecHdrTimeFormat::Ieee1588)
+            .unwrap();
 
     match parsed {
         SecondaryHeaderTime::Ieee1588(t) => {
@@ -227,11 +229,9 @@ fn intra_packet_rtc_to_absolute() {
     let rtc_val: u64 = 10_500_000; // 50ms after reference
     ipt_buf[0..6].copy_from_slice(&rtc_val.to_le_bytes()[0..6]);
 
-    let ipt = irig106_time::intra_packet::parse_intra_packet_time(
-        &ipt_buf,
-        IntraPacketTimeFormat::Rtc48,
-    )
-    .unwrap();
+    let ipt =
+        irig106_time::intra_packet::parse_intra_packet_time(&ipt_buf, IntraPacketTimeFormat::Rtc48)
+            .unwrap();
 
     match ipt {
         IntraPacketTime::Rtc(rtc) => {
@@ -276,7 +276,10 @@ fn invalid_bcd_propagates_error() {
     let result = DayFormatTime::from_le_bytes(&buf);
     assert!(result.is_err());
     let err = result.unwrap_err();
-    assert!(matches!(err, TimeError::InvalidBcdDigit { nibble: 0x0A, .. }));
+    assert!(matches!(
+        err,
+        TimeError::InvalidBcdDigit { nibble: 0x0A, .. }
+    ));
 }
 
 /// All TimeError variants produce useful Display output.
@@ -284,12 +287,25 @@ fn invalid_bcd_propagates_error() {
 fn all_error_variants_display() {
     use std::fmt::Write;
     let errors = vec![
-        TimeError::InvalidBcdDigit { nibble: 0xB, position: "test" },
+        TimeError::InvalidBcdDigit {
+            nibble: 0xB,
+            position: "test",
+        },
         TimeError::ReservedBitSet { position: "test" },
-        TimeError::OutOfRange { field: "test", value: 99, max: 59 },
-        TimeError::ChecksumMismatch { stored: 0x1234, computed: 0x5678 },
+        TimeError::OutOfRange {
+            field: "test",
+            value: 99,
+            max: 59,
+        },
+        TimeError::ChecksumMismatch {
+            stored: 0x1234,
+            computed: 0x5678,
+        },
         TimeError::NoReferencePoint,
-        TimeError::BufferTooShort { expected: 12, actual: 4 },
+        TimeError::BufferTooShort {
+            expected: 12,
+            actual: 4,
+        },
     ];
     for err in &errors {
         let mut s = String::new();
@@ -370,7 +386,7 @@ fn full_ntp_pipeline() {
 /// Full PTP pipeline: parse F2 payload → apply leap seconds → correlate.
 #[test]
 fn full_ptp_pipeline() {
-    use irig106_time::network_time::{parse_time_f2_payload, NetworkTime, LeapSecondTable};
+    use irig106_time::network_time::{parse_time_f2_payload, LeapSecondTable, NetworkTime};
 
     // Build a PTP payload: CSDW(protocol=PTP) + PTP time data
     // 2025-01-01 00:00:00 UTC → Unix = 1,735,689,600 → TAI = 1,735,689,637 (offset=37)
@@ -401,10 +417,14 @@ fn full_ptp_pipeline() {
     // Feed into correlator via add_reference_f2
     let mut correlator = TimeCorrelator::new();
     let net_time = NetworkTime::Ptp(ptp);
-    correlator.add_reference_f2(8, Rtc::from_raw(10_000_000), &net_time, &table).unwrap();
+    correlator
+        .add_reference_f2(8, Rtc::from_raw(10_000_000), &net_time, &table)
+        .unwrap();
 
     // Resolve a data packet 1 second later
-    let resolved = correlator.correlate(Rtc::from_raw(20_000_000), Some(8)).unwrap();
+    let resolved = correlator
+        .correlate(Rtc::from_raw(20_000_000), Some(8))
+        .unwrap();
     assert_eq!(resolved.year, Some(2025));
     assert_eq!(resolved.seconds, 1);
 }
@@ -431,8 +451,12 @@ fn mixed_f1_f2_correlation() {
     correlator.add_reference(8, Rtc::from_raw(10_000_000), ntp_abs);
 
     // Both channels should resolve the same RTC to the same time
-    let f1_time = correlator.correlate(Rtc::from_raw(10_000_000), Some(3)).unwrap();
-    let f2_time = correlator.correlate(Rtc::from_raw(10_000_000), Some(8)).unwrap();
+    let f1_time = correlator
+        .correlate(Rtc::from_raw(10_000_000), Some(3))
+        .unwrap();
+    let f2_time = correlator
+        .correlate(Rtc::from_raw(10_000_000), Some(8))
+        .unwrap();
     assert_eq!(f1_time.hours, f2_time.hours);
     assert_eq!(f1_time.minutes, f2_time.minutes);
     assert_eq!(f1_time.seconds, f2_time.seconds);
@@ -444,12 +468,18 @@ fn ntp_sub_millisecond_precision() {
     use irig106_time::network_time::NtpTime;
 
     // fraction = 2^31 = half second → 500,000,000 ns
-    let ntp = NtpTime { seconds: 3_944_678_400, fraction: 1 << 31 };
+    let ntp = NtpTime {
+        seconds: 3_944_678_400,
+        fraction: 1 << 31,
+    };
     let abs = ntp.to_absolute().unwrap();
     assert!(abs.nanoseconds >= 499_999_999 && abs.nanoseconds <= 500_000_001);
 
     // fraction = 2^30 = quarter second → ~250,000,000 ns
-    let ntp2 = NtpTime { seconds: 3_944_678_400, fraction: 1 << 30 };
+    let ntp2 = NtpTime {
+        seconds: 3_944_678_400,
+        fraction: 1 << 30,
+    };
     let abs2 = ntp2.to_absolute().unwrap();
     assert!(abs2.nanoseconds >= 249_999_999 && abs2.nanoseconds <= 250_000_001);
 }
@@ -560,7 +590,11 @@ fn drift_ppm_fast_rtc() {
     );
 
     let drift = correlator.drift_ppm(2).unwrap();
-    assert!((drift - 1000.0).abs() < 1.0, "expected ~1000 ppm, got {:.2}", drift);
+    assert!(
+        (drift - 1000.0).abs() < 1.0,
+        "expected ~1000 ppm, got {:.2}",
+        drift
+    );
 }
 
 /// drift_ppm uses only the requested channel.
@@ -569,8 +603,16 @@ fn drift_ppm_channel_isolation() {
     let mut correlator = TimeCorrelator::new();
 
     // Channel 1: perfect clock
-    correlator.add_reference(1, Rtc::from_raw(0), AbsoluteTime::new(1, 0, 0, 0, 0).unwrap());
-    correlator.add_reference(1, Rtc::from_raw(10_000_000), AbsoluteTime::new(1, 0, 0, 1, 0).unwrap());
+    correlator.add_reference(
+        1,
+        Rtc::from_raw(0),
+        AbsoluteTime::new(1, 0, 0, 0, 0).unwrap(),
+    );
+    correlator.add_reference(
+        1,
+        Rtc::from_raw(10_000_000),
+        AbsoluteTime::new(1, 0, 0, 1, 0).unwrap(),
+    );
 
     // Channel 2: no references
     assert!(correlator.drift_ppm(2).is_none());
@@ -593,7 +635,10 @@ fn calendar_rejects_feb_30() {
 fn year_overflow_guard_no_panic() {
     use irig106_time::network_time::NtpTime;
     // NTP max seconds = u32::MAX ≈ year 2106
-    let ntp = NtpTime { seconds: u32::MAX, fraction: 0 };
+    let ntp = NtpTime {
+        seconds: u32::MAX,
+        fraction: 0,
+    };
     // Should not panic — may return an error for out-of-range day but must not overflow
     let _ = ntp.to_absolute();
 }

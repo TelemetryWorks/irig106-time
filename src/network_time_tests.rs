@@ -82,8 +82,10 @@ fn ntp_fraction_to_nanos() {
     };
     let nanos = ntp.fraction_as_nanos();
     // Should be ~500_000_000 (500 ms)
-    assert!((499_999_999..=500_000_001).contains(&nanos),
-        "expected ~500_000_000, got {nanos}");
+    assert!(
+        (499_999_999..=500_000_001).contains(&nanos),
+        "expected ~500_000_000, got {nanos}"
+    );
 }
 
 #[test]
@@ -185,7 +187,7 @@ fn ptp_buffer_too_short() {
 #[test]
 fn parse_f2_ntp_payload() {
     let mut payload = [0u8; 12]; // 4 CSDW + 8 NTP
-    // CSDW: protocol = NTP (0)
+                                 // CSDW: protocol = NTP (0)
     payload[0..4].copy_from_slice(&0x0000_0000u32.to_le_bytes());
     // NTP: 3_944_678_400 seconds (2025-01-01), 0 fraction
     payload[4..8].copy_from_slice(&3_944_678_400u32.to_le_bytes());
@@ -201,7 +203,7 @@ fn parse_f2_ntp_payload() {
 #[test]
 fn parse_f2_ptp_payload() {
     let mut payload = [0u8; 14]; // 4 CSDW + 10 PTP
-    // CSDW: protocol = PTP (1)
+                                 // CSDW: protocol = PTP (1)
     payload[0..4].copy_from_slice(&0x0000_0001u32.to_le_bytes());
     // PTP: 1000 seconds, 500M nanoseconds
     payload[4..10].copy_from_slice(&1000u64.to_le_bytes()[0..6]);

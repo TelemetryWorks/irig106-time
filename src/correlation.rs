@@ -112,9 +112,7 @@ impl TimeCorrelator {
         let abs_time = match network_time {
             crate::network_time::NetworkTime::Ntp(ntp) => ntp.to_absolute()?,
             crate::network_time::NetworkTime::Ptp(ptp) => {
-                let utc_secs = ptp.to_utc_seconds(
-                    leap_table.offset_at_tai(ptp.seconds),
-                );
+                let utc_secs = ptp.to_utc_seconds(leap_table.offset_at_tai(ptp.seconds));
                 let (year, doy, hour, minute, second) =
                     crate::network_time::unix_seconds_to_ymd_pub(utc_secs);
                 let mut abs = AbsoluteTime::new(doy, hour, minute, second, ptp.nanoseconds)?;
@@ -132,11 +130,7 @@ impl TimeCorrelator {
     /// are considered.
     ///
     /// **Traces:** L3-COR-004, L3-COR-005 ← L2-COR-003..L2-COR-005
-    pub fn correlate(
-        &self,
-        target_rtc: Rtc,
-        channel_id: Option<u16>,
-    ) -> Result<AbsoluteTime> {
+    pub fn correlate(&self, target_rtc: Rtc, channel_id: Option<u16>) -> Result<AbsoluteTime> {
         let nearest = match channel_id {
             Some(id) => self.nearest_for_channel(target_rtc, id)?,
             None => self.nearest_any(target_rtc)?,
@@ -188,7 +182,10 @@ impl TimeCorrelator {
         }
 
         let mut best = filtered[0];
-        let mut best_dist = best.rtc.elapsed_ticks(target).min(target.elapsed_ticks(best.rtc));
+        let mut best_dist = best
+            .rtc
+            .elapsed_ticks(target)
+            .min(target.elapsed_ticks(best.rtc));
 
         for &r in &filtered[1..] {
             let dist = r.rtc.elapsed_ticks(target).min(target.elapsed_ticks(r.rtc));
@@ -297,11 +294,9 @@ impl TimeCorrelator {
             }
 
             // Compute expected absolute time delta in nanoseconds
-            let abs_ns_0 = ((r0.time.day_of_year as u64).saturating_sub(1))
-                * 86_400_000_000_000
+            let abs_ns_0 = ((r0.time.day_of_year as u64).saturating_sub(1)) * 86_400_000_000_000
                 + r0.time.total_nanos_of_day();
-            let abs_ns_1 = ((r1.time.day_of_year as u64).saturating_sub(1))
-                * 86_400_000_000_000
+            let abs_ns_1 = ((r1.time.day_of_year as u64).saturating_sub(1)) * 86_400_000_000_000
                 + r1.time.total_nanos_of_day();
             let abs_delta_ns = abs_ns_1 as f64 - abs_ns_0 as f64;
 

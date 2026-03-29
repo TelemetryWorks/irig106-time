@@ -20,13 +20,10 @@ use std::env;
 use std::fs::File;
 use std::process;
 
-use irig106_time::*;
 use irig106_time::bcd::{DayFormatTime, DmyFormatTime};
 use irig106_time::csdw::{DateFormat, TimeF1Csdw};
-use irig106_time::network_time::{
-    parse_time_f2_payload, NetworkTimeProtocol,
-    LeapSecondTable,
-};
+use irig106_time::network_time::{parse_time_f2_payload, LeapSecondTable, NetworkTimeProtocol};
+use irig106_time::*;
 
 // ────────────────────────────────────────────────────────────────────
 // Constants
@@ -76,7 +73,12 @@ impl PktHeader {
     }
 
     fn data_offset(&self) -> usize {
-        HEADER_SIZE + if self.has_secondary_header() { SECONDARY_HEADER_SIZE } else { 0 }
+        HEADER_SIZE
+            + if self.has_secondary_header() {
+                SECONDARY_HEADER_SIZE
+            } else {
+                0
+            }
     }
 }
 
@@ -182,7 +184,9 @@ impl Ch10TimeScanner {
                     if let Some(next) = find_next_sync(mmap, offset + 1) {
                         self.errors.push(format!(
                             "Sync lost at {:#X}, recovered at {:#X} ({} bytes skipped)",
-                            offset, next, next - offset
+                            offset,
+                            next,
+                            next - offset
                         ));
                         offset = next;
                         continue;
@@ -236,22 +240,23 @@ impl Ch10TimeScanner {
         let data_start = hdr.data_offset();
         if data_start + 4 > pkt_buf.len() {
             self.errors.push(format!(
-                "Time packet at ch={} too short for CSDW", hdr.channel_id
+                "Time packet at ch={} too short for CSDW",
+                hdr.channel_id
             ));
             return;
         }
 
         let csdw_bytes = &pkt_buf[data_start..data_start + 4];
-        let csdw = TimeF1Csdw::from_le_bytes([
-            csdw_bytes[0], csdw_bytes[1], csdw_bytes[2], csdw_bytes[3],
-        ]);
+        let csdw =
+            TimeF1Csdw::from_le_bytes([csdw_bytes[0], csdw_bytes[1], csdw_bytes[2], csdw_bytes[3]]);
 
         let bcd_start = data_start + 4;
         let abs_time = match csdw.date_format() {
             DateFormat::DayOfYear => {
                 if bcd_start + 8 > pkt_buf.len() {
                     self.errors.push(format!(
-                        "Time packet ch={}: buffer too short for DOY BCD", hdr.channel_id
+                        "Time packet ch={}: buffer too short for DOY BCD",
+                        hdr.channel_id
                     ));
                     return;
                 }
@@ -259,7 +264,8 @@ impl Ch10TimeScanner {
                     Ok(t) => t.to_absolute(),
                     Err(e) => {
                         self.errors.push(format!(
-                            "Time packet ch={}: DOY BCD error: {}", hdr.channel_id, e
+                            "Time packet ch={}: DOY BCD error: {}",
+                            hdr.channel_id, e
                         ));
                         return;
                     }
@@ -268,7 +274,8 @@ impl Ch10TimeScanner {
             DateFormat::DayMonthYear => {
                 if bcd_start + 10 > pkt_buf.len() {
                     self.errors.push(format!(
-                        "Time packet ch={}: buffer too short for DMY BCD", hdr.channel_id
+                        "Time packet ch={}: buffer too short for DMY BCD",
+                        hdr.channel_id
                     ));
                     return;
                 }
@@ -276,7 +283,8 @@ impl Ch10TimeScanner {
                     Ok(t) => t.to_absolute(),
                     Err(e) => {
                         self.errors.push(format!(
-                            "Time packet ch={}: DMY BCD error: {}", hdr.channel_id, e
+                            "Time packet ch={}: DMY BCD error: {}",
+                            hdr.channel_id, e
                         ));
                         return;
                     }
@@ -285,10 +293,12 @@ impl Ch10TimeScanner {
         };
 
         // Add to correlator
-        self.correlator.add_reference(hdr.channel_id, hdr.rtc, abs_time);
+        self.correlator
+            .add_reference(hdr.channel_id, hdr.rtc, abs_time);
 
         // Update channel info
-        let info = self.time_channels
+        let info = self
+            .time_channels
             .entry(hdr.channel_id)
             .or_insert_with(|| TimeChannelInfo::new(hdr.channel_id));
         info.packet_count += 1;
@@ -312,7 +322,8 @@ impl Ch10TimeScanner {
             Ok(result) => result,
             Err(e) => {
                 self.errors.push(format!(
-                    "Time F2 packet ch={}: parse error: {}", hdr.channel_id, e
+                    "Time F2 packet ch={}: parse error: {}",
+                    hdr.channel_id, e
                 ));
                 return;
             }
@@ -321,10 +332,14 @@ impl Ch10TimeScanner {
         // Use the library's add_reference_f2 which handles NTP/PTP→AbsoluteTime
         // conversion and leap-second offset application internally.
         if let Err(e) = self.correlator.add_reference_f2(
-            hdr.channel_id, hdr.rtc, &network_time, &self.leap_table,
+            hdr.channel_id,
+            hdr.rtc,
+            &network_time,
+            &self.leap_table,
         ) {
             self.errors.push(format!(
-                "Time F2 packet ch={}: correlation error: {}", hdr.channel_id, e
+                "Time F2 packet ch={}: correlation error: {}",
+                hdr.channel_id, e
             ));
             return;
         }
@@ -337,7 +352,8 @@ impl Ch10TimeScanner {
         };
 
         // Update channel info
-        let info = self.time_channels
+        let info = self
+            .time_channels
             .entry(hdr.channel_id)
             .or_insert_with(|| TimeChannelInfo::new(hdr.channel_id));
         info.packet_count += 1;
@@ -489,8 +505,16 @@ fn cmd_summary(mmap: &[u8], filename: &str) {
     if let (Some(first), Some(last)) = (scanner.first_rtc, scanner.last_rtc) {
         let dur_ns = first.elapsed_nanos(last);
         let dur_s = dur_ns as f64 / 1_000_000_000.0;
-        println!("RTC Range          : {:#014X} → {:#014X}", first.as_raw(), last.as_raw());
-        println!("RTC Duration       : {:.3} seconds ({:.1} minutes)", dur_s, dur_s / 60.0);
+        println!(
+            "RTC Range          : {:#014X} → {:#014X}",
+            first.as_raw(),
+            last.as_raw()
+        );
+        println!(
+            "RTC Duration       : {:.3} seconds ({:.1} minutes)",
+            dur_s,
+            dur_s / 60.0
+        );
     }
     println!();
 
@@ -551,7 +575,11 @@ fn cmd_summary(mmap: &[u8], filename: &str) {
                     j.channel_id,
                     j.index,
                     delta_ms,
-                    if j.delta_nanos > 0 { "jump forward" } else { "jump backward" }
+                    if j.delta_nanos > 0 {
+                        "jump forward"
+                    } else {
+                        "jump backward"
+                    }
                 );
             }
         }
@@ -567,7 +595,9 @@ fn cmd_summary(mmap: &[u8], filename: &str) {
     for (dt, count) in &scanner.data_type_counts {
         println!(
             "  0x{:02X} {:<14}  {:>10}",
-            dt, fmt_data_type_short(*dt), fmt_comma(*count)
+            dt,
+            fmt_data_type_short(*dt),
+            fmt_comma(*count)
         );
     }
     println!();
@@ -588,8 +618,17 @@ fn cmd_channels(mmap: &[u8]) {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, false, None);
 
-    println!("{:<8}  {:<12}  {:<10}  {:<5}  {:<5}  {:<5}  {:>8}  {:>28}  {:>28}",
-        "Channel", "Source", "Format", "Date", "Leap", "Proto", "Packets", "First Time", "Last Time"
+    println!(
+        "{:<8}  {:<12}  {:<10}  {:<5}  {:<5}  {:<5}  {:>8}  {:>28}  {:>28}",
+        "Channel",
+        "Source",
+        "Format",
+        "Date",
+        "Leap",
+        "Proto",
+        "Packets",
+        "First Time",
+        "Last Time"
     );
     println!("{}", "─".repeat(126));
 
@@ -600,7 +639,8 @@ fn cmd_channels(mmap: &[u8]) {
             Some(NetworkTimeProtocol::Reserved(_)) => "?",
             None => "—",
         };
-        println!("{:>7}  {:<12}  {:<10}  {:<5}  {:<5}  {:<5}  {:>8}  {:>28}  {:>28}",
+        println!(
+            "{:>7}  {:<12}  {:<10}  {:<5}  {:<5}  {:<5}  {:>8}  {:>28}  {:>28}",
             info.channel_id,
             info.source.as_ref().map(fmt_time_source).unwrap_or("?"),
             info.format.as_ref().map(fmt_time_format).unwrap_or("?"),
@@ -616,8 +656,14 @@ fn cmd_channels(mmap: &[u8]) {
             },
             proto,
             fmt_comma(info.packet_count),
-            info.first_time.as_ref().map(fmt_abs_time).unwrap_or_default(),
-            info.last_time.as_ref().map(fmt_abs_time).unwrap_or_default(),
+            info.first_time
+                .as_ref()
+                .map(fmt_abs_time)
+                .unwrap_or_default(),
+            info.last_time
+                .as_ref()
+                .map(fmt_abs_time)
+                .unwrap_or_default(),
         );
     }
 }
@@ -651,10 +697,17 @@ fn cmd_jumps(mmap: &[u8], threshold_ms: u64) {
 
     if total_jumps == 0 {
         println!();
-        println!("No time jumps detected across {} channel(s).", channels.len());
+        println!(
+            "No time jumps detected across {} channel(s).",
+            channels.len()
+        );
     } else {
         println!();
-        println!("Total: {} jump(s) across {} channel(s).", total_jumps, channels.len());
+        println!(
+            "Total: {} jump(s) across {} channel(s).",
+            total_jumps,
+            channels.len()
+        );
     }
 }
 
@@ -662,24 +715,32 @@ fn cmd_timeline(mmap: &[u8], limit: usize) {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, true, Some(limit));
 
-    println!("{:>8}  {:>12}  {:>6}  {:<14}  {:>14}  {:>28}",
+    println!(
+        "{:>8}  {:>12}  {:>6}  {:<14}  {:>14}  {:>28}",
         "Pkt#", "Offset", "Ch", "Type", "RTC", "Absolute Time"
     );
     println!("{}", "─".repeat(100));
 
     for r in &scanner.resolved {
-        println!("{:>8}  {:>#12X}  {:>6}  {:<14}  {:>14}  {:>28}",
+        println!(
+            "{:>8}  {:>#12X}  {:>6}  {:<14}  {:>14}  {:>28}",
             r.packet_num,
             r.offset,
             r.channel_id,
             fmt_data_type_short(r.data_type),
             r.rtc.as_raw(),
-            r.abs_time.as_ref().map(fmt_abs_time).unwrap_or_else(|| "N/A".to_string()),
+            r.abs_time
+                .as_ref()
+                .map(fmt_abs_time)
+                .unwrap_or_else(|| "N/A".to_string()),
         );
     }
 
     if scanner.total_packets > limit {
-        println!("... showing first {} of {} packets", limit, scanner.total_packets);
+        println!(
+            "... showing first {} of {} packets",
+            limit, scanner.total_packets
+        );
     }
 }
 
@@ -700,24 +761,40 @@ fn cmd_csv(mmap: &[u8], output_path: Option<&str>) {
     for r in &scanner.resolved {
         match &r.abs_time {
             Some(t) => {
-                writeln!(out,
+                writeln!(
+                    out,
                     "{},{:#X},{},0x{:02X},{},{},{},{},{},{},{},{},{},{},{}",
-                    r.packet_num, r.offset, r.channel_id,
-                    r.data_type, fmt_data_type_short(r.data_type),
-                    r.rtc.as_raw(), r.rtc.to_nanos(),
-                    t.day_of_year, t.hours, t.minutes, t.seconds, t.nanoseconds,
+                    r.packet_num,
+                    r.offset,
+                    r.channel_id,
+                    r.data_type,
+                    fmt_data_type_short(r.data_type),
+                    r.rtc.as_raw(),
+                    r.rtc.to_nanos(),
+                    t.day_of_year,
+                    t.hours,
+                    t.minutes,
+                    t.seconds,
+                    t.nanoseconds,
                     t.year.map(|y| y.to_string()).unwrap_or_default(),
                     t.month.map(|m| m.to_string()).unwrap_or_default(),
                     t.day_of_month.map(|d| d.to_string()).unwrap_or_default(),
-                ).unwrap();
+                )
+                .unwrap();
             }
             None => {
-                writeln!(out,
+                writeln!(
+                    out,
                     "{},{:#X},{},0x{:02X},{},{},{},,,,,,,",
-                    r.packet_num, r.offset, r.channel_id,
-                    r.data_type, fmt_data_type_short(r.data_type),
-                    r.rtc.as_raw(), r.rtc.to_nanos(),
-                ).unwrap();
+                    r.packet_num,
+                    r.offset,
+                    r.channel_id,
+                    r.data_type,
+                    fmt_data_type_short(r.data_type),
+                    r.rtc.as_raw(),
+                    r.rtc.to_nanos(),
+                )
+                .unwrap();
             }
         }
     }
@@ -728,14 +805,22 @@ fn cmd_csv(mmap: &[u8], output_path: Option<&str>) {
 }
 
 fn cmd_correlate(mmap: &[u8], rtc_hex: &str) {
-    let rtc_val = u64::from_str_radix(rtc_hex.trim_start_matches("0x").trim_start_matches("0X"), 16)
-        .expect("Invalid hex RTC value");
+    let rtc_val = u64::from_str_radix(
+        rtc_hex.trim_start_matches("0x").trim_start_matches("0X"),
+        16,
+    )
+    .expect("Invalid hex RTC value");
     let target = Rtc::from_raw(rtc_val);
 
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, false, None);
 
-    println!("Resolving RTC {:#014X} ({} ticks, {} ns)", target.as_raw(), target.as_raw(), target.to_nanos());
+    println!(
+        "Resolving RTC {:#014X} ({} ticks, {} ns)",
+        target.as_raw(),
+        target.as_raw(),
+        target.to_nanos()
+    );
     println!();
 
     if scanner.correlator.is_empty() {
@@ -762,13 +847,18 @@ fn cmd_correlate(mmap: &[u8], rtc_hex: &str) {
 // ────────────────────────────────────────────────────────────────────
 
 fn print_usage() {
-    println!("ch10time v{} — IRIG 106 Chapter 10 Time Inspector", PKG_VERSION);
+    println!(
+        "ch10time v{} — IRIG 106 Chapter 10 Time Inspector",
+        PKG_VERSION
+    );
     println!();
     println!("Usage:");
     println!("  ch10time summary   <file.ch10>                    File time summary");
     println!("  ch10time channels  <file.ch10>                    Time channel inventory");
     println!("  ch10time jumps     <file.ch10> [--threshold-ms N] Time jump detection (default: 1000 ms)");
-    println!("  ch10time timeline  <file.ch10> [--limit N]        Per-packet timeline (default: 100)");
+    println!(
+        "  ch10time timeline  <file.ch10> [--limit N]        Per-packet timeline (default: 100)"
+    );
     println!("  ch10time csv       <file.ch10> [--output file]    Export all timestamps to CSV");
     println!("  ch10time correlate <file.ch10> <rtc_hex>          Resolve a single RTC value");
     println!();
@@ -802,43 +892,67 @@ fn main() {
 
     match command {
         "summary" => {
-            if args.len() < 3 { eprintln!("Usage: ch10time summary <file>"); process::exit(1); }
+            if args.len() < 3 {
+                eprintln!("Usage: ch10time summary <file>");
+                process::exit(1);
+            }
             let mmap = open_file(&args[2]);
             cmd_summary(&mmap, &args[2]);
         }
         "channels" => {
-            if args.len() < 3 { eprintln!("Usage: ch10time channels <file>"); process::exit(1); }
+            if args.len() < 3 {
+                eprintln!("Usage: ch10time channels <file>");
+                process::exit(1);
+            }
             let mmap = open_file(&args[2]);
             cmd_channels(&mmap);
         }
         "jumps" => {
-            if args.len() < 3 { eprintln!("Usage: ch10time jumps <file> [--threshold-ms N]"); process::exit(1); }
+            if args.len() < 3 {
+                eprintln!("Usage: ch10time jumps <file> [--threshold-ms N]");
+                process::exit(1);
+            }
             let mmap = open_file(&args[2]);
-            let threshold = args.iter().position(|a| a == "--threshold-ms")
+            let threshold = args
+                .iter()
+                .position(|a| a == "--threshold-ms")
                 .and_then(|i| args.get(i + 1))
                 .and_then(|v| v.parse::<u64>().ok())
                 .unwrap_or(1000);
             cmd_jumps(&mmap, threshold);
         }
         "timeline" => {
-            if args.len() < 3 { eprintln!("Usage: ch10time timeline <file> [--limit N]"); process::exit(1); }
+            if args.len() < 3 {
+                eprintln!("Usage: ch10time timeline <file> [--limit N]");
+                process::exit(1);
+            }
             let mmap = open_file(&args[2]);
-            let limit = args.iter().position(|a| a == "--limit")
+            let limit = args
+                .iter()
+                .position(|a| a == "--limit")
                 .and_then(|i| args.get(i + 1))
                 .and_then(|v| v.parse::<usize>().ok())
                 .unwrap_or(100);
             cmd_timeline(&mmap, limit);
         }
         "csv" => {
-            if args.len() < 3 { eprintln!("Usage: ch10time csv <file> [--output path]"); process::exit(1); }
+            if args.len() < 3 {
+                eprintln!("Usage: ch10time csv <file> [--output path]");
+                process::exit(1);
+            }
             let mmap = open_file(&args[2]);
-            let output = args.iter().position(|a| a == "--output")
+            let output = args
+                .iter()
+                .position(|a| a == "--output")
                 .and_then(|i| args.get(i + 1))
                 .map(|s| s.as_str());
             cmd_csv(&mmap, output);
         }
         "correlate" => {
-            if args.len() < 4 { eprintln!("Usage: ch10time correlate <file> <rtc_hex>"); process::exit(1); }
+            if args.len() < 4 {
+                eprintln!("Usage: ch10time correlate <file> <rtc_hex>");
+                process::exit(1);
+            }
             let mmap = open_file(&args[2]);
             cmd_correlate(&mmap, &args[3]);
         }

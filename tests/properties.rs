@@ -8,8 +8,8 @@
 //! cargo test --test properties
 //! ```
 
-use proptest::prelude::*;
 use irig106_time::*;
+use proptest::prelude::*;
 
 // ── RTC properties ───────────────────────────────────────────────────
 

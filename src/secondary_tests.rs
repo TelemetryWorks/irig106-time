@@ -35,25 +35,37 @@ fn make_sec_hdr(data: &[u8; 10]) -> [u8; 12] {
 #[test]
 fn sec_hdr_time_format_ch4() {
     // bits [3:2] = 0b00 → flags & 0x0C = 0x00
-    assert_eq!(SecHdrTimeFormat::from_packet_flags(0x00), SecHdrTimeFormat::Ch4);
+    assert_eq!(
+        SecHdrTimeFormat::from_packet_flags(0x00),
+        SecHdrTimeFormat::Ch4
+    );
 }
 
 #[test]
 fn sec_hdr_time_format_ieee1588() {
     // bits [3:2] = 0b01 → flags & 0x0C = 0x04
-    assert_eq!(SecHdrTimeFormat::from_packet_flags(0x04), SecHdrTimeFormat::Ieee1588);
+    assert_eq!(
+        SecHdrTimeFormat::from_packet_flags(0x04),
+        SecHdrTimeFormat::Ieee1588
+    );
 }
 
 #[test]
 fn sec_hdr_time_format_ertc() {
     // bits [3:2] = 0b10 → flags & 0x0C = 0x08
-    assert_eq!(SecHdrTimeFormat::from_packet_flags(0x08), SecHdrTimeFormat::Ertc);
+    assert_eq!(
+        SecHdrTimeFormat::from_packet_flags(0x08),
+        SecHdrTimeFormat::Ertc
+    );
 }
 
 #[test]
 fn sec_hdr_time_format_reserved() {
     // bits [3:2] = 0b11 → flags & 0x0C = 0x0C
-    assert_eq!(SecHdrTimeFormat::from_packet_flags(0x0C), SecHdrTimeFormat::Reserved(3));
+    assert_eq!(
+        SecHdrTimeFormat::from_packet_flags(0x0C),
+        SecHdrTimeFormat::Reserved(3)
+    );
 }
 
 #[test]
@@ -83,7 +95,10 @@ fn checksum_buffer_too_short() {
     let result = validate_secondary_checksum(&buf);
     assert!(result.is_err());
     match result.unwrap_err() {
-        TimeError::BufferTooShort { expected: 12, actual: 10 } => {}
+        TimeError::BufferTooShort {
+            expected: 12,
+            actual: 10,
+        } => {}
         other => panic!("expected BufferTooShort, got {other:?}"),
     }
 }

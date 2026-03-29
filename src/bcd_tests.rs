@@ -137,7 +137,10 @@ fn day_fmt_buffer_too_short() {
     let result = DayFormatTime::from_le_bytes(&buf);
     assert!(result.is_err());
     match result.unwrap_err() {
-        TimeError::BufferTooShort { expected: 8, actual: 6 } => {}
+        TimeError::BufferTooShort {
+            expected: 8,
+            actual: 6,
+        } => {}
         other => panic!("expected BufferTooShort, got {other:?}"),
     }
 }

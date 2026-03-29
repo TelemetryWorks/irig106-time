@@ -85,7 +85,7 @@ fn elapsed_ticks_wrap_around() {
     // Simulate 48-bit wrap: later has a smaller raw value due to counter overflow.
     let earlier = Rtc::from_raw(0x0000_FFFF_FFFF_FFF0); // Near MAX
     let later = Rtc::from_raw(0x0000_0000_0000_000F); // Wrapped around
-    // Expected: 0x10 + 0x0F = 0x1F = 31 ticks
+                                                      // Expected: 0x10 + 0x0F = 0x1F = 31 ticks
     assert_eq!(earlier.elapsed_ticks(later), 31);
 }
 

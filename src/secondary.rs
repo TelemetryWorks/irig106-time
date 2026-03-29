@@ -81,10 +81,7 @@ pub fn validate_secondary_checksum(buf: &[u8]) -> Result<()> {
 /// Validates the checksum first, then dispatches based on the time format.
 ///
 /// **Traces:** L3-SEC-004 ← L2-SEC-001..L2-SEC-005
-pub fn parse_secondary_header(
-    buf: &[u8],
-    fmt: SecHdrTimeFormat,
-) -> Result<SecondaryHeaderTime> {
+pub fn parse_secondary_header(buf: &[u8], fmt: SecHdrTimeFormat) -> Result<SecondaryHeaderTime> {
     if buf.len() < 12 {
         return Err(TimeError::BufferTooShort {
             expected: 12,
