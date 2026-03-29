@@ -35,7 +35,7 @@ pub const DEFAULT_TAI_UTC_OFFSET: i32 = 37;
 ///
 /// **Traces:** L1-F2CSDW-002
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NetworkTimeProtocol {
     /// Network Time Protocol (RFC 5905). Epoch: 1900-01-01 UTC.
     Ntp,
@@ -49,7 +49,7 @@ pub enum NetworkTimeProtocol {
 ///
 /// **Traces:** L1-F2CSDW-001
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TimeF2Csdw(u32);
 
 impl TimeF2Csdw {
@@ -115,7 +115,7 @@ impl TimeF2Csdw {
 ///
 /// **Traces:** L1-NTP-001, L1-NTP-002
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct NtpTime {
     /// Seconds since 1900-01-01 00:00:00 UTC.
     pub seconds: u32,
@@ -213,7 +213,7 @@ impl NtpTime {
 ///
 /// **Traces:** L1-PTP-001, L1-PTP-002
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PtpTime {
     /// Seconds since 1970-01-01 00:00:00 TAI (48 bits).
     pub seconds: u64,
@@ -301,7 +301,7 @@ impl PtpTime {
 
 /// Parsed payload from a Format 2 Network Time packet.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NetworkTime {
     /// NTP time (UTC epoch 1900-01-01).
     Ntp(NtpTime),
@@ -353,7 +353,7 @@ pub fn parse_time_f2_payload(payload: &[u8]) -> Result<(TimeF2Csdw, NetworkTime)
 ///
 /// **Traces:** L1-TAI-001
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LeapSecondEntry {
     /// Unix timestamp (UTC) at which this offset became effective.
     pub effective_unix: u64,

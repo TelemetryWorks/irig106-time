@@ -38,7 +38,7 @@ use crate::rtc::Rtc;
 ///
 /// **Traces:** L3-COR-001 ← L2-COR-001
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ReferencePoint {
     /// Channel ID of the time source.
     pub channel_id: u16,
@@ -52,7 +52,7 @@ pub struct ReferencePoint {
 ///
 /// **Traces:** L3-COR-006 ← L2-COR-006
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TimeJump {
     /// Index of the later reference point in the correlator's list.
     pub index: usize,
@@ -73,7 +73,7 @@ pub struct TimeJump {
 ///
 /// **Traces:** GAP-07
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RtcReset {
     /// Index of the reference point after the reset.
     pub index: usize,

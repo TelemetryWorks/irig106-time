@@ -60,7 +60,7 @@ fn check_reserved(word: u16, mask: u16, position: &'static str) -> Result<()> {
 ///
 /// **Traces:** L3-BCD-003 ← L2-BCD-001, L2-BCD-002 ← L1-BCD-001
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DayFormatTime {
     /// Milliseconds (0–990, resolution 10 ms).
     pub milliseconds: u16,
@@ -243,7 +243,7 @@ impl DayFormatTime {
 ///
 /// **Traces:** L3-BCD-004 ← L2-BCD-003, L2-BCD-004 ← L1-BCD-002
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DmyFormatTime {
     /// Milliseconds (0–990, resolution 10 ms).
     pub milliseconds: u16,

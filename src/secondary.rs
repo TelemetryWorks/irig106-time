@@ -13,7 +13,7 @@ use crate::error::{Result, TimeError};
 ///
 /// **Traces:** L3-SEC-001
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SecHdrTimeFormat {
     /// IRIG 106 Chapter 4 Binary Weighted Time.
     Ch4,
@@ -41,7 +41,7 @@ impl SecHdrTimeFormat {
 ///
 /// **Traces:** L3-SEC-003
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SecondaryHeaderTime {
     /// Chapter 4 Binary Weighted Time.
     Ch4(Ch4BinaryTime),

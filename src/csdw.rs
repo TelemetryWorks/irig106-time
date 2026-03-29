@@ -10,7 +10,7 @@
 ///
 /// **Traces:** L3-CSDW-008 ← L2-CSDW-003 ← L1-CSDW-002
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TimeSource {
     /// Internal time source (0x0).
     Internal,
@@ -58,7 +58,7 @@ impl TimeSource {
 ///
 /// **Traces:** L3-CSDW-009 ← L2-CSDW-005 ← L1-CSDW-003
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TimeFormat {
     /// IRIG-B (0x0).
     IrigB,
@@ -94,7 +94,7 @@ impl TimeFormat {
 ///
 /// **Traces:** L3-CSDW-010 ← L2-CSDW-007 ← L1-CSDW-005
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DateFormat {
     /// Day-of-year format (bit 9 = 0).
     DayOfYear,
@@ -106,7 +106,7 @@ pub enum DateFormat {
 ///
 /// **Traces:** L3-CSDW-001 ← L2-CSDW-001, L2-CSDW-008 ← L1-CSDW-001
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TimeF1Csdw(u32);
 
 impl TimeF1Csdw {

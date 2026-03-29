@@ -51,7 +51,7 @@ const NANOS_PER_DAY: u64 = 86_400 * NANOS_PER_SECOND;
 /// staying within the same year (the common case for correlation).
 ///
 /// **Traces:** L3-ABS-001 ← L2-ABS-001, L2-ABS-002 ← L1-ABS-001, P4-04
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AbsoluteTime {
     /// Nanoseconds since start of day 1 (day 1 00:00:00.000 = 0).
     total_ns: u64,
@@ -424,7 +424,7 @@ impl core::fmt::Display for AbsoluteTime {
 ///
 /// **Traces:** L3-CH4-001 ← L2-ABS-003 ← L1-ABS-002
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Ch4BinaryTime {
     /// High-order 16 bits of the binary time word.
     pub high_order: u16,
@@ -497,7 +497,7 @@ impl Ch4BinaryTime {
 ///
 /// **Traces:** L3-1588-001 ← L2-ABS-005 ← L1-ABS-003
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Ieee1588Time {
     /// Nanoseconds within the current second (0–999_999_999).
     pub nanoseconds: u32,

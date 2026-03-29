@@ -19,7 +19,7 @@ use crate::rtc::Rtc;
 ///
 /// **Traces:** L3-IPT-003
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IntraPacketTimeFormat {
     /// 48-bit RTC (6 bytes used, 2 bytes reserved).
     Rtc48,
@@ -55,7 +55,7 @@ impl IntraPacketTimeFormat {
 ///
 /// **Traces:** L3-IPT-001 ← L2-IPT-005
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IntraPacketTime {
     /// 48-bit Relative Time Counter value.
     Rtc(Rtc),
