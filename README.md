@@ -16,7 +16,10 @@ IRIG 106 Chapter 10 separates *when data was recorded* (a free-running 10 MHz co
 - **Network Time** — NTP (RFC 5905, epoch 1900 UTC) and PTP/IEEE 1588 (epoch 1970 TAI) decoding with built-in leap-second table
 - **Four timestamp formats** — RTC, Chapter 4 BWT, IEEE-1588, Extended RTC
 - **Secondary headers** — Checksum validation and time extraction
-- **Correlation engine** — Nearest-point interpolation, multi-channel support, GPS lock jump detection, F1 and F2 reference points
+- **Correlation engine** — Nearest-point interpolation, multi-channel support, GPS lock jump detection, F1 and F2 reference points, drift estimation, and RTC reset detection
+- **Version detection** — IRIG 106 standard version from TMATS CSDW (106-04 through 106-23), version-aware CSDW parsing, configurable out-of-order tolerance
+- **Encoding** — `to_le_bytes()` on all wire-format types for packet construction
+- **`impl Display`** — ISO-like formatting for `AbsoluteTime`
 - **`#![no_std]`** — Works on embedded, WASM, and standard targets
 - **Zero dependencies** — Only `core` and `alloc`
 - **Zero `unsafe`** — Safe Rust throughout
@@ -83,8 +86,8 @@ At 10 Gbps with 512-byte average packets (2.4M pkt/sec), the hot path provides 1
 ## Testing
 
 ```sh
-cargo test              # 151 tests (126 unit + 15 integration + 10 property)
-cargo bench             # 30 zero-dependency benchmarks
+cargo test              # 196 tests (136 unit + 43 integration + 17 property)
+cargo bench             # 28 zero-dependency benchmarks
 cargo +nightly fuzz run fuzz_bcd_day   # 10 fuzz targets available
 ```
 
@@ -100,7 +103,7 @@ See `docs/L1_Requirements.md` for the full chain.
 
 ## Standard Version Support
 
-The crate targets IRIG 106-07 through 106-23, including Time Data Format 2 (0x12, Network Time) introduced in 106-17. Support for legacy 106-04/05 files is on the roadmap. See `docs/ROADMAP.md`.
+The crate targets IRIG 106-04 through 106-23, with version-aware CSDW parsing for the 106-04/05 time source mapping delta, configurable out-of-order tolerance for pre-105 files, and Time Data Format 2 (0x12, Network Time) support introduced in 106-22. See `docs/ROADMAP.md`.
 
 ## License
 
