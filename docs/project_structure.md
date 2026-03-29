@@ -1,4 +1,4 @@
-# Project Structure — irig106-time
+# Project Structure - irig106-time
 
 **Date:** 2026-03-29
 
@@ -6,94 +6,96 @@
 
 ## Repository Layout
 
-```
+```text
 irig106-time/
-├── Cargo.toml                          # Zero required deps, std feature gate
-├── CHANGELOG.md                        # Keep-a-changelog format
-├── LICENSE                             # Apache-2.0
-├── README.md
-│
-├── src/
-│   ├── lib.rs                          # #![no_std], module wiring, re-exports
-│   ├── error.rs                        # TimeError enum, Result<T>, Display
-│   ├── error_tests.rs                  # 7 unit tests
-│   ├── rtc.rs                          # Rtc newtype (48-bit, 10 MHz)
-│   ├── rtc_tests.rs                    # 18 unit tests
-│   ├── absolute.rs                     # AbsoluteTime, Ch4BinaryTime, Ieee1588Time, Ertc
-│   ├── absolute_tests.rs              # 23 unit tests
-│   ├── csdw.rs                         # TimeF1Csdw, TimeSource, TimeFormat, DateFormat
-│   ├── csdw_tests.rs                   # 14 unit tests
-│   ├── bcd.rs                          # DayFormatTime, DmyFormatTime (BCD wire format)
-│   ├── bcd_tests.rs                    # 13 unit tests
-│   ├── secondary.rs                    # Secondary header time, checksum validation
-│   ├── secondary_tests.rs             # 10 unit tests
-│   ├── intra_packet.rs                # IntraPacketTime, 4-format dispatch
-│   ├── intra_packet_tests.rs          # 8 unit tests
-│   ├── correlation.rs                  # TimeCorrelator, ReferencePoint, TimeJump, RtcReset
-│   ├── correlation_tests.rs           # 11 unit tests
-│   ├── network_time.rs                # Format 2 (0x12): NTP, PTP, LeapSecondTable
-│   ├── network_time_tests.rs          # 22 unit tests
-│   ├── version.rs                     # Irig106Version, detect_version
-│   ├── version_tests.rs              # 10 unit tests
-│   ├── packet_standard.rs            # PacketStandard::Ch10/Ch11
-│   ├── packet_standard_tests.rs      # 5 unit tests
-│   ├── streaming.rs                   # StreamingTimeCorrelator (sliding window)
-│   ├── streaming_tests.rs            # 10 unit tests
-│   ├── quality.rs                     # TimeQuality, compute_quality
-│   ├── quality_tests.rs              # 6 unit tests
-│   ├── recording_event.rs            # RecordingEvent, RecordingEventType
-│   ├── recording_event_tests.rs      # 9 unit tests
-│   └── chrono_interop.rs             # chrono From conversions (feature-gated, 4 tests)
-│
-├── tests/
-│   ├── pipeline.rs                     # 57 integration tests
-│   └── properties.rs                  # 17 property-based tests (proptest)
-│
-├── benches/
-│   ├── time_benchmarks.rs             # 28 benchmarks (zero-dep, std::time::Instant)
-│   └── correlation_bench.rs           # Criterion benchmarks for correlation at scale
-│
-├── fuzz/
-│   ├── Cargo.toml                      # libfuzzer-sys harness
-│   └── fuzz_targets/
-│       ├── fuzz_bcd_day.rs
-│       ├── fuzz_bcd_dmy.rs
-│       ├── fuzz_rtc.rs
-│       ├── fuzz_secondary_header.rs
-│       ├── fuzz_intra_packet.rs
-│       ├── fuzz_ieee1588.rs
-│       ├── fuzz_csdw.rs
-│       ├── fuzz_correlation.rs
-│       ├── fuzz_ntp.rs
-│       └── fuzz_ptp.rs
-│
-└── docs/
-    ├── L1_Requirements.md              # 53 L1 → IRIG 106 standard (incl. Format 2)
-    ├── L2_Requirements.md              # L2 → functional (incl. Format 2)
-    ├── L3_Requirements.md              # L3 → design specs (incl. Format 2)
-    ├── test_index.md                   # All tests documented
-    ├── architecture.md                 # Data flow, packet layouts, ASCII diagrams
-    ├── why_separate_repo.md           # Why time is its own crate
-    ├── security.md                     # Threat model, fuzzing guide
-    ├── usage.md                        # Integration examples for downstream crates
-    ├── shared_types_for_irig106_types.md
-    ├── project_structure.md           # This file
-    ├── ROADMAP.md                      # Phased release plan
-    └── diagrams/
-        ├── ecosystem.mermaid
-        ├── correlation_flow.mermaid
-        ├── module_deps.mermaid
-        └── traceability.mermaid
+|-- Cargo.toml                         # Zero required deps, std feature gate
+|-- CHANGELOG.md                       # Keep-a-changelog format
+|-- LICENSE                            # Apache-2.0
+|-- README.md
+|
+|-- src/
+|   |-- lib.rs                         # #![no_std], module wiring, re-exports
+|   |-- error.rs                       # TimeError enum, Result<T>, Display
+|   |-- error_tests.rs                 # 7 unit tests
+|   |-- rtc.rs                         # Rtc newtype (48-bit, 10 MHz)
+|   |-- rtc_tests.rs                   # 18 unit tests
+|   |-- absolute.rs                    # AbsoluteTime, Ch4BinaryTime, Ieee1588Time, Ertc
+|   |-- absolute_tests.rs              # 23 unit tests
+|   |-- csdw.rs                        # TimeF1Csdw, TimeSource, TimeFormat, DateFormat
+|   |-- csdw_tests.rs                  # 14 unit tests
+|   |-- bcd.rs                         # DayFormatTime, DmyFormatTime (BCD wire format)
+|   |-- bcd_tests.rs                   # 13 unit tests
+|   |-- secondary.rs                   # Secondary header time, checksum validation
+|   |-- secondary_tests.rs             # 10 unit tests
+|   |-- intra_packet.rs                # IntraPacketTime, 4-format dispatch
+|   |-- intra_packet_tests.rs          # 8 unit tests
+|   |-- correlation.rs                 # TimeCorrelator, ReferencePoint, TimeJump, RtcReset
+|   |-- correlation_tests.rs           # 11 unit tests
+|   |-- network_time.rs                # Format 2 (0x12): NTP, PTP, LeapSecondTable
+|   |-- network_time_tests.rs          # 22 unit tests
+|   |-- version.rs                     # Irig106Version, detect_version
+|   |-- version_tests.rs               # 10 unit tests
+|   |-- packet_standard.rs             # PacketStandard::Ch10/Ch11
+|   |-- packet_standard_tests.rs       # 5 unit tests
+|   |-- streaming.rs                   # StreamingTimeCorrelator (sliding window)
+|   |-- streaming_tests.rs             # 10 unit tests
+|   |-- quality.rs                     # TimeQuality, compute_quality
+|   |-- quality_tests.rs               # 6 unit tests
+|   |-- recording_event.rs             # RecordingEvent, RecordingEventType
+|   |-- recording_event_tests.rs       # 9 unit tests
+|   `-- chrono_interop.rs              # chrono From conversions (feature-gated, 4 tests)
+|
+|-- tests/
+|   |-- pipeline.rs                    # 57 integration tests
+|   `-- properties.rs                  # 17 property-based tests (proptest)
+|
+|-- benches/
+|   |-- time_benchmarks.rs             # 28 benchmarks (zero-dep, std::time::Instant)
+|   `-- correlation_bench.rs           # Criterion benchmarks for correlation at scale
+|
+|-- fuzz/
+|   |-- Cargo.toml                     # libfuzzer-sys harness
+|   `-- fuzz_targets/
+|       |-- fuzz_bcd_day.rs
+|       |-- fuzz_bcd_dmy.rs
+|       |-- fuzz_rtc.rs
+|       |-- fuzz_secondary_header.rs
+|       |-- fuzz_intra_packet.rs
+|       |-- fuzz_ieee1588.rs
+|       |-- fuzz_csdw.rs
+|       |-- fuzz_correlation.rs
+|       |-- fuzz_ntp.rs
+|       `-- fuzz_ptp.rs
+|
+`-- docs/
+    |-- L1_Requirements.md             # 53 L1 -> IRIG 106 standard (incl. Format 2)
+    |-- L2_Requirements.md             # L2 -> functional (incl. Format 2)
+    |-- L3_Requirements.md             # L3 -> design specs (incl. Format 2)
+    |-- architecture.md                # Data flow, packet layouts, ASCII diagrams
+    |-- benchmark_results.md           # Current benchmark snapshot
+    |-- cli_commands.md                # CLI command quick reference
+    |-- project_structure.md           # This file
+    |-- ROADMAP.md                     # Phased release plan
+    |-- security.md                    # Threat model, fuzzing guide
+    |-- shared_types_for_irig106_types.md
+    |-- test_index.md                  # All tests documented
+    |-- usage.md                       # Integration examples for downstream crates
+    |-- why_separate_repo.md           # Why time is its own crate
+    `-- diagrams/
+        |-- correlation_flow.mermaid
+        |-- ecosystem.mermaid
+        |-- module_deps.mermaid
+        `-- traceability.mermaid
 ```
 
 ## Companion: irig106-time-cli
 
-```
+```text
 irig106-time-cli/
-├── Cargo.toml                          # deps: irig106-time + memmap2
-├── README.md                           # CLI usage documentation
-└── src/
-    └── main.rs                         # ch10time: summary, channels, jumps, timeline, csv, correlate
+|-- Cargo.toml                         # deps: irig106-time + memmap2
+|-- README.md                          # CLI usage documentation
+`-- src/
+    `-- main.rs                        # ch10time: summary, channels, jumps, timeline, csv, correlate
 ```
 
 ### CLI Commands
@@ -115,12 +117,13 @@ irig106-time-cli/
 |--------|-------|
 | Source modules | 16 |
 | Source lines (excl. tests) | ~3,800 |
-| Unit tests | 170 |
+| Unit tests | 166 default / 170 with `--all-features` |
 | Integration tests | 57 |
 | Property-based tests | 17 |
+| Doc tests | 4 default / 5 with `--all-features` |
 | Fuzz targets | 10 |
 | Benchmarks | 28 (zero-dep) + criterion suite |
-| **Total tests** | **244** |
+| **Total checks** | **244 default / 249 with `--all-features`** |
 | Required runtime deps | **0** (serde, chrono optional) |
 | L1 requirements | 53 (37 base + 16 F2) |
 | `#![no_std]` | Yes |
@@ -130,36 +133,45 @@ irig106-time-cli/
 
 ## Benchmark Results (release build)
 
-```
+```text
   Benchmark                           ns/iter      ops/sec
-  ──────────────────────────────────────────────────────────
-  rtc_from_le_bytes                     7.1 ns     141.1M/s
-  rtc_from_raw                          0.7 ns    1448.1M/s
-  bcd_day_parse                         6.1 ns     164.9M/s
-  csdw_from_le_bytes                    0.3 ns    2989.4M/s
-  ntp_from_le_bytes                     1.1 ns     881.8M/s
-  ptp_from_le_bytes                     1.6 ns     643.1M/s
-  leap_table_lookup                     6.6 ns     152.2M/s
-  f2_ntp_payload_parse                  2.7 ns     370.0M/s
-  corr_100refs_any                     16.6 ns      60.2M/s
-  corr_3600refs_any                    24.1 ns      41.5M/s
-  HOT_rtc_to_absolute                  34.5 ns      29.0M/s
+  ----------------------------------------------------------
+  rtc_from_le_bytes                     6.7 ns     148.5M/s
+  rtc_from_raw                          0.3 ns    3090.0M/s
+  rtc_to_nanos                          0.3 ns    2869.9M/s
+  rtc_elapsed_ticks                     0.6 ns    1625.8M/s
+  bcd_day_parse                         5.9 ns     168.2M/s
+  bcd_dmy_parse                         7.8 ns     128.5M/s
+  bcd_day_full_pipeline                12.4 ns      80.5M/s
+  csdw_from_le_bytes                    0.3 ns    3043.6M/s
+  csdw_all_fields                       1.7 ns     593.7M/s
+  sec_checksum_validate                 1.9 ns     516.2M/s
+  ipt_parse_rtc48                       3.0 ns     331.4M/s
+  corr_100refs_any                     14.3 ns      69.9M/s
+  corr_3600refs_any                    22.6 ns      44.3M/s
+  HOT_rtc_to_absolute                  31.0 ns      32.2M/s
 ```
 
-**Hot-path: 34.5 ns = 29M ops/sec.** At 10 Gbps / 512B packets = 2.4M pkt/sec → **12x headroom.**
+**Hot-path: 31 ns = 32.2M ops/sec.** At 10 Gbps / 512B packets = 2.4M pkt/sec -> **13x headroom.**
 
 ---
 
 ## File Dependency Graph
 
-```
-lib.rs ──→ error.rs           (no deps)
-       ──→ rtc.rs             (no deps)
-       ──→ absolute.rs        → error.rs
-       ──→ csdw.rs            (no deps)
-       ──→ bcd.rs             → error.rs, absolute.rs
-       ──→ secondary.rs       → error.rs, absolute.rs
-       ──→ intra_packet.rs    → error.rs, rtc.rs, absolute.rs
-       ──→ correlation.rs     → error.rs, rtc.rs, absolute.rs, network_time.rs  (requires alloc)
-       ──→ network_time.rs    → error.rs, absolute.rs  (requires alloc)
+```text
+lib.rs -> error.rs           (no deps)
+       -> rtc.rs             (no deps)
+       -> absolute.rs        -> error.rs
+       -> csdw.rs            (no deps)
+       -> bcd.rs             -> error.rs, absolute.rs
+       -> secondary.rs       -> error.rs, absolute.rs
+       -> intra_packet.rs    -> error.rs, rtc.rs, absolute.rs
+       -> correlation.rs     -> error.rs, rtc.rs, absolute.rs, network_time.rs  (requires alloc)
+       -> network_time.rs    -> error.rs, absolute.rs  (requires alloc)
+       -> version.rs         (no deps)
+       -> packet_standard.rs -> version.rs
+       -> quality.rs         -> correlation.rs  (requires alloc)
+       -> recording_event.rs -> absolute.rs
+       -> streaming.rs       -> error.rs, rtc.rs, absolute.rs, network_time.rs  (requires alloc)
+       `-> chrono_interop.rs -> absolute.rs, chrono  (feature = "chrono")
 ```

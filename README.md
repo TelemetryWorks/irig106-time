@@ -69,6 +69,12 @@ let resolved = correlator.correlate(data_rtc, None).unwrap();
 | `intra_packet` | Intra-packet timestamp format dispatch |
 | `correlation` | RTC-to-absolute time interpolation engine |
 | `network_time` | Format 2 (0x12): NTP, PTP, LeapSecondTable, F2 CSDW |
+| `version` | IRIG 106 version detection and version-aware parsing helpers |
+| `packet_standard` | Chapter 10 / Chapter 11 provenance from IRIG 106 version |
+| `streaming` | Sliding-window correlator for live telemetry streams |
+| `quality` | Correlator health and reference-density metrics |
+| `recording_event` | Data Type 0x02 recording event parsing |
+| `chrono_interop` | Feature-gated `chrono` conversions |
 | `error` | TimeError enum, Result alias |
 
 ## Performance
@@ -92,7 +98,8 @@ At 10 Gbps with 512-byte average packets (2.4M pkt/sec), the hot path provides 1
 ## Testing
 
 ```sh
-cargo test              # 244 tests (170 unit + 57 integration + 17 property)
+cargo test              # 244 checks (166 unit + 57 integration + 17 property + 4 doc)
+cargo test --all-features  # 249 checks (170 unit + 57 integration + 17 property + 5 doc)
 cargo bench             # 28 zero-dep benchmarks + criterion correlation suite
 cargo +nightly fuzz run fuzz_bcd_day   # 10 fuzz targets available
 ```

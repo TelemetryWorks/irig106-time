@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Re-exports** — `PacketStandard`, `StreamingTimeCorrelator`, `StreamingRef`, `TimeQuality`, `compute_quality`, `RecordingEvent`, `RecordingEventType` added to crate root.
 - **P5-05 (async API)** permanently deferred — async runtime choice belongs to the application layer, not a `#![no_std]` parsing library.
 - **Rust formatting** — Ran `cargo fmt` across all new modules.
-- Total test count: **244** (170 unit + 57 integration + 17 property).
+- Test matrix totals: **244** checks under default features (166 unit + 57 integration + 17 property + 4 doc) and **249** with `--all-features` (170 unit + 57 integration + 17 property + 5 doc).
 
 ### Fixed
 
