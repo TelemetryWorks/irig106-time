@@ -14,7 +14,12 @@
 //! - **Secondary headers** — Checksum validation and time extraction
 //! - **Intra-packet timestamps** — Format-discriminated timestamp parsing
 //! - **Correlation** — RTC-to-absolute-time interpolation engine with
-//!   multi-channel support, time-jump detection, and drift estimation
+//!   multi-channel support, time-jump detection, drift estimation, and
+//!   RTC reset detection
+//! - **Version detection** — IRIG 106 standard version identification from
+//!   TMATS CSDW, with version-aware CSDW parsing for 106-04 through 106-23
+//! - **Encoding** — `to_le_bytes()` on all wire-format types for packet
+//!   construction (BCD, CSDW, NTP, PTP, RTC)
 //!
 //! ## `no_std` Support
 //!
@@ -50,6 +55,8 @@ pub mod error;
 pub mod intra_packet;
 /// Time Data Format 2 (0x12) Network Time: NTP, PTP, and leap-second table.
 pub mod network_time;
+/// IRIG 106 standard version detection and version-aware dispatch.
+pub mod version;
 /// 48-bit Relative Time Counter (RTC) newtype.
 pub mod rtc;
 /// Secondary header time extraction and checksum validation.
@@ -58,7 +65,7 @@ pub mod secondary;
 // Re-export key types at crate root for convenience.
 pub use absolute::{AbsoluteTime, Ch4BinaryTime, Ertc, Ieee1588Time};
 pub use bcd::{DayFormatTime, DmyFormatTime};
-pub use correlation::{ReferencePoint, TimeCorrelator, TimeJump};
+pub use correlation::{ReferencePoint, RtcReset, TimeCorrelator, TimeJump};
 pub use csdw::{DateFormat, TimeF1Csdw, TimeFormat, TimeSource};
 pub use error::{Result, TimeError};
 pub use intra_packet::{IntraPacketTime, IntraPacketTimeFormat};
@@ -68,3 +75,4 @@ pub use network_time::{
 };
 pub use rtc::Rtc;
 pub use secondary::{SecHdrTimeFormat, SecondaryHeaderTime};
+pub use version::{detect_version, Irig106Version};

@@ -43,9 +43,9 @@ before 106-07 have this field as zero).
 | RTC correlation engine | ✅ | ✅ | ✅ | ✅ | **Done** |
 | Multi-channel correlation | ✅ | ✅ | ✅ | ✅ | **Done** |
 | Time jump detection | ✅ | ✅ | ✅ | ✅ | **Done** |
-| Pre-05 unbounded OOO tolerance | ⚠️ | — | — | — | **Needed** |
-| 04/05 CSDW time source delta | ⚠️ | ⚠️ | — | — | **Needed** |
-| Version field detection (07+) | — | — | ⚠️ | ⚠️ | **Needed** |
+| Pre-05 unbounded OOO tolerance | ✅ | — | — | — | **Done (v0.4.0)** |
+| 04/05 CSDW time source delta | ✅ | ✅ | — | — | **Done (v0.4.0)** |
+| Version field detection (07+) | — | — | ✅ | ✅ | **Done (v0.4.0)** |
 | Time Data Format 2 (0x12) | — | — | — | ✅ | **Done (v0.2.0)** |
 | Ch11 packet format awareness | — | — | — | ⚠️ | **Planned** |
 
@@ -73,13 +73,28 @@ Target: Make the existing implementation bulletproof for 106-07+ files.
 
 Target: Handle files from 106-04 and 106-05 recorders that are still in archives.
 
-| ID | Item | Priority | Effort | Details |
-|----|------|----------|--------|---------|
-| P2-01 | **CSDW time source version awareness** | High | 1 day | The time source field (bits [3:0]) had slightly different mappings between 106-04 and 106-05. Add `TimeSourceV04` vs `TimeSourceV05` variants, or a version parameter to the CSDW parser. |
-| P2-02 | **Pre-105 out-of-order tolerance** | High | 1 day | Current correlator assumes ~1 sec OOO (per 106-05). Files from 106-04 recorders can have packets 5+ seconds out of order. The correlation engine needs a configurable OOO window or a sorting pre-pass. |
-| P2-03 | **Version field handling** | Medium | 0.5 day | Add `Irig106Version` enum and `detect_version(tmats_csdw: u32) -> Irig106Version`. Pre-07 files have version=0. Correlator and CSDW parser should accept a version hint. |
-| P2-04 | **Version-aware CSDW dispatch** | Medium | 1 day | `TimeF1Csdw::from_raw_versioned(raw: u32, version: Irig106Version)` that applies version-specific field mappings. |
-| P2-05 | **Test corpus: real 106-04/05/07 files** | High | 1 day | Acquire or synthesize Ch10 files for each version and add them to the fuzz corpus and integration tests. |
+| ID | Item | Priority | Effort | Status |
+|----|------|----------|--------|--------|
+| P2-01 | **CSDW time source version awareness** | High | 1 day | ✅ Done (v0.4.0) |
+| P2-02 | **Pre-105 out-of-order tolerance** | High | 1 day | ✅ Done (v0.4.0) |
+| P2-03 | **Version field handling** | Medium | 0.5 day | ✅ Done (v0.4.0) |
+| P2-04 | **Version-aware CSDW dispatch** | Medium | 1 day | ✅ Done (v0.4.0) |
+| P2-05 | **Test corpus: real 106-04/05/07 files** | High | 1 day | Not started |
+
+**P2-05 Detail — Legacy File Validation:**
+
+Validation of the version-aware CSDW parsing and OOO tolerance requires real Ch10 files
+from pre-07 recorders. Known legacy recorder models that produced 106-04/05 files:
+
+- **Ampex DCRsi** — widely deployed in early 2000s flight test programs
+- **L-3 Communications MARS** (Multi-channel Airborne Recording System) — common in DoD programs
+- **Curtiss-Wright / Acra KAM-500** — early generation units before 106-07 firmware updates
+
+Action items:
+1. Search flight test data archives for Ch10 files with TMATS version field = 0
+2. If real files unavailable, synthesize minimal valid 106-04-era packets with known time values and a version=0 TMATS CSDW
+3. Add Ch4 BWT samples from the same recorders to validate GAP-03 (bit layout)
+4. Add validated files to fuzz corpus and integration test suite
 
 ### Phase 3: Time Data Format 2 — Network Time ✅ COMPLETE (v0.2.0)
 
@@ -131,10 +146,10 @@ Target: Stable API, full ecosystem wiring, migration to `irig106-types`.
 | P6-02 | **Wire `irig106-core` to use `irig106-time` types** | High | 1 day | `irig106-core::PacketHeader` should use `Rtc` from `irig106-types` instead of raw `u64`. |
 | P6-03 | **Wire `irig106-ch10-reader` to use correlation** | High | 2 days | Replace the "Not available" time display in the reader with actual correlated times using `TimeCorrelator`. |
 | P6-04 | **Wire `irig106-decode` intra-packet timestamps** | High | 1 day | Payload decoders should use `IntraPacketTime` for message-level timestamps. |
-| P6-05 | **Wire `irig106-write` BCD encoding** | Medium | 1 day | Add `DayFormatTime::to_le_bytes()` and `DmyFormatTime::to_le_bytes()` for serialization. Verify round-trip with existing decode tests. |
+| P6-05 | ~~Wire `irig106-write` BCD encoding~~ | — | — | ✅ `to_le_bytes()` shipped in v0.4.0 for all wire-format types. |
 | P6-06 | **Wire `irig106-studio` WASM** | Medium | 1 day | Verify `#![no_std]` + `alloc` compiles to wasm32-unknown-unknown. Add WASM-specific tests. |
 | P6-07 | **Semantic versioning freeze** | High | — | Declare 1.0.0 stable API. No breaking changes without major version bump. |
-| P6-08 | **MSRV policy** | Medium | — | Declare Minimum Supported Rust Version (suggest 1.70 for broad compat). |
+| P6-08 | **MSRV policy** | Medium | — | MSRV is `1.87` (declared in v0.3.0 for `is_multiple_of` support). Review for possible lowering before 1.0. |
 
 ---
 
@@ -144,15 +159,15 @@ Target: Stable API, full ecosystem wiring, migration to `irig106-types`.
 |----|-----|----------|-------|
 | GAP-01 | ~~No `Display` for `AbsoluteTime`~~ | — | ✅ Resolved (v0.3.0). `impl Display` with ISO-like output. |
 | GAP-02 | No `Serialize`/`Deserialize` (serde) | Low | Useful for JSON/CSV export. Feature-gate behind `serde` feature. |
-| GAP-03 | Ch4 BinaryTime decode is simplified | Medium | The combined high/low word interpretation assumes a specific bit layout. Need to validate against real Ch4 BWT samples from multiple recorder vendors. |
+| GAP-03 | Ch4 BinaryTime decode is simplified | Medium | The combined high/low word interpretation assumes a specific bit layout. Need to validate against real Ch4 BWT samples from legacy recorders (Ampex DCRsi, L-3 MARS, Acra KAM-500). Blocked on P2-05 file corpus. |
 | GAP-04 | No leap second handling for Format 1 time sources | Low | PTP leap seconds handled via `LeapSecondTable` (v0.2.0). IRIG-B/GPS Format 1 time codes can also carry leap second info — not yet decoded. |
 | GAP-05 | `AbsoluteTime::sub_nanos` doesn't handle year rollover | Low | Subtracting past day 1 wraps to day 366. Need year-aware arithmetic for multi-day recordings. |
 | GAP-06 | No `From`/`Into` conversions to `chrono` or `time` crates | Low | Optional feature-gated interop with popular Rust time libraries. |
-| GAP-07 | Correlation doesn't handle RTC reset mid-recording | Medium | Some recorders reset the RTC (not just wrap). Need a heuristic to detect resets vs. wraps. |
+| GAP-07 | ~~Correlation doesn't handle RTC reset mid-recording~~ | — | ✅ Resolved (v0.4.0). `TimeCorrelator::detect_rtc_resets(channel_id)` with `RtcReset` struct. |
 | GAP-08 | No support for time data in Ch10 Recording Events (0x02) | Low | Event packets carry timestamps that could be used as additional correlation points. |
 | GAP-09 | ~~DMY `to_absolute` doesn't validate day-for-month~~ | — | ✅ Resolved (v0.3.0). `days_in_month()` rejects Feb 30, Jun 31, etc. |
 | GAP-10 | ~~No RTC drift estimation~~ | — | ✅ Resolved (v0.3.0). `TimeCorrelator::drift_ppm(channel_id)`. |
-| GAP-11 | Missing `to_le_bytes()` (encode) for BCD and CSDW types | Medium | Needed by `irig106-write` for time packet construction. |
+| GAP-11 | ~~Missing `to_le_bytes()` (encode) for BCD and CSDW types~~ | — | ✅ Resolved (v0.4.0). `to_le_bytes()` on `Rtc`, `TimeF1Csdw`, `TimeF2Csdw`, `NtpTime`, `PtpTime`, `DayFormatTime`, `DmyFormatTime`. |
 | GAP-12 | ~~CLI channel display loses NTP/PTP protocol identity~~ | — | ✅ Resolved (v0.3.0). `network_protocol` field + Proto column in channels table. |
 | GAP-13 | ~~`lib.rs` crate docs don't mention `network_time`~~ | — | ✅ Resolved (v0.3.0). |
 | GAP-14 | ~~Pub items missing `///` doc comments~~ | — | ✅ Resolved (v0.3.0). `#[deny(missing_docs)]` enforced. |
@@ -181,7 +196,7 @@ Target: Stable API, full ecosystem wiring, migration to `irig106-types`.
 | **0.1.0** | — | Initial release: 8 modules, 124 tests, benchmarks, fuzz targets | Released |
 | **0.2.0** | Phase 3 | Time Data Format 2 (0x12), NTP, PTPv2, LeapSecondTable, correlator F2 integration | Released |
 | **0.3.0** | Phase 1 | CI/CD, `#[deny(missing_docs)]`, proptest, `Display`, drift_ppm, calendar validation, CLI Proto column | Released |
-| **0.4.0** | Phase 2 | 106-04/05 legacy support, version-aware parsing | +1 month |
+| **0.4.0** | Phase 2 | Version detection, version-aware CSDW, OOO window, RTC reset detection, `to_le_bytes()` encoding | Released |
 | **0.5.0** | Phase 4 | Channel-indexed correlation, perf optimizations | +2 months |
 | **0.6.0** | Phase 5 | Streaming correlator, Ch11 awareness, quality metrics | +3 months |
 | **1.0.0** | Phase 6 | Stable API, ecosystem wiring, irig106-types migration | +5 months |

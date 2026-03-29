@@ -69,6 +69,14 @@ impl TimeF2Csdw {
         self.0
     }
 
+    /// Encode as 4 little-endian bytes.
+    ///
+    /// **Traces:** GAP-11
+    #[inline]
+    pub fn to_le_bytes(self) -> [u8; 4] {
+        self.0.to_le_bytes()
+    }
+
     /// Time protocol (bits \[3:0\]).
     ///
     /// **Traces:** L1-F2CSDW-002
@@ -177,6 +185,19 @@ impl NtpTime {
         abs.year = Some(year);
         Ok(abs)
     }
+
+    /// Encode as 8 little-endian bytes: 4B seconds + 4B fraction.
+    ///
+    /// This is the inverse of `from_le_bytes`.
+    ///
+    /// **Traces:** GAP-11
+    #[inline]
+    pub fn to_le_bytes(&self) -> [u8; 8] {
+        let mut buf = [0u8; 8];
+        buf[0..4].copy_from_slice(&self.seconds.to_le_bytes());
+        buf[4..8].copy_from_slice(&self.fraction.to_le_bytes());
+        buf
+    }
 }
 
 // ── PTP Time ─────────────────────────────────────────────────────────
@@ -255,6 +276,20 @@ impl PtpTime {
         let mut abs = AbsoluteTime::new(doy, hour, minute, second, self.nanoseconds)?;
         abs.year = Some(year);
         Ok(abs)
+    }
+
+    /// Encode as 10 little-endian bytes: 6B seconds (48-bit) + 4B nanoseconds.
+    ///
+    /// This is the inverse of `from_le_bytes`.
+    ///
+    /// **Traces:** GAP-11
+    #[inline]
+    pub fn to_le_bytes(&self) -> [u8; 10] {
+        let mut buf = [0u8; 10];
+        let sec_bytes = self.seconds.to_le_bytes();
+        buf[0..6].copy_from_slice(&sec_bytes[0..6]);
+        buf[6..10].copy_from_slice(&self.nanoseconds.to_le_bytes());
+        buf
     }
 }
 

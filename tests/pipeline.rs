@@ -642,3 +642,225 @@ fn year_overflow_guard_no_panic() {
     // Should not panic — may return an error for out-of-range day but must not overflow
     let _ = ntp.to_absolute();
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// v0.4.0 integration tests
+// ═══════════════════════════════════════════════════════════════════════
+
+// ── Version detection ────────────────────────────────────────────────
+
+#[test]
+fn version_detection_from_tmats_csdw() {
+    use irig106_time::version::{detect_version, Irig106Version};
+
+    assert_eq!(detect_version(0x00000000), Irig106Version::Pre07);
+    assert_eq!(detect_version(0x00000007), Irig106Version::V07);
+    assert_eq!(detect_version(0x0000000E), Irig106Version::V22);
+    assert_eq!(detect_version(0x0000000F), Irig106Version::V23);
+    // Upper bits should be ignored
+    assert_eq!(detect_version(0xFFFFFF0C), Irig106Version::V17);
+}
+
+#[test]
+fn version_ordering_is_chronological() {
+    use irig106_time::version::Irig106Version;
+
+    assert!(Irig106Version::Pre07 < Irig106Version::V07);
+    assert!(Irig106Version::V07 < Irig106Version::V17);
+    assert!(Irig106Version::V17 < Irig106Version::V22);
+}
+
+#[test]
+fn version_feature_queries() {
+    use irig106_time::version::Irig106Version;
+
+    assert!(Irig106Version::Pre07.is_pre_ordering_guarantee());
+    assert!(!Irig106Version::V07.is_pre_ordering_guarantee());
+
+    assert!(!Irig106Version::V17.supports_format_2());
+    assert!(Irig106Version::V22.supports_format_2());
+
+    assert!(!Irig106Version::Pre07.has_gps_time_source());
+    assert!(Irig106Version::V07.has_gps_time_source());
+}
+
+// ── Version-aware CSDW ──────────────────────────────────────────────
+
+#[test]
+fn csdw_time_source_versioned_pre07_ambiguous() {
+    use irig106_time::version::Irig106Version;
+
+    // Value 3 in pre-07 is ambiguous (04="None", 05="GPS")
+    let csdw = TimeF1Csdw::from_raw(0x03); // time_source bits = 3
+    let ts = csdw.time_source_versioned(&Irig106Version::Pre07);
+    assert_eq!(ts, TimeSource::Reserved(3));
+}
+
+#[test]
+fn csdw_time_source_versioned_v07_gps() {
+    use irig106_time::version::Irig106Version;
+
+    // Value 3 in 07+ is definitively GPS
+    let csdw = TimeF1Csdw::from_raw(0x03);
+    let ts = csdw.time_source_versioned(&Irig106Version::V07);
+    assert_eq!(ts, TimeSource::Gps);
+}
+
+#[test]
+fn csdw_time_source_unversioned_still_works() {
+    // The non-versioned method should always return GPS for value 3
+    let csdw = TimeF1Csdw::from_raw(0x03);
+    assert_eq!(csdw.time_source(), TimeSource::Gps);
+}
+
+// ── OOO window ──────────────────────────────────────────────────────
+
+#[test]
+fn correlator_default_has_no_ooo_window() {
+    let c = TimeCorrelator::new();
+    assert!(c.ooo_window_ns().is_none());
+}
+
+#[test]
+fn correlator_with_ooo_window() {
+    let c = TimeCorrelator::with_ooo_window(Some(TimeCorrelator::DEFAULT_OOO_WINDOW_NS));
+    assert_eq!(c.ooo_window_ns(), Some(2_000_000_000));
+}
+
+#[test]
+fn correlator_unbounded_ooo() {
+    let c = TimeCorrelator::with_ooo_window(None);
+    assert!(c.ooo_window_ns().is_none());
+}
+
+// ── RTC reset detection ─────────────────────────────────────────────
+
+#[test]
+fn detect_rtc_reset_basic() {
+    let mut c = TimeCorrelator::new();
+
+    // Normal progression: RTC 100M → 200M, abs time 12:00:00 → 12:00:10
+    c.add_reference(1, Rtc::from_raw(100_000_000), AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
+    c.add_reference(1, Rtc::from_raw(200_000_000), AbsoluteTime::new(100, 12, 0, 10, 0).unwrap());
+
+    // Reset: RTC drops to 1M, but abs time advances to 12:00:20
+    c.add_reference(1, Rtc::from_raw(1_000_000), AbsoluteTime::new(100, 12, 0, 20, 0).unwrap());
+
+    let resets = c.detect_rtc_resets(1);
+    assert_eq!(resets.len(), 1);
+    assert_eq!(resets[0].rtc_before, Rtc::from_raw(200_000_000));
+    assert_eq!(resets[0].rtc_after, Rtc::from_raw(1_000_000));
+}
+
+#[test]
+fn detect_rtc_reset_no_false_positive_on_normal_progression() {
+    let mut c = TimeCorrelator::new();
+
+    c.add_reference(1, Rtc::from_raw(10_000_000), AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
+    c.add_reference(1, Rtc::from_raw(20_000_000), AbsoluteTime::new(100, 12, 0, 1, 0).unwrap());
+    c.add_reference(1, Rtc::from_raw(30_000_000), AbsoluteTime::new(100, 12, 0, 2, 0).unwrap());
+
+    let resets = c.detect_rtc_resets(1);
+    assert!(resets.is_empty());
+}
+
+#[test]
+fn detect_rtc_reset_channel_isolation() {
+    let mut c = TimeCorrelator::new();
+
+    // Channel 1: has a reset
+    c.add_reference(1, Rtc::from_raw(100_000_000), AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
+    c.add_reference(1, Rtc::from_raw(1_000_000), AbsoluteTime::new(100, 12, 0, 20, 0).unwrap());
+
+    // Channel 2: no reset
+    c.add_reference(2, Rtc::from_raw(50_000_000), AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
+    c.add_reference(2, Rtc::from_raw(60_000_000), AbsoluteTime::new(100, 12, 0, 1, 0).unwrap());
+
+    assert_eq!(c.detect_rtc_resets(1).len(), 1);
+    assert!(c.detect_rtc_resets(2).is_empty());
+}
+
+// ── to_le_bytes round-trip ──────────────────────────────────────────
+
+#[test]
+fn rtc_to_le_bytes_round_trip() {
+    let original = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06];
+    let rtc = Rtc::from_le_bytes(original);
+    assert_eq!(rtc.to_le_bytes(), original);
+}
+
+#[test]
+fn csdw_f1_to_le_bytes_round_trip() {
+    let original = [0x12, 0x34, 0x56, 0x78];
+    let csdw = TimeF1Csdw::from_le_bytes(original);
+    assert_eq!(csdw.to_le_bytes(), original);
+}
+
+#[test]
+fn csdw_f2_to_le_bytes_round_trip() {
+    use irig106_time::network_time::TimeF2Csdw;
+    let original = [0x01, 0x00, 0x00, 0x00]; // NTP protocol
+    let csdw = TimeF2Csdw::from_le_bytes(original);
+    assert_eq!(csdw.to_le_bytes(), original);
+}
+
+#[test]
+fn ntp_to_le_bytes_round_trip() {
+    use irig106_time::network_time::NtpTime;
+    let original = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08];
+    let ntp = NtpTime::from_le_bytes(&original).unwrap();
+    assert_eq!(ntp.to_le_bytes(), original);
+}
+
+#[test]
+fn ptp_to_le_bytes_round_trip() {
+    use irig106_time::network_time::PtpTime;
+    let mut original = [0u8; 10];
+    original[0..6].copy_from_slice(&100_000u64.to_le_bytes()[0..6]);
+    original[6..10].copy_from_slice(&500_000_000u32.to_le_bytes());
+    let ptp = PtpTime::from_le_bytes(&original).unwrap();
+    assert_eq!(ptp.to_le_bytes(), original);
+}
+
+#[test]
+fn bcd_day_to_le_bytes_round_trip() {
+    use irig106_time::bcd::DayFormatTime;
+    // Construct known-good BCD bytes for Day 123, 14:30:45.670
+    let dt = DayFormatTime {
+        milliseconds: 670,
+        seconds: 45,
+        minutes: 30,
+        hours: 14,
+        day_of_year: 123,
+    };
+    let encoded = dt.to_le_bytes();
+    let decoded = DayFormatTime::from_le_bytes(&encoded).unwrap();
+    assert_eq!(decoded.milliseconds, 670);
+    assert_eq!(decoded.seconds, 45);
+    assert_eq!(decoded.minutes, 30);
+    assert_eq!(decoded.hours, 14);
+    assert_eq!(decoded.day_of_year, 123);
+}
+
+#[test]
+fn bcd_dmy_to_le_bytes_round_trip() {
+    use irig106_time::bcd::DmyFormatTime;
+    let dt = DmyFormatTime {
+        milliseconds: 120,
+        seconds: 59,
+        minutes: 0,
+        hours: 23,
+        day: 15,
+        month: 3,
+        year: 2025,
+    };
+    let encoded = dt.to_le_bytes();
+    let decoded = DmyFormatTime::from_le_bytes(&encoded).unwrap();
+    assert_eq!(decoded.milliseconds, 120);
+    assert_eq!(decoded.seconds, 59);
+    assert_eq!(decoded.minutes, 0);
+    assert_eq!(decoded.hours, 23);
+    assert_eq!(decoded.day, 15);
+    assert_eq!(decoded.month, 3);
+    assert_eq!(decoded.year, 2025);
+}

@@ -111,6 +111,17 @@ impl Rtc {
     pub fn to_nanos(self) -> u64 {
         self.0 * NANOS_PER_TICK
     }
+
+    /// Encode the 48-bit RTC value as 6 little-endian bytes.
+    ///
+    /// This is the inverse of `from_le_bytes`.
+    ///
+    /// **Traces:** GAP-11
+    #[inline]
+    pub fn to_le_bytes(self) -> [u8; 6] {
+        let bytes = self.0.to_le_bytes();
+        [bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5]]
+    }
 }
 
 /// **Traces:** L3-RTC-012 ← L2-RTC-008

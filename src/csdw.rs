@@ -36,6 +36,21 @@ impl TimeSource {
             other => TimeSource::Reserved(other),
         }
     }
+
+    /// Decode with version-specific mapping.
+    ///
+    /// In IRIG 106-04, value 3 was "None" (no time source). Starting with
+    /// 106-05, value 3 was reassigned to "GPS". For pre-07 files where we
+    /// cannot distinguish 04 from 05, value 3 is mapped to `Reserved(3)`
+    /// to signal ambiguity.
+    fn from_raw_versioned(val: u8, version: &crate::version::Irig106Version) -> Self {
+        if val == 3 && !version.has_gps_time_source() {
+            // Pre-07: ambiguous — could be "None" (04) or "GPS" (05)
+            TimeSource::Reserved(3)
+        } else {
+            Self::from_raw(val)
+        }
+    }
 }
 
 /// Format of the external time source.
@@ -113,6 +128,16 @@ impl TimeF1Csdw {
         self.0
     }
 
+    /// Encode as 4 little-endian bytes.
+    ///
+    /// This is the inverse of `from_le_bytes`.
+    ///
+    /// **Traces:** GAP-11
+    #[inline]
+    pub fn to_le_bytes(self) -> [u8; 4] {
+        self.0.to_le_bytes()
+    }
+
     /// Time source (bits \[3:0\]).
     ///
     /// **Traces:** L3-CSDW-004 ← L2-CSDW-002
@@ -147,6 +172,19 @@ impl TimeF1Csdw {
         } else {
             DateFormat::DayMonthYear
         }
+    }
+
+    /// Version-aware time source (bits \[3:0\]).
+    ///
+    /// Uses the IRIG 106 version to disambiguate time source value 3,
+    /// which was "None" in 106-04 but "GPS" from 106-05 onward.
+    /// For pre-07 files, value 3 is returned as `Reserved(3)` since the
+    /// exact standard version is unknown.
+    ///
+    /// **Traces:** P2-01, P2-04
+    #[inline]
+    pub fn time_source_versioned(self, version: &crate::version::Irig106Version) -> TimeSource {
+        TimeSource::from_raw_versioned((self.0 & 0x0F) as u8, version)
     }
 }
 

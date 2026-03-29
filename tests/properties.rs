@@ -166,3 +166,43 @@ proptest! {
         prop_assert!(t2.to_nanos_since_tai_epoch() >= t1.to_nanos_since_tai_epoch());
     }
 }
+
+// ── Encode round-trip properties (v0.4.0) ────────────────────────────
+
+proptest! {
+    #[test]
+    fn rtc_encode_round_trip(b0: u8, b1: u8, b2: u8, b3: u8, b4: u8, b5: u8) {
+        let bytes = [b0, b1, b2, b3, b4, b5];
+        let rtc = irig106_time::Rtc::from_le_bytes(bytes);
+        prop_assert_eq!(rtc.to_le_bytes(), bytes);
+    }
+
+    #[test]
+    fn csdw_f1_encode_round_trip(raw: u32) {
+        let csdw = irig106_time::TimeF1Csdw::from_raw(raw);
+        let bytes = csdw.to_le_bytes();
+        let csdw2 = irig106_time::TimeF1Csdw::from_le_bytes(bytes);
+        prop_assert_eq!(csdw.as_raw(), csdw2.as_raw());
+    }
+
+    #[test]
+    fn ntp_encode_round_trip(seconds: u32, fraction: u32) {
+        let ntp = irig106_time::network_time::NtpTime { seconds, fraction };
+        let bytes = ntp.to_le_bytes();
+        let ntp2 = irig106_time::network_time::NtpTime::from_le_bytes(&bytes).unwrap();
+        prop_assert_eq!(ntp.seconds, ntp2.seconds);
+        prop_assert_eq!(ntp.fraction, ntp2.fraction);
+    }
+
+    #[test]
+    fn ptp_encode_round_trip(
+        seconds in 0u64..=0x0000_FFFF_FFFF_FFFFu64,
+        nanoseconds in 0u32..1_000_000_000u32,
+    ) {
+        let ptp = irig106_time::network_time::PtpTime { seconds, nanoseconds };
+        let bytes = ptp.to_le_bytes();
+        let ptp2 = irig106_time::network_time::PtpTime::from_le_bytes(&bytes).unwrap();
+        prop_assert_eq!(ptp.seconds, ptp2.seconds);
+        prop_assert_eq!(ptp.nanoseconds, ptp2.nanoseconds);
+    }
+}

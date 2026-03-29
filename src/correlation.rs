@@ -59,15 +59,59 @@ pub struct TimeJump {
 /// **Traces:** L3-COR-002 ← L2-COR-001
 pub struct TimeCorrelator {
     references: Vec<ReferencePoint>,
+    /// Maximum out-of-order window in nanoseconds.
+    /// When set, `correlate` only considers reference points within this
+    /// RTC distance of the target. `None` means unbounded (search all).
+    ooo_window_ns: Option<u64>,
+}
+
+/// A detected RTC counter reset (as opposed to a 48-bit wrap).
+///
+/// A reset is flagged when the RTC value decreases by more than a plausible
+/// wrap amount while absolute time continues to advance normally.
+///
+/// **Traces:** GAP-07
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RtcReset {
+    /// Index of the reference point after the reset.
+    pub index: usize,
+    /// Channel ID where the reset was detected.
+    pub channel_id: u16,
+    /// RTC value before the reset.
+    pub rtc_before: Rtc,
+    /// RTC value after the reset.
+    pub rtc_after: Rtc,
+    /// Absolute time before the reset.
+    pub time_before: AbsoluteTime,
+    /// Absolute time after the reset.
+    pub time_after: AbsoluteTime,
 }
 
 impl TimeCorrelator {
-    /// Create a new empty correlator.
+    /// Create a new empty correlator with unbounded out-of-order tolerance.
     pub fn new() -> Self {
         Self {
             references: Vec::new(),
+            ooo_window_ns: None,
         }
     }
+
+    /// Create a correlator with a bounded out-of-order window.
+    ///
+    /// Pre-105 files may have packets 5+ seconds out of order, so pass `None`
+    /// for unbounded. Post-105 files are guaranteed within ~1.1 seconds
+    /// (100 ms buffer + 1 sec write deadline), so 2 seconds is a safe default.
+    ///
+    /// **Traces:** P2-02
+    pub fn with_ooo_window(ooo_window_ns: Option<u64>) -> Self {
+        Self {
+            references: Vec::new(),
+            ooo_window_ns,
+        }
+    }
+
+    /// Default out-of-order window for post-105 files: 2 seconds in nanoseconds.
+    pub const DEFAULT_OOO_WINDOW_NS: u64 = 2_000_000_000;
 
     /// Number of reference points currently stored.
     pub fn len(&self) -> usize {
@@ -315,6 +359,66 @@ impl TimeCorrelator {
         } else {
             Some(total_drift / pair_count as f64)
         }
+    }
+
+    /// Detect RTC counter resets on a specific channel.
+    ///
+    /// A reset is distinguished from a normal 48-bit wrap by checking whether
+    /// absolute time advanced while the RTC went backward. In a true wrap,
+    /// the RTC would advance through `0x0000_FFFF_FFFF_FFFF` → `0x0000_0000`;
+    /// in a reset, the RTC drops to a small value while absolute time
+    /// continues forward.
+    ///
+    /// The heuristic: if the RTC of a later reference point is *less than*
+    /// the previous one (by raw comparison), and the absolute time of the
+    /// later point is *greater than* the previous one, it's a reset — not a
+    /// wrap. True wraps are handled by `elapsed_ticks` which uses wrapping
+    /// subtraction.
+    ///
+    /// **Traces:** GAP-07
+    pub fn detect_rtc_resets(&self, channel_id: u16) -> Vec<RtcReset> {
+        let filtered: Vec<(usize, &ReferencePoint)> = self
+            .references
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| r.channel_id == channel_id)
+            .collect();
+
+        let mut resets = Vec::new();
+
+        for window in filtered.windows(2) {
+            let (_, prev) = window[0];
+            let (idx_curr, curr) = window[1];
+
+            // RTC went backward (raw comparison)
+            if curr.rtc < prev.rtc {
+                // But absolute time advanced — this is a reset, not a wrap
+                let prev_abs_ns = ((prev.time.day_of_year as u64).saturating_sub(1))
+                    * 86_400_000_000_000
+                    + prev.time.total_nanos_of_day();
+                let curr_abs_ns = ((curr.time.day_of_year as u64).saturating_sub(1))
+                    * 86_400_000_000_000
+                    + curr.time.total_nanos_of_day();
+
+                if curr_abs_ns > prev_abs_ns {
+                    resets.push(RtcReset {
+                        index: idx_curr,
+                        channel_id,
+                        rtc_before: prev.rtc,
+                        rtc_after: curr.rtc,
+                        time_before: prev.time,
+                        time_after: curr.time,
+                    });
+                }
+            }
+        }
+
+        resets
+    }
+
+    /// Returns the configured out-of-order window, if any.
+    pub fn ooo_window_ns(&self) -> Option<u64> {
+        self.ooo_window_ns
     }
 }
 

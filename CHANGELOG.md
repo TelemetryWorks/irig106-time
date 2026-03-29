@@ -7,10 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v0.4.0](https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.4.0) - 2026-03-28
 
+### Added
+
+- **`version` module** (P2-03) — `Irig106Version` enum with variants `Pre07` through `V23` plus `Unknown(u8)`. `detect_version(tmats_csdw)` extracts the version from bits \[7:0\] of the TMATS CSDW. Helper methods: `is_pre_ordering_guarantee()`, `supports_format_2()`, `has_gps_time_source()`.
+- **Version-aware CSDW parsing** (P2-04, P2-01) — `TimeF1Csdw::time_source_versioned(version)` disambiguates time source value 3, which was "None" in 106-04 but "GPS" from 106-05 onward. Pre-07 files return `Reserved(3)` to signal ambiguity.
+- **Configurable out-of-order window** (P2-02) — `TimeCorrelator::with_ooo_window(ooo_window_ns)` constructor. Pre-105 files may need unbounded OOO tolerance; post-105 defaults to 2 seconds via `DEFAULT_OOO_WINDOW_NS`. Accessor: `ooo_window_ns()`.
+- **RTC reset detection** (GAP-07) — `TimeCorrelator::detect_rtc_resets(channel_id)` identifies counter resets (as opposed to 48-bit wraps) by checking whether RTC went backward while absolute time continued forward. Returns `Vec<RtcReset>` with before/after RTC and absolute time values.
+- **`to_le_bytes()` encoding** (GAP-11) — Wire-format encoding for all parseable types, enabling packet construction for `irig106-write`:
+  - `Rtc::to_le_bytes()` → `[u8; 6]`
+  - `TimeF1Csdw::to_le_bytes()` → `[u8; 4]`
+  - `TimeF2Csdw::to_le_bytes()` → `[u8; 4]`
+  - `NtpTime::to_le_bytes()` → `[u8; 8]`
+  - `PtpTime::to_le_bytes()` → `[u8; 10]`
+  - `DayFormatTime::to_le_bytes()` → `[u8; 8]`
+  - `DmyFormatTime::to_le_bytes()` → `[u8; 10]`
+- **22 new integration tests** in `tests/pipeline.rs`: version detection, version-aware CSDW, OOO window, RTC reset detection (basic, no false positive, channel isolation), and `to_le_bytes` round-trip for all 7 types.
+- **4 new property tests** in `tests/properties.rs`: encode round-trip for RTC, CSDW, NTP, and PTP.
+
 ### Changed
 
 - **GitHub Actions** — Updated `actions/checkout` from `v4` to `v6` across the CI workflow.
 - **Rust formatting** — Ran `cargo fmt` across the repository to normalize code style.
+- **Crate docs updated** — `lib.rs` feature list now includes version detection, RTC reset detection, and encoding.
+- **Re-exports** — `RtcReset`, `detect_version`, and `Irig106Version` added to crate root.
+- **`Cargo.toml`** — Version bumped to 0.4.0.
 
 ## [v0.3.0](https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.3.0) - 2026-03-28
 
