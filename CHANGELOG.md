@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **`Cargo.toml`** — Version bumped to 0.5.0. Added `serde` optional dependency and feature gate. Added `criterion` to dev-dependencies with `correlation_bench` bench target.
+- **CLI (irig106-time-cli)** — Version bumped to 0.5.0.
+- **Test structure** — Extracted `version.rs` inline tests to `src/version_tests.rs` to match the crate's test-per-module convention.
 - **Crate docs updated** — `lib.rs` feature list now includes channel-indexed O(log n) lookup and serde support.
 - Total test count: **203** (136 unit + 50 integration + 17 property).
 
