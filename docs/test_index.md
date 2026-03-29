@@ -1,7 +1,7 @@
 # Test Documentation Index — irig106-time
 
 **Document:** TEST_INDEX.md
-**Crate:** irig106-time v0.6.0
+**Crate:** irig106-time v0.7.0
 **Default `cargo test`:** 244 checks (166 unit, 57 integration, 17 property, 4 doc)
 **`cargo test --all-features`:** 249 checks (170 unit, 57 integration, 17 property, 5 doc)
 **Date:** 2026-03-29

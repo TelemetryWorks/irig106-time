@@ -1,7 +1,7 @@
 # Usage Guide — irig106-time
 
 **Document:** usage.md
-**Crate:** irig106-time v0.6.0
+**Crate:** irig106-time v0.7.0
 **Date:** 2026-03-29
 
 This guide shows how to use `irig106-time` in the context of a larger IRIG 106
@@ -50,16 +50,16 @@ data — either from files or live UDP streams.
 ```toml
 # Cargo.toml
 [dependencies]
-irig106-time = "0.6"
+irig106-time = "0.7"
 
 # For no_std environments (embedded, WASM):
-# irig106-time = { version = "0.6", default-features = false }
+# irig106-time = { version = "0.7", default-features = false }
 
 # For JSON/CSV export with serde:
-# irig106-time = { version = "0.6", features = ["serde"] }
+# irig106-time = { version = "0.7", features = ["serde"] }
 
 # For chrono::NaiveDateTime conversions:
-# irig106-time = { version = "0.6", features = ["chrono"] }
+# irig106-time = { version = "0.7", features = ["chrono"] }
 ```
 
 The crate re-exports all key types at the root, so most code only needs:
@@ -228,10 +228,10 @@ fn resolve_packet_time(
 ) -> String {
     match correlator.correlate(packet_rtc, None) {
         Ok(abs) => {
-            let ms = abs.nanoseconds / 1_000_000;
+            let ms = abs.nanoseconds() / 1_000_000;
             format!(
                 "Day {:03} {:02}:{:02}:{:02}.{:03}",
-                abs.day_of_year, abs.hours, abs.minutes, abs.seconds, ms
+                abs.day_of_year(), abs.hours(), abs.minutes(), abs.seconds(), ms
             )
         }
         Err(e) => format!("Time unavailable: {}", e),
@@ -384,7 +384,7 @@ fn resolve_message_time(
             // Most common case: relative time → correlate
             let abs = correlator.correlate(rtc, None).ok()?;
             Some(format!("Day {:03} {:02}:{:02}:{:02}.{:09}",
-                abs.day_of_year, abs.hours, abs.minutes, abs.seconds, abs.nanoseconds))
+                abs.day_of_year(), abs.hours(), abs.minutes(), abs.seconds(), abs.nanoseconds()))
         }
         IntraPacketTime::Ieee1588(t) => {
             // Absolute time — no correlation needed
@@ -394,7 +394,7 @@ fn resolve_message_time(
         IntraPacketTime::Ch4(bwt) => {
             let abs = bwt.to_absolute().ok()?;
             Some(format!("Day {:03} {:02}:{:02}:{:02}",
-                abs.day_of_year, abs.hours, abs.minutes, abs.seconds))
+                abs.day_of_year(), abs.hours(), abs.minutes(), abs.seconds()))
         }
         IntraPacketTime::Ertc(ertc) => {
             Some(format!("{} ns (ERTC)", ertc.to_nanos()))
@@ -436,8 +436,8 @@ fn walk_1553_messages(
         if let Ok(irig106_time::IntraPacketTime::Rtc(rtc)) = ipt {
             if let Ok(abs) = correlator.correlate(rtc, None) {
                 println!("  Message {}: Day {} {:02}:{:02}:{:02}.{:06}",
-                    i, abs.day_of_year, abs.hours, abs.minutes, abs.seconds,
-                    abs.nanoseconds / 1_000);
+                    i, abs.day_of_year(), abs.hours(), abs.minutes(), abs.seconds(),
+                    abs.nanoseconds() / 1_000);
             }
         }
 
@@ -472,7 +472,7 @@ fn process_secondary_header(
         Ok(SecondaryHeaderTime::Ch4(bwt)) => {
             if let Ok(abs) = bwt.to_absolute() {
                 println!("Secondary header: Day {} {:02}:{:02}:{:02}",
-                    abs.day_of_year, abs.hours, abs.minutes, abs.seconds);
+                    abs.day_of_year(), abs.hours(), abs.minutes(), abs.seconds());
             }
         }
         Ok(SecondaryHeaderTime::Ieee1588(t)) => {
@@ -873,8 +873,8 @@ correlator.add_reference_f2(8, Rtc::from_raw(10_000_000), &ptp_time, &table).unw
 // Both channels now resolve the same RTC to the same absolute time
 let from_ntp = correlator.correlate(Rtc::from_raw(10_000_000), Some(5)).unwrap();
 let from_ptp = correlator.correlate(Rtc::from_raw(10_000_000), Some(8)).unwrap();
-assert_eq!(from_ntp.day_of_year, from_ptp.day_of_year);
-assert_eq!(from_ntp.hours, from_ptp.hours);
+assert_eq!(from_ntp.day_of_year(), from_ptp.day_of_year());
+assert_eq!(from_ntp.hours(), from_ptp.hours());
 ```
 
 ---
@@ -1014,8 +1014,8 @@ let day_time = DayFormatTime {
 };
 let bcd_bytes: [u8; 8] = day_time.to_le_bytes();
 let decoded = DayFormatTime::from_le_bytes(&bcd_bytes).unwrap();
-assert_eq!(decoded.hours, 12);
-assert_eq!(decoded.day_of_year, 100);
+assert_eq!(decoded.hours(), 12);
+assert_eq!(decoded.day_of_year(), 100);
 
 // ── Build a time packet payload ──────────────────────────────────────
 let mut payload = Vec::new();
@@ -1057,7 +1057,7 @@ assert_eq!(TimeF2Csdw::from_le_bytes(f2_bytes).as_raw(), f2_csdw.as_raw());
 
 ```toml
 [dependencies]
-irig106-time = { version = "0.6", features = ["serde"] }
+irig106-time = { version = "0.7", features = ["serde"] }
 ```
 
 ### JSON Export Example
@@ -1201,7 +1201,7 @@ between `AbsoluteTime` and `chrono::NaiveDateTime`.
 
 ```toml
 [dependencies]
-irig106-time = { version = "0.6", features = ["chrono"] }
+irig106-time = { version = "0.7", features = ["chrono"] }
 ```
 
 ```rust
@@ -1209,7 +1209,7 @@ use irig106_time::AbsoluteTime;
 // use chrono::NaiveDateTime;
 
 let mut t = AbsoluteTime::new(100, 12, 30, 25, 340_000_000).unwrap();
-t.year = Some(2025);
+t.set_year(Some(2025));
 
 // Convert to chrono (requires "chrono" feature)
 // let dt: NaiveDateTime = t.into();
@@ -1334,7 +1334,7 @@ The crate compiles to `no_std` targets including WebAssembly.
 ```toml
 # Cargo.toml for a WASM project
 [dependencies]
-irig106-time = { version = "0.6", default-features = false }
+irig106-time = { version = "0.7", default-features = false }
 ```
 
 ```rust
@@ -1349,7 +1349,7 @@ pub fn correlate_in_browser(rtc_raw: u64) -> (u16, u8, u8, u8, u32) {
     let correlator: TimeCorrelator = todo!("populated from JS");
     let rtc = Rtc::from_raw(rtc_raw);
     match correlator.correlate(rtc, None) {
-        Ok(t) => (t.day_of_year, t.hours, t.minutes, t.seconds, t.nanoseconds),
+        Ok(t) => (t.day_of_year(), t.hours(), t.minutes(), t.seconds(), t.nanoseconds()),
         Err(_) => (0, 0, 0, 0, 0),
     }
 }
@@ -1370,8 +1370,8 @@ fn robust_time_parse(buf: &[u8]) -> String {
     match DayFormatTime::from_le_bytes(buf) {
         Ok(t) => {
             let abs = t.to_absolute();
-            format!("Day {} {:02}:{:02}:{:02}", abs.day_of_year,
-                abs.hours, abs.minutes, abs.seconds)
+            format!("Day {} {:02}:{:02}:{:02}", abs.day_of_year(),
+                abs.hours(), abs.minutes(), abs.seconds())
         }
         Err(TimeError::InvalidBcdDigit { nibble, position }) => {
             format!("Corrupt BCD: nibble 0x{:X} at {}", nibble, position)
@@ -1393,8 +1393,8 @@ fn robust_time_parse(buf: &[u8]) -> String {
 fn resolve_or_raw(correlator: &TimeCorrelator, rtc: Rtc) -> String {
     match correlator.correlate(rtc, None) {
         Ok(t) => format!("Day {} {:02}:{:02}:{:02}.{:03}",
-            t.day_of_year, t.hours, t.minutes, t.seconds,
-            t.nanoseconds / 1_000_000),
+            t.day_of_year(), t.hours(), t.minutes(), t.seconds(),
+            t.nanoseconds() / 1_000_000),
         Err(TimeError::NoReferencePoint) => {
             // No time packets processed yet — fall back to raw RTC
             format!("RTC {} ({:.3}s)", rtc.as_raw(),
