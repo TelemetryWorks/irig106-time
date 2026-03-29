@@ -24,7 +24,7 @@ use irig106_time::*;
 use irig106_time::bcd::{DayFormatTime, DmyFormatTime};
 use irig106_time::csdw::{DateFormat, TimeF1Csdw};
 use irig106_time::network_time::{
-    parse_time_f2_payload, NetworkTime, NetworkTimeProtocol,
+    parse_time_f2_payload, NetworkTimeProtocol,
     LeapSecondTable,
 };
 
@@ -315,34 +315,23 @@ impl Ch10TimeScanner {
             }
         };
 
-        // Convert to AbsoluteTime and add to correlator
-        let abs_time = match &network_time {
-            NetworkTime::Ntp(ntp) => {
-                match ntp.to_absolute() {
-                    Ok(t) => t,
-                    Err(e) => {
-                        self.errors.push(format!(
-                            "Time F2 packet ch={}: NTP conversion error: {}", hdr.channel_id, e
-                        ));
-                        return;
-                    }
-                }
-            }
-            NetworkTime::Ptp(ptp) => {
-                let offset = self.leap_table.offset_at_tai(ptp.seconds);
-                match ptp.to_absolute(offset) {
-                    Ok(t) => t,
-                    Err(e) => {
-                        self.errors.push(format!(
-                            "Time F2 packet ch={}: PTP conversion error: {}", hdr.channel_id, e
-                        ));
-                        return;
-                    }
-                }
-            }
-        };
+        // Use the library's add_reference_f2 which handles NTP/PTP→AbsoluteTime
+        // conversion and leap-second offset application internally.
+        if let Err(e) = self.correlator.add_reference_f2(
+            hdr.channel_id, hdr.rtc, &network_time, &self.leap_table,
+        ) {
+            self.errors.push(format!(
+                "Time F2 packet ch={}: correlation error: {}", hdr.channel_id, e
+            ));
+            return;
+        }
 
-        self.correlator.add_reference(hdr.channel_id, hdr.rtc, abs_time);
+        // Retrieve the resolved absolute time for channel info tracking.
+        // We just inserted a reference at this exact RTC, so correlate is an exact match.
+        let abs_time = match self.correlator.correlate(hdr.rtc, Some(hdr.channel_id)) {
+            Ok(t) => t,
+            Err(_) => return,
+        };
 
         // Update channel info
         let info = self.time_channels
@@ -350,6 +339,7 @@ impl Ch10TimeScanner {
             .or_insert_with(|| TimeChannelInfo::new(hdr.channel_id));
         info.packet_count += 1;
         // Map network protocol to TimeSource/TimeFormat for display
+        // (Gap 2: NTP/PTP identity is lost here — deferred to v0.3.0)
         info.source = Some(match csdw.time_protocol() {
             NetworkTimeProtocol::Ntp => TimeSource::External,
             NetworkTimeProtocol::Ptp => TimeSource::External,
