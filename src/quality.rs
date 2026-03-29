@@ -10,7 +10,6 @@
 //! | P5-04       | Time quality metrics |
 
 use crate::correlation::ReferencePoint;
-use crate::rtc::Rtc;
 
 extern crate alloc;
 use alloc::collections::BTreeMap;

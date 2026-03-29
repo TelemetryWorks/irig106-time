@@ -1,4 +1,5 @@
 use super::*;
+use alloc::format;
 use crate::version::Irig106Version;
 
 #[test]

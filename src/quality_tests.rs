@@ -1,4 +1,5 @@
 use super::*;
+use alloc::vec;
 use crate::absolute::AbsoluteTime;
 use crate::correlation::ReferencePoint;
 use crate::rtc::Rtc;

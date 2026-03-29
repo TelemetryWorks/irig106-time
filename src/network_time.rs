@@ -587,12 +587,7 @@ impl LeapSecondTable {
     /// **Traces:** GAP-04
     pub fn is_near_leap_second(&self, unix_seconds: u64, window_secs: u64) -> bool {
         self.entries.iter().any(|e| {
-            let dist = if unix_seconds >= e.effective_unix {
-                unix_seconds - e.effective_unix
-            } else {
-                e.effective_unix - unix_seconds
-            };
-            dist <= window_secs
+            unix_seconds.abs_diff(e.effective_unix) <= window_secs
         })
     }
 }
