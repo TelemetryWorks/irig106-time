@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **GitHub Actions** — Updated `actions/checkout` from `v4` to `v6` across the CI workflow.
+- **Rust formatting** — Ran `cargo fmt` across the repository to normalize code style.
 
 ## [v0.3.0](https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.3.0) - 2026-03-28
 
