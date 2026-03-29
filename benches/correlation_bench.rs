@@ -3,6 +3,11 @@
 //! Measures the P4-01 channel-indexed optimization against various
 //! reference point counts and channel configurations.
 //!
+// Benchmarks are dev-only and require stable Rust (for criterion, black_box, etc.).
+// The crate's MSRV of 1.56 applies to the library, not to dev tooling.
+// See src/util.rs for the full MSRV rationale.
+#![allow(clippy::incompatible_msrv)]
+//!
 //! # Run
 //! ```sh
 //! cargo bench --bench correlation_bench
