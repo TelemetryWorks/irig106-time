@@ -12,10 +12,11 @@ IRIG 106 Chapter 10 separates *when data was recorded* (a free-running 10 MHz co
 
 - **48-bit RTC** — Newtype with wrap-safe arithmetic, 100 ns resolution
 - **BCD decoding** — Day-of-Year and Day-Month-Year format time messages
-- **CSDW parsing** — Time Data Format 1 (0x11) channel-specific data word
+- **CSDW parsing** — Time Data Format 1 (0x11) and Format 2 (0x12) channel-specific data words
+- **Network Time** — NTP (RFC 5905, epoch 1900 UTC) and PTP/IEEE 1588 (epoch 1970 TAI) decoding with built-in leap-second table
 - **Four timestamp formats** — RTC, Chapter 4 BWT, IEEE-1588, Extended RTC
 - **Secondary headers** — Checksum validation and time extraction
-- **Correlation engine** — Nearest-point interpolation, multi-channel support, GPS lock jump detection
+- **Correlation engine** — Nearest-point interpolation, multi-channel support, GPS lock jump detection, F1 and F2 reference points
 - **`#![no_std]`** — Works on embedded, WASM, and standard targets
 - **Zero dependencies** — Only `core` and `alloc`
 - **Zero `unsafe`** — Safe Rust throughout
@@ -58,6 +59,7 @@ let resolved = correlator.correlate(data_rtc, None).unwrap();
 | `secondary` | Secondary header checksum validation and time extraction |
 | `intra_packet` | Intra-packet timestamp format dispatch |
 | `correlation` | RTC-to-absolute time interpolation engine |
+| `network_time` | Format 2 (0x12): NTP, PTP, LeapSecondTable, F2 CSDW |
 | `error` | TimeError enum, Result alias |
 
 ## Performance
@@ -70,6 +72,9 @@ Benchmarked on the hot path (RTC extraction followed by nearest-point correlatio
 | `Rtc::from_raw` | 0.3 | 3,090 M |
 | BCD day parse + to_absolute | 12.4 | 80 M |
 | CSDW all fields | 1.7 | 594 M |
+| NTP parse | 1.1 | 882 M |
+| PTP parse | 1.6 | 643 M |
+| Leap table lookup | 6.6 | 152 M |
 | Correlation (100 refs) | 14.3 | 70 M |
 | **Full hot path** | **31.0** | **32 M** |
 
@@ -78,24 +83,24 @@ At 10 Gbps with 512-byte average packets (2.4M pkt/sec), the hot path provides 1
 ## Testing
 
 ```sh
-cargo test              # 124 tests (104 unit + 10 integration + 10 property)
-cargo bench             # 23 zero-dependency benchmarks
-cargo +nightly fuzz run fuzz_bcd_day   # 8 fuzz targets available
+cargo test              # 151 tests (126 unit + 15 integration + 10 property)
+cargo bench             # 30 zero-dependency benchmarks
+cargo +nightly fuzz run fuzz_bcd_day   # 10 fuzz targets available
 ```
 
 ## Requirements Traceability
 
-Every public type and function traces through three levels of requirements back to the IRIG 106-17 standard and RCC 123-20 Programmer's Handbook:
+Every public type and function traces through three levels of requirements back to the IRIG 106-17 standard, Chapter 11, and RCC 123-20 Programmer's Handbook:
 
-- **37 L1 requirements** — What the crate SHALL do
-- **78 L2 requirements** — Testable functional behaviors
-- **65 L3 specifications** — Struct layouts, algorithms, constants
+- **53 L1 requirements** — What the crate SHALL do (37 base + 16 Format 2 addendum)
+- **78+ L2 requirements** — Testable functional behaviors
+- **65+ L3 specifications** — Struct layouts, algorithms, constants
 
-See `docs/L1_REQUIREMENTS.md` for the full chain.
+See `docs/L1_REQUIREMENTS.md` and `docs/L1_REQUIREMENTS_F2_ADDENDUM.md` for the full chain.
 
 ## Standard Version Support
 
-The crate currently targets IRIG 106-07 through 106-23. Support for legacy 106-04/05 files and the new Time Data Format 2 (0x12, network time) from 106-22 are on the roadmap. See `docs/ROADMAP.md`.
+The crate targets IRIG 106-07 through 106-23, including Time Data Format 2 (0x12, Network Time) introduced in 106-17. Support for legacy 106-04/05 files is on the roadmap. See `docs/ROADMAP.md`.
 
 ## License
 

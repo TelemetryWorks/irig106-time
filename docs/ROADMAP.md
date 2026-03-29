@@ -46,20 +46,20 @@ before 106-07 have this field as zero).
 | Pre-05 unbounded OOO tolerance | ⚠️ | — | — | — | **Needed** |
 | 04/05 CSDW time source delta | ⚠️ | ⚠️ | — | — | **Needed** |
 | Version field detection (07+) | — | — | ⚠️ | ⚠️ | **Needed** |
-| Time Data Format 2 (0x12) | — | — | — | ⚠️ | **Needed** |
+| Time Data Format 2 (0x12) | — | — | — | ✅ | **Done (v0.2.0)** |
 | Ch11 packet format awareness | — | — | — | ⚠️ | **Planned** |
 
 ---
 
 ## 2. Phased Roadmap
 
-### Phase 1: Production Hardening (Current → v0.2.0)
+### Phase 1: Production Hardening (v0.3.0)
 
 Target: Make the existing implementation bulletproof for 106-07+ files.
 
 | ID | Item | Priority | Effort | Status |
 |----|------|----------|--------|--------|
-| P1-01 | Run all 8 fuzz targets for 1 hour each on real hardware | Critical | 1 day | Ready |
+| P1-01 | Run all 10 fuzz targets for 1 hour each on real hardware | Critical | 1 day | Ready |
 | P1-02 | Run benchmarks on target NVMe hardware, document baseline | Critical | 0.5 day | Ready |
 | P1-03 | CI/CD pipeline: `cargo test`, `cargo clippy`, `cargo fmt --check` | Critical | 0.5 day | Not started |
 | P1-04 | Add `#[deny(missing_docs)]` and complete rustdoc for all public items | High | 1 day | Not started |
@@ -68,7 +68,7 @@ Target: Make the existing implementation bulletproof for 106-07+ files.
 | P1-07 | Validate against irig106.org sample Ch10 files | High | 1 day | Not started |
 | P1-08 | Add `proptest` as optional dev-dependency for richer property tests | Medium | 0.5 day | Not started |
 
-### Phase 2: Legacy Version Support (v0.3.0)
+### Phase 2: Legacy Version Support (v0.4.0)
 
 Target: Handle files from 106-04 and 106-05 recorders that are still in archives.
 
@@ -80,20 +80,20 @@ Target: Handle files from 106-04 and 106-05 recorders that are still in archives
 | P2-04 | **Version-aware CSDW dispatch** | Medium | 1 day | `TimeF1Csdw::from_raw_versioned(raw: u32, version: Irig106Version)` that applies version-specific field mappings. |
 | P2-05 | **Test corpus: real 106-04/05/07 files** | High | 1 day | Acquire or synthesize Ch10 files for each version and add them to the fuzz corpus and integration tests. |
 
-### Phase 3: Time Data Format 2 — Network Time (v0.4.0)
+### Phase 3: Time Data Format 2 — Network Time ✅ COMPLETE (v0.2.0)
 
-Target: Support the 0x12 data type added in 106-22 for PTPv2 / NTP time.
+Delivered in v0.2.0. All items complete:
 
-| ID | Item | Priority | Effort | Details |
-|----|------|----------|--------|---------|
-| P3-01 | **Time F2 CSDW parser (0x12)** | High | 1 day | New CSDW layout for network time — different bit fields than F1. |
-| P3-02 | **PTPv2 time message decoding** | High | 2 days | IEEE 1588-2019 (PTPv2) timestamp format. 80-bit timestamp: 48-bit seconds + 32-bit nanoseconds. Epoch is TAI (not UTC). |
-| P3-03 | **NTP time message decoding** | Medium | 1 day | NTP 64-bit timestamp: 32-bit seconds since 1900-01-01 + 32-bit fractional seconds. |
-| P3-04 | **TAI ↔ UTC offset handling** | Medium | 1 day | PTPv2 uses TAI. Need leap second table or offset parameter for UTC conversion. |
-| P3-05 | **F2 correlation integration** | High | 1 day | Extend `TimeCorrelator` to accept F2 reference points alongside F1. |
-| P3-06 | **L1/L2/L3 requirements for F2** | High | 1 day | Full requirements traceability for the new data type. |
-| P3-07 | **Fuzz targets for F2 parsers** | High | 0.5 day | New fuzz targets for PTPv2 and NTP message parsing. |
-| P3-08 | **Update CLI tool** | Medium | 0.5 day | `ch10time` should recognize and display 0x12 packets. |
+| ID | Item | Status |
+|----|------|--------|
+| P3-01 | Time F2 CSDW parser (0x12) | ✅ `TimeF2Csdw` in `network_time.rs` |
+| P3-02 | PTPv2 time message decoding | ✅ `PtpTime` with 48-bit seconds + 32-bit nanos |
+| P3-03 | NTP time message decoding | ✅ `NtpTime` with fractional → nanos conversion |
+| P3-04 | TAI ↔ UTC offset handling | ✅ `LeapSecondTable` with 28 built-in entries |
+| P3-05 | F2 correlation integration | ✅ `TimeCorrelator::add_reference_f2()` |
+| P3-06 | L1/L2/L3 requirements for F2 | ✅ 16 L1 + full L2/L3 addendum |
+| P3-07 | Fuzz targets for F2 parsers | ✅ `fuzz_ntp`, `fuzz_ptp` |
+| P3-08 | Update CLI tool | ✅ `ch10time` handles 0x12 packets |
 
 ### Phase 4: Performance Optimizations (v0.5.0)
 
@@ -172,10 +172,10 @@ Target: Stable API, full ecosystem wiring, migration to `irig106-types`.
 
 | Version | Phase | Key Deliverables | Target |
 |---------|-------|-----------------|--------|
-| **0.1.0** | — | Current state: 8 modules, 124 tests, benchmarks, fuzz targets | Now |
-| **0.2.0** | Phase 1 | CI/CD, rustdoc, crates.io publish, sample file validation | +2 weeks |
-| **0.3.0** | Phase 2 | 106-04/05 legacy support, version-aware parsing | +1 month |
-| **0.4.0** | Phase 3 | Time Data Format 2 (0x12), PTPv2, NTP | +2 months |
-| **0.5.0** | Phase 4 | Channel-indexed correlation, perf optimizations | +3 months |
-| **0.6.0** | Phase 5 | Streaming correlator, Ch11 awareness, quality metrics | +4 months |
-| **1.0.0** | Phase 6 | Stable API, ecosystem wiring, irig106-types migration | +6 months |
+| **0.1.0** | — | Initial release: 8 modules, 124 tests, benchmarks, fuzz targets | Released |
+| **0.2.0** | Phase 3 | Time Data Format 2 (0x12), NTP, PTPv2, LeapSecondTable, correlator F2 integration | Released |
+| **0.3.0** | Phase 1 | CI/CD, rustdoc, crates.io publish, sample file validation | +2 weeks |
+| **0.4.0** | Phase 2 | 106-04/05 legacy support, version-aware parsing | +1 month |
+| **0.5.0** | Phase 4 | Channel-indexed correlation, perf optimizations | +2 months |
+| **0.6.0** | Phase 5 | Streaming correlator, Ch11 awareness, quality metrics | +3 months |
+| **1.0.0** | Phase 6 | Stable API, ecosystem wiring, irig106-types migration | +5 months |

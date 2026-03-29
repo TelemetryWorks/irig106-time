@@ -314,8 +314,9 @@ The 24-byte primary header has a 6-byte RTC at bytes [16..22]:
            ┌───────────┴───────────┐
            ▼                       ▼
  ┌─────────────────┐     ┌─────────────────┐
- │  Source Code     │     │  Tests (114)    │
- │  8 modules       │     │  104 unit       │
- │  ~1500 lines     │     │  10 integration │
+ │  Source Code     │     │  Tests (151)    │
+ │  9 modules       │     │  126 unit       │
+ │  ~2000 lines     │     │  15 integration │
+ │                  │     │  10 property    │
  └─────────────────┘     └─────────────────┘
 ```

@@ -95,6 +95,37 @@ impl TimeCorrelator {
         self.references.insert(pos, point);
     }
 
+    /// Insert a Format 2 (Network Time) reference point.
+    ///
+    /// Converts the NTP or PTP time to `AbsoluteTime` and delegates to
+    /// `add_reference`. For PTP sources, the leap-second table is used
+    /// to convert TAI to UTC.
+    ///
+    /// **Traces:** L3-F2-014 ← L2-F2COR-001..003
+    pub fn add_reference_f2(
+        &mut self,
+        channel_id: u16,
+        rtc: Rtc,
+        network_time: &crate::network_time::NetworkTime,
+        leap_table: &crate::network_time::LeapSecondTable,
+    ) -> crate::error::Result<()> {
+        let abs_time = match network_time {
+            crate::network_time::NetworkTime::Ntp(ntp) => ntp.to_absolute()?,
+            crate::network_time::NetworkTime::Ptp(ptp) => {
+                let utc_secs = ptp.to_utc_seconds(
+                    leap_table.offset_at_tai(ptp.seconds),
+                );
+                let (year, doy, hour, minute, second) =
+                    crate::network_time::unix_seconds_to_ymd_pub(utc_secs);
+                let mut abs = AbsoluteTime::new(doy, hour, minute, second, ptp.nanoseconds)?;
+                abs.year = Some(year);
+                abs
+            }
+        };
+        self.add_reference(channel_id, rtc, abs_time);
+        Ok(())
+    }
+
     /// Correlate an RTC value to absolute time using the nearest reference point.
     ///
     /// If `channel_id` is `Some(id)`, only reference points from that channel

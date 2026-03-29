@@ -23,6 +23,10 @@ use std::process;
 use irig106_time::*;
 use irig106_time::bcd::{DayFormatTime, DmyFormatTime};
 use irig106_time::csdw::{DateFormat, TimeF1Csdw};
+use irig106_time::network_time::{
+    parse_time_f2_payload, NetworkTime, NetworkTimeProtocol,
+    LeapSecondTable,
+};
 
 // ────────────────────────────────────────────────────────────────────
 // Constants
@@ -32,6 +36,7 @@ const SYNC_PATTERN: u16 = 0xEB25;
 const HEADER_SIZE: usize = 24;
 const SECONDARY_HEADER_SIZE: usize = 12;
 const DATA_TYPE_TIME_F1: u8 = 0x11;
+const DATA_TYPE_TIME_F2: u8 = 0x12;
 const PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // ────────────────────────────────────────────────────────────────────
@@ -129,6 +134,7 @@ struct ResolvedPacket {
 
 struct Ch10TimeScanner {
     correlator: TimeCorrelator,
+    leap_table: LeapSecondTable,
     time_channels: BTreeMap<u16, TimeChannelInfo>,
     total_packets: usize,
     time_packets: usize,
@@ -143,6 +149,7 @@ impl Ch10TimeScanner {
     fn new() -> Self {
         Self {
             correlator: TimeCorrelator::new(),
+            leap_table: LeapSecondTable::builtin(),
             time_channels: BTreeMap::new(),
             total_packets: 0,
             time_packets: 0,
@@ -199,6 +206,9 @@ impl Ch10TimeScanner {
             if hdr.data_type == DATA_TYPE_TIME_F1 {
                 self.time_packets += 1;
                 self.process_time_packet(&mmap[offset..offset + pkt_len], &hdr);
+            } else if hdr.data_type == DATA_TYPE_TIME_F2 {
+                self.time_packets += 1;
+                self.process_time_f2_packet(&mmap[offset..offset + pkt_len], &hdr);
             }
 
             // Optionally resolve all packets
@@ -283,6 +293,75 @@ impl Ch10TimeScanner {
         info.format = Some(csdw.time_format());
         info.date_format = Some(csdw.date_format());
         info.is_leap_year = Some(csdw.is_leap_year());
+        if info.first_time.is_none() {
+            info.first_time = Some(abs_time);
+            info.first_rtc = Some(hdr.rtc);
+        }
+        info.last_time = Some(abs_time);
+        info.last_rtc = Some(hdr.rtc);
+    }
+
+    fn process_time_f2_packet(&mut self, pkt_buf: &[u8], hdr: &PktHeader) {
+        let data_start = hdr.data_offset();
+        let payload = &pkt_buf[data_start..];
+
+        let (csdw, network_time) = match parse_time_f2_payload(payload) {
+            Ok(result) => result,
+            Err(e) => {
+                self.errors.push(format!(
+                    "Time F2 packet ch={}: parse error: {}", hdr.channel_id, e
+                ));
+                return;
+            }
+        };
+
+        // Convert to AbsoluteTime and add to correlator
+        let abs_time = match &network_time {
+            NetworkTime::Ntp(ntp) => {
+                match ntp.to_absolute() {
+                    Ok(t) => t,
+                    Err(e) => {
+                        self.errors.push(format!(
+                            "Time F2 packet ch={}: NTP conversion error: {}", hdr.channel_id, e
+                        ));
+                        return;
+                    }
+                }
+            }
+            NetworkTime::Ptp(ptp) => {
+                let offset = self.leap_table.offset_at_tai(ptp.seconds);
+                match ptp.to_absolute(offset) {
+                    Ok(t) => t,
+                    Err(e) => {
+                        self.errors.push(format!(
+                            "Time F2 packet ch={}: PTP conversion error: {}", hdr.channel_id, e
+                        ));
+                        return;
+                    }
+                }
+            }
+        };
+
+        self.correlator.add_reference(hdr.channel_id, hdr.rtc, abs_time);
+
+        // Update channel info
+        let info = self.time_channels
+            .entry(hdr.channel_id)
+            .or_insert_with(|| TimeChannelInfo::new(hdr.channel_id));
+        info.packet_count += 1;
+        // Map network protocol to TimeSource/TimeFormat for display
+        info.source = Some(match csdw.time_protocol() {
+            NetworkTimeProtocol::Ntp => TimeSource::External,
+            NetworkTimeProtocol::Ptp => TimeSource::External,
+            NetworkTimeProtocol::Reserved(_) => TimeSource::None,
+        });
+        info.format = Some(match csdw.time_protocol() {
+            NetworkTimeProtocol::Ntp => TimeFormat::Utc,
+            NetworkTimeProtocol::Ptp => TimeFormat::Gps, // closest analog
+            NetworkTimeProtocol::Reserved(_) => TimeFormat::Reserved(0xFF),
+        });
+        info.date_format = Some(DateFormat::DayOfYear); // F2 doesn't use BCD date format
+        info.is_leap_year = Some(false); // not applicable for F2
         if info.first_time.is_none() {
             info.first_time = Some(abs_time);
             info.first_rtc = Some(hdr.rtc);

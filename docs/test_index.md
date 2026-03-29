@@ -1,9 +1,9 @@
 # Test Documentation Index — irig106-time
 
 **Document:** TEST_INDEX.md
-**Crate:** irig106-time v0.1.0
-**Total Tests:** 114 (104 unit, 10 integration)
-**Date:** 2026-03-25
+**Crate:** irig106-time v0.2.0
+**Total Tests:** 151 (126 unit, 15 integration, 10 property)
+**Date:** 2026-03-27
 
 ---
 
@@ -30,8 +30,11 @@ src/
   intra_packet_tests.rs ← 8 unit tests
   correlation.rs
   correlation_tests.rs  ← 11 unit tests
+  network_time.rs
+  network_time_tests.rs ← 22 unit tests
 tests/
-  pipeline.rs         ← 10 integration tests
+  pipeline.rs         ← 15 integration tests
+  properties.rs       ← 10 property-based tests
 ```
 
 ---
@@ -174,9 +177,35 @@ tests/
 | `detect_gps_lock_jump` | 5s jump | L3-COR-007 |
 | `detect_jump_threshold` | Threshold logic | L3-COR-007 |
 
+### network_time (22 tests)
+| Test | Validates | Traces |
+|------|-----------|--------|
+| `f2_csdw_ntp` | Protocol=0 → NTP | L1-F2CSDW-002 |
+| `f2_csdw_ptp` | Protocol=1 → PTP | L1-F2CSDW-002 |
+| `f2_csdw_reserved` | Protocol=5 → Reserved | L1-F2CSDW-002 |
+| `f2_csdw_reserved_bits_clean` | Reserved zero → Ok | L1-F2CSDW-003 |
+| `f2_csdw_reserved_bits_dirty` | Reserved set → Err | L1-F2CSDW-003 |
+| `ntp_from_le_bytes` | Parse 8-byte NTP | L1-NTP-001 |
+| `ntp_fraction_to_nanos` | 2⁻³² → nanoseconds | L1-NTP-003 |
+| `ntp_to_unix_seconds` | NTP → Unix epoch | L1-NTP-004 |
+| `ntp_before_unix_epoch` | Pre-1970 → None | L1-NTP-004 |
+| `ntp_to_absolute` | NTP → AbsoluteTime | L1-NTP-001..004 |
+| `ntp_buffer_too_short` | <8 bytes → Err | L1-NTP-001 |
+| `ptp_from_le_bytes` | Parse 10-byte PTP | L1-PTP-001 |
+| `ptp_nanos_overflow` | nanos >= 1B → Err | L1-PTP-003 |
+| `ptp_to_utc_seconds` | TAI → UTC with offset | L1-PTP-004 |
+| `ptp_to_absolute` | PTP → AbsoluteTime | L1-PTP-001..004 |
+| `ptp_buffer_too_short` | <10 bytes → Err | L1-PTP-001 |
+| `parse_f2_ntp_payload` | Full NTP payload dispatch | L1-F2CSDW-001, L1-NTP-001 |
+| `parse_f2_ptp_payload` | Full PTP payload dispatch | L1-F2CSDW-001, L1-PTP-001 |
+| `leap_second_table_builtin` | Built-in ≥27 entries | L1-TAI-002 |
+| `leap_second_table_lookup_2024` | Offset @2024 = 37 | L1-TAI-001 |
+| `leap_second_table_lookup_1980` | Offset @1980 = 19 | L1-TAI-001 |
+| `leap_second_table_custom` | Custom add + lookup | L1-TAI-003 |
+
 ---
 
-## 3. Integration Tests (tests/pipeline.rs, 10 tests)
+## 3. Integration Tests (tests/pipeline.rs, 15 tests)
 
 | Test | Scenario | Traces |
 |------|----------|--------|
@@ -189,4 +218,9 @@ tests/
 | `rtc_large_delta_correlation` | Cross midnight | L1-RTC-003, L1-COR-002 |
 | `invalid_bcd_propagates_error` | Bad BCD → typed error | L1-ERR-002 |
 | `all_error_variants_display` | Display coverage | L1-ERR-001 |
-| `no_std_types_are_copy` | Copy+Clone+Eq | L1-API-001 |
+| `no_std_types_are_copy` | Copy+Clone+Eq (incl. F2 types) | L1-API-001 |
+| `full_ntp_pipeline` | F2 NTP→AbsoluteTime→Correlate | L1-NTP-*, L1-F2COR-001 |
+| `full_ptp_pipeline` | F2 PTP→LeapTable→Correlate via add_reference_f2 | L1-PTP-*, L1-F2COR-001 |
+| `mixed_f1_f2_correlation` | F1 + F2 sources coexist | L1-F2COR-001 |
+| `ntp_sub_millisecond_precision` | Fractional second precision | L1-NTP-003 |
+| `leap_second_table_historical_accuracy` | Historical offsets 1975/2000/2017/2026 | L1-TAI-001 |

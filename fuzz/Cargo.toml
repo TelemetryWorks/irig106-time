@@ -53,3 +53,13 @@ doc = false
 name = "fuzz_correlation"
 path = "fuzz_targets/fuzz_correlation.rs"
 doc = false
+
+[[bin]]
+name = "fuzz_ntp"
+path = "fuzz_targets/fuzz_ntp.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_ptp"
+path = "fuzz_targets/fuzz_ptp.rs"
+doc = false

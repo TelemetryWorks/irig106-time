@@ -41,6 +41,7 @@ pub mod bcd;
 pub mod secondary;
 pub mod intra_packet;
 pub mod correlation;
+pub mod network_time;
 
 // Re-export key types at crate root for convenience.
 pub use error::{TimeError, Result};
@@ -51,3 +52,7 @@ pub use bcd::{DayFormatTime, DmyFormatTime};
 pub use secondary::{SecHdrTimeFormat, SecondaryHeaderTime};
 pub use intra_packet::{IntraPacketTime, IntraPacketTimeFormat};
 pub use correlation::{TimeCorrelator, ReferencePoint, TimeJump};
+pub use network_time::{
+    TimeF2Csdw, NetworkTimeProtocol, NtpTime, PtpTime, NetworkTime,
+    LeapSecondTable, LeapSecondEntry, NTP_UNIX_EPOCH_OFFSET, DEFAULT_TAI_UTC_OFFSET,
+};

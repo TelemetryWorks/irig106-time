@@ -313,4 +313,165 @@ fn no_std_types_are_copy() {
     assert_copy_clone_eq::<TimeSource>();
     assert_copy_clone_eq::<TimeFormat>();
     assert_copy_clone_eq::<DateFormat>();
+    assert_copy_clone_eq::<TimeF2Csdw>();
+    assert_copy_clone_eq::<NtpTime>();
+    assert_copy_clone_eq::<PtpTime>();
+    assert_copy_clone_eq::<NetworkTimeProtocol>();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Format 2 (Network Time) Integration Tests
+// ═══════════════════════════════════════════════════════════════════
+
+/// Full NTP pipeline: parse F2 payload → to_absolute → correlate.
+#[test]
+fn full_ntp_pipeline() {
+    use irig106_time::network_time::{parse_time_f2_payload, NetworkTime, NtpTime, NTP_UNIX_EPOCH_OFFSET};
+
+    // Build an NTP payload: CSDW(protocol=NTP) + NTP time data
+    // 2025-01-01 00:00:00 UTC → NTP seconds = 3,944,678,400
+    let ntp_seconds: u32 = 3_944_678_400;
+    let mut payload = [0u8; 12];
+    payload[0..4].copy_from_slice(&0x0000_0000u32.to_le_bytes()); // CSDW: NTP
+    payload[4..8].copy_from_slice(&ntp_seconds.to_le_bytes());
+    // fraction = 0
+
+    let (csdw, time) = parse_time_f2_payload(&payload).unwrap();
+    assert_eq!(csdw.time_protocol(), NetworkTimeProtocol::Ntp);
+
+    let ntp = match time {
+        NetworkTime::Ntp(n) => n,
+        _ => panic!("expected NTP"),
+    };
+
+    // Convert to AbsoluteTime
+    let abs = ntp.to_absolute().unwrap();
+    assert_eq!(abs.year, Some(2025));
+    assert_eq!(abs.day_of_year, 1);
+    assert_eq!(abs.hours, 0);
+    assert_eq!(abs.minutes, 0);
+    assert_eq!(abs.seconds, 0);
+
+    // Feed into correlator
+    let mut correlator = TimeCorrelator::new();
+    correlator.add_reference(5, Rtc::from_raw(10_000_000), abs);
+
+    // Resolve a data packet 500ms later
+    let target = Rtc::from_raw(15_000_000);
+    let resolved = correlator.correlate(target, Some(5)).unwrap();
+    assert_eq!(resolved.year, Some(2025));
+    assert_eq!(resolved.day_of_year, 1);
+    assert_eq!(resolved.hours, 0);
+    assert_eq!(resolved.minutes, 0);
+    assert_eq!(resolved.seconds, 0);
+    assert_eq!(resolved.nanoseconds, 500_000_000); // 500ms
+}
+
+/// Full PTP pipeline: parse F2 payload → apply leap seconds → correlate.
+#[test]
+fn full_ptp_pipeline() {
+    use irig106_time::network_time::{parse_time_f2_payload, NetworkTime, PtpTime, LeapSecondTable};
+
+    // Build a PTP payload: CSDW(protocol=PTP) + PTP time data
+    // 2025-01-01 00:00:00 UTC → Unix = 1,735,689,600 → TAI = 1,735,689,637 (offset=37)
+    let tai_seconds: u64 = 1_735_689_637;
+    let mut payload = [0u8; 14];
+    payload[0..4].copy_from_slice(&0x0000_0001u32.to_le_bytes()); // CSDW: PTP
+    payload[4..10].copy_from_slice(&tai_seconds.to_le_bytes()[0..6]);
+    // nanoseconds = 0
+
+    let (csdw, time) = parse_time_f2_payload(&payload).unwrap();
+    assert_eq!(csdw.time_protocol(), NetworkTimeProtocol::Ptp);
+
+    let ptp = match time {
+        NetworkTime::Ptp(p) => p,
+        _ => panic!("expected PTP"),
+    };
+
+    // Convert to AbsoluteTime using leap table
+    let table = LeapSecondTable::builtin();
+    let offset = table.offset_at_tai(ptp.seconds);
+    assert_eq!(offset, 37);
+
+    let abs = ptp.to_absolute(offset).unwrap();
+    assert_eq!(abs.year, Some(2025));
+    assert_eq!(abs.day_of_year, 1);
+    assert_eq!(abs.hours, 0);
+
+    // Feed into correlator via add_reference_f2
+    let mut correlator = TimeCorrelator::new();
+    let net_time = NetworkTime::Ptp(ptp);
+    correlator.add_reference_f2(8, Rtc::from_raw(10_000_000), &net_time, &table).unwrap();
+
+    // Resolve a data packet 1 second later
+    let resolved = correlator.correlate(Rtc::from_raw(20_000_000), Some(8)).unwrap();
+    assert_eq!(resolved.year, Some(2025));
+    assert_eq!(resolved.seconds, 1);
+}
+
+/// Mixed F1 + F2 time sources in the same correlator.
+#[test]
+fn mixed_f1_f2_correlation() {
+    use irig106_time::network_time::{NetworkTime, NtpTime, NTP_UNIX_EPOCH_OFFSET, LeapSecondTable};
+
+    let mut correlator = TimeCorrelator::new();
+
+    // Channel 3: F1 (BCD) source — 12:00:00.000 at RTC 10M
+    correlator.add_reference(
+        3,
+        Rtc::from_raw(10_000_000),
+        AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(),
+    );
+
+    // Channel 8: F2 (NTP) source — also 12:00:00.000 at RTC 10M
+    // Day 100, 2025 = Unix 1744243200 (approx)
+    // Construct NTP time for 2025, day 100, 12:00:00
+    // We'll use add_reference directly with a pre-computed AbsoluteTime
+    // to test that both sources coexist
+    let mut ntp_abs = AbsoluteTime::new(100, 12, 0, 0, 0).unwrap();
+    ntp_abs.year = Some(2025);
+    correlator.add_reference(8, Rtc::from_raw(10_000_000), ntp_abs);
+
+    // Both channels should resolve the same RTC to the same time
+    let f1_time = correlator.correlate(Rtc::from_raw(10_000_000), Some(3)).unwrap();
+    let f2_time = correlator.correlate(Rtc::from_raw(10_000_000), Some(8)).unwrap();
+    assert_eq!(f1_time.hours, f2_time.hours);
+    assert_eq!(f1_time.minutes, f2_time.minutes);
+    assert_eq!(f1_time.seconds, f2_time.seconds);
+}
+
+/// NTP fractional seconds provide sub-millisecond precision.
+#[test]
+fn ntp_sub_millisecond_precision() {
+    use irig106_time::network_time::NtpTime;
+
+    // fraction = 2^31 = half second → 500,000,000 ns
+    let ntp = NtpTime { seconds: 3_944_678_400, fraction: 1 << 31 };
+    let abs = ntp.to_absolute().unwrap();
+    assert!(abs.nanoseconds >= 499_999_999 && abs.nanoseconds <= 500_000_001);
+
+    // fraction = 2^30 = quarter second → ~250,000,000 ns
+    let ntp2 = NtpTime { seconds: 3_944_678_400, fraction: 1 << 30 };
+    let abs2 = ntp2.to_absolute().unwrap();
+    assert!(abs2.nanoseconds >= 249_999_999 && abs2.nanoseconds <= 250_000_001);
+}
+
+/// Leap second table correctly differentiates historical offsets.
+#[test]
+fn leap_second_table_historical_accuracy() {
+    use irig106_time::network_time::LeapSecondTable;
+
+    let table = LeapSecondTable::builtin();
+
+    // 1975-06-01 ≈ Unix 168307200 → offset should be 14
+    assert_eq!(table.offset_at_unix(168_307_200), 14);
+
+    // 2000-06-01 ≈ Unix 959817600 → offset should be 32
+    assert_eq!(table.offset_at_unix(959_817_600), 32);
+
+    // 2017-06-01 ≈ Unix 1496275200 → offset should be 37
+    assert_eq!(table.offset_at_unix(1_496_275_200), 37);
+
+    // 2026 → still 37 (no new leap seconds since 2017)
+    assert_eq!(table.offset_at_unix(1_800_000_000), 37);
 }
