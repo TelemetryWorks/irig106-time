@@ -293,7 +293,7 @@ impl AbsoluteTime {
 
         Self {
             total_ns: if new_total >= max_year_ns {
-                (new_total % max_year_ns)
+                new_total % max_year_ns
             } else {
                 new_total
             },
