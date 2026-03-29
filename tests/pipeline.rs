@@ -326,7 +326,7 @@ fn no_std_types_are_copy() {
 /// Full NTP pipeline: parse F2 payload → to_absolute → correlate.
 #[test]
 fn full_ntp_pipeline() {
-    use irig106_time::network_time::{parse_time_f2_payload, NetworkTime, NtpTime, NTP_UNIX_EPOCH_OFFSET};
+    use irig106_time::network_time::{parse_time_f2_payload, NetworkTime};
 
     // Build an NTP payload: CSDW(protocol=NTP) + NTP time data
     // 2025-01-01 00:00:00 UTC → NTP seconds = 3,944,678,400
@@ -370,7 +370,7 @@ fn full_ntp_pipeline() {
 /// Full PTP pipeline: parse F2 payload → apply leap seconds → correlate.
 #[test]
 fn full_ptp_pipeline() {
-    use irig106_time::network_time::{parse_time_f2_payload, NetworkTime, PtpTime, LeapSecondTable};
+    use irig106_time::network_time::{parse_time_f2_payload, NetworkTime, LeapSecondTable};
 
     // Build a PTP payload: CSDW(protocol=PTP) + PTP time data
     // 2025-01-01 00:00:00 UTC → Unix = 1,735,689,600 → TAI = 1,735,689,637 (offset=37)
@@ -412,8 +412,6 @@ fn full_ptp_pipeline() {
 /// Mixed F1 + F2 time sources in the same correlator.
 #[test]
 fn mixed_f1_f2_correlation() {
-    use irig106_time::network_time::{NetworkTime, NtpTime, NTP_UNIX_EPOCH_OFFSET, LeapSecondTable};
-
     let mut correlator = TimeCorrelator::new();
 
     // Channel 3: F1 (BCD) source — 12:00:00.000 at RTC 10M
@@ -448,12 +446,12 @@ fn ntp_sub_millisecond_precision() {
     // fraction = 2^31 = half second → 500,000,000 ns
     let ntp = NtpTime { seconds: 3_944_678_400, fraction: 1 << 31 };
     let abs = ntp.to_absolute().unwrap();
-    assert!((499_999_999..=500_000_001).contains(&abs.nanoseconds));
+    assert!(abs.nanoseconds >= 499_999_999 && abs.nanoseconds <= 500_000_001);
 
     // fraction = 2^30 = quarter second → ~250,000,000 ns
     let ntp2 = NtpTime { seconds: 3_944_678_400, fraction: 1 << 30 };
     let abs2 = ntp2.to_absolute().unwrap();
-    assert!((249_999_999..=250_000_001).contains(&abs2.nanoseconds));
+    assert!(abs2.nanoseconds >= 249_999_999 && abs2.nanoseconds <= 250_000_001);
 }
 
 /// Leap second table correctly differentiates historical offsets.

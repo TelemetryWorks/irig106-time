@@ -158,7 +158,7 @@ fn main() {
         let _ = black_box(irig106_time::network_time::NtpTime::from_le_bytes(black_box(&ntp_buf)));
     }));
     let ntp = irig106_time::network_time::NtpTime::from_le_bytes(&ntp_buf).unwrap();
-    r.push(bench("ntp_to_absolute", || { black_box(black_box(ntp).to_absolute()); }));
+    r.push(bench("ntp_to_absolute", || { let _ = black_box(black_box(ntp).to_absolute()); }));
 
     // PTP
     let mut ptp_buf = [0u8; 10];
@@ -168,7 +168,7 @@ fn main() {
         let _ = black_box(irig106_time::network_time::PtpTime::from_le_bytes(black_box(&ptp_buf)));
     }));
     let ptp = irig106_time::network_time::PtpTime::from_le_bytes(&ptp_buf).unwrap();
-    r.push(bench("ptp_to_absolute", || { black_box(black_box(ptp).to_absolute(black_box(37))); }));
+    r.push(bench("ptp_to_absolute", || { let _ = black_box(black_box(ptp).to_absolute(black_box(37))); }));
 
     // Leap second table lookup
     let lst = irig106_time::network_time::LeapSecondTable::builtin();
