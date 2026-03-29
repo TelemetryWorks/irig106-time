@@ -91,7 +91,7 @@ Delivered in v0.2.0. All items complete:
 | P3-03 | NTP time message decoding | ✅ `NtpTime` with fractional → nanos conversion |
 | P3-04 | TAI ↔ UTC offset handling | ✅ `LeapSecondTable` with 28 built-in entries |
 | P3-05 | F2 correlation integration | ✅ `TimeCorrelator::add_reference_f2()` |
-| P3-06 | L1/L2/L3 requirements for F2 | ✅ 16 L1 + full L2/L3 addendum |
+| P3-06 | L1/L2/L3 requirements for F2 | ✅ 16 L1 merged into L1_Requirements.md + L2/L3 addendum |
 | P3-07 | Fuzz targets for F2 parsers | ✅ `fuzz_ntp`, `fuzz_ptp` |
 | P3-08 | Update CLI tool | ✅ `ch10time` handles 0x12 packets |
 

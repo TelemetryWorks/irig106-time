@@ -3,7 +3,7 @@
 **Document:** L2L3_REQUIREMENTS_F2_ADDENDUM.md
 **Crate:** irig106-time
 **Target Version:** 0.2.0
-**Parent:** L1_REQUIREMENTS_F2_ADDENDUM.md
+**Parent:** L1_Requirements.md (§3.10–3.14)
 **Date:** 2026-03-27
 
 ---

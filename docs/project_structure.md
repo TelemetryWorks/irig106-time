@@ -56,18 +56,17 @@ irig106-time/
 │       └── fuzz_ptp.rs                 # NEW in v0.2.0
 │
 └── docs/
-    ├── L1_REQUIREMENTS.md              # 37 L1 → IRIG 106 standard
-    ├── L1_REQUIREMENTS_F2_ADDENDUM.md  # 16 L1 → Format 2 (NTP/PTP/TAI)
-    ├── L2_REQUIREMENTS.md              # 78 L2 → functional
+    ├── L1_Requirements.md              # 53 L1 → IRIG 106 standard (incl. Format 2)
+    ├── L2_Requirements.md              # 78 L2 → functional
     ├── L2L3_REQUIREMENTS_F2_ADDENDUM.md # L2/L3 → Format 2
-    ├── L3_REQUIREMENTS.md              # 65 L3 → design specs
-    ├── TEST_INDEX.md                   # All tests documented
-    ├── ARCHITECTURE.md                 # Data flow, packet layouts, ASCII diagrams
-    ├── WHY_SEPARATE_REPO.md           # Why time is its own crate
-    ├── SECURITY.md                     # Threat model, fuzzing guide
-    ├── USAGE.md                        # Integration examples for downstream crates
-    ├── SHARED_TYPES_FOR_IRIG106_TYPES.md
-    ├── PROJECT_STRUCTURE.md           # This file
+    ├── L3_Requirements.md              # 65 L3 → design specs
+    ├── test_index.md                   # All tests documented
+    ├── architecture.md                 # Data flow, packet layouts, ASCII diagrams
+    ├── why_separate_repo.md           # Why time is its own crate
+    ├── security.md                     # Threat model, fuzzing guide
+    ├── usage.md                        # Integration examples for downstream crates
+    ├── shared_types_for_irig106_types.md
+    ├── project_structure.md           # This file
     ├── ROADMAP.md                      # Phased release plan
     └── diagrams/
         ├── ecosystem.mermaid

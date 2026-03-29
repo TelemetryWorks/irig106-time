@@ -23,8 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **5 new integration tests** in `tests/pipeline.rs`: full NTP pipeline, full PTP pipeline, mixed F1+F2 correlation, NTP sub-millisecond precision, and leap second table historical accuracy.
 - **2 new fuzz targets**: `fuzz_ntp` and `fuzz_ptp` covering NTP and PTP parsing entry points.
 - **7 new benchmarks**: `ntp_from_le_bytes` (1.1 ns), `ntp_to_absolute` (115 ns), `ptp_from_le_bytes` (1.6 ns), `ptp_to_absolute` (119 ns), `leap_table_lookup` (6.6 ns), `f2_ntp_payload_parse` (2.7 ns).
-- **L1 Requirements Addendum** — 16 new L1 requirements for Format 2 (F2CSDW, NTP, PTP, F2COR, TAI), traced to Ch11 §11.2.3.3.
-- **L2/L3 Requirements Addendum** — Full functional decomposition and design specifications with traceability matrix.
+- **L1 Requirements updated** — 16 new L1 requirements for Format 2 (F2CSDW, NTP, PTP, F2COR, TAI) merged into `L1_Requirements.md`, traced to Ch11 §11.2.3.3. Total: 53 L1 requirements.
+- **L2/L3 Requirements Addendum** — Full functional decomposition and design specifications for Format 2 with traceability matrix.
 - **CLI (irig106-time-cli)** — `ch10time` now recognizes and processes Type 0x12 Network Time packets in all commands (summary, channels, jumps, timeline, csv, correlate). Uses built-in leap second table for PTP→UTC conversion.
 
 ### Changed

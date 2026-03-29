@@ -92,11 +92,11 @@ cargo +nightly fuzz run fuzz_bcd_day   # 10 fuzz targets available
 
 Every public type and function traces through three levels of requirements back to the IRIG 106-17 standard, Chapter 11, and RCC 123-20 Programmer's Handbook:
 
-- **53 L1 requirements** — What the crate SHALL do (37 base + 16 Format 2 addendum)
+- **53 L1 requirements** — What the crate SHALL do (37 base + 16 Format 2)
 - **78+ L2 requirements** — Testable functional behaviors
 - **65+ L3 specifications** — Struct layouts, algorithms, constants
 
-See `docs/L1_REQUIREMENTS.md` and `docs/L1_REQUIREMENTS_F2_ADDENDUM.md` for the full chain.
+See `docs/L1_Requirements.md` for the full chain.
 
 ## Standard Version Support
 
