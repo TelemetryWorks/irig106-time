@@ -149,7 +149,7 @@ Target: Stable API, full ecosystem wiring, migration to `irig106-types`.
 | P6-05 | ~~Wire `irig106-write` BCD encoding~~ | — | — | ✅ `to_le_bytes()` shipped in v0.4.0 for all wire-format types. |
 | P6-06 | **Wire `irig106-studio` WASM** | Medium | 1 day | ✅ Done (v0.7.0) — CI verifies `wasm32-unknown-unknown` build with `--no-default-features` and `--features serde`. |
 | P6-07 | **Semantic versioning freeze** | High | — | Declare 1.0.0 stable API. No breaking changes without major version bump. |
-| P6-08 | **MSRV policy** | Medium | — | Reviewed in v0.7.0: MSRV stays at `1.87` — `is_multiple_of` used in 3 files, replacing with `%` triggers clippy `manual_is_multiple_of`. |
+| P6-08 | **MSRV policy** | Medium | — | ✅ Done (v0.7.0). MSRV lowered from 1.87 → 1.56 (Edition 2021 floor). Replaced `u16::is_multiple_of` (1.87) with `util::is_leap_year` and `u64::abs_diff` (1.60) with `util::abs_diff_u64`. |
 
 ---
 
@@ -199,5 +199,5 @@ Target: Stable API, full ecosystem wiring, migration to `irig106-types`.
 | **0.4.0** | Phase 2 | Version detection, version-aware CSDW, OOO window, RTC reset detection, `to_le_bytes()` encoding | Released |
 | **0.5.0** | Phase 4 | Channel-indexed O(log n) correlation, BCD LUT, criterion benchmarks, serde, sub_nanos year fix | Released |
 | **0.6.0** | Phase 5 | Streaming correlator, Ch11 awareness, quality metrics, recording events, chrono interop, F1 leap seconds | Released |
-| **0.7.0** | Pre-1.0 | AbsoluteTime u64 restructure (P4-04), MSRV review, API hardening | Released |
+| **0.7.0** | Pre-1.0 | AbsoluteTime u64 restructure (P4-04), MSRV 1.87→1.56 (P6-08), WASM CI (P6-06), UDP docs (P5-03), API audit | Released |
 | **1.0.0** | Phase 6 | Stable API, ecosystem wiring, irig106-types migration | Next |

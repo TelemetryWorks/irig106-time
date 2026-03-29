@@ -28,6 +28,7 @@ IRIG 106 Chapter 10 separates *when data was recorded* (a free-running 10 MHz co
 - **`chrono`** — Optional `From` conversions between `AbsoluteTime` and `chrono::NaiveDateTime`
 - **`#![no_std]`** — Works on embedded, WASM, and standard targets
 - **Zero required dependencies** — Only `core` and `alloc` (serde, chrono are optional)
+- **MSRV 1.56** — Edition 2021 floor. No nightly features required
 - **Zero `unsafe`** — Safe Rust throughout
 
 ## Quick Start
@@ -98,8 +99,8 @@ At 10 Gbps with 512-byte average packets (2.4M pkt/sec), the hot path provides 1
 ## Testing
 
 ```sh
-cargo test              # 244 checks (166 unit + 57 integration + 17 property + 4 doc)
-cargo test --all-features  # 249 checks (170 unit + 57 integration + 17 property + 5 doc)
+cargo test              # 269 tests (184 unit + 68 integration + 17 property)
+cargo test --all-features  # includes chrono doc tests
 cargo bench             # 28 zero-dep benchmarks + criterion correlation suite
 cargo +nightly fuzz run fuzz_bcd_day   # 10 fuzz targets available
 ```

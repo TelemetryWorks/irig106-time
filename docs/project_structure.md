@@ -43,10 +43,11 @@ irig106-time/
 |   |-- quality_tests.rs               # 6 unit tests
 |   |-- recording_event.rs             # RecordingEvent, RecordingEventType
 |   |-- recording_event_tests.rs       # 9 unit tests
-|   `-- chrono_interop.rs              # chrono From conversions (feature-gated, 4 tests)
+|   |-- chrono_interop.rs              # chrono From conversions (feature-gated, 4 tests)
+|   `-- util.rs                        # MSRV helpers: is_leap_year, abs_diff_u64 (18 tests)
 |
 |-- tests/
-|   |-- pipeline.rs                    # 57 integration tests
+|   |-- pipeline.rs                    # 68 integration tests
 |   `-- properties.rs                  # 17 property-based tests (proptest)
 |
 |-- benches/
@@ -115,15 +116,15 @@ irig106-time-cli/
 
 | Metric | Value |
 |--------|-------|
-| Source modules | 16 |
-| Source lines (excl. tests) | ~3,800 |
-| Unit tests | 166 default / 170 with `--all-features` |
-| Integration tests | 57 |
+| Source modules | 17 |
+| Source lines (excl. tests) | ~3,900 |
+| Unit tests | 184 |
+| Integration tests | 68 |
 | Property-based tests | 17 |
 | Doc tests | 4 default / 5 with `--all-features` |
 | Fuzz targets | 10 |
 | Benchmarks | 28 (zero-dep) + criterion suite |
-| **Total checks** | **244 default / 249 with `--all-features`** |
+| **Total tests** | **269** |
 | Required runtime deps | **0** (serde, chrono optional) |
 | L1 requirements | 53 (37 base + 16 F2) |
 | `#![no_std]` | Yes |

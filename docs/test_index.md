@@ -2,8 +2,8 @@
 
 **Document:** TEST_INDEX.md
 **Crate:** irig106-time v0.7.0
-**Default `cargo test`:** 244 checks (166 unit, 57 integration, 17 property, 4 doc)
-**`cargo test --all-features`:** 249 checks (170 unit, 57 integration, 17 property, 5 doc)
+**Default `cargo test`:** 269 tests (184 unit, 68 integration, 17 property)
+**`cargo test --all-features`:** includes chrono doc tests
 **Date:** 2026-03-29
 
 ---
@@ -44,8 +44,9 @@ src/
   recording_event.rs
   recording_event_tests.rs ← 9 unit tests
   chrono_interop.rs     ← 4 unit tests (feature-gated)
+  util.rs               ← 18 unit tests (is_leap_year + abs_diff_u64)
 tests/
-  pipeline.rs         ← 57 integration tests
+  pipeline.rs         ← 68 integration tests
   properties.rs       ← 17 property-based tests
 ```
 
@@ -217,7 +218,7 @@ tests/
 
 ---
 
-## 3. Integration Tests (tests/pipeline.rs, 57 tests)
+## 3. Integration Tests (tests/pipeline.rs, 68 tests)
 
 | Test | Scenario | Traces |
 |------|----------|--------|

@@ -1189,3 +1189,137 @@ fn recording_event_pipeline() {
     assert!(!overrun.has_reference_time());
     assert!(overrun.event_type.may_cause_time_gap());
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// v0.7.0 MSRV integration tests — exercise functionality backed by
+// util::is_leap_year and util::abs_diff_u64 through the public API
+// ═══════════════════════════════════════════════════════════════════════
+
+// ── Leap year via sub_nanos year rollover ────────────────────────────
+
+#[test]
+fn sub_nanos_leap_year_rollover_366_days() {
+    // 2024 is a leap year (366 days). Rolling back from Day 1 of 2025
+    // by 1 day should land on Day 366 of 2024.
+    let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
+    t.set_year(Some(2025));
+    let result = t.sub_nanos(86_400_000_000_000); // exactly 1 day
+    assert_eq!(result.year(), Some(2024));
+    assert_eq!(result.day_of_year(), 366); // 2024 is leap
+    assert_eq!(result.hours(), 0);
+}
+
+#[test]
+fn sub_nanos_non_leap_year_rollover_365_days() {
+    // 2023 is not a leap year (365 days). Rolling back from Day 1 of 2024
+    // by 1 day should land on Day 365 of 2023.
+    let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
+    t.set_year(Some(2024));
+    let result = t.sub_nanos(86_400_000_000_000); // exactly 1 day
+    assert_eq!(result.year(), Some(2023));
+    assert_eq!(result.day_of_year(), 365); // 2023 is not leap
+}
+
+#[test]
+fn sub_nanos_century_non_leap_year() {
+    // 1900 is divisible by 100 but NOT by 400 → not a leap year (365 days)
+    let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
+    t.set_year(Some(1901));
+    let result = t.sub_nanos(86_400_000_000_000);
+    assert_eq!(result.year(), Some(1900));
+    assert_eq!(result.day_of_year(), 365); // 1900 NOT leap
+}
+
+#[test]
+fn sub_nanos_quad_century_leap_year() {
+    // 2000 is divisible by 400 → leap year (366 days)
+    let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
+    t.set_year(Some(2001));
+    let result = t.sub_nanos(86_400_000_000_000);
+    assert_eq!(result.year(), Some(2000));
+    assert_eq!(result.day_of_year(), 366); // 2000 IS leap
+}
+
+// ── Leap year via BCD DMY decoding (uses days_in_month) ─────────────
+
+#[test]
+fn bcd_dmy_feb_29_leap_year_accepted() {
+    use irig106_time::bcd::DmyFormatTime;
+    // Feb 29 on a leap year should be valid
+    // Manually construct a DmyFormatTime for 2024-02-29
+    let t = DmyFormatTime {
+        milliseconds: 0,
+        seconds: 0,
+        minutes: 0,
+        hours: 12,
+        day: 29,
+        month: 2,
+        year: 2024,
+    };
+    let abs = t.to_absolute();
+    assert_eq!(abs.day_of_year(), 60); // Jan(31) + Feb(29) = day 60
+    assert_eq!(abs.year(), Some(2024));
+}
+
+#[test]
+fn bcd_dmy_feb_29_non_leap_year_doy_calculation() {
+    use irig106_time::bcd::DmyFormatTime;
+    // On a non-leap year, Feb has 28 days so day 29 is technically March 1
+    // The DOY calculation uses month_day_to_doy which doesn't reject — it
+    // just computes. Feb 29 on a non-leap year → day 60 (no leap day added)
+    let t = DmyFormatTime {
+        milliseconds: 0,
+        seconds: 0,
+        minutes: 0,
+        hours: 12,
+        day: 29,
+        month: 2,
+        year: 2023,
+    };
+    let abs = t.to_absolute();
+    // On non-leap year, month_day_to_doy gives 31+29=60 (no extra day for leap)
+    assert_eq!(abs.day_of_year(), 60);
+}
+
+// ── abs_diff via is_near_leap_second ────────────────────────────────
+
+#[test]
+fn is_near_leap_second_exact_boundary() {
+    let table = LeapSecondTable::builtin();
+    // 2017-01-01 leap second at Unix 1483228800
+    assert!(table.is_near_leap_second(1483228800, 0)); // exact match, window=0
+}
+
+#[test]
+fn is_near_leap_second_within_window() {
+    let table = LeapSecondTable::builtin();
+    // 5 seconds before the boundary
+    assert!(table.is_near_leap_second(1483228795, 10));
+    // 5 seconds after the boundary
+    assert!(table.is_near_leap_second(1483228805, 10));
+}
+
+#[test]
+fn is_near_leap_second_outside_window() {
+    let table = LeapSecondTable::builtin();
+    // 100 seconds away, window=10
+    assert!(!table.is_near_leap_second(1483228900, 10));
+}
+
+#[test]
+fn is_near_leap_second_symmetry() {
+    let table = LeapSecondTable::builtin();
+    let boundary = 1483228800u64;
+    // Distance 5 from below and above should give same result
+    assert_eq!(
+        table.is_near_leap_second(boundary - 5, 10),
+        table.is_near_leap_second(boundary + 5, 10),
+    );
+}
+
+#[test]
+fn is_near_leap_second_far_future() {
+    let table = LeapSecondTable::builtin();
+    // Very large Unix timestamp — far from any known leap second
+    assert!(!table.is_near_leap_second(u64::MAX, 1000));
+}

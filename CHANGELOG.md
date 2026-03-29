@@ -23,19 +23,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`AbsoluteTime::set_year()`, `set_month()`, `set_day_of_month()`** — Setter methods for optional calendar metadata fields.
 - **UDP framing documentation** (P5-03) — New `docs/udp_framing.md` documenting that UDP Transfer Format 1 and 2 headers carry no time fields, and how to use `StreamingTimeCorrelator` for live UDP streams.
 - **WASM build verification** (P6-06) — CI now verifies `wasm32-unknown-unknown` compilation with `--no-default-features` and `--no-default-features --features serde`.
+- **`util` module** (P6-08) — Crate-internal `is_leap_year` and `abs_diff_u64` helpers that replace `u16::is_multiple_of` (Rust 1.87) and `u64::abs_diff` (Rust 1.60) respectively. Each carries a targeted `#[allow(clippy::...)]` and full MSRV dependency documentation. 18 unit tests covering leap year rules (common, century, quad-century, edge cases, IRIG 106 era years) and abs_diff properties (symmetry, extremes, leap second timestamps).
+- **11 new integration tests** in `tests/pipeline.rs`: leap year rollover through `sub_nanos` (leap, non-leap, century, quad-century), BCD DMY Feb 29 on leap/non-leap years, `is_near_leap_second` via `abs_diff_u64` (exact boundary, within window, outside, symmetry, far future).
 
 ### Changed
 
 - **`AbsoluteTime` internal representation** (P4-04) — Single `u64` replaces 5 numeric fields. `add_nanos` is now a single `u64` addition (was 4-level carry chain). `sub_nanos` year rollover is cleaner arithmetic. `total_nanos_of_day()` is a single modulo operation.
 - **Custom serde for `AbsoluteTime`** — Serializes to the same expanded JSON shape as v0.6 (`day_of_year`, `hours`, `minutes`, `seconds`, `nanoseconds`, `year`, `month`, `day_of_month`) for backward compatibility. Deserializes and recomposes the `u64` internally.
-- **GitHub Actions CI** — Added `wasm32-unknown-unknown` build job. Now verifies 4 feature combos + WASM.
-- **`Cargo.toml`** — Version bumped to 0.7.0.
+- **GitHub Actions CI** — Added `wasm32-unknown-unknown` build job. Separated stable (full `cargo test`) from MSRV 1.56 (`cargo check` only — dev-dependencies require newer Rust). Tests 4 feature combos on stable + WASM + MSRV check.
+- **`Cargo.toml`** — Version bumped to 0.7.0. MSRV lowered from 1.87 to 1.56.
 - **CLI (irig106-time-cli)** — Version bumped to 0.7.0. All `AbsoluteTime` field accesses migrated to methods.
-- **MSRV unchanged** at 1.87 — `is_multiple_of` still used in 3 source files (P6-08 reviewed).
+- **MSRV lowered from 1.87 → 1.56** (P6-08) — Replaced `u16::is_multiple_of` (Rust 1.87) with `util::is_leap_year` and `u64::abs_diff` (Rust 1.60) with `util::abs_diff_u64`. The MSRV is now the Edition 2021 floor. Each helper carries a targeted clippy `#[allow]` and full documentation of the API it replaces, the Rust version it avoids, and when it can be upgraded.
 - **API audit** — `AbsoluteTime` intentionally omits `Ord`/`Hash` because derived `PartialEq` compares all fields including optional year metadata; callers needing within-year ordering should use `as_total_ns()`. To be finalized at 1.0 API freeze.
 - **Documentation** — All code examples in `usage.md` updated for method-based access. Version refs `0.6`→`0.7` across all docs.
 - All consumer modules migrated: `bcd.rs`, `chrono_interop.rs`, `network_time.rs`, `correlation.rs`, `quality.rs`, `streaming.rs`, and all test files.
-- Total test count: **244** (170 unit + 57 integration + 17 property) — unchanged from v0.6.0.
+- Total test count: **269** (184 unit + 68 integration + 17 property).
 
 ## [v0.6.0](https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.6.0) - 2026-03-29
 
