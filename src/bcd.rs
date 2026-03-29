@@ -196,8 +196,8 @@ impl DayFormatTime {
         let ms_hundreds = self.milliseconds / 100;
         let sec_units = self.seconds % 10;
         let sec_tens = self.seconds / 10;
-        let w0: u16 = (ms_tens as u16)
-            | ((ms_hundreds as u16) << 4)
+        let w0: u16 = ms_tens
+            | (ms_hundreds << 4)
             | ((sec_units as u16) << 8)
             | ((sec_tens as u16) << 12);
 
@@ -210,9 +210,9 @@ impl DayFormatTime {
             | ((hr_units as u16) << 8)
             | ((hr_tens as u16) << 12);
 
-        let day_units = (self.day_of_year % 10) as u16;
-        let day_tens = ((self.day_of_year / 10) % 10) as u16;
-        let day_hundreds = ((self.day_of_year / 100) % 10) as u16;
+        let day_units = self.day_of_year % 10;
+        let day_tens = (self.day_of_year / 10) % 10;
+        let day_hundreds = (self.day_of_year / 100) % 10;
         let w2: u16 = day_units | (day_tens << 4) | (day_hundreds << 8);
 
         let w3: u16 = 0; // reserved
@@ -423,8 +423,8 @@ impl DmyFormatTime {
         let ms_hundreds = self.milliseconds / 100;
         let sec_units = self.seconds % 10;
         let sec_tens = self.seconds / 10;
-        let w0: u16 = (ms_tens as u16)
-            | ((ms_hundreds as u16) << 4)
+        let w0: u16 = ms_tens
+            | (ms_hundreds << 4)
             | ((sec_units as u16) << 8)
             | ((sec_tens as u16) << 12);
 
@@ -443,10 +443,10 @@ impl DmyFormatTime {
         let mon_tens = ((self.month / 10) % 10) as u16;
         let w2: u16 = day_units | (day_tens << 4) | (mon_units << 8) | (mon_tens << 12);
 
-        let yr_units = (self.year % 10) as u16;
-        let yr_tens = ((self.year / 10) % 10) as u16;
-        let yr_hundreds = ((self.year / 100) % 10) as u16;
-        let yr_thousands = ((self.year / 1000) % 10) as u16;
+        let yr_units = self.year % 10;
+        let yr_tens = (self.year / 10) % 10;
+        let yr_hundreds = (self.year / 100) % 10;
+        let yr_thousands = (self.year / 1000) % 10;
         let w3: u16 = yr_units | (yr_tens << 4) | (yr_hundreds << 8) | (yr_thousands << 12);
 
         let w4: u16 = 0; // reserved
