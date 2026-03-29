@@ -14,12 +14,14 @@
 //! - **Secondary headers** — Checksum validation and time extraction
 //! - **Intra-packet timestamps** — Format-discriminated timestamp parsing
 //! - **Correlation** — RTC-to-absolute-time interpolation engine with
-//!   multi-channel support, time-jump detection, drift estimation, and
-//!   RTC reset detection
+//!   channel-indexed O(log n) lookup, time-jump detection, drift estimation,
+//!   and RTC reset detection
 //! - **Version detection** — IRIG 106 standard version identification from
 //!   TMATS CSDW, with version-aware CSDW parsing for 106-04 through 106-23
 //! - **Encoding** — `to_le_bytes()` on all wire-format types for packet
 //!   construction (BCD, CSDW, NTP, PTP, RTC)
+//! - **serde** — Optional `Serialize`/`Deserialize` on all public data types
+//!   via the `serde` feature gate
 //!
 //! ## `no_std` Support
 //!

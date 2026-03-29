@@ -16,16 +16,26 @@ use crate::error::{Result, TimeError};
 // BCD helpers
 // ---------------------------------------------------------------------------
 
-/// Extract a multi-bit field from a u16 word and validate each 4-bit BCD nibble.
+/// Lookup table for BCD nibble validation. Valid nibbles (0–9) map to themselves;
+/// invalid nibbles (10–15) map to 0xFF as an error sentinel.
 ///
-/// **Traces:** L3-BCD-001 ← L2-BCD-006, L2-BCD-009
+/// **Traces:** P4-03
+const BCD_LUT: [u8; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF];
+
+/// Extract a 4-bit BCD nibble from a u16 word and validate it via lookup table.
+///
+/// **Traces:** L3-BCD-001 ← L2-BCD-006, L2-BCD-009, P4-03
 #[inline]
 fn extract_bcd_digit(word: u16, bit_offset: u8, position: &'static str) -> Result<u8> {
-    let nibble = ((word >> bit_offset) & 0x0F) as u8;
-    if nibble > 9 {
-        return Err(TimeError::InvalidBcdDigit { nibble, position });
+    let nibble = ((word >> bit_offset) & 0x0F) as usize;
+    let val = BCD_LUT[nibble];
+    if val == 0xFF {
+        return Err(TimeError::InvalidBcdDigit {
+            nibble: nibble as u8,
+            position,
+        });
     }
-    Ok(nibble)
+    Ok(val)
 }
 
 /// Verify that specific bits in a word are zero.
@@ -47,6 +57,7 @@ fn check_reserved(word: u16, mask: u16, position: &'static str) -> Result<()> {
 /// Decoded Day-of-Year format time message (8 bytes).
 ///
 /// **Traces:** L3-BCD-003 ← L2-BCD-001, L2-BCD-002 ← L1-BCD-001
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DayFormatTime {
     /// Milliseconds (0–990, resolution 10 ms).
@@ -231,6 +242,7 @@ impl DayFormatTime {
 /// Decoded Day-Month-Year format time message (10 bytes).
 ///
 /// **Traces:** L3-BCD-004 ← L2-BCD-003, L2-BCD-004 ← L1-BCD-002
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DmyFormatTime {
     /// Milliseconds (0–990, resolution 10 ms).

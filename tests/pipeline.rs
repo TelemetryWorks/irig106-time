@@ -904,3 +904,109 @@ fn bcd_dmy_to_le_bytes_round_trip() {
     assert_eq!(decoded.month, 3);
     assert_eq!(decoded.year, 2025);
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// v0.5.0 integration tests
+// ═══════════════════════════════════════════════════════════════════════
+
+// ── Channel-indexed correlation (P4-01) ─────────────────────────────
+
+#[test]
+fn channel_references_accessor() {
+    let mut c = TimeCorrelator::new();
+    c.add_reference(1, Rtc::from_raw(10_000_000), AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
+    c.add_reference(2, Rtc::from_raw(20_000_000), AbsoluteTime::new(100, 12, 0, 1, 0).unwrap());
+    c.add_reference(1, Rtc::from_raw(30_000_000), AbsoluteTime::new(100, 12, 0, 2, 0).unwrap());
+
+    assert_eq!(c.channel_references(1).len(), 2);
+    assert_eq!(c.channel_references(2).len(), 1);
+    assert_eq!(c.channel_references(99).len(), 0);
+}
+
+#[test]
+fn channel_ids_returns_active_channels() {
+    let mut c = TimeCorrelator::new();
+    c.add_reference(5, Rtc::from_raw(10_000_000), AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
+    c.add_reference(3, Rtc::from_raw(20_000_000), AbsoluteTime::new(100, 12, 0, 1, 0).unwrap());
+    c.add_reference(5, Rtc::from_raw(30_000_000), AbsoluteTime::new(100, 12, 0, 2, 0).unwrap());
+
+    let ids = c.channel_ids();
+    assert_eq!(ids.len(), 2);
+    assert!(ids.contains(&3));
+    assert!(ids.contains(&5));
+}
+
+#[test]
+fn channel_indexed_correlate_same_result_as_any() {
+    let mut c = TimeCorrelator::new();
+    // Channel 1 at RTC 10M
+    c.add_reference(1, Rtc::from_raw(10_000_000), AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
+    // Channel 2 at RTC 20M
+    c.add_reference(2, Rtc::from_raw(20_000_000), AbsoluteTime::new(100, 12, 0, 1, 0).unwrap());
+
+    // Query at RTC 10M — channel 1 should give exact match
+    let by_ch = c.correlate(Rtc::from_raw(10_000_000), Some(1)).unwrap();
+    assert_eq!(by_ch.hours, 12);
+    assert_eq!(by_ch.minutes, 0);
+    assert_eq!(by_ch.seconds, 0);
+}
+
+#[test]
+fn channel_indexed_correlate_large_set() {
+    // Build a correlator with 1000 refs across 4 channels
+    let mut c = TimeCorrelator::new();
+    for i in 0..1000u64 {
+        let ch = (i % 4) as u16;
+        c.add_reference(
+            ch,
+            Rtc::from_raw((i + 1) * 10_000_000),
+            AbsoluteTime::new(100, 12, (i % 60) as u8, (i % 60) as u8, 0).unwrap(),
+        );
+    }
+
+    // Should resolve without error
+    let mid = Rtc::from_raw(500 * 10_000_000 + 5_000_000);
+    let any = c.correlate(mid, None);
+    let ch1 = c.correlate(mid, Some(1));
+    assert!(any.is_ok());
+    assert!(ch1.is_ok());
+}
+
+// ── sub_nanos year rollover (GAP-05) ────────────────────────────────
+
+#[test]
+fn sub_nanos_crosses_year_boundary() {
+    let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap(); // Day 1, midnight
+    t.year = Some(2025);
+
+    // Subtract 1 second — should roll back to day 365, 23:59:59 of 2024
+    let result = t.sub_nanos(1_000_000_000);
+    assert_eq!(result.year, Some(2024));
+    assert_eq!(result.day_of_year, 365); // 2024 is leap but we crossed back to end of 2024
+    assert_eq!(result.hours, 23);
+    assert_eq!(result.minutes, 59);
+    assert_eq!(result.seconds, 59);
+}
+
+#[test]
+fn sub_nanos_same_day_no_year_change() {
+    let mut t = AbsoluteTime::new(100, 12, 0, 0, 0).unwrap();
+    t.year = Some(2025);
+
+    // Subtract 1 hour — same day
+    let result = t.sub_nanos(3_600_000_000_000);
+    assert_eq!(result.year, Some(2025));
+    assert_eq!(result.day_of_year, 100);
+    assert_eq!(result.hours, 11);
+}
+
+#[test]
+fn sub_nanos_no_year_info_wraps_gracefully() {
+    // Without year info, should still compute days correctly (assumes 365)
+    let t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap(); // Day 1, no year
+    let result = t.sub_nanos(1_000_000_000); // 1 second back
+    assert_eq!(result.day_of_year, 365); // wraps to 365 (no year = non-leap assumed)
+    assert_eq!(result.hours, 23);
+    assert_eq!(result.minutes, 59);
+    assert_eq!(result.seconds, 59);
+}

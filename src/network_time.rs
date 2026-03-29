@@ -34,6 +34,7 @@ pub const DEFAULT_TAI_UTC_OFFSET: i32 = 37;
 /// Network time protocol discriminant from the Format 2 CSDW.
 ///
 /// **Traces:** L1-F2CSDW-002
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NetworkTimeProtocol {
     /// Network Time Protocol (RFC 5905). Epoch: 1900-01-01 UTC.
@@ -47,6 +48,7 @@ pub enum NetworkTimeProtocol {
 /// Parsed Time Data Format 2 (0x12) Channel-Specific Data Word.
 ///
 /// **Traces:** L1-F2CSDW-001
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TimeF2Csdw(u32);
 
@@ -112,6 +114,7 @@ impl TimeF2Csdw {
 /// seconds (each fractional unit = 2⁻³² seconds ≈ 233 picoseconds).
 ///
 /// **Traces:** L1-NTP-001, L1-NTP-002
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NtpTime {
     /// Seconds since 1900-01-01 00:00:00 UTC.
@@ -209,6 +212,7 @@ impl NtpTime {
 /// so PTP time differs from UTC by the accumulated leap-second offset.
 ///
 /// **Traces:** L1-PTP-001, L1-PTP-002
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PtpTime {
     /// Seconds since 1970-01-01 00:00:00 TAI (48 bits).
@@ -296,6 +300,7 @@ impl PtpTime {
 // ── Parsed Network Time ──────────────────────────────────────────────
 
 /// Parsed payload from a Format 2 Network Time packet.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NetworkTime {
     /// NTP time (UTC epoch 1900-01-01).
@@ -347,6 +352,7 @@ pub fn parse_time_f2_payload(payload: &[u8]) -> Result<(TimeF2Csdw, NetworkTime)
 /// An entry in the leap-second table.
 ///
 /// **Traces:** L1-TAI-001
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LeapSecondEntry {
     /// Unix timestamp (UTC) at which this offset became effective.
@@ -358,6 +364,7 @@ pub struct LeapSecondEntry {
 /// Table of historical TAI-UTC leap-second offsets.
 ///
 /// **Traces:** L1-TAI-001, L1-TAI-002, L1-TAI-003
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone)]
 pub struct LeapSecondTable {
     /// Entries sorted by `effective_unix` ascending.

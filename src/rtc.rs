@@ -42,6 +42,7 @@ const NANOS_PER_TICK: u64 = 100;
 /// The inner value is guaranteed to fit within 48 bits (≤ `0x0000_FFFF_FFFF_FFFF`).
 ///
 /// **Traces:** L3-RTC-001 ← L2-RTC-001 ← L1-RTC-001
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Rtc(u64);
 

@@ -12,6 +12,7 @@ use crate::error::{Result, TimeError};
 /// Time format discriminant derived from Packet Flag bits \[3:2\].
 ///
 /// **Traces:** L3-SEC-001
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SecHdrTimeFormat {
     /// IRIG 106 Chapter 4 Binary Weighted Time.
@@ -39,6 +40,7 @@ impl SecHdrTimeFormat {
 /// Parsed secondary header time value.
 ///
 /// **Traces:** L3-SEC-003
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SecondaryHeaderTime {
     /// Chapter 4 Binary Weighted Time.

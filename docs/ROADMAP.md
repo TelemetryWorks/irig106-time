@@ -115,14 +115,14 @@ Delivered in v0.2.0. All items complete:
 
 Target: Reduce the hot path below 15 ns and optimize channel-filtered correlation.
 
-| ID | Item | Priority | Effort | Details |
-|----|------|----------|--------|---------|
-| P4-01 | **Channel-indexed correlation** | High | 2 days | Current `nearest_for_channel` is O(n) linear scan (304 ns at 100 refs). Replace with per-channel sorted Vec or BTreeMap for O(log n) lookup. Target: ~15 ns. |
-| P4-02 | **Cached jump detection** | Medium | 1 day | `detect_time_jump` currently rescans all refs every call (303 µs at 3600 refs). Cache per-channel sorted slices and invalidate on insert. |
-| P4-03 | **BCD lookup table** | Low | 0.5 day | Replace per-nibble branch validation with a 256-byte LUT mapping byte → (tens, units, valid). Marginal gain (~1-2 ns) but eliminates branches. |
-| P4-04 | **`AbsoluteTime` as total nanoseconds** | Medium | 2 days | Consider internal representation as a single `u64` (nanos since day 0 midnight) with lazy field extraction. Would make `add_nanos`/`sub_nanos` a single add/sub instead of multi-field carry chain. Breaking API change — evaluate carefully. |
-| P4-05 | **SIMD BCD decode** | Low | 1 day | Experimental: use SIMD to decode all 4 BCD words in parallel. Only worthwhile if BCD decode shows up as a bottleneck in production profiling. |
-| P4-06 | **Benchmark with criterion** | Medium | 0.5 day | Upgrade to criterion when Rust toolchain permits (currently blocked by Rust 1.75 in sandbox). Statistical benchmarks with confidence intervals. |
+| ID | Item | Priority | Effort | Status |
+|----|------|----------|--------|--------|
+| P4-01 | **Channel-indexed correlation** | High | 2 days | ✅ Done (v0.5.0) |
+| P4-02 | **Cached jump detection** | Medium | 1 day | ✅ Done (v0.5.0) |
+| P4-03 | **BCD lookup table** | Low | 0.5 day | ✅ Done (v0.5.0) |
+| P4-04 | **`AbsoluteTime` as total nanoseconds** | Medium | 2 days | Deferred to v1.0 (breaking API change) |
+| P4-05 | **SIMD BCD decode** | Low | 1 day | Deferred (speculative, no profiling evidence) |
+| P4-06 | **Benchmark with criterion** | Medium | 0.5 day | ✅ Done (v0.5.0) |
 
 ### Phase 5: Chapter 11 and Streaming Support (v0.6.0)
 
@@ -158,10 +158,10 @@ Target: Stable API, full ecosystem wiring, migration to `irig106-types`.
 | ID | Gap | Severity | Notes |
 |----|-----|----------|-------|
 | GAP-01 | ~~No `Display` for `AbsoluteTime`~~ | — | ✅ Resolved (v0.3.0). `impl Display` with ISO-like output. |
-| GAP-02 | No `Serialize`/`Deserialize` (serde) | Low | Useful for JSON/CSV export. Feature-gate behind `serde` feature. |
+| GAP-02 | ~~No `Serialize`/`Deserialize` (serde)~~ | — | ✅ Resolved (v0.5.0). Feature-gated behind `serde` feature on all public data types except `TimeError`. |
 | GAP-03 | Ch4 BinaryTime decode is simplified | Medium | The combined high/low word interpretation assumes a specific bit layout. Need to validate against real Ch4 BWT samples from legacy recorders (Ampex DCRsi, L-3 MARS, Acra KAM-500). Blocked on P2-05 file corpus. |
 | GAP-04 | No leap second handling for Format 1 time sources | Low | PTP leap seconds handled via `LeapSecondTable` (v0.2.0). IRIG-B/GPS Format 1 time codes can also carry leap second info — not yet decoded. |
-| GAP-05 | `AbsoluteTime::sub_nanos` doesn't handle year rollover | Low | Subtracting past day 1 wraps to day 366. Need year-aware arithmetic for multi-day recordings. |
+| GAP-05 | ~~`AbsoluteTime::sub_nanos` doesn't handle year rollover~~ | — | ✅ Resolved (v0.5.0). Correctly decrements year across day-1 boundary with leap-year-aware day count. |
 | GAP-06 | No `From`/`Into` conversions to `chrono` or `time` crates | Low | Optional feature-gated interop with popular Rust time libraries. |
 | GAP-07 | ~~Correlation doesn't handle RTC reset mid-recording~~ | — | ✅ Resolved (v0.4.0). `TimeCorrelator::detect_rtc_resets(channel_id)` with `RtcReset` struct. |
 | GAP-08 | No support for time data in Ch10 Recording Events (0x02) | Low | Event packets carry timestamps that could be used as additional correlation points. |
@@ -197,6 +197,6 @@ Target: Stable API, full ecosystem wiring, migration to `irig106-types`.
 | **0.2.0** | Phase 3 | Time Data Format 2 (0x12), NTP, PTPv2, LeapSecondTable, correlator F2 integration | Released |
 | **0.3.0** | Phase 1 | CI/CD, `#[deny(missing_docs)]`, proptest, `Display`, drift_ppm, calendar validation, CLI Proto column | Released |
 | **0.4.0** | Phase 2 | Version detection, version-aware CSDW, OOO window, RTC reset detection, `to_le_bytes()` encoding | Released |
-| **0.5.0** | Phase 4 | Channel-indexed correlation, perf optimizations | +2 months |
+| **0.5.0** | Phase 4 | Channel-indexed O(log n) correlation, BCD LUT, criterion benchmarks, serde, sub_nanos year fix | Released |
 | **0.6.0** | Phase 5 | Streaming correlator, Ch11 awareness, quality metrics | +3 months |
 | **1.0.0** | Phase 6 | Stable API, ecosystem wiring, irig106-types migration | +5 months |

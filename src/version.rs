@@ -19,6 +19,7 @@
 /// - **V09** (2009): Clarifications only — no time format changes.
 /// - **V17** (2017): Ch10/Ch11 split. Time fields identical across both chapters.
 /// - **V22** (2022): Time Data Format 2 (0x12) — NTP/PTP network time.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Irig106Version {
     /// Pre-07 file (version field = 0). Assume 106-04/05 behavior.

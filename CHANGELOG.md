@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.5.0](https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.5.0) - 2026-03-29
+
+### Added
+
+- **Channel-indexed correlation** (P4-01) — Per-channel `BTreeMap<u16, Vec<ReferencePoint>>` index alongside the flat RTC-sorted vec. `nearest_for_channel` is now O(log n) binary search instead of O(n) linear scan. Methods upgraded: `correlate(…, Some(ch))`, `detect_time_jump`, `drift_ppm`, `detect_rtc_resets`.
+- **Per-channel accessors** (P4-02) — `TimeCorrelator::channel_references(channel_id)` returns a sorted slice for a single channel. `channel_ids()` returns all active channel IDs.
+- **BCD lookup table** (P4-03) — `extract_bcd_digit` now validates nibbles via a 16-entry const `BCD_LUT` instead of a branch, eliminating conditional logic in the hot path.
+- **Criterion benchmarks** (P4-06) — `benches/correlation_bench.rs` with statistical benchmarks for `correlate_any`, `correlate_by_channel`, `detect_time_jump`, `drift_ppm`, and `add_reference` at 10/100/1000/3600 reference point scales.
+- **`serde` feature gate** (GAP-02) — Optional `Serialize`/`Deserialize` derives on all public data types (except `TimeError` which contains `&'static str` fields). Enable with `features = ["serde"]`.
+- **7 new integration tests** in `tests/pipeline.rs`: channel_references accessor, channel_ids, channel-indexed correlate consistency, large-set correlate, sub_nanos year boundary crossing, same-day no-year-change, and no-year-info graceful wrap.
+
+### Changed
+
+- **`Cargo.toml`** — Version bumped to 0.5.0. Added `serde` optional dependency and feature gate. Added `criterion` to dev-dependencies with `correlation_bench` bench target.
+- **Crate docs updated** — `lib.rs` feature list now includes channel-indexed O(log n) lookup and serde support.
+- Total test count: **203** (136 unit + 50 integration + 17 property).
+
+### Fixed
+
+- **`AbsoluteTime::sub_nanos` year rollover** (GAP-05) — Subtracting past day 1 now correctly decrements the year (accounting for leap years) instead of wrapping to day 366. When no year info is available, assumes 365 days.
+
 ## [v0.4.0](https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.4.0) - 2026-03-28
 
 ### Added

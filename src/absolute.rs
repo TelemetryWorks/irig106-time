@@ -21,6 +21,7 @@ use crate::error::{Result, TimeError};
 /// calendar date (month/day/year) when DMY data is available.
 ///
 /// **Traces:** L3-ABS-001 ← L2-ABS-001, L2-ABS-002 ← L1-ABS-001
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AbsoluteTime {
     /// Day of year (1–366).
@@ -299,6 +300,7 @@ impl core::fmt::Display for AbsoluteTime {
 /// timestamps.
 ///
 /// **Traces:** L3-CH4-001 ← L2-ABS-003 ← L1-ABS-002
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Ch4BinaryTime {
     /// High-order 16 bits of the binary time word.
@@ -388,6 +390,7 @@ impl Ch4BinaryTime {
 /// timestamps.
 ///
 /// **Traces:** L3-1588-001 ← L2-ABS-005 ← L1-ABS-003
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Ieee1588Time {
     /// Nanoseconds within the current second (0–999_999_999).
@@ -441,6 +444,7 @@ impl Ieee1588Time {
 /// Same 100 ns resolution as the 48-bit RTC but with a full 64-bit range.
 ///
 /// **Traces:** L3-ERTC-001 ← L2-ABS-007 ← L1-ABS-004
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Ertc(u64);
 
