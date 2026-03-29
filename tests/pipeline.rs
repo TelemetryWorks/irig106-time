@@ -979,10 +979,11 @@ fn sub_nanos_crosses_year_boundary() {
     let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap(); // Day 1, midnight
     t.year = Some(2025);
 
-    // Subtract 1 second — should roll back to day 365, 23:59:59 of 2024
+    // Subtract 1 second — should roll back to day 366, 23:59:59 of 2024
+    // (2024 is a leap year → 366 days)
     let result = t.sub_nanos(1_000_000_000);
     assert_eq!(result.year, Some(2024));
-    assert_eq!(result.day_of_year, 365); // 2024 is leap but we crossed back to end of 2024
+    assert_eq!(result.day_of_year, 366);
     assert_eq!(result.hours, 23);
     assert_eq!(result.minutes, 59);
     assert_eq!(result.seconds, 59);
