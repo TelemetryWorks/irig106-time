@@ -64,3 +64,14 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo build --manifest-path irig106-time-cli/Cargo.toml
       - run: cargo clippy --manifest-path irig106-time-cli/Cargo.toml --all-targets -- -D warnings
+
+  wasm:
+    name: WASM Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - run: cargo build --target wasm32-unknown-unknown --no-default-features
+      - run: cargo build --target wasm32-unknown-unknown --no-default-features --features serde

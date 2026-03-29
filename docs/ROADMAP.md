@@ -132,7 +132,7 @@ Target: Handle Ch11 packet formats and real-time UDP stream correlation.
 |----|------|----------|--------|--------|
 | P5-01 | **Ch11 packet format awareness** | Medium | 1 day | ✅ Done (v0.6.0) |
 | P5-02 | **Streaming correlator** | High | 3 days | ✅ Done (v0.6.0) |
-| P5-03 | **UDP transfer header time handling** | Medium | 1 day | Documentation-only (v0.6.0) |
+| P5-03 | **UDP transfer header time handling** | Medium | 1 day | ✅ Done (v0.7.0) — `docs/udp_framing.md` |
 | P5-04 | **Time quality metrics** | Medium | 2 days | ✅ Done (v0.6.0) |
 | P5-05 | **Async correlation API** | — | — | Won't do — application concern, not library concern. The `StreamingTimeCorrelator` provides synchronous `&mut self` methods that work naturally in async contexts via `Arc<Mutex<_>>` or channel-based patterns. Adding `tokio` to a `#![no_std]` parsing library would violate layering and contaminate the dependency tree. |
 
@@ -147,7 +147,7 @@ Target: Stable API, full ecosystem wiring, migration to `irig106-types`.
 | P6-03 | **Wire `irig106-ch10-reader` to use correlation** | High | 2 days | Replace the "Not available" time display in the reader with actual correlated times using `TimeCorrelator`. |
 | P6-04 | **Wire `irig106-decode` intra-packet timestamps** | High | 1 day | Payload decoders should use `IntraPacketTime` for message-level timestamps. |
 | P6-05 | ~~Wire `irig106-write` BCD encoding~~ | — | — | ✅ `to_le_bytes()` shipped in v0.4.0 for all wire-format types. |
-| P6-06 | **Wire `irig106-studio` WASM** | Medium | 1 day | Verify `#![no_std]` + `alloc` compiles to wasm32-unknown-unknown. Add WASM-specific tests. |
+| P6-06 | **Wire `irig106-studio` WASM** | Medium | 1 day | ✅ Done (v0.7.0) — CI verifies `wasm32-unknown-unknown` build with `--no-default-features` and `--features serde`. |
 | P6-07 | **Semantic versioning freeze** | High | — | Declare 1.0.0 stable API. No breaking changes without major version bump. |
 | P6-08 | **MSRV policy** | Medium | — | Reviewed in v0.7.0: MSRV stays at `1.87` — `is_multiple_of` used in 3 files, replacing with `%` triggers clippy `manual_is_multiple_of`. |
 

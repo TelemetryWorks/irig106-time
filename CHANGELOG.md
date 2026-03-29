@@ -21,14 +21,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`AbsoluteTime::as_total_ns()`** — Exposes the raw internal nanosecond count for efficient comparison and serialization.
 - **`AbsoluteTime::set_year()`, `set_month()`, `set_day_of_month()`** — Setter methods for optional calendar metadata fields.
+- **UDP framing documentation** (P5-03) — New `docs/udp_framing.md` documenting that UDP Transfer Format 1 and 2 headers carry no time fields, and how to use `StreamingTimeCorrelator` for live UDP streams.
+- **WASM build verification** (P6-06) — CI now verifies `wasm32-unknown-unknown` compilation with `--no-default-features` and `--no-default-features --features serde`.
 
 ### Changed
 
 - **`AbsoluteTime` internal representation** (P4-04) — Single `u64` replaces 5 numeric fields. `add_nanos` is now a single `u64` addition (was 4-level carry chain). `sub_nanos` year rollover is cleaner arithmetic. `total_nanos_of_day()` is a single modulo operation.
 - **Custom serde for `AbsoluteTime`** — Serializes to the same expanded JSON shape as v0.6 (`day_of_year`, `hours`, `minutes`, `seconds`, `nanoseconds`, `year`, `month`, `day_of_month`) for backward compatibility. Deserializes and recomposes the `u64` internally.
+- **GitHub Actions CI** — Added `wasm32-unknown-unknown` build job. Now verifies 4 feature combos + WASM.
 - **`Cargo.toml`** — Version bumped to 0.7.0.
 - **CLI (irig106-time-cli)** — Version bumped to 0.7.0. All `AbsoluteTime` field accesses migrated to methods.
-- **MSRV unchanged** at 1.87 — `is_multiple_of` still used in 3 source files. Replacing with `%` would trigger clippy `manual_is_multiple_of`.
+- **MSRV unchanged** at 1.87 — `is_multiple_of` still used in 3 source files (P6-08 reviewed).
+- **API audit** — `AbsoluteTime` intentionally omits `Ord`/`Hash` because derived `PartialEq` compares all fields including optional year metadata; callers needing within-year ordering should use `as_total_ns()`. To be finalized at 1.0 API freeze.
+- **Documentation** — All code examples in `usage.md` updated for method-based access. Version refs `0.6`→`0.7` across all docs.
 - All consumer modules migrated: `bcd.rs`, `chrono_interop.rs`, `network_time.rs`, `correlation.rs`, `quality.rs`, `streaming.rs`, and all test files.
 - Total test count: **244** (170 unit + 57 integration + 17 property) — unchanged from v0.6.0.
 
