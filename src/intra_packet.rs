@@ -34,7 +34,7 @@ impl IntraPacketTimeFormat {
     /// Derive the intra-packet time format from Packet Flag bits.
     ///
     /// - If bit 2 (secondary header present) is clear, the format is always RTC.
-    /// - If bit 2 is set, bits [3:2] select the format:
+    /// - If bit 2 is set, bits \[3:2\] select the format:
     ///   0 = Ch4, 1 = IEEE-1588, 2 = ERTC.
     pub fn from_packet_flags(flags: u8) -> Self {
         let has_secondary = (flags & 0x04) != 0;

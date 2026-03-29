@@ -113,7 +113,7 @@ impl TimeF1Csdw {
         self.0
     }
 
-    /// Time source (bits [3:0]).
+    /// Time source (bits \[3:0\]).
     ///
     /// **Traces:** L3-CSDW-004 ← L2-CSDW-002
     #[inline]
@@ -121,7 +121,7 @@ impl TimeF1Csdw {
         TimeSource::from_raw((self.0 & 0x0F) as u8)
     }
 
-    /// Time format (bits [7:4]).
+    /// Time format (bits \[7:4\]).
     ///
     /// **Traces:** L3-CSDW-005 ← L2-CSDW-004
     #[inline]

@@ -267,7 +267,7 @@ impl core::fmt::Display for AbsoluteTime {
 
 /// IRIG 106 Chapter 4 Binary Weighted Time.
 ///
-/// Used in secondary headers (Packet Flag bits [3:2] = 0b00) and intra-packet
+/// Used in secondary headers (Packet Flag bits \[3:2\] = 0b00) and intra-packet
 /// timestamps.
 ///
 /// **Traces:** L3-CH4-001 ← L2-ABS-003 ← L1-ABS-002
@@ -356,7 +356,7 @@ impl Ch4BinaryTime {
 
 /// IEEE-1588 Precision Time Protocol time value.
 ///
-/// Used in secondary headers (Packet Flag bits [3:2] = 0b01) and intra-packet
+/// Used in secondary headers (Packet Flag bits \[3:2\] = 0b01) and intra-packet
 /// timestamps.
 ///
 /// **Traces:** L3-1588-001 ← L2-ABS-005 ← L1-ABS-003

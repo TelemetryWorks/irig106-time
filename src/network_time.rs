@@ -69,7 +69,7 @@ impl TimeF2Csdw {
         self.0
     }
 
-    /// Time protocol (bits [3:0]).
+    /// Time protocol (bits \[3:0\]).
     ///
     /// **Traces:** L1-F2CSDW-002
     #[inline]
@@ -81,7 +81,7 @@ impl TimeF2Csdw {
         }
     }
 
-    /// Check that reserved bits [31:4] are zero.
+    /// Check that reserved bits \[31:4\] are zero.
     ///
     /// **Traces:** L1-F2CSDW-003
     pub fn validate_reserved(&self) -> Result<()> {

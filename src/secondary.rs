@@ -9,7 +9,7 @@
 use crate::absolute::{Ch4BinaryTime, Ertc, Ieee1588Time};
 use crate::error::{Result, TimeError};
 
-/// Time format discriminant derived from Packet Flag bits [3:2].
+/// Time format discriminant derived from Packet Flag bits \[3:2\].
 ///
 /// **Traces:** L3-SEC-001
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,7 +25,7 @@ pub enum SecHdrTimeFormat {
 }
 
 impl SecHdrTimeFormat {
-    /// Decode from Packet Flag bits [3:2].
+    /// Decode from Packet Flag bits \[3:2\].
     pub fn from_packet_flags(flags: u8) -> Self {
         match (flags >> 2) & 0x03 {
             0 => SecHdrTimeFormat::Ch4,
