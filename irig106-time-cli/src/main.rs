@@ -176,7 +176,7 @@ impl Ch10TimeScanner {
                 Some(h) => h,
                 None => {
                     // Try to find next sync
-                    if let Some(next) = find_next_sync(&mmap, offset + 1) {
+                    if let Some(next) = find_next_sync(mmap, offset + 1) {
                         self.errors.push(format!(
                             "Sync lost at {:#X}, recovered at {:#X} ({} bytes skipped)",
                             offset, next, next - offset
@@ -455,7 +455,7 @@ fn fmt_comma(n: usize) -> String {
     let bytes = s.as_bytes();
     let mut result = String::new();
     for (i, b) in bytes.iter().enumerate() {
-        if i > 0 && (bytes.len() - i) % 3 == 0 {
+        if i > 0 && (bytes.len() - i).is_multiple_of(3) {
             result.push(',');
         }
         result.push(*b as char);
@@ -495,7 +495,7 @@ fn cmd_summary(mmap: &[u8], filename: &str) {
     if !scanner.time_channels.is_empty() {
         println!("Time Channels");
         println!("─────────────");
-        for (_, info) in &scanner.time_channels {
+        for info in scanner.time_channels.values() {
             println!(
                 "  Channel {:>3}  │  Source: {:<12}  Format: {:<8}  Date: {:<4}  Leap: {}  Packets: {}",
                 info.channel_id,
@@ -583,7 +583,7 @@ fn cmd_channels(mmap: &[u8]) {
     );
     println!("{}", "─".repeat(120));
 
-    for (_, info) in &scanner.time_channels {
+    for info in scanner.time_channels.values() {
         println!("{:>7}  {:<12}  {:<10}  {:<5}  {:<5}  {:>8}  {:>28}  {:>28}",
             info.channel_id,
             info.source.as_ref().map(fmt_time_source).unwrap_or("?"),
@@ -599,8 +599,8 @@ fn cmd_channels(mmap: &[u8]) {
                 None => "?",
             },
             fmt_comma(info.packet_count),
-            info.first_time.as_ref().map(|t| fmt_abs_time(t)).unwrap_or_default(),
-            info.last_time.as_ref().map(|t| fmt_abs_time(t)).unwrap_or_default(),
+            info.first_time.as_ref().map(fmt_abs_time).unwrap_or_default(),
+            info.last_time.as_ref().map(fmt_abs_time).unwrap_or_default(),
         );
     }
 }
@@ -657,7 +657,7 @@ fn cmd_timeline(mmap: &[u8], limit: usize) {
             r.channel_id,
             fmt_data_type_short(r.data_type),
             r.rtc.as_raw(),
-            r.abs_time.as_ref().map(|t| fmt_abs_time(t)).unwrap_or_else(|| "N/A".to_string()),
+            r.abs_time.as_ref().map(fmt_abs_time).unwrap_or_else(|| "N/A".to_string()),
         );
     }
 
@@ -734,9 +734,8 @@ fn cmd_correlate(mmap: &[u8], rtc_hex: &str) {
 
     // Per-channel
     for ch in scanner.time_channels.keys() {
-        match scanner.correlator.correlate(target, Some(*ch)) {
-            Ok(t) => println!("  Channel {:>3}  → {}", ch, fmt_abs_time(&t)),
-            Err(_) => {}
+        if let Ok(t) = scanner.correlator.correlate(target, Some(*ch)) {
+            println!("  Channel {:>3}  → {}", ch, fmt_abs_time(&t));
         }
     }
 }
