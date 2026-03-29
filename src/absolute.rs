@@ -194,7 +194,7 @@ impl AbsoluteTime {
                 year: self.year,
             }
         } else {
-            // Borrow from previous days
+            // Borrow from previous days, handling year rollover (GAP-05)
             let nanos_per_day: u64 = 86_400 * 1_000_000_000;
             let deficit = nanos - current_ns;
             let days_back = deficit.div_ceil(nanos_per_day) as u16;
@@ -205,11 +205,39 @@ impl AbsoluteTime {
             let hours = (total_seconds / 3600) as u8;
             let minutes = ((total_seconds % 3600) / 60) as u8;
             let seconds = (total_seconds % 60) as u8;
-            let new_day = if self.day_of_year > days_back {
-                self.day_of_year - days_back
+
+            let mut new_day = self.day_of_year;
+            let mut new_year = self.year;
+
+            if new_day > days_back {
+                new_day -= days_back;
             } else {
-                366 - (days_back - self.day_of_year)
-            };
+                // Cross year boundary: roll back into previous year(s)
+                let mut remaining_days = days_back - new_day;
+                loop {
+                    // Determine days in the previous year
+                    let prev_year = new_year.map(|y| y.saturating_sub(1));
+                    let days_in_prev_year = match prev_year {
+                        Some(y) => {
+                            if (y.is_multiple_of(4) && !y.is_multiple_of(100))
+                                || y.is_multiple_of(400)
+                            {
+                                366u16
+                            } else {
+                                365
+                            }
+                        }
+                        None => 365, // no year info, assume non-leap
+                    };
+                    new_year = prev_year;
+                    if remaining_days < days_in_prev_year {
+                        new_day = days_in_prev_year - remaining_days;
+                        break;
+                    }
+                    remaining_days -= days_in_prev_year;
+                }
+            }
+
             Self {
                 day_of_year: new_day,
                 hours,
@@ -218,7 +246,7 @@ impl AbsoluteTime {
                 nanoseconds: ns_part,
                 month: self.month,
                 day_of_month: self.day_of_month,
-                year: self.year,
+                year: new_year,
             }
         }
     }

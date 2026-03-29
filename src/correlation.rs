@@ -3,6 +3,15 @@
 //! Correlates 48-bit RTC values to absolute clock time using reference points
 //! from Time Data Format 1 packets that pair each RTC with an absolute time.
 //!
+//! # Performance
+//!
+//! Reference points are stored in two structures:
+//! - A flat `Vec` sorted by RTC for efficient any-channel nearest-point lookup (O(log n))
+//! - A per-channel `BTreeMap<u16, Vec<ReferencePoint>>` for O(log n) channel-filtered lookup
+//!
+//! This eliminates the O(n) linear scans from v0.4.0 for `nearest_for_channel`,
+//! `detect_time_jump`, `drift_ppm`, and `detect_rtc_resets`.
+//!
 //! # Requirement Traceability
 //!
 //! | Requirement | Description |
@@ -14,8 +23,11 @@
 //! | L3-COR-005  | Channel-filtered correlation |
 //! | L3-COR-006  | `TimeJump` detection struct |
 //! | L3-COR-007  | `detect_time_jump` algorithm |
+//! | P4-01       | Channel-indexed O(log n) lookup |
+//! | P4-02       | Per-channel cached access |
 
 extern crate alloc;
+use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
 use crate::absolute::AbsoluteTime;
@@ -52,19 +64,6 @@ pub struct TimeJump {
     pub delta_nanos: i64,
 }
 
-/// Correlates RTC values to absolute time using time data reference points.
-///
-/// Reference points are kept sorted by RTC for efficient nearest-point lookup.
-///
-/// **Traces:** L3-COR-002 ← L2-COR-001
-pub struct TimeCorrelator {
-    references: Vec<ReferencePoint>,
-    /// Maximum out-of-order window in nanoseconds.
-    /// When set, `correlate` only considers reference points within this
-    /// RTC distance of the target. `None` means unbounded (search all).
-    ooo_window_ns: Option<u64>,
-}
-
 /// A detected RTC counter reset (as opposed to a 48-bit wrap).
 ///
 /// A reset is flagged when the RTC value decreases by more than a plausible
@@ -87,11 +86,28 @@ pub struct RtcReset {
     pub time_after: AbsoluteTime,
 }
 
+/// Correlates RTC values to absolute time using time data reference points.
+///
+/// Reference points are stored in a flat RTC-sorted vec (for any-channel lookup)
+/// and a per-channel index (for O(log n) channel-filtered operations).
+///
+/// **Traces:** L3-COR-002 ← L2-COR-001, P4-01
+pub struct TimeCorrelator {
+    /// All reference points sorted by RTC (for `nearest_any`).
+    references: Vec<ReferencePoint>,
+    /// Per-channel reference points, each vec sorted by RTC.
+    /// **Traces:** P4-01, P4-02
+    channel_index: BTreeMap<u16, Vec<ReferencePoint>>,
+    /// Maximum out-of-order window in nanoseconds.
+    ooo_window_ns: Option<u64>,
+}
+
 impl TimeCorrelator {
     /// Create a new empty correlator with unbounded out-of-order tolerance.
     pub fn new() -> Self {
         Self {
             references: Vec::new(),
+            channel_index: BTreeMap::new(),
             ooo_window_ns: None,
         }
     }
@@ -106,6 +122,7 @@ impl TimeCorrelator {
     pub fn with_ooo_window(ooo_window_ns: Option<u64>) -> Self {
         Self {
             references: Vec::new(),
+            channel_index: BTreeMap::new(),
             ooo_window_ns,
         }
     }
@@ -123,20 +140,30 @@ impl TimeCorrelator {
         self.references.is_empty()
     }
 
-    /// Insert a reference point, maintaining RTC sort order.
+    /// Insert a reference point, maintaining RTC sort order in both the
+    /// flat list and the per-channel index.
     ///
-    /// **Traces:** L3-COR-003 ← L2-COR-002
+    /// **Traces:** L3-COR-003 ← L2-COR-002, P4-01
     pub fn add_reference(&mut self, channel_id: u16, rtc: Rtc, time: AbsoluteTime) {
         let point = ReferencePoint {
             channel_id,
             rtc,
             time,
         };
+
+        // Insert into flat sorted list
         let pos = self
             .references
             .binary_search_by_key(&rtc, |r| r.rtc)
             .unwrap_or_else(|e| e);
         self.references.insert(pos, point);
+
+        // Insert into per-channel sorted list
+        let channel_refs = self.channel_index.entry(channel_id).or_default();
+        let ch_pos = channel_refs
+            .binary_search_by_key(&rtc, |r| r.rtc)
+            .unwrap_or_else(|e| e);
+        channel_refs.insert(ch_pos, point);
     }
 
     /// Insert a Format 2 (Network Time) reference point.
@@ -171,7 +198,7 @@ impl TimeCorrelator {
     /// Correlate an RTC value to absolute time using the nearest reference point.
     ///
     /// If `channel_id` is `Some(id)`, only reference points from that channel
-    /// are considered.
+    /// are considered (O(log n) via per-channel index).
     ///
     /// **Traces:** L3-COR-004, L3-COR-005 ← L2-COR-003..L2-COR-005
     pub fn correlate(&self, target_rtc: Rtc, channel_id: Option<u16>) -> Result<AbsoluteTime> {
@@ -190,6 +217,8 @@ impl TimeCorrelator {
     }
 
     /// Find the nearest reference point (any channel) by RTC.
+    ///
+    /// O(log n) via binary search on the flat sorted list.
     fn nearest_any(&self, target: Rtc) -> Result<&ReferencePoint> {
         if self.references.is_empty() {
             return Err(TimeError::NoReferencePoint);
@@ -200,86 +229,76 @@ impl TimeCorrelator {
             .binary_search_by_key(&target, |r| r.rtc)
             .unwrap_or_else(|e| e);
 
-        // Check the insertion point and its neighbor for closest
         if idx == 0 {
             Ok(&self.references[0])
         } else if idx >= self.references.len() {
             Ok(&self.references[self.references.len() - 1])
         } else {
-            // Check both idx-1 and idx
-            Ok(self.closer_of(idx - 1, idx, target))
+            Ok(self.closer_ref(&self.references[idx - 1], &self.references[idx], target))
         }
     }
 
     /// Find the nearest reference point for a specific channel.
     ///
-    /// **Traces:** L3-COR-005
+    /// O(log n) via binary search on the per-channel sorted list.
+    ///
+    /// **Traces:** L3-COR-005, P4-01
     fn nearest_for_channel(&self, target: Rtc, channel_id: u16) -> Result<&ReferencePoint> {
-        let filtered: Vec<&ReferencePoint> = self
-            .references
-            .iter()
-            .filter(|r| r.channel_id == channel_id)
-            .collect();
+        let ch_refs = self
+            .channel_index
+            .get(&channel_id)
+            .ok_or(TimeError::NoReferencePoint)?;
 
-        if filtered.is_empty() {
+        if ch_refs.is_empty() {
             return Err(TimeError::NoReferencePoint);
         }
 
-        let mut best = filtered[0];
-        let mut best_dist = best
-            .rtc
-            .elapsed_ticks(target)
-            .min(target.elapsed_ticks(best.rtc));
+        let idx = ch_refs
+            .binary_search_by_key(&target, |r| r.rtc)
+            .unwrap_or_else(|e| e);
 
-        for &r in &filtered[1..] {
-            let dist = r.rtc.elapsed_ticks(target).min(target.elapsed_ticks(r.rtc));
-            if dist < best_dist {
-                best = r;
-                best_dist = dist;
-            }
+        if idx == 0 {
+            Ok(&ch_refs[0])
+        } else if idx >= ch_refs.len() {
+            Ok(&ch_refs[ch_refs.len() - 1])
+        } else {
+            Ok(self.closer_ref(&ch_refs[idx - 1], &ch_refs[idx], target))
         }
-
-        Ok(best)
     }
 
-    /// Return whichever of two indexed reference points is closer to target.
-    fn closer_of(&self, a: usize, b: usize, target: Rtc) -> &ReferencePoint {
-        let da = self.references[a]
-            .rtc
-            .elapsed_ticks(target)
-            .min(target.elapsed_ticks(self.references[a].rtc));
-        let db = self.references[b]
-            .rtc
-            .elapsed_ticks(target)
-            .min(target.elapsed_ticks(self.references[b].rtc));
+    /// Return whichever of two reference points is closer to the target RTC.
+    fn closer_ref<'a>(
+        &self,
+        a: &'a ReferencePoint,
+        b: &'a ReferencePoint,
+        target: Rtc,
+    ) -> &'a ReferencePoint {
+        let da = a.rtc.elapsed_ticks(target).min(target.elapsed_ticks(a.rtc));
+        let db = b.rtc.elapsed_ticks(target).min(target.elapsed_ticks(b.rtc));
         if da <= db {
-            &self.references[a]
+            a
         } else {
-            &self.references[b]
+            b
         }
     }
 
     /// Detect time jumps on a specific channel.
     ///
-    /// A jump is flagged when the absolute time difference between consecutive
-    /// reference points on the same channel deviates from the RTC-predicted
-    /// delta by more than `threshold_ns` nanoseconds.
+    /// Uses the per-channel index for O(m) iteration where m is the number
+    /// of reference points on this channel (no cross-channel filtering).
     ///
-    /// **Traces:** L3-COR-007 ← L2-COR-006
+    /// **Traces:** L3-COR-007 ← L2-COR-006, P4-02
     pub fn detect_time_jump(&self, channel_id: u16, threshold_ns: u64) -> Vec<TimeJump> {
-        let filtered: Vec<(usize, &ReferencePoint)> = self
-            .references
-            .iter()
-            .enumerate()
-            .filter(|(_, r)| r.channel_id == channel_id)
-            .collect();
+        let ch_refs = match self.channel_index.get(&channel_id) {
+            Some(refs) => refs,
+            None => return Vec::new(),
+        };
 
         let mut jumps = Vec::new();
 
-        for window in filtered.windows(2) {
-            let (idx_prev, prev) = window[0];
-            let (idx_curr, curr) = window[1];
-            let _ = idx_prev; // prev index not needed in output
+        for window in ch_refs.windows(2) {
+            let prev = &window[0];
+            let curr = &window[1];
 
             let rtc_delta_nanos = prev.rtc.elapsed_nanos(curr.rtc);
             let expected_nanos = prev.time.total_nanos_of_day() + rtc_delta_nanos;
@@ -287,8 +306,15 @@ impl TimeCorrelator {
 
             let delta = actual_nanos as i64 - expected_nanos as i64;
             if delta.unsigned_abs() > threshold_ns {
+                // Find the global index for this reference point
+                let global_idx = self
+                    .references
+                    .iter()
+                    .position(|r| r.rtc == curr.rtc && r.channel_id == channel_id)
+                    .unwrap_or(0);
+
                 jumps.push(TimeJump {
-                    index: idx_curr,
+                    index: global_idx,
                     channel_id,
                     expected_nanos,
                     actual_nanos,
@@ -300,44 +326,55 @@ impl TimeCorrelator {
         jumps
     }
 
-    /// Access all reference points (sorted by RTC).
+    /// Access all reference points (sorted by RTC across all channels).
     pub fn references(&self) -> &[ReferencePoint] {
         &self.references
+    }
+
+    /// Access reference points for a specific channel (sorted by RTC).
+    ///
+    /// Returns an empty slice if no reference points exist for the channel.
+    ///
+    /// **Traces:** P4-01
+    pub fn channel_references(&self, channel_id: u16) -> &[ReferencePoint] {
+        self.channel_index
+            .get(&channel_id)
+            .map(|v| v.as_slice())
+            .unwrap_or(&[])
+    }
+
+    /// Returns the set of channel IDs that have reference points.
+    pub fn channel_ids(&self) -> Vec<u16> {
+        self.channel_index.keys().copied().collect()
     }
 
     /// Estimate the clock drift in parts-per-million between two reference points
     /// on the given channel.
     ///
-    /// Compares the RTC progression against absolute time progression for
-    /// consecutive same-channel reference pairs and returns the average drift.
-    /// A positive value means the RTC is running fast relative to the reference
-    /// clock; negative means slow.
+    /// Uses the per-channel index for direct iteration (no filtering).
     ///
     /// Returns `None` if fewer than 2 reference points exist for the channel.
+    ///
+    /// **Traces:** P4-02
     pub fn drift_ppm(&self, channel_id: u16) -> Option<f64> {
-        let channel_refs: Vec<&ReferencePoint> = self
-            .references
-            .iter()
-            .filter(|r| r.channel_id == channel_id)
-            .collect();
+        let ch_refs = self.channel_index.get(&channel_id)?;
 
-        if channel_refs.len() < 2 {
+        if ch_refs.len() < 2 {
             return None;
         }
 
         let mut total_drift = 0.0f64;
         let mut pair_count = 0u64;
 
-        for pair in channel_refs.windows(2) {
-            let r0 = pair[0];
-            let r1 = pair[1];
+        for pair in ch_refs.windows(2) {
+            let r0 = &pair[0];
+            let r1 = &pair[1];
 
             let rtc_delta_ns = r0.rtc.elapsed_nanos(r1.rtc) as f64;
             if rtc_delta_ns == 0.0 {
                 continue;
             }
 
-            // Compute expected absolute time delta in nanoseconds
             let abs_ns_0 = ((r0.time.day_of_year as u64).saturating_sub(1)) * 86_400_000_000_000
                 + r0.time.total_nanos_of_day();
             let abs_ns_1 = ((r1.time.day_of_year as u64).saturating_sub(1)) * 86_400_000_000_000
@@ -348,7 +385,6 @@ impl TimeCorrelator {
                 continue;
             }
 
-            // drift = (rtc_elapsed - abs_elapsed) / abs_elapsed * 1_000_000
             let drift = (rtc_delta_ns - abs_delta_ns) / abs_delta_ns * 1_000_000.0;
             total_drift += drift;
             pair_count += 1;
@@ -363,43 +399,30 @@ impl TimeCorrelator {
 
     /// Detect RTC counter resets on a specific channel.
     ///
-    /// A reset is distinguished from a normal 48-bit wrap by checking whether
-    /// absolute time advanced while the RTC went backward. In a true wrap,
-    /// the RTC would advance through `0x0000_FFFF_FFFF_FFFF` → `0x0000_0000`;
-    /// in a reset, the RTC drops to a small value while absolute time
-    /// continues forward.
+    /// Uses the per-channel index, sorted by absolute time, to detect
+    /// points where absolute time advances but RTC goes backward.
     ///
-    /// The heuristic: if the RTC of a later reference point is *less than*
-    /// the previous one (by raw comparison), and the absolute time of the
-    /// later point is *greater than* the previous one, it's a reset — not a
-    /// wrap. True wraps are handled by `elapsed_ticks` which uses wrapping
-    /// subtraction.
-    ///
-    /// **Traces:** GAP-07
+    /// **Traces:** GAP-07, P4-02
     pub fn detect_rtc_resets(&self, channel_id: u16) -> Vec<RtcReset> {
-        let mut filtered: Vec<(usize, &ReferencePoint)> = self
-            .references
-            .iter()
-            .enumerate()
-            .filter(|(_, r)| r.channel_id == channel_id)
-            .collect();
+        let ch_refs = match self.channel_index.get(&channel_id) {
+            Some(refs) => refs,
+            None => return Vec::new(),
+        };
 
-        // Sort by absolute time so we see temporal order, not RTC order.
-        // After a reset the RTC drops but absolute time keeps advancing,
-        // so absolute-time order reveals the reset.
-        filtered.sort_by_key(|(_, r)| {
+        // Sort by absolute time to see temporal order
+        let mut sorted: Vec<(usize, &ReferencePoint)> =
+            ch_refs.iter().enumerate().collect();
+        sorted.sort_by_key(|(_, r)| {
             ((r.time.day_of_year as u64).saturating_sub(1)) * 86_400_000_000_000
                 + r.time.total_nanos_of_day()
         });
 
         let mut resets = Vec::new();
 
-        for window in filtered.windows(2) {
+        for window in sorted.windows(2) {
             let (_, prev) = window[0];
             let (idx_curr, curr) = window[1];
 
-            // In temporal order, if the RTC of the later-in-time reference
-            // is less than the earlier one, the counter was reset.
             if curr.rtc < prev.rtc {
                 resets.push(RtcReset {
                     index: idx_curr,
