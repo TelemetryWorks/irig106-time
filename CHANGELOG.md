@@ -31,6 +31,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Crate docs updated** — `lib.rs` feature list now includes version detection, RTC reset detection, and encoding.
 - **Re-exports** — `RtcReset`, `detect_version`, and `Irig106Version` added to crate root.
 - **`Cargo.toml`** — Version bumped to 0.4.0.
+- **CLI (irig106-time-cli)** — Version bumped to 0.4.0.
+- Total test count: **196** (136 unit + 43 integration + 17 property).
+
+### Fixed
+
+- **`detect_rtc_resets` sorted by absolute time** — References are stored sorted by RTC for lookup efficiency. After a reset, the low RTC value was inserted before pre-reset values, masking the discontinuity. Now sorts filtered channel references by absolute time to restore temporal order.
+- **Removed unnecessary `as u16` casts** in `DayFormatTime::to_le_bytes()` and `DmyFormatTime::to_le_bytes()` — fields already typed `u16` (`milliseconds`, `day_of_year`, `year`) no longer carry redundant casts.
 
 ## [v0.3.0](https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.3.0) - 2026-03-28
 
