@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.0] - 2026-03-27
+## [v0.2.0](https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.2.0) - 2026-03-28
 
 ### Added
 
@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Total fuzz targets: **10** (8 original + 2 new).
 - Total benchmarks: **30** (23 original + 7 new).
 
-## [0.1.0] - 2026-03-26
+## [v0.1.0](https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.1.0) - 2026-03-26
 
 ### Added
 
@@ -58,5 +58,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Documentation**: L1/L2/L3 requirements (37/78/65), architecture doc, security doc, test index, project structure, shared types migration plan, roadmap, and rationale for separate repo.
 - **13-slide technical presentation** (PPTX).
 
-[0.2.0]: https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.2.0
-[0.1.0]: https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.1.0
