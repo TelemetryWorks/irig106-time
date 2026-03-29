@@ -411,13 +411,25 @@ fn fmt_abs_time(t: &AbsoluteTime) -> String {
         (Some(y), Some(m), Some(d)) => {
             format!(
                 "{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}.{:03}",
-                y, m, d, t.hours(), t.minutes(), t.seconds(), ms, us
+                y,
+                m,
+                d,
+                t.hours(),
+                t.minutes(),
+                t.seconds(),
+                ms,
+                us
             )
         }
         _ => {
             format!(
                 "Day {:03} {:02}:{:02}:{:02}.{:03}.{:03}",
-                t.day_of_year(), t.hours(), t.minutes(), t.seconds(), ms, us
+                t.day_of_year(),
+                t.hours(),
+                t.minutes(),
+                t.seconds(),
+                ms,
+                us
             )
         }
     }
