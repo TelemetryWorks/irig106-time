@@ -332,6 +332,16 @@ impl DmyFormatTime {
             });
         }
 
+        // Calendar validation: reject invalid day-for-month (e.g., Feb 30, Jun 31)
+        let max_day = days_in_month(year, month);
+        if day > max_day {
+            return Err(TimeError::OutOfRange {
+                field: "day",
+                value: day as u32,
+                max: max_day as u32,
+            });
+        }
+
         Ok(Self {
             milliseconds,
             seconds,
@@ -378,6 +388,15 @@ fn month_day_to_doy(year: u16, month: u8, day: u8) -> u16 {
         doy += 1;
     }
     doy
+}
+
+/// Returns the number of days in a given month (1-indexed), accounting for leap years.
+#[inline]
+fn days_in_month(year: u16, month: u8) -> u8 {
+    const DAYS: [u8; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    let is_leap = (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400);
+    let m = (month as usize).saturating_sub(1).min(11);
+    if m == 1 && is_leap { 29 } else { DAYS[m] }
 }
 
 #[cfg(test)]

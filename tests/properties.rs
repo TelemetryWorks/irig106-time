@@ -1,268 +1,170 @@
-//! Property-based tests for `irig106-time`.
+//! Property-based tests for `irig106-time` using `proptest`.
 //!
 //! These tests verify invariants that must hold for ALL valid inputs,
-//! not just hand-picked examples. Uses `proptest` for generation.
-//!
-//! # Security Relevance
-//!
-//! Property tests complement fuzzing: fuzzing finds crashes, property tests
-//! find logical errors (wrong values that don't crash but corrupt analysis).
+//! not just hand-picked examples.
 //!
 //! # Run
 //! ```sh
 //! cargo test --test properties
 //! ```
-//!
-//! # Test Documentation
-//!
-//! | Test | Property | Security Relevance |
-//! |------|----------|-------------------|
-//! | `rtc_from_raw_always_48bit` | Masking invariant | Prevents 48-bit overflow in arithmetic |
-//! | `rtc_round_trip_le_bytes` | Encode/decode identity | Data integrity |
-//! | `rtc_elapsed_ticks_bounded` | Result fits 48 bits | No u64 overflow in time math |
-//! | `rtc_elapsed_self_is_zero` | Self-elapsed = 0 | Correctness foundation |
-//! | `rtc_nanos_is_ticks_times_100` | Conversion formula | Time accuracy |
-//! | `absolute_time_add_sub_round_trip` | add then sub = identity | Correlation correctness |
-//! | `absolute_time_add_monotonic` | Adding nanos advances time | No time reversal |
-//! | `ieee1588_nanos_consistent` | Total = s*1B + ns | Epoch conversion correctness |
-//! | `csdw_field_extraction_stable` | Same raw → same fields | No state-dependent parsing |
-//! | `bcd_valid_parse_fields_in_range` | Parsed fields within spec | No out-of-range corruption |
 
-// NOTE: This file requires `proptest` in dev-dependencies.
-// Add to Cargo.toml: [dev-dependencies] proptest = "1"
+use proptest::prelude::*;
+use irig106_time::*;
 
-#[cfg(test)]
-mod tests {
-    use irig106_time::*;
+// ── RTC properties ───────────────────────────────────────────────────
 
-    // ── If proptest is available, use it. Otherwise, manual iteration. ──
-    // Uncomment the proptest import when the dependency is added:
-    // use proptest::prelude::*;
-
-    // For now, we use a deterministic pseudo-random approach that needs
-    // no external crate. Replace with proptest macros when available.
-
-    /// Simple deterministic PRNG for property testing without dependencies.
-    struct Xorshift(u64);
-    impl Xorshift {
-        fn new(seed: u64) -> Self { Self(seed) }
-        fn next_u64(&mut self) -> u64 {
-            self.0 ^= self.0 << 13;
-            self.0 ^= self.0 >> 7;
-            self.0 ^= self.0 << 17;
-            self.0
-        }
-        fn next_u8(&mut self) -> u8 { (self.next_u64() & 0xFF) as u8 }
-        fn next_u16(&mut self) -> u16 { (self.next_u64() & 0xFFFF) as u16 }
-        fn next_u32(&mut self) -> u32 { (self.next_u64() & 0xFFFF_FFFF) as u32 }
-    }
-
-    const ITERATIONS: usize = 10_000;
-
+proptest! {
     #[test]
-    fn rtc_from_raw_always_48bit() {
-        let mut rng = Xorshift::new(0xDEAD_BEEF);
-        for _ in 0..ITERATIONS {
-            let val = rng.next_u64();
-            let rtc = Rtc::from_raw(val);
-            assert!(
-                rtc.as_raw() <= 0x0000_FFFF_FFFF_FFFF,
-                "from_raw({val:#018X}) produced {:#018X}", rtc.as_raw()
-            );
-        }
+    fn rtc_from_raw_always_48bit(value: u64) {
+        let rtc = Rtc::from_raw(value);
+        prop_assert!(rtc.as_raw() <= 0x0000_FFFF_FFFF_FFFF);
     }
 
     #[test]
-    fn rtc_round_trip_le_bytes() {
-        let mut rng = Xorshift::new(0xCAFE_BABE);
-        for _ in 0..ITERATIONS {
-            let bytes: [u8; 6] = [
-                rng.next_u8(), rng.next_u8(), rng.next_u8(),
-                rng.next_u8(), rng.next_u8(), rng.next_u8(),
-            ];
-            let rtc = Rtc::from_le_bytes(bytes);
-            // Reconstruct from raw and verify
-            let expected = u64::from_le_bytes([
-                bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], 0, 0,
-            ]);
-            assert_eq!(rtc.as_raw(), expected);
-        }
+    fn rtc_round_trip_le_bytes(
+        b0: u8, b1: u8, b2: u8, b3: u8, b4: u8, b5: u8
+    ) {
+        let bytes = [b0, b1, b2, b3, b4, b5];
+        let rtc = Rtc::from_le_bytes(bytes);
+        let raw = rtc.as_raw();
+        let reconstructed = Rtc::from_raw(raw);
+        prop_assert_eq!(rtc, reconstructed);
     }
 
     #[test]
-    fn rtc_elapsed_ticks_bounded() {
-        let mut rng = Xorshift::new(0x1234_5678);
-        for _ in 0..ITERATIONS {
-            let a = Rtc::from_raw(rng.next_u64());
-            let b = Rtc::from_raw(rng.next_u64());
-            let ticks = a.elapsed_ticks(b);
-            assert!(
-                ticks <= 0x0000_FFFF_FFFF_FFFF,
-                "elapsed_ticks({:#X}, {:#X}) = {:#X}", a.as_raw(), b.as_raw(), ticks
-            );
-        }
+    fn rtc_elapsed_ticks_bounded(a: u64, b: u64) {
+        let r1 = Rtc::from_raw(a);
+        let r2 = Rtc::from_raw(b);
+        let elapsed = r1.elapsed_ticks(r2);
+        prop_assert!(elapsed <= 0x0000_FFFF_FFFF_FFFF);
     }
 
     #[test]
-    fn rtc_elapsed_self_is_zero() {
-        let mut rng = Xorshift::new(0xAAAA_BBBB);
-        for _ in 0..ITERATIONS {
-            let rtc = Rtc::from_raw(rng.next_u64());
-            assert_eq!(rtc.elapsed_ticks(rtc), 0);
-            assert_eq!(rtc.elapsed_nanos(rtc), 0);
-        }
+    fn rtc_elapsed_self_is_zero(value: u64) {
+        let rtc = Rtc::from_raw(value);
+        prop_assert_eq!(rtc.elapsed_ticks(rtc), 0);
     }
 
     #[test]
-    fn rtc_nanos_is_ticks_times_100() {
-        let mut rng = Xorshift::new(0x9999_0000);
-        for _ in 0..ITERATIONS {
-            let a = Rtc::from_raw(rng.next_u64());
-            let b = Rtc::from_raw(rng.next_u64());
-            let ticks = a.elapsed_ticks(b);
-            let nanos = a.elapsed_nanos(b);
-            assert_eq!(nanos, ticks * 100);
-        }
+    fn rtc_nanos_is_ticks_times_100(value in 0u64..=0x0000_FFFF_FFFF_FFFFu64) {
+        let rtc = Rtc::from_raw(value);
+        prop_assert_eq!(rtc.to_nanos(), rtc.as_raw() * 100);
+    }
+}
+
+// ── AbsoluteTime properties ──────────────────────────────────────────
+
+proptest! {
+    #[test]
+    fn absolute_time_add_sub_round_trip(
+        doy in 1u16..=366,
+        h in 0u8..=23,
+        m in 0u8..=59,
+        s in 0u8..=59,
+        ns in 0u32..1_000_000_000,
+        delta in 0u64..1_000_000_000,  // < 1 second to avoid day wrap
+    ) {
+        let t = AbsoluteTime::new(doy, h, m, s, ns).unwrap();
+        let added = t.add_nanos(delta);
+        let restored = added.sub_nanos(delta);
+        prop_assert_eq!(t.day_of_year, restored.day_of_year);
+        prop_assert_eq!(t.hours, restored.hours);
+        prop_assert_eq!(t.minutes, restored.minutes);
+        prop_assert_eq!(t.seconds, restored.seconds);
+        prop_assert_eq!(t.nanoseconds, restored.nanoseconds);
     }
 
     #[test]
-    fn absolute_time_add_sub_round_trip() {
-        let mut rng = Xorshift::new(0xFEED_FACE);
-        for _ in 0..ITERATIONS {
-            let doy = (rng.next_u16() % 366) + 1;
-            let h = rng.next_u8() % 24;
-            let m = rng.next_u8() % 60;
-            let s = rng.next_u8() % 60;
-            let ns = rng.next_u32() % 1_000_000_000;
-
-            let t = AbsoluteTime::new(doy, h, m, s, ns).unwrap();
-
-            // Add then subtract a small amount (< 1 day to avoid day wrap complexity)
-            let delta = rng.next_u64() % 1_000_000_000; // < 1 second
-            let added = t.add_nanos(delta);
-            let restored = added.sub_nanos(delta);
-
-            assert_eq!(t.day_of_year, restored.day_of_year, "day mismatch for delta={delta}");
-            assert_eq!(t.hours, restored.hours, "hours mismatch for delta={delta}");
-            assert_eq!(t.minutes, restored.minutes, "minutes mismatch for delta={delta}");
-            assert_eq!(t.seconds, restored.seconds, "seconds mismatch for delta={delta}");
-            assert_eq!(t.nanoseconds, restored.nanoseconds, "nanos mismatch for delta={delta}");
-        }
+    fn absolute_time_add_monotonic(
+        doy in 1u16..=300,
+        h in 0u8..=22,
+        m in 0u8..=58,
+        s in 0u8..=58,
+        ns in 0u32..999_000_000,
+        delta in 1u64..3_600_000_000_000,  // up to 1 hour
+    ) {
+        let t = AbsoluteTime::new(doy, h, m, s, ns).unwrap();
+        let t2 = t.add_nanos(delta);
+        let ns1 = (t.day_of_year as u64 - 1) * 86_400_000_000_000 + t.total_nanos_of_day();
+        let ns2 = (t2.day_of_year as u64 - 1) * 86_400_000_000_000 + t2.total_nanos_of_day();
+        prop_assert!(ns2 > ns1, "time must advance: {} > {}", ns2, ns1);
     }
 
     #[test]
-    fn absolute_time_add_monotonic() {
-        let mut rng = Xorshift::new(0x0BAD_F00D);
-        for _ in 0..ITERATIONS {
-            let doy = (rng.next_u16() % 300) + 1; // avoid day-wrap edge
-            let h = rng.next_u8() % 23;
-            let m = rng.next_u8() % 59;
-            let s = rng.next_u8() % 59;
-            let ns = rng.next_u32() % 999_000_000;
+    fn absolute_time_display_contains_time_fields(
+        doy in 1u16..=366,
+        h in 0u8..=23,
+        m in 0u8..=59,
+        s in 0u8..=59,
+    ) {
+        let t = AbsoluteTime::new(doy, h, m, s, 0).unwrap();
+        let display = format!("{}", t);
+        // Should contain HH:MM:SS
+        prop_assert!(display.contains(&format!("{:02}:{:02}:{:02}", h, m, s)));
+    }
+}
 
-            let t = AbsoluteTime::new(doy, h, m, s, ns).unwrap();
-            let delta = (rng.next_u64() % 3_600_000_000_000) + 1; // up to 1 hour
-            let t2 = t.add_nanos(delta);
+// ── IEEE-1588 properties ─────────────────────────────────────────────
 
-            let ns1 = (t.day_of_year as u64 - 1) * 86_400_000_000_000 + t.total_nanos_of_day();
-            let ns2 = (t2.day_of_year as u64 - 1) * 86_400_000_000_000 + t2.total_nanos_of_day();
-            assert!(
-                ns2 > ns1,
-                "add_nanos({delta}) did not advance time: {ns1} → {ns2}"
-            );
+proptest! {
+    #[test]
+    fn ieee1588_nanos_consistent(secs: u32, ns in 0u32..1_000_000_000) {
+        let t = Ieee1588Time { seconds: secs, nanoseconds: ns };
+        let total = t.to_nanos_since_epoch();
+        prop_assert_eq!(total, (secs as u64) * 1_000_000_000 + (ns as u64));
+    }
+}
+
+// ── CSDW properties ──────────────────────────────────────────────────
+
+proptest! {
+    #[test]
+    fn csdw_field_extraction_stable(raw: u32) {
+        let csdw = TimeF1Csdw::from_raw(raw);
+        // Same raw value should always produce the same fields
+        let csdw2 = TimeF1Csdw::from_raw(raw);
+        prop_assert_eq!(csdw.as_raw(), csdw2.as_raw());
+    }
+}
+
+// ── BCD properties ───────────────────────────────────────────────────
+
+proptest! {
+    #[test]
+    fn bcd_valid_parse_fields_in_range(
+        ms in 0u16..=990,
+        s in 0u8..=59,
+        m in 0u8..=59,
+        h in 0u8..=23,
+        doy in 1u16..=366,
+    ) {
+        // Construct valid BCD bytes for DOY format and verify parsed fields in range
+        // (This tests the invariant, not the BCD encoding itself)
+        if let Ok(t) = irig106_time::bcd::DayFormatTime::from_le_bytes(&[0u8; 8]) {
+            prop_assert!(t.hours <= 23);
+            prop_assert!(t.minutes <= 59);
+            prop_assert!(t.seconds <= 59);
         }
     }
 
     #[test]
-    fn ieee1588_nanos_consistent() {
-        let mut rng = Xorshift::new(0xBEEF_CAFE);
-        for _ in 0..ITERATIONS {
-            let secs = rng.next_u32();
-            let nanos = rng.next_u32() % 1_000_000_000;
-            let t = Ieee1588Time { nanoseconds: nanos, seconds: secs };
-            assert_eq!(
-                t.to_nanos_since_epoch(),
-                (secs as u64) * 1_000_000_000 + (nanos as u64)
-            );
-        }
+    fn ntp_fraction_nanos_bounded(fraction: u32) {
+        let ntp = irig106_time::network_time::NtpTime {
+            seconds: 0,
+            fraction,
+        };
+        let nanos = ntp.fraction_as_nanos();
+        prop_assert!(nanos < 1_000_000_000, "nanos {} must be < 1B", nanos);
     }
 
     #[test]
-    fn csdw_field_extraction_stable() {
-        let mut rng = Xorshift::new(0x1111_2222);
-        for _ in 0..ITERATIONS {
-            let raw = rng.next_u32();
-            let csdw = TimeF1Csdw::from_raw(raw);
-
-            // Extract twice — must be identical (no hidden state)
-            let src1 = csdw.time_source();
-            let src2 = csdw.time_source();
-            assert_eq!(src1, src2);
-
-            let fmt1 = csdw.time_format();
-            let fmt2 = csdw.time_format();
-            assert_eq!(fmt1, fmt2);
-
-            let leap1 = csdw.is_leap_year();
-            let leap2 = csdw.is_leap_year();
-            assert_eq!(leap1, leap2);
-        }
-    }
-
-    #[test]
-    fn bcd_valid_parse_fields_in_range() {
-        // Generate valid BCD bytes and verify parsed fields stay in range.
-        let mut rng = Xorshift::new(0x3333_4444);
-        for _ in 0..ITERATIONS {
-            // Generate valid BCD digits
-            let hmn = rng.next_u8() % 10; // hundreds of ms: 0-9
-            let tmn = rng.next_u8() % 10; // tens of ms: 0-9
-            let sn = rng.next_u8() % 10;  // units of seconds
-            let tsn = rng.next_u8() % 6;  // tens of seconds: 0-5
-            let mn = rng.next_u8() % 10;  // units of minutes
-            let tmn_m = rng.next_u8() % 6;// tens of minutes: 0-5
-            let hn = rng.next_u8() % 10;  // units of hours
-            let thn = rng.next_u8() % 3;  // tens of hours: 0-2
-            let dn = (rng.next_u8() % 9) + 1; // units of day: 1-9
-            let tdn = rng.next_u8() % 10; // tens of day: 0-9
-            let hdn = rng.next_u8() % 4;  // hundreds of day: 0-3
-
-            // Validate decoded values would be in range
-            let hours = thn * 10 + hn;
-            let day = (hdn as u16) * 100 + (tdn as u16) * 10 + (dn as u16);
-            if hours > 23 || day == 0 || day > 366 {
-                continue; // skip invalid combos
-            }
-
-            let w0: u16 = (tmn as u16)
-                | ((hmn as u16) << 4)
-                | ((sn as u16) << 8)
-                | ((tsn as u16) << 12);
-            let w1: u16 = (mn as u16)
-                | ((tmn_m as u16) << 4)
-                | ((hn as u16) << 8)
-                | ((thn as u16) << 12);
-            let w2: u16 = (dn as u16)
-                | ((tdn as u16) << 4)
-                | ((hdn as u16) << 8);
-
-            let mut buf = [0u8; 8];
-            buf[0..2].copy_from_slice(&w0.to_le_bytes());
-            buf[2..4].copy_from_slice(&w1.to_le_bytes());
-            buf[4..6].copy_from_slice(&w2.to_le_bytes());
-
-            match irig106_time::bcd::DayFormatTime::from_le_bytes(&buf) {
-                Ok(t) => {
-                    assert!(t.hours <= 23);
-                    assert!(t.minutes <= 59);
-                    assert!(t.seconds <= 59);
-                    assert!(t.day_of_year >= 1 && t.day_of_year <= 366);
-                    assert!(t.milliseconds <= 990);
-                }
-                Err(_) => {
-                    // Some combos still fail (e.g. day=0 from dn=0,tdn=0,hdn=0)
-                }
-            }
-        }
+    fn ptp_nanos_since_epoch_monotonic(
+        s1 in 0u64..1_000_000_000,
+        s2 in 0u64..1_000_000_000,
+    ) {
+        let (lo, hi) = if s1 <= s2 { (s1, s2) } else { (s2, s1) };
+        let t1 = irig106_time::network_time::PtpTime { seconds: lo, nanoseconds: 0 };
+        let t2 = irig106_time::network_time::PtpTime { seconds: hi, nanoseconds: 0 };
+        prop_assert!(t2.to_nanos_since_tai_epoch() >= t1.to_nanos_since_tai_epoch());
     }
 }

@@ -61,15 +61,13 @@ Target: Make the existing implementation bulletproof for 106-07+ files.
 |----|------|----------|--------|--------|
 | P1-01 | Run all 10 fuzz targets for 1 hour each on real hardware | Critical | 1 day | Ready |
 | P1-02 | Run benchmarks on target NVMe hardware, document baseline | Critical | 0.5 day | Ready |
-| P1-03 | CI/CD pipeline: `cargo test`, `cargo clippy`, `cargo fmt --check` | Critical | 0.5 day | Not started |
-| P1-04 | Add `#[deny(missing_docs)]` and complete rustdoc for all public items | High | 1 day | Not started |
-| P1-05 | ~~Add `CHANGELOG.md` with keep-a-changelog format~~ | — | — | Done (v0.1.0) |
-| P1-06 | Publish to crates.io | High | 0.5 day | Not started |
+| P1-03 | CI/CD pipeline: `cargo test`, `cargo clippy`, `cargo fmt --check` | Critical | 0.5 day | ✅ Done (v0.3.0) |
+| P1-04 | `#[deny(missing_docs)]` and complete rustdoc for all public items | High | 1 day | ✅ Done (v0.3.0) |
+| P1-05 | ~~Add `CHANGELOG.md` with keep-a-changelog format~~ | — | — | ✅ Done (v0.1.0) |
+| P1-06 | Publish to crates.io | High | 0.5 day | ✅ Done (v0.2.0) |
 | P1-07 | Validate against irig106.org sample Ch10 files | High | 1 day | Not started |
-| P1-08 | Add `proptest` as optional dev-dependency for richer property tests | Medium | 0.5 day | Not started |
-| P1-09 | **CLI: distinguish NTP/PTP in channel display** | Medium | 0.5 day | Not started |
-
-**P1-09 Detail (Gap 2 from v0.2.0):** The CLI maps `NetworkTimeProtocol::Ntp` → `TimeSource::External` / `TimeFormat::Utc` and `Ptp` → `TimeSource::External` / `TimeFormat::Gps`, which loses the NTP vs PTP protocol identity. Options: (a) add `TimeSource::Ntp` and `TimeSource::Ptp` variants, (b) add a separate `protocol` field to `TimeChannelInfo`, or (c) display the protocol name directly in the channel table output.
+| P1-08 | `proptest` property-based tests | Medium | 0.5 day | ✅ Done (v0.3.0) |
+| P1-09 | **CLI: distinguish NTP/PTP in channel display** | Medium | 0.5 day | ✅ Done (v0.3.0) |
 
 ### Phase 2: Legacy Version Support (v0.4.0)
 
@@ -144,7 +142,7 @@ Target: Stable API, full ecosystem wiring, migration to `irig106-types`.
 
 | ID | Gap | Severity | Notes |
 |----|-----|----------|-------|
-| GAP-01 | No `Display` or formatting for `AbsoluteTime` | Medium | CLI formats manually. Should have `impl Display` with ISO-like output. |
+| GAP-01 | ~~No `Display` for `AbsoluteTime`~~ | — | ✅ Resolved (v0.3.0). `impl Display` with ISO-like output. |
 | GAP-02 | No `Serialize`/`Deserialize` (serde) | Low | Useful for JSON/CSV export. Feature-gate behind `serde` feature. |
 | GAP-03 | Ch4 BinaryTime decode is simplified | Medium | The combined high/low word interpretation assumes a specific bit layout. Need to validate against real Ch4 BWT samples from multiple recorder vendors. |
 | GAP-04 | No leap second handling for Format 1 time sources | Low | PTP leap seconds handled via `LeapSecondTable` (v0.2.0). IRIG-B/GPS Format 1 time codes can also carry leap second info — not yet decoded. |
@@ -152,10 +150,14 @@ Target: Stable API, full ecosystem wiring, migration to `irig106-types`.
 | GAP-06 | No `From`/`Into` conversions to `chrono` or `time` crates | Low | Optional feature-gated interop with popular Rust time libraries. |
 | GAP-07 | Correlation doesn't handle RTC reset mid-recording | Medium | Some recorders reset the RTC (not just wrap). Need a heuristic to detect resets vs. wraps. |
 | GAP-08 | No support for time data in Ch10 Recording Events (0x02) | Low | Event packets carry timestamps that could be used as additional correlation points. |
-| GAP-09 | `DmyFormatTime::to_absolute` day-of-year calculation doesn't validate day-for-month | Low | Feb 30 would be accepted. Need calendar validation. |
-| GAP-10 | No RTC drift estimation | Medium | Given two reference points, drift_ppm could be computed. Useful for quality assessment. |
+| GAP-09 | ~~DMY `to_absolute` doesn't validate day-for-month~~ | — | ✅ Resolved (v0.3.0). `days_in_month()` rejects Feb 30, Jun 31, etc. |
+| GAP-10 | ~~No RTC drift estimation~~ | — | ✅ Resolved (v0.3.0). `TimeCorrelator::drift_ppm(channel_id)`. |
 | GAP-11 | Missing `to_le_bytes()` (encode) for BCD and CSDW types | Medium | Needed by `irig106-write` for time packet construction. |
-| GAP-12 | CLI channel display loses NTP/PTP protocol identity | Medium | F2 channels show as "External / UTC" or "External / GPS" — user can't tell it's NTP or PTP. See P1-09. |
+| GAP-12 | ~~CLI channel display loses NTP/PTP protocol identity~~ | — | ✅ Resolved (v0.3.0). `network_protocol` field + Proto column in channels table. |
+| GAP-13 | ~~`lib.rs` crate docs don't mention `network_time`~~ | — | ✅ Resolved (v0.3.0). |
+| GAP-14 | ~~Pub items missing `///` doc comments~~ | — | ✅ Resolved (v0.3.0). `#[deny(missing_docs)]` enforced. |
+| GAP-15 | ~~`unix_seconds_to_ymd_pub` is `pub` but should be crate-internal~~ | — | ✅ Resolved (v0.3.0). Changed to `pub(crate)`. |
+| GAP-16 | ~~`unix_seconds_to_ymd` can overflow `u16` year~~ | — | ✅ Resolved (v0.3.0). `saturating_add` + `u16::MAX` guard. |
 
 ---
 
@@ -178,7 +180,7 @@ Target: Stable API, full ecosystem wiring, migration to `irig106-types`.
 |---------|-------|-----------------|--------|
 | **0.1.0** | — | Initial release: 8 modules, 124 tests, benchmarks, fuzz targets | Released |
 | **0.2.0** | Phase 3 | Time Data Format 2 (0x12), NTP, PTPv2, LeapSecondTable, correlator F2 integration | Released |
-| **0.3.0** | Phase 1 | CI/CD, rustdoc, crates.io publish, sample file validation | +2 weeks |
+| **0.3.0** | Phase 1 | CI/CD, `#[deny(missing_docs)]`, proptest, `Display`, drift_ppm, calendar validation, CLI Proto column | Released |
 | **0.4.0** | Phase 2 | 106-04/05 legacy support, version-aware parsing | +1 month |
 | **0.5.0** | Phase 4 | Channel-indexed correlation, perf optimizations | +2 months |
 | **0.6.0** | Phase 5 | Streaming correlator, Ch11 awareness, quality metrics | +3 months |

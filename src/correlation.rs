@@ -263,6 +263,64 @@ impl TimeCorrelator {
     pub fn references(&self) -> &[ReferencePoint] {
         &self.references
     }
+
+    /// Estimate the clock drift in parts-per-million between two reference points
+    /// on the given channel.
+    ///
+    /// Compares the RTC progression against absolute time progression for
+    /// consecutive same-channel reference pairs and returns the average drift.
+    /// A positive value means the RTC is running fast relative to the reference
+    /// clock; negative means slow.
+    ///
+    /// Returns `None` if fewer than 2 reference points exist for the channel.
+    pub fn drift_ppm(&self, channel_id: u16) -> Option<f64> {
+        let channel_refs: Vec<&ReferencePoint> = self
+            .references
+            .iter()
+            .filter(|r| r.channel_id == channel_id)
+            .collect();
+
+        if channel_refs.len() < 2 {
+            return None;
+        }
+
+        let mut total_drift = 0.0f64;
+        let mut pair_count = 0u64;
+
+        for pair in channel_refs.windows(2) {
+            let r0 = pair[0];
+            let r1 = pair[1];
+
+            let rtc_delta_ns = r0.rtc.elapsed_nanos(r1.rtc) as f64;
+            if rtc_delta_ns == 0.0 {
+                continue;
+            }
+
+            // Compute expected absolute time delta in nanoseconds
+            let abs_ns_0 = ((r0.time.day_of_year as u64).saturating_sub(1))
+                * 86_400_000_000_000
+                + r0.time.total_nanos_of_day();
+            let abs_ns_1 = ((r1.time.day_of_year as u64).saturating_sub(1))
+                * 86_400_000_000_000
+                + r1.time.total_nanos_of_day();
+            let abs_delta_ns = abs_ns_1 as f64 - abs_ns_0 as f64;
+
+            if abs_delta_ns == 0.0 {
+                continue;
+            }
+
+            // drift = (rtc_elapsed - abs_elapsed) / abs_elapsed * 1_000_000
+            let drift = (rtc_delta_ns - abs_delta_ns) / abs_delta_ns * 1_000_000.0;
+            total_drift += drift;
+            pair_count += 1;
+        }
+
+        if pair_count == 0 {
+            None
+        } else {
+            Some(total_drift / pair_count as f64)
+        }
+    }
 }
 
 impl Default for TimeCorrelator {

@@ -236,6 +236,31 @@ impl AbsoluteTime {
     }
 }
 
+impl core::fmt::Display for AbsoluteTime {
+    /// Formats as `YYYY-MM-DD HH:MM:SS.mmm.uuu` when year/month/day are
+    /// available, or `Day DDD HH:MM:SS.mmm.uuu` otherwise.
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let ms = self.nanoseconds / 1_000_000;
+        let us = (self.nanoseconds / 1_000) % 1_000;
+        match (self.year, self.month, self.day_of_month) {
+            (Some(y), Some(m), Some(d)) => {
+                write!(
+                    f,
+                    "{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}.{:03}",
+                    y, m, d, self.hours, self.minutes, self.seconds, ms, us
+                )
+            }
+            _ => {
+                write!(
+                    f,
+                    "Day {:03} {:02}:{:02}:{:02}.{:03}.{:03}",
+                    self.day_of_year, self.hours, self.minutes, self.seconds, ms, us
+                )
+            }
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Chapter 4 Binary Weighted Time
 // ---------------------------------------------------------------------------

@@ -1,7 +1,8 @@
 [package]
 name = "irig106-time"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
+rust-version = "1.73"
 description = "Precision time interpretation and format conversion for IRIG 106 telemetry data."
 repository = "https://github.com/TelemetryWorks/irig106-time"
 license = "Apache-2.0"
@@ -16,9 +17,7 @@ std = []
 # Zero required dependencies — core/alloc only.
 
 [dev-dependencies]
-# criterion is recommended for benchmarking on your local machine:
-# criterion = { version = "0.5", features = ["html_reports"] }
-# Run: cargo bench
+proptest = "1"
 
 [[bench]]
 name = "time_benchmarks"

@@ -92,6 +92,8 @@ struct TimeChannelInfo {
     format: Option<TimeFormat>,
     date_format: Option<DateFormat>,
     is_leap_year: Option<bool>,
+    /// For Format 2 channels: the specific network protocol (NTP or PTP).
+    network_protocol: Option<NetworkTimeProtocol>,
     first_time: Option<AbsoluteTime>,
     last_time: Option<AbsoluteTime>,
     first_rtc: Option<Rtc>,
@@ -107,6 +109,7 @@ impl TimeChannelInfo {
             format: None,
             date_format: None,
             is_leap_year: None,
+            network_protocol: None,
             first_time: None,
             last_time: None,
             first_rtc: None,
@@ -339,7 +342,7 @@ impl Ch10TimeScanner {
             .or_insert_with(|| TimeChannelInfo::new(hdr.channel_id));
         info.packet_count += 1;
         // Map network protocol to TimeSource/TimeFormat for display
-        // (Gap 2: NTP/PTP identity is lost here — deferred to v0.3.0)
+        info.network_protocol = Some(csdw.time_protocol());
         info.source = Some(match csdw.time_protocol() {
             NetworkTimeProtocol::Ntp => TimeSource::External,
             NetworkTimeProtocol::Ptp => TimeSource::External,
@@ -496,8 +499,14 @@ fn cmd_summary(mmap: &[u8], filename: &str) {
         println!("Time Channels");
         println!("─────────────");
         for info in scanner.time_channels.values() {
+            let proto_str = match info.network_protocol {
+                Some(NetworkTimeProtocol::Ntp) => "  Proto: NTP",
+                Some(NetworkTimeProtocol::Ptp) => "  Proto: PTP",
+                Some(NetworkTimeProtocol::Reserved(_)) => "  Proto: ?",
+                None => "",
+            };
             println!(
-                "  Channel {:>3}  │  Source: {:<12}  Format: {:<8}  Date: {:<4}  Leap: {}  Packets: {}",
+                "  Channel {:>3}  │  Source: {:<12}  Format: {:<8}  Date: {:<4}  Leap: {}  Packets: {}{}",
                 info.channel_id,
                 info.source.as_ref().map(fmt_time_source).unwrap_or("?"),
                 info.format.as_ref().map(fmt_time_format).unwrap_or("?"),
@@ -512,6 +521,7 @@ fn cmd_summary(mmap: &[u8], filename: &str) {
                     None => "?",
                 },
                 fmt_comma(info.packet_count),
+                proto_str,
             );
             if let Some(ref ft) = info.first_time {
                 println!("                │  First: {}", fmt_abs_time(ft));
@@ -578,13 +588,19 @@ fn cmd_channels(mmap: &[u8]) {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, false, None);
 
-    println!("{:<8}  {:<12}  {:<10}  {:<5}  {:<5}  {:>8}  {:>28}  {:>28}",
-        "Channel", "Source", "Format", "Date", "Leap", "Packets", "First Time", "Last Time"
+    println!("{:<8}  {:<12}  {:<10}  {:<5}  {:<5}  {:<5}  {:>8}  {:>28}  {:>28}",
+        "Channel", "Source", "Format", "Date", "Leap", "Proto", "Packets", "First Time", "Last Time"
     );
-    println!("{}", "─".repeat(120));
+    println!("{}", "─".repeat(126));
 
     for info in scanner.time_channels.values() {
-        println!("{:>7}  {:<12}  {:<10}  {:<5}  {:<5}  {:>8}  {:>28}  {:>28}",
+        let proto = match info.network_protocol {
+            Some(NetworkTimeProtocol::Ntp) => "NTP",
+            Some(NetworkTimeProtocol::Ptp) => "PTP",
+            Some(NetworkTimeProtocol::Reserved(_)) => "?",
+            None => "—",
+        };
+        println!("{:>7}  {:<12}  {:<10}  {:<5}  {:<5}  {:<5}  {:>8}  {:>28}  {:>28}",
             info.channel_id,
             info.source.as_ref().map(fmt_time_source).unwrap_or("?"),
             info.format.as_ref().map(fmt_time_format).unwrap_or("?"),
@@ -598,6 +614,7 @@ fn cmd_channels(mmap: &[u8]) {
                 Some(false) => "No",
                 None => "?",
             },
+            proto,
             fmt_comma(info.packet_count),
             info.first_time.as_ref().map(fmt_abs_time).unwrap_or_default(),
             info.last_time.as_ref().map(fmt_abs_time).unwrap_or_default(),

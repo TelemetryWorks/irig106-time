@@ -446,8 +446,8 @@ impl Default for LeapSecondTable {
 
 /// Convert Unix seconds to (year, day_of_year, hour, minute, second).
 ///
-/// Public entry point for use by the correlation module.
-pub fn unix_seconds_to_ymd_pub(unix_secs: u64) -> (u16, u16, u8, u8, u8) {
+/// Crate-internal entry point for use by the correlation module.
+pub(crate) fn unix_seconds_to_ymd_pub(unix_secs: u64) -> (u16, u16, u8, u8, u8) {
     unix_seconds_to_ymd(unix_secs)
 }
 
@@ -466,12 +466,16 @@ fn unix_seconds_to_ymd(unix_secs: u64) -> (u16, u16, u8, u8, u8) {
     // Walk years from 1970
     let mut year: u16 = 1970;
     loop {
+        // Guard against malformed timestamps that would overflow u16 year
+        if year == u16::MAX {
+            break;
+        }
         let days_in_year: u64 = if is_leap_year(year) { 366 } else { 365 };
         if days < days_in_year {
             break;
         }
         days -= days_in_year;
-        year += 1;
+        year = year.saturating_add(1);
     }
 
     let doy = (days as u16) + 1; // 1-based day of year
