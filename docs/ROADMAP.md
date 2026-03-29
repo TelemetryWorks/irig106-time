@@ -142,15 +142,73 @@ Target: Wire `irig106-time` into the TelemetryWorks crate ecosystem. This phase
 **must complete before 1.0.0** because integration may surface API issues that
 require breaking changes. Better to discover them now than after the semver freeze.
 
-| ID | Item | Priority | Effort | Details |
-|----|------|----------|--------|---------|
-| P6-01 | **Migrate shared types to `irig106-types`** | High | 2 days | Move `Rtc`, `Ertc`, `Ch4BinaryTime`, `Ieee1588Time`, `TimeSource`, `TimeFormat`, `DateFormat` to the foundational crate. Re-export for backward compat. |
-| P6-02 | **Wire `irig106-core` to use `irig106-time` types** | High | 1 day | `irig106-core::PacketHeader` should use `Rtc` from `irig106-types` instead of raw `u64`. |
-| P6-03 | **Wire `irig106-ch10-reader` to use correlation** | High | 2 days | Replace the "Not available" time display in the reader with actual correlated times using `TimeCorrelator`. |
-| P6-04 | **Wire `irig106-decode` intra-packet timestamps** | High | 1 day | Payload decoders should use `IntraPacketTime` for message-level timestamps. |
-| P6-05 | ~~Wire `irig106-write` BCD encoding~~ | — | — | ✅ `to_le_bytes()` shipped in v0.4.0 for all wire-format types. |
-| P6-06 | **Wire `irig106-studio` WASM** | Medium | 1 day | ✅ Done (v0.7.0) — CI verifies `wasm32-unknown-unknown` build with `--no-default-features` and `--features serde`. |
-| P6-08 | **MSRV policy** | Medium | — | ✅ Done (v0.7.0). MSRV lowered from 1.87 → 1.56 (Edition 2021 floor). Replaced `u16::is_multiple_of` (1.87) with `util::is_leap_year` and `u64::abs_diff` (1.60) with `util::abs_diff_u64`. |
+#### Dependency Chain
+
+```
+P6-01: irig106-types         (no dependencies — start here)
+  │
+  ├─► P6-02: irig106-core    (depends on P6-01)
+  │     │
+  │     ├─► P6-03: irig106-ch10-reader  (depends on P6-02)
+  │     │
+  │     └─► P6-04: irig106-decode       (depends on P6-02)
+  │
+  └─► P6-06b: irig106-studio WASM integration  (depends on P6-01)
+```
+
+#### Work Items
+
+Each item has work in **two repos**: the downstream crate (consumer) and
+`irig106-time` itself (provider). Changes surfaced in the provider during
+integration feed into Phase 7 (P7-01).
+
+| ID | Item | Priority | Effort | Depends On |
+|----|------|----------|--------|------------|
+| P6-01 | **Migrate shared types to `irig106-types`** | High | 2 days | — |
+| P6-02 | **Wire `irig106-core`** | High | 1 day | P6-01 |
+| P6-03 | **Wire `irig106-ch10-reader`** | High | 2 days | P6-02 |
+| P6-04 | **Wire `irig106-decode`** | High | 1 day | P6-02 |
+| P6-05 | ~~Wire `irig106-write` BCD encoding~~ | — | — | ✅ `to_le_bytes()` shipped in v0.4.0. |
+| P6-06a | **WASM build verification** | Medium | — | ✅ Done (v0.7.0) — CI verifies `wasm32-unknown-unknown` build. |
+| P6-06b | **`irig106-studio` WASM integration** | Medium | 1 day | P6-01 |
+| P6-08 | **MSRV policy** | Medium | — | ✅ Done (v0.7.0). MSRV 1.87 → 1.56. |
+
+#### Detailed Scope Per Item
+
+**P6-01 — Migrate shared types to `irig106-types`**
+
+| Side | Work |
+|------|------|
+| `irig106-types` (new crate) | Create crate. Define `Rtc`, `Ertc`, `Ch4BinaryTime`, `Ieee1588Time`, `TimeSource`, `TimeFormat`, `DateFormat`. Carry all derives (`Debug`, `Clone`, `Copy`, `PartialEq`, `Eq`, `Hash`, serde). |
+| `irig106-time` | Add `irig106-types` dependency. Replace local type definitions with re-exports (`pub use irig106_types::Rtc;`). Verify all existing tests pass — this must be a drop-in replacement. |
+
+**P6-02 — Wire `irig106-core`**
+
+| Side | Work |
+|------|------|
+| `irig106-core` | Change `PacketHeader` to use `Rtc` from `irig106-types` instead of raw `u64`. Update packet parsing to construct `Rtc` values. |
+| `irig106-time` | Verify that `Rtc::from_le_bytes` and `Rtc::from_raw` signatures work for `irig106-core`'s use case. If not, fix them here (tracked as P7-01). |
+
+**P6-03 — Wire `irig106-ch10-reader`**
+
+| Side | Work |
+|------|------|
+| `irig106-ch10-reader` | Add `irig106-time` dependency. Build a `TimeCorrelator` during file iteration. Replace "Not available" time display with correlated absolute times. |
+| `irig106-time` | Verify `TimeCorrelator` API is ergonomic for the reader's iteration pattern. May need new convenience methods (e.g., `correlate_or_raw`). If so, add them here. |
+
+**P6-04 — Wire `irig106-decode`**
+
+| Side | Work |
+|------|------|
+| `irig106-decode` | Use `IntraPacketTime` and `IntraPacketTimeFormat` for message-level timestamps in payload decoders (1553, ARINC 429, etc.). |
+| `irig106-time` | Verify `parse_intra_packet_time` works with real decoder output. May need additional `IntraPacketTime` methods for downstream formatting. |
+
+**P6-06b — `irig106-studio` WASM integration**
+
+| Side | Work |
+|------|------|
+| `irig106-studio` | Import `irig106-time` as WASM module. Load a Ch10 file, parse time packets, correlate data packet timestamps, display in the UI. |
+| `irig106-time` | P6-06a (WASM build check) is already done. Integration may reveal `alloc` usage patterns that don't work in the browser. Fix here if needed. |
 
 ### Phase 7: Validation and Hardening (v0.9.0)
 
