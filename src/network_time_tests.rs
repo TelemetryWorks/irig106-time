@@ -82,7 +82,7 @@ fn ntp_fraction_to_nanos() {
     };
     let nanos = ntp.fraction_as_nanos();
     // Should be ~500_000_000 (500 ms)
-    assert!(nanos >= 499_999_999 && nanos <= 500_000_001,
+    assert!((499_999_999..=500_000_001).contains(&nanos),
         "expected ~500_000_000, got {nanos}");
 }
 

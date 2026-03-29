@@ -448,12 +448,12 @@ fn ntp_sub_millisecond_precision() {
     // fraction = 2^31 = half second → 500,000,000 ns
     let ntp = NtpTime { seconds: 3_944_678_400, fraction: 1 << 31 };
     let abs = ntp.to_absolute().unwrap();
-    assert!(abs.nanoseconds >= 499_999_999 && abs.nanoseconds <= 500_000_001);
+    assert!((499_999_999..=500_000_001).contains(&abs.nanoseconds));
 
     // fraction = 2^30 = quarter second → ~250,000,000 ns
     let ntp2 = NtpTime { seconds: 3_944_678_400, fraction: 1 << 30 };
     let abs2 = ntp2.to_absolute().unwrap();
-    assert!(abs2.nanoseconds >= 249_999_999 && abs2.nanoseconds <= 250_000_001);
+    assert!((249_999_999..=250_000_001).contains(&abs2.nanoseconds));
 }
 
 /// Leap second table correctly differentiates historical offsets.
