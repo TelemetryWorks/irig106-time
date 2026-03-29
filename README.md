@@ -16,12 +16,13 @@ IRIG 106 Chapter 10 separates *when data was recorded* (a free-running 10 MHz co
 - **Network Time** — NTP (RFC 5905, epoch 1900 UTC) and PTP/IEEE 1588 (epoch 1970 TAI) decoding with built-in leap-second table
 - **Four timestamp formats** — RTC, Chapter 4 BWT, IEEE-1588, Extended RTC
 - **Secondary headers** — Checksum validation and time extraction
-- **Correlation engine** — Nearest-point interpolation, multi-channel support, GPS lock jump detection, F1 and F2 reference points, drift estimation, and RTC reset detection
+- **Correlation engine** — Channel-indexed O(log n) nearest-point interpolation, multi-channel support, GPS lock jump detection, F1 and F2 reference points, drift estimation, and RTC reset detection
 - **Version detection** — IRIG 106 standard version from TMATS CSDW (106-04 through 106-23), version-aware CSDW parsing, configurable out-of-order tolerance
 - **Encoding** — `to_le_bytes()` on all wire-format types for packet construction
 - **`impl Display`** — ISO-like formatting for `AbsoluteTime`
+- **`serde`** — Optional `Serialize`/`Deserialize` on all data types via the `serde` feature gate
 - **`#![no_std]`** — Works on embedded, WASM, and standard targets
-- **Zero dependencies** — Only `core` and `alloc`
+- **Zero required dependencies** — Only `core` and `alloc` (serde is optional)
 - **Zero `unsafe`** — Safe Rust throughout
 
 ## Quick Start
@@ -86,8 +87,8 @@ At 10 Gbps with 512-byte average packets (2.4M pkt/sec), the hot path provides 1
 ## Testing
 
 ```sh
-cargo test              # 196 tests (136 unit + 43 integration + 17 property)
-cargo bench             # 28 zero-dependency benchmarks
+cargo test              # 203 tests (136 unit + 50 integration + 17 property)
+cargo bench             # 28 zero-dep benchmarks + criterion correlation suite
 cargo +nightly fuzz run fuzz_bcd_day   # 10 fuzz targets available
 ```
 

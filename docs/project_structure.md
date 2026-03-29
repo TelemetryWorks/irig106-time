@@ -33,14 +33,16 @@ irig106-time/
 │   ├── correlation_tests.rs           # 11 unit tests
 │   ├── network_time.rs                # Format 2 (0x12): NTP, PTP, LeapSecondTable
 │   ├── network_time_tests.rs          # 22 unit tests
-│   └── version.rs                     # Irig106Version, detect_version, 10 unit tests
+│   ├── version.rs                     # Irig106Version, detect_version
+│   └── version_tests.rs              # 10 unit tests
 │
 ├── tests/
-│   ├── pipeline.rs                     # 43 integration tests (F1 + F2 pipelines, version, encode)
+│   ├── pipeline.rs                     # 50 integration tests (F1 + F2 pipelines, version, encode, channel index)
 │   └── properties.rs                  # 17 property-based tests (proptest)
 │
 ├── benches/
-│   └── time_benchmarks.rs             # 28 benchmarks (zero-dep, std::time::Instant)
+│   ├── time_benchmarks.rs             # 28 benchmarks (zero-dep, std::time::Instant)
+│   └── correlation_bench.rs           # Criterion benchmarks for correlation at scale
 │
 ├── fuzz/
 │   ├── Cargo.toml                      # libfuzzer-sys harness
@@ -102,15 +104,15 @@ irig106-time-cli/
 
 | Metric | Value |
 |--------|-------|
-| Source modules | 10 |
-| Source lines (excl. tests) | ~2,500 |
+| Source modules | 11 |
+| Source lines (excl. tests) | ~2,900 |
 | Unit tests | 136 |
-| Integration tests | 43 |
+| Integration tests | 50 |
 | Property-based tests | 17 |
 | Fuzz targets | 10 |
-| Benchmarks | 28 |
-| **Total tests** | **196** |
-| Required runtime deps | **0** |
+| Benchmarks | 28 (zero-dep) + criterion suite |
+| **Total tests** | **203** |
+| Required runtime deps | **0** (serde optional) |
 | L1 requirements | 53 (37 base + 16 F2) |
 | `#![no_std]` | Yes |
 | `unsafe` blocks | **0** |

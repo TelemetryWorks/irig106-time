@@ -1,8 +1,8 @@
 # Usage Guide — irig106-time
 
 **Document:** usage.md
-**Crate:** irig106-time v0.4.0
-**Date:** 2026-03-28
+**Crate:** irig106-time v0.5.0
+**Date:** 2026-03-29
 
 This guide shows how to use `irig106-time` in the context of a larger IRIG 106
 application. Every example assumes you are reading or processing Chapter 10
@@ -30,12 +30,13 @@ data — either from files or live UDP streams.
 16. [Version Detection and Version-Aware Parsing](#16-version-detection-and-version-aware-parsing)
 17. [RTC Reset Detection](#17-rtc-reset-detection)
 18. [Encoding Time Data (to_le_bytes)](#18-encoding-time-data-to_le_bytes)
-19. [Integration with irig106-core](#19-integration-with-irig106-core)
-20. [Integration with irig106-decode](#20-integration-with-irig106-decode)
-21. [Integration with irig106-write](#21-integration-with-irig106-write)
-22. [WASM / no_std Usage](#22-wasm--no_std-usage)
-23. [Error Handling Patterns](#23-error-handling-patterns)
-24. [Performance Considerations](#24-performance-considerations)
+19. [Using serde for Serialization](#19-using-serde-for-serialization)
+20. [Integration with irig106-core](#20-integration-with-irig106-core)
+21. [Integration with irig106-decode](#21-integration-with-irig106-decode)
+22. [Integration with irig106-write](#22-integration-with-irig106-write)
+23. [WASM / no_std Usage](#23-wasm--no_std-usage)
+24. [Error Handling Patterns](#24-error-handling-patterns)
+25. [Performance Considerations](#25-performance-considerations)
 
 ---
 
@@ -44,10 +45,13 @@ data — either from files or live UDP streams.
 ```toml
 # Cargo.toml
 [dependencies]
-irig106-time = "0.4"
+irig106-time = "0.5"
 
 # For no_std environments (embedded, WASM):
-# irig106-time = { version = "0.4", default-features = false }
+# irig106-time = { version = "0.5", default-features = false }
+
+# For JSON/CSV export with serde:
+# irig106-time = { version = "0.5", features = ["serde"] }
 ```
 
 The crate re-exports all key types at the root, so most code only needs:
@@ -1037,7 +1041,44 @@ assert_eq!(TimeF2Csdw::from_le_bytes(f2_bytes).as_raw(), f2_csdw.as_raw());
 
 ---
 
-## 19. Integration with irig106-core
+## 19. Using serde for Serialization
+
+*Added in v0.5.0.* Enable the `serde` feature to derive `Serialize` and
+`Deserialize` on all public data types (except `TimeError`, which contains
+`&'static str` fields that are not serde-compatible).
+
+```toml
+[dependencies]
+irig106-time = { version = "0.5", features = ["serde"] }
+```
+
+### JSON Export Example
+
+```rust
+use irig106_time::*;
+
+let t = AbsoluteTime::new(100, 12, 30, 25, 340_000_000).unwrap();
+// With the serde feature enabled:
+// let json = serde_json::to_string(&t).unwrap();
+// → {"day_of_year":100,"hours":12,"minutes":30,"seconds":25,
+//    "nanoseconds":340000000,"month":null,"day_of_month":null,"year":null}
+```
+
+### Which Types Support serde
+
+All public data types carry `#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]`:
+`Rtc`, `AbsoluteTime`, `Ch4BinaryTime`, `Ieee1588Time`, `Ertc`, `TimeF1Csdw`,
+`TimeF2Csdw`, `DayFormatTime`, `DmyFormatTime`, `NtpTime`, `PtpTime`,
+`NetworkTime`, `NetworkTimeProtocol`, `ReferencePoint`, `TimeJump`, `RtcReset`,
+`TimeSource`, `TimeFormat`, `DateFormat`, `Irig106Version`,
+`IntraPacketTime`, `IntraPacketTimeFormat`, `SecHdrTimeFormat`, `SecondaryHeaderTime`,
+`LeapSecondEntry`, and `LeapSecondTable`.
+
+`TimeError` is excluded because its variants contain `&'static str` fields.
+
+---
+
+## 20. Integration with irig106-core
 
 When `irig106-core` provides packet header parsing, the integration simplifies:
 
@@ -1063,7 +1104,7 @@ fn rtc_from_reader(raw_rtc: u64) -> irig106_time::Rtc {
 
 ---
 
-## 20. Integration with irig106-decode
+## 21. Integration with irig106-decode
 
 Payload decoders need message-level timestamps from intra-packet time stamps.
 
@@ -1092,7 +1133,7 @@ Payload decoders need message-level timestamps from intra-packet time stamps.
 
 ---
 
-## 21. Integration with irig106-write
+## 22. Integration with irig106-write
 
 When constructing Ch10 files, use `to_le_bytes()` on time types to produce
 wire-format payloads. All encode methods round-trip with their corresponding
@@ -1138,14 +1179,14 @@ assert_eq!(payload.len(), 12);
 
 ---
 
-## 22. WASM / no_std Usage
+## 23. WASM / no_std Usage
 
 The crate compiles to `no_std` targets including WebAssembly.
 
 ```toml
 # Cargo.toml for a WASM project
 [dependencies]
-irig106-time = { version = "0.4", default-features = false }
+irig106-time = { version = "0.5", default-features = false }
 ```
 
 ```rust
@@ -1168,7 +1209,7 @@ pub fn correlate_in_browser(rtc_raw: u64) -> (u16, u8, u8, u8, u32) {
 
 ---
 
-## 23. Error Handling Patterns
+## 24. Error Handling Patterns
 
 Every fallible function returns `Result<T, TimeError>`. The error enum is
 `#[non_exhaustive]` so new variants can be added without breaking your code.
@@ -1218,7 +1259,7 @@ fn resolve_or_raw(correlator: &TimeCorrelator, rtc: Rtc) -> String {
 
 ---
 
-## 24. Performance Considerations
+## 25. Performance Considerations
 
 ### Hot Path vs. Cold Path
 
