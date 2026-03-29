@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **GitHub Actions CI/CD** (P1-03) — Test on stable + MSRV 1.73, clippy, rustfmt, rustdoc, and CLI build/lint.
+- **GitHub Actions CI/CD** (P1-03) — Test on stable + MSRV 1.87, clippy, rustfmt, rustdoc, and CLI build/lint.
 - **`impl Display for AbsoluteTime`** (GAP-01) — Formats as `YYYY-MM-DD HH:MM:SS.mmm.uuu` when year/month/day are available, or `Day DDD HH:MM:SS.mmm.uuu` otherwise.
 - **`TimeCorrelator::drift_ppm(channel_id)`** (GAP-10) — Estimates RTC clock drift in parts-per-million against absolute time references. Returns average drift across consecutive same-channel reference pairs.
 - **Calendar validation in DMY BCD decoding** (GAP-09) — `DmyFormatTime::from_le_bytes` now rejects invalid day-for-month combinations (e.g., Feb 30, Jun 31) via a `days_in_month()` helper that accounts for leap years.
@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Crate docs updated** (GAP-13) — `lib.rs` module-level documentation now includes network time (NTP/PTP) and drift estimation in the feature list. Requirement traceability paths updated to lowercase filenames.
 - **`unix_seconds_to_ymd_pub`** (GAP-15) — Visibility reduced from `pub` to `pub(crate)`.
 - **Year overflow guard** (GAP-16) — `unix_seconds_to_ymd` now uses `saturating_add` and breaks at `u16::MAX` to prevent panic on malformed timestamps far in the future.
-- **`Cargo.toml`** — Version bumped to 0.3.0. `rust-version = "1.73"` MSRV declared.
+- **`Cargo.toml`** — Version bumped to 0.3.0. `rust-version = "1.87"` MSRV declared.
 
 ## [v0.2.0](https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.2.0) - 2026-03-28
 
