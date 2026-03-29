@@ -1,6 +1,6 @@
 # Project Structure — irig106-time
 
-**Date:** 2026-03-27
+**Date:** 2026-03-28
 
 ---
 
@@ -29,17 +29,18 @@ irig106-time/
 │   ├── secondary_tests.rs             # 10 unit tests
 │   ├── intra_packet.rs                # IntraPacketTime, 4-format dispatch
 │   ├── intra_packet_tests.rs          # 8 unit tests
-│   ├── correlation.rs                  # TimeCorrelator, ReferencePoint, TimeJump
+│   ├── correlation.rs                  # TimeCorrelator, ReferencePoint, TimeJump, RtcReset
 │   ├── correlation_tests.rs           # 11 unit tests
 │   ├── network_time.rs                # Format 2 (0x12): NTP, PTP, LeapSecondTable
-│   └── network_time_tests.rs          # 22 unit tests
+│   ├── network_time_tests.rs          # 22 unit tests
+│   └── version.rs                     # Irig106Version, detect_version, 10 unit tests
 │
 ├── tests/
-│   ├── pipeline.rs                     # 15 integration tests (F1 + F2 pipelines)
-│   └── properties.rs                  # 10 property-based tests (10K iters, zero deps)
+│   ├── pipeline.rs                     # 43 integration tests (F1 + F2 pipelines, version, encode)
+│   └── properties.rs                  # 17 property-based tests (proptest)
 │
 ├── benches/
-│   └── time_benchmarks.rs             # 30 benchmarks (zero-dep, std::time::Instant)
+│   └── time_benchmarks.rs             # 28 benchmarks (zero-dep, std::time::Instant)
 │
 ├── fuzz/
 │   ├── Cargo.toml                      # libfuzzer-sys harness
@@ -52,8 +53,8 @@ irig106-time/
 │       ├── fuzz_ieee1588.rs
 │       ├── fuzz_csdw.rs
 │       ├── fuzz_correlation.rs
-│       ├── fuzz_ntp.rs                 # NEW in v0.2.0
-│       └── fuzz_ptp.rs                 # NEW in v0.2.0
+│       ├── fuzz_ntp.rs
+│       └── fuzz_ptp.rs
 │
 └── docs/
     ├── L1_Requirements.md              # 53 L1 → IRIG 106 standard (incl. Format 2)
@@ -101,14 +102,14 @@ irig106-time-cli/
 
 | Metric | Value |
 |--------|-------|
-| Source modules | 9 |
-| Source lines (excl. tests) | ~2,000 |
-| Unit tests | 126 |
-| Integration tests | 15 |
-| Property-based tests | 10 |
+| Source modules | 10 |
+| Source lines (excl. tests) | ~2,500 |
+| Unit tests | 136 |
+| Integration tests | 43 |
+| Property-based tests | 17 |
 | Fuzz targets | 10 |
-| Benchmarks | 30 |
-| **Total tests** | **151** |
+| Benchmarks | 28 |
+| **Total tests** | **196** |
 | Required runtime deps | **0** |
 | L1 requirements | 53 (37 base + 16 F2) |
 | `#![no_std]` | Yes |
