@@ -586,6 +586,8 @@ impl LeapSecondTable {
     ///
     /// **Traces:** GAP-04
     pub fn is_near_leap_second(&self, unix_seconds: u64, window_secs: u64) -> bool {
+        // u64::abs_diff is the crate's MSRV constraint (stabilized in Rust 1.60).
+        // See util.rs for the full MSRV dependency table.
         self.entries
             .iter()
             .any(|e| unix_seconds.abs_diff(e.effective_unix) <= window_secs)
@@ -639,9 +641,12 @@ fn unix_seconds_to_ymd(unix_secs: u64) -> (u16, u16, u8, u8, u8) {
     (year, doy, hour, minute, second)
 }
 
+/// Leap year check — delegates to [`crate::util::is_leap_year`].
+///
+/// See `util.rs` for MSRV rationale.
 #[inline]
 fn is_leap_year(year: u16) -> bool {
-    (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400)
+    crate::util::is_leap_year(year)
 }
 
 #[cfg(test)]

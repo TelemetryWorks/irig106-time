@@ -37,6 +37,19 @@
 //! remove the `std::error::Error` implementation on `TimeError`.
 //! The `correlation` and `network_time` modules require `alloc`.
 //!
+//! ## Minimum Supported Rust Version (MSRV)
+//!
+//! This crate requires **Rust 1.60** or later. The MSRV is constrained by:
+//!
+//! | API | Stabilized | Used By |
+//! |-----|------------|---------|
+//! | `u64::abs_diff` | Rust 1.60 | `LeapSecondTable::is_near_leap_second` |
+//!
+//! All other APIs used (`saturating_sub`, `saturating_add`, etc.) are stable
+//! since Rust 1.0. Leap year calculations use modulo arithmetic instead of
+//! `u16::is_multiple_of` (Rust 1.87) to maintain this low MSRV. See
+//! `src/util.rs` for the full dependency table.
+//!
 //! ## Requirement Traceability
 //!
 //! Every public type and function traces to requirements in
@@ -79,6 +92,9 @@ pub mod secondary;
 pub mod streaming;
 /// IRIG 106 standard version detection and version-aware dispatch.
 pub mod version;
+
+/// Crate-internal utilities (leap year helper, MSRV documentation).
+pub(crate) mod util;
 
 /// Optional interop with the `chrono` crate.
 #[cfg(feature = "chrono")]

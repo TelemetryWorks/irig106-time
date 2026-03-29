@@ -333,8 +333,9 @@ impl AbsoluteTime {
         loop {
             let prev_year = new_year.map(|y| y.saturating_sub(1));
             let days_in_prev_year = match prev_year {
+                // Uses crate::util::is_leap_year — see MSRV note in util.rs
                 Some(y) => {
-                    if (y.is_multiple_of(4) && !y.is_multiple_of(100)) || y.is_multiple_of(400) {
+                    if crate::util::is_leap_year(y) {
                         366u64
                     } else {
                         365

@@ -474,7 +474,8 @@ impl DmyFormatTime {
 /// Convert month/day to day-of-year.
 #[inline]
 fn month_day_to_doy(year: u16, month: u8, day: u8) -> u16 {
-    let is_leap = (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400);
+    // Uses crate::util::is_leap_year — see MSRV note in util.rs
+    let is_leap = crate::util::is_leap_year(year);
     let days_before: [u16; 12] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
     let m = (month as usize).saturating_sub(1).min(11);
     let mut doy = days_before[m] + day as u16;
@@ -488,7 +489,8 @@ fn month_day_to_doy(year: u16, month: u8, day: u8) -> u16 {
 #[inline]
 fn days_in_month(year: u16, month: u8) -> u8 {
     const DAYS: [u8; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    let is_leap = (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400);
+    // Uses crate::util::is_leap_year — see MSRV note in util.rs
+    let is_leap = crate::util::is_leap_year(year);
     let m = (month as usize).saturating_sub(1).min(11);
     if m == 1 && is_leap {
         29
