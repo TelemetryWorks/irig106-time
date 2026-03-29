@@ -23,9 +23,11 @@ use crate::absolute::AbsoluteTime;
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```rust
 /// use irig106_time::AbsoluteTime;
+/// use irig106_time::chrono_interop; // ensure module is linked
 /// use chrono::NaiveDateTime;
+/// use chrono::Datelike;
 ///
 /// let mut t = AbsoluteTime::new(100, 12, 30, 25, 340_000_000).unwrap();
 /// t.year = Some(2025);
