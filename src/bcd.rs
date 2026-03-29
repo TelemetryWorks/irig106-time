@@ -186,17 +186,15 @@ impl DayFormatTime {
     ///
     /// **Traces:** L3-BCD-007 ← L2-BCD-007
     pub fn to_absolute(&self) -> AbsoluteTime {
-        // Safe: values were validated in from_le_bytes
-        AbsoluteTime {
-            day_of_year: self.day_of_year,
-            hours: self.hours,
-            minutes: self.minutes,
-            seconds: self.seconds,
-            nanoseconds: (self.milliseconds as u32) * 1_000_000,
-            month: None,
-            day_of_month: None,
-            year: None,
-        }
+        // Safe to unwrap: values were validated in from_le_bytes
+        AbsoluteTime::new(
+            self.day_of_year,
+            self.hours,
+            self.minutes,
+            self.seconds,
+            (self.milliseconds as u32) * 1_000_000,
+        )
+        .unwrap()
     }
 
     /// Encode as 8 little-endian bytes (4× u16 LE) in the BCD Day-of-Year wire format.
@@ -411,18 +409,20 @@ impl DmyFormatTime {
     ///
     /// **Traces:** L3-BCD-007 ← L2-BCD-008
     pub fn to_absolute(&self) -> AbsoluteTime {
-        // Compute day-of-year from month/day (approximate: uses 0-indexed month table)
         let doy = month_day_to_doy(self.year, self.month, self.day);
-        AbsoluteTime {
-            day_of_year: doy,
-            hours: self.hours,
-            minutes: self.minutes,
-            seconds: self.seconds,
-            nanoseconds: (self.milliseconds as u32) * 1_000_000,
-            month: Some(self.month),
-            day_of_month: Some(self.day),
-            year: Some(self.year),
-        }
+        // Safe to unwrap: values were validated in from_le_bytes
+        let mut abs = AbsoluteTime::new(
+            doy,
+            self.hours,
+            self.minutes,
+            self.seconds,
+            (self.milliseconds as u32) * 1_000_000,
+        )
+        .unwrap();
+        abs.set_year(Some(self.year));
+        abs.set_month(Some(self.month));
+        abs.set_day_of_month(Some(self.day));
+        abs
     }
 
     /// Encode as 10 little-endian bytes (5× u16 LE) in the BCD Day-Month-Year wire format.

@@ -5,7 +5,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! irig106-time = { version = "0.6", features = ["chrono"] }
+//! irig106-time = { version = "0.7", features = ["chrono"] }
 //! ```
 //!
 //! # Requirement Traceability
@@ -30,20 +30,20 @@ use crate::absolute::AbsoluteTime;
 /// use chrono::Datelike;
 ///
 /// let mut t = AbsoluteTime::new(100, 12, 30, 25, 340_000_000).unwrap();
-/// t.year = Some(2025);
+/// t.set_year(Some(2025));
 /// let dt: NaiveDateTime = t.into();
 /// assert_eq!(dt.year(), 2025);
 /// ```
 impl From<AbsoluteTime> for chrono::NaiveDateTime {
     fn from(abs: AbsoluteTime) -> Self {
-        let year = abs.year.unwrap_or(1970) as i32;
-        let date = chrono::NaiveDate::from_yo_opt(year, abs.day_of_year as u32)
+        let year = abs.year().unwrap_or(1970) as i32;
+        let date = chrono::NaiveDate::from_yo_opt(year, abs.day_of_year() as u32)
             .unwrap_or_else(|| chrono::NaiveDate::from_ymd_opt(year, 1, 1).unwrap());
         let time = chrono::NaiveTime::from_hms_nano_opt(
-            abs.hours as u32,
-            abs.minutes as u32,
-            abs.seconds as u32,
-            abs.nanoseconds,
+            abs.hours() as u32,
+            abs.minutes() as u32,
+            abs.seconds() as u32,
+            abs.nanoseconds(),
         )
         .unwrap_or_default();
         chrono::NaiveDateTime::new(date, time)
@@ -58,20 +58,22 @@ impl From<chrono::NaiveDateTime> for AbsoluteTime {
     fn from(dt: chrono::NaiveDateTime) -> Self {
         use chrono::Datelike;
         use chrono::Timelike;
-        let mut abs = AbsoluteTime {
-            day_of_year: dt.ordinal() as u16,
-            hours: dt.hour() as u8,
-            minutes: dt.minute() as u8,
-            seconds: dt.second() as u8,
-            nanoseconds: dt.nanosecond(),
-            month: Some(dt.month() as u8),
-            day_of_month: Some(dt.day() as u8),
-            year: Some(dt.year() as u16),
-        };
+        let mut ns = dt.nanosecond();
         // Clamp nanoseconds that chrono may report >= 1B for leap seconds
-        if abs.nanoseconds >= 1_000_000_000 {
-            abs.nanoseconds = 999_999_999;
+        if ns >= 1_000_000_000 {
+            ns = 999_999_999;
         }
+        let mut abs = AbsoluteTime::new(
+            dt.ordinal() as u16,
+            dt.hour() as u8,
+            dt.minute() as u8,
+            dt.second() as u8,
+            ns,
+        )
+        .unwrap();
+        abs.set_year(Some(dt.year() as u16));
+        abs.set_month(Some(dt.month() as u8));
+        abs.set_day_of_month(Some(dt.day() as u8));
         abs
     }
 }
@@ -84,7 +86,7 @@ mod tests {
     #[test]
     fn absolute_to_chrono() {
         let mut t = AbsoluteTime::new(100, 12, 30, 25, 340_000_000).unwrap();
-        t.year = Some(2025);
+        t.set_year(Some(2025));
         let dt: NaiveDateTime = t.into();
         assert_eq!(dt.year(), 2025);
         assert_eq!(dt.ordinal(), 100);
@@ -100,28 +102,28 @@ mod tests {
         let time = NaiveTime::from_hms_nano_opt(12, 30, 25, 340_000_000).unwrap();
         let dt = NaiveDateTime::new(date, time);
         let abs: AbsoluteTime = dt.into();
-        assert_eq!(abs.year, Some(2025));
-        assert_eq!(abs.day_of_year, 100);
-        assert_eq!(abs.hours, 12);
-        assert_eq!(abs.minutes, 30);
-        assert_eq!(abs.seconds, 25);
-        assert_eq!(abs.nanoseconds, 340_000_000);
-        assert_eq!(abs.month, Some(4));
-        assert_eq!(abs.day_of_month, Some(10));
+        assert_eq!(abs.year(), Some(2025));
+        assert_eq!(abs.day_of_year(), 100);
+        assert_eq!(abs.hours(), 12);
+        assert_eq!(abs.minutes(), 30);
+        assert_eq!(abs.seconds(), 25);
+        assert_eq!(abs.nanoseconds(), 340_000_000);
+        assert_eq!(abs.month(), Some(4));
+        assert_eq!(abs.day_of_month(), Some(10));
     }
 
     #[test]
     fn round_trip() {
         let mut original = AbsoluteTime::new(200, 8, 15, 45, 123_456_789).unwrap();
-        original.year = Some(2024);
+        original.set_year(Some(2024));
         let dt: NaiveDateTime = original.into();
         let back: AbsoluteTime = dt.into();
-        assert_eq!(back.year, Some(2024));
-        assert_eq!(back.day_of_year, 200);
-        assert_eq!(back.hours, 8);
-        assert_eq!(back.minutes, 15);
-        assert_eq!(back.seconds, 45);
-        assert_eq!(back.nanoseconds, 123_456_789);
+        assert_eq!(back.year(), Some(2024));
+        assert_eq!(back.day_of_year(), 200);
+        assert_eq!(back.hours(), 8);
+        assert_eq!(back.minutes(), 15);
+        assert_eq!(back.seconds(), 45);
+        assert_eq!(back.nanoseconds(), 123_456_789);
     }
 
     #[test]

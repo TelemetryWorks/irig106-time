@@ -4,42 +4,119 @@
 //! three wire-format time types used in secondary headers and intra-packet
 //! timestamps: Chapter 4 Binary Weighted Time, IEEE-1588, and ERTC.
 //!
+//! # v0.7.0 Breaking Change
+//!
+//! `AbsoluteTime` fields are now accessed via methods (`hours()`, `minutes()`,
+//! etc.) instead of direct field access. The internal representation is a
+//! single `u64` (nanoseconds since start of day 1), making `add_nanos` and
+//! `sub_nanos` single arithmetic operations on the common path.
+//!
 //! # Requirement Traceability
 //!
 //! | Requirement | Description |
 //! |-------------|-------------|
 //! | L3-ABS-001..005 | `AbsoluteTime` struct and operations |
+//! | P4-04           | Internal u64 representation |
 //! | L3-CH4-001..005 | `Ch4BinaryTime` |
 //! | L3-1588-001..004 | `Ieee1588Time` |
 //! | L3-ERTC-001..003 | `Ertc` |
 
 use crate::error::{Result, TimeError};
 
+const NANOS_PER_SECOND: u64 = 1_000_000_000;
+const NANOS_PER_MINUTE: u64 = 60 * NANOS_PER_SECOND;
+const NANOS_PER_HOUR: u64 = 3600 * NANOS_PER_SECOND;
+const NANOS_PER_DAY: u64 = 86_400 * NANOS_PER_SECOND;
+
 /// Nanosecond-precision absolute time.
 ///
-/// Represents a point in time as day-of-year plus time-of-day, with optional
-/// calendar date (month/day/year) when DMY data is available.
+/// Internally stored as a single `u64` (nanoseconds since start of day 1),
+/// with optional calendar metadata (year, month, day-of-month). Field access
+/// is via methods: `day_of_year()`, `hours()`, `minutes()`, `seconds()`,
+/// `nanoseconds()`.
 ///
-/// **Traces:** L3-ABS-001 ← L2-ABS-001, L2-ABS-002 ← L1-ABS-001
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+/// # Construction
+///
+/// ```
+/// use irig106_time::AbsoluteTime;
+///
+/// let t = AbsoluteTime::new(100, 12, 30, 25, 340_000_000).unwrap();
+/// assert_eq!(t.day_of_year(), 100);
+/// assert_eq!(t.hours(), 12);
+/// ```
+///
+/// # Performance
+///
+/// `add_nanos` and `sub_nanos` are single `u64` arithmetic operations when
+/// staying within the same year (the common case for correlation).
+///
+/// **Traces:** L3-ABS-001 ← L2-ABS-001, L2-ABS-002 ← L1-ABS-001, P4-04
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AbsoluteTime {
-    /// Day of year (1–366).
-    pub day_of_year: u16,
-    /// Hours (0–23).
-    pub hours: u8,
-    /// Minutes (0–59).
-    pub minutes: u8,
-    /// Seconds (0–59).
-    pub seconds: u8,
-    /// Nanoseconds within the current second (0–999_999_999).
-    pub nanoseconds: u32,
-    /// Optional month (1–12), present when DMY format is used.
-    pub month: Option<u8>,
-    /// Optional day of month (1–31), present when DMY format is used.
-    pub day_of_month: Option<u8>,
+    /// Nanoseconds since start of day 1 (day 1 00:00:00.000 = 0).
+    total_ns: u64,
     /// Optional year (0–9999), present when DMY format is used.
-    pub year: Option<u16>,
+    year: Option<u16>,
+    /// Optional month (1–12), present when DMY format is used.
+    month: Option<u8>,
+    /// Optional day of month (1–31), present when DMY format is used.
+    day_of_month: Option<u8>,
+}
+
+// ── Custom serde: serialize/deserialize as expanded fields ──────────
+
+#[cfg(feature = "serde")]
+mod serde_impl {
+    use super::*;
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    #[derive(Serialize, Deserialize)]
+    struct AbsoluteTimeFields {
+        day_of_year: u16,
+        hours: u8,
+        minutes: u8,
+        seconds: u8,
+        nanoseconds: u32,
+        year: Option<u16>,
+        month: Option<u8>,
+        day_of_month: Option<u8>,
+    }
+
+    impl Serialize for AbsoluteTime {
+        fn serialize<S: Serializer>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error> {
+            let fields = AbsoluteTimeFields {
+                day_of_year: self.day_of_year(),
+                hours: self.hours(),
+                minutes: self.minutes(),
+                seconds: self.seconds(),
+                nanoseconds: self.nanoseconds(),
+                year: self.year,
+                month: self.month,
+                day_of_month: self.day_of_month,
+            };
+            fields.serialize(serializer)
+        }
+    }
+
+    impl<'de> Deserialize<'de> for AbsoluteTime {
+        fn deserialize<D: Deserializer<'de>>(
+            deserializer: D,
+        ) -> core::result::Result<Self, D::Error> {
+            let fields = AbsoluteTimeFields::deserialize(deserializer)?;
+            let mut t = AbsoluteTime::new(
+                fields.day_of_year,
+                fields.hours,
+                fields.minutes,
+                fields.seconds,
+                fields.nanoseconds,
+            )
+            .map_err(serde::de::Error::custom)?;
+            t.year = fields.year;
+            t.month = fields.month;
+            t.day_of_month = fields.day_of_month;
+            Ok(t)
+        }
+    }
 }
 
 impl AbsoluteTime {
@@ -88,15 +165,18 @@ impl AbsoluteTime {
                 max: 999_999_999,
             });
         }
+
+        let total_ns = (day_of_year as u64 - 1) * NANOS_PER_DAY
+            + hours as u64 * NANOS_PER_HOUR
+            + minutes as u64 * NANOS_PER_MINUTE
+            + seconds as u64 * NANOS_PER_SECOND
+            + nanoseconds as u64;
+
         Ok(Self {
-            day_of_year,
-            hours,
-            minutes,
-            seconds,
-            nanoseconds,
+            total_ns,
+            year: None,
             month: None,
             day_of_month: None,
-            year: None,
         })
     }
 
@@ -131,124 +211,148 @@ impl AbsoluteTime {
         Ok(self)
     }
 
-    /// Add `nanos` nanoseconds, carrying into seconds, minutes, hours, and days.
+    // ── Field accessors ─────────────────────────────────────────────
+
+    /// Day of year (1–366).
+    #[inline]
+    pub fn day_of_year(&self) -> u16 {
+        (self.total_ns / NANOS_PER_DAY + 1) as u16
+    }
+
+    /// Hours (0–23).
+    #[inline]
+    pub fn hours(&self) -> u8 {
+        ((self.total_ns % NANOS_PER_DAY) / NANOS_PER_HOUR) as u8
+    }
+
+    /// Minutes (0–59).
+    #[inline]
+    pub fn minutes(&self) -> u8 {
+        ((self.total_ns % NANOS_PER_HOUR) / NANOS_PER_MINUTE) as u8
+    }
+
+    /// Seconds (0–59).
+    #[inline]
+    pub fn seconds(&self) -> u8 {
+        ((self.total_ns % NANOS_PER_MINUTE) / NANOS_PER_SECOND) as u8
+    }
+
+    /// Nanoseconds within the current second (0–999_999_999).
+    #[inline]
+    pub fn nanoseconds(&self) -> u32 {
+        (self.total_ns % NANOS_PER_SECOND) as u32
+    }
+
+    /// Optional year (0–9999), present when DMY format is used.
+    #[inline]
+    pub fn year(&self) -> Option<u16> {
+        self.year
+    }
+
+    /// Optional month (1–12), present when DMY format is used.
+    #[inline]
+    pub fn month(&self) -> Option<u8> {
+        self.month
+    }
+
+    /// Optional day of month (1–31), present when DMY format is used.
+    #[inline]
+    pub fn day_of_month(&self) -> Option<u8> {
+        self.day_of_month
+    }
+
+    // ── Mutators for calendar metadata ──────────────────────────────
+
+    /// Set the year field.
+    #[inline]
+    pub fn set_year(&mut self, year: Option<u16>) {
+        self.year = year;
+    }
+
+    /// Set the month field.
+    #[inline]
+    pub fn set_month(&mut self, month: Option<u8>) {
+        self.month = month;
+    }
+
+    /// Set the day-of-month field.
+    #[inline]
+    pub fn set_day_of_month(&mut self, day: Option<u8>) {
+        self.day_of_month = day;
+    }
+
+    // ── Arithmetic ──────────────────────────────────────────────────
+
+    /// Add `nanos` nanoseconds. Single `u64` add on the common path.
     ///
-    /// **Traces:** L3-ABS-004
+    /// **Traces:** L3-ABS-004, P4-04
     #[inline]
     pub fn add_nanos(&self, nanos: u64) -> Self {
-        let total_ns = self.total_nanos_of_day() + nanos;
-
-        let nanos_per_second: u64 = 1_000_000_000;
-        let seconds_per_day: u64 = 86_400;
-
-        let total_seconds = total_ns / nanos_per_second;
-        let remaining_ns = (total_ns % nanos_per_second) as u32;
-
-        let extra_days = (total_seconds / seconds_per_day) as u16;
-        let seconds_of_day = total_seconds % seconds_per_day;
-
-        let hours = (seconds_of_day / 3600) as u8;
-        let minutes = ((seconds_of_day % 3600) / 60) as u8;
-        let seconds = (seconds_of_day % 60) as u8;
-
-        // Wrap day_of_year (simplistic: does not handle year rollover)
-        let mut new_day = self.day_of_year + extra_days;
-        if new_day > 366 {
-            new_day = ((new_day - 1) % 366) + 1;
-        }
+        let new_total = self.total_ns + nanos;
+        let max_year_ns = 366 * NANOS_PER_DAY;
 
         Self {
-            day_of_year: new_day,
-            hours,
-            minutes,
-            seconds,
-            nanoseconds: remaining_ns,
+            total_ns: if new_total >= max_year_ns {
+                (new_total % max_year_ns)
+            } else {
+                new_total
+            },
+            year: self.year,
             month: self.month,
             day_of_month: self.day_of_month,
-            year: self.year,
         }
     }
 
-    /// Subtract `nanos` nanoseconds, borrowing from seconds, minutes, hours, days.
+    /// Subtract `nanos` nanoseconds. Single `u64` sub on the common path.
     ///
-    /// **Traces:** L3-ABS-004
+    /// Handles year rollover when subtracting past day 1 (GAP-05).
+    ///
+    /// **Traces:** L3-ABS-004, P4-04
     #[inline]
     pub fn sub_nanos(&self, nanos: u64) -> Self {
-        let current_ns = self.total_nanos_of_day();
-        if nanos <= current_ns {
-            // Simple case: stays within the same day
-            let remaining = current_ns - nanos;
-            let nanos_per_second: u64 = 1_000_000_000;
-            let total_seconds = remaining / nanos_per_second;
-            let ns_part = (remaining % nanos_per_second) as u32;
-            let hours = (total_seconds / 3600) as u8;
-            let minutes = ((total_seconds % 3600) / 60) as u8;
-            let seconds = (total_seconds % 60) as u8;
+        if nanos <= self.total_ns {
+            // Common fast path: stays within the same year
             Self {
-                day_of_year: self.day_of_year,
-                hours,
-                minutes,
-                seconds,
-                nanoseconds: ns_part,
+                total_ns: self.total_ns - nanos,
+                year: self.year,
                 month: self.month,
                 day_of_month: self.day_of_month,
-                year: self.year,
             }
         } else {
-            // Borrow from previous days, handling year rollover (GAP-05)
-            let nanos_per_day: u64 = 86_400 * 1_000_000_000;
-            let deficit = nanos - current_ns;
-            let days_back = deficit.div_ceil(nanos_per_day) as u16;
-            let remaining = (days_back as u64) * nanos_per_day - deficit;
-            let nanos_per_second: u64 = 1_000_000_000;
-            let total_seconds = remaining / nanos_per_second;
-            let ns_part = (remaining % nanos_per_second) as u32;
-            let hours = (total_seconds / 3600) as u8;
-            let minutes = ((total_seconds % 3600) / 60) as u8;
-            let seconds = (total_seconds % 60) as u8;
+            // Year rollover path
+            self.sub_nanos_year_rollover(nanos)
+        }
+    }
 
-            let mut new_day = self.day_of_year;
-            let mut new_year = self.year;
+    /// Slow path for sub_nanos when crossing year boundary.
+    fn sub_nanos_year_rollover(&self, nanos: u64) -> Self {
+        let deficit = nanos - self.total_ns;
+        let mut new_year = self.year;
 
-            if new_day > days_back {
-                new_day -= days_back;
-            } else {
-                // Cross year boundary: roll back into previous year(s)
-                let mut remaining_days = days_back - new_day;
-                loop {
-                    // Determine days in the previous year
-                    let prev_year = new_year.map(|y| y.saturating_sub(1));
-                    let days_in_prev_year = match prev_year {
-                        Some(y) => {
-                            if (y.is_multiple_of(4) && !y.is_multiple_of(100))
-                                || y.is_multiple_of(400)
-                            {
-                                366u16
-                            } else {
-                                365
-                            }
-                        }
-                        None => 365, // no year info, assume non-leap
-                    };
-                    new_year = prev_year;
-                    if remaining_days < days_in_prev_year {
-                        new_day = days_in_prev_year - remaining_days;
-                        break;
+        let mut remaining = deficit;
+        loop {
+            let prev_year = new_year.map(|y| y.saturating_sub(1));
+            let days_in_prev_year = match prev_year {
+                Some(y) => {
+                    if (y.is_multiple_of(4) && !y.is_multiple_of(100)) || y.is_multiple_of(400) {
+                        366u64
+                    } else {
+                        365
                     }
-                    remaining_days -= days_in_prev_year;
                 }
+                None => 365,
+            };
+            let prev_year_ns = days_in_prev_year * NANOS_PER_DAY;
+            new_year = prev_year;
+            if remaining <= prev_year_ns {
+                return Self {
+                    total_ns: prev_year_ns - remaining,
+                    year: new_year,
+                    month: self.month,
+                    day_of_month: self.day_of_month,
+                };
             }
-
-            Self {
-                day_of_year: new_day,
-                hours,
-                minutes,
-                seconds,
-                nanoseconds: ns_part,
-                month: self.month,
-                day_of_month: self.day_of_month,
-                year: new_year,
-            }
+            remaining -= prev_year_ns;
         }
     }
 
@@ -257,11 +361,16 @@ impl AbsoluteTime {
     /// **Traces:** L3-ABS-005
     #[inline]
     pub fn total_nanos_of_day(&self) -> u64 {
-        let h = self.hours as u64;
-        let m = self.minutes as u64;
-        let s = self.seconds as u64;
-        let ns = self.nanoseconds as u64;
-        ((h * 3600 + m * 60 + s) * 1_000_000_000) + ns
+        self.total_ns % NANOS_PER_DAY
+    }
+
+    /// Total internal nanosecond count (nanoseconds since start of day 1).
+    ///
+    /// This is the raw internal representation. Useful for efficient
+    /// comparison and serialization.
+    #[inline]
+    pub fn as_total_ns(&self) -> u64 {
+        self.total_ns
     }
 }
 
@@ -269,21 +378,34 @@ impl core::fmt::Display for AbsoluteTime {
     /// Formats as `YYYY-MM-DD HH:MM:SS.mmm.uuu` when year/month/day are
     /// available, or `Day DDD HH:MM:SS.mmm.uuu` otherwise.
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let ms = self.nanoseconds / 1_000_000;
-        let us = (self.nanoseconds / 1_000) % 1_000;
+        let ns = self.nanoseconds();
+        let ms = ns / 1_000_000;
+        let us = (ns / 1_000) % 1_000;
         match (self.year, self.month, self.day_of_month) {
             (Some(y), Some(m), Some(d)) => {
                 write!(
                     f,
                     "{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}.{:03}",
-                    y, m, d, self.hours, self.minutes, self.seconds, ms, us
+                    y,
+                    m,
+                    d,
+                    self.hours(),
+                    self.minutes(),
+                    self.seconds(),
+                    ms,
+                    us
                 )
             }
             _ => {
                 write!(
                     f,
                     "Day {:03} {:02}:{:02}:{:02}.{:03}.{:03}",
-                    self.day_of_year, self.hours, self.minutes, self.seconds, ms, us
+                    self.day_of_year(),
+                    self.hours(),
+                    self.minutes(),
+                    self.seconds(),
+                    ms,
+                    us
                 )
             }
         }
@@ -314,9 +436,6 @@ pub struct Ch4BinaryTime {
 impl Ch4BinaryTime {
     /// Parse from a 6-byte little-endian buffer: `[unused(2), high(2), low(2), usec(2)]`.
     ///
-    /// For secondary header layout (with 2-byte unused prefix), pass the 8-byte
-    /// secondary header time field starting at the unused bytes.
-    ///
     /// **Traces:** L3-CH4-005
     pub fn from_secondary_bytes(buf: &[u8]) -> Result<Self> {
         if buf.len() < 8 {
@@ -325,7 +444,6 @@ impl Ch4BinaryTime {
                 actual: buf.len(),
             });
         }
-        // Bytes [0..2] are unused/reserved
         let high_order = u16::from_le_bytes([buf[2], buf[3]]);
         let low_order = u16::from_le_bytes([buf[4], buf[5]]);
         let microseconds = u16::from_le_bytes([buf[6], buf[7]]);
@@ -338,8 +456,6 @@ impl Ch4BinaryTime {
 
     /// Parse from an 8-byte intra-packet time stamp buffer.
     ///
-    /// Layout: `[unused(2), high(2), low(2), usec(2)]`.
-    ///
     /// **Traces:** L3-CH4-005
     pub fn from_intra_packet_bytes(buf: &[u8]) -> Result<Self> {
         Self::from_secondary_bytes(buf)
@@ -347,16 +463,10 @@ impl Ch4BinaryTime {
 
     /// Decode to absolute time.
     ///
-    /// The combined `high_order:low_order` value encodes day-of-year in the
-    /// upper bits and time-of-day in 10 ms increments in the lower bits.
-    ///
     /// **Traces:** L3-CH4-002, L3-CH4-003, L3-CH4-004
     pub fn to_absolute(&self) -> Result<AbsoluteTime> {
         let combined = ((self.high_order as u32) << 16) | (self.low_order as u32);
-
-        // Bits [16:0] = time in 10 ms increments
         let time_10ms = combined & 0x0001_FFFF;
-        // Bits [25:17] = day of year (1-based)
         let day_of_year = ((combined >> 17) & 0x01FF) as u16;
 
         let total_ms = time_10ms * 10;
@@ -366,8 +476,6 @@ impl Ch4BinaryTime {
         let hours = (total_secs / 3600) as u8;
         let minutes = ((total_secs % 3600) / 60) as u8;
         let seconds = (total_secs % 60) as u8;
-
-        // Combine remaining ms with microseconds field
         let nanoseconds = (remaining_ms * 1_000_000) + (self.microseconds as u32 * 1_000);
 
         AbsoluteTime::new(
@@ -385,9 +493,6 @@ impl Ch4BinaryTime {
 // ---------------------------------------------------------------------------
 
 /// IEEE-1588 Precision Time Protocol time value.
-///
-/// Used in secondary headers (Packet Flag bits \[3:2\] = 0b01) and intra-packet
-/// timestamps.
 ///
 /// **Traces:** L3-1588-001 ← L2-ABS-005 ← L1-ABS-003
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -440,8 +545,6 @@ impl Ieee1588Time {
 // ---------------------------------------------------------------------------
 
 /// 64-bit Extended Relative Time Counter.
-///
-/// Same 100 ns resolution as the 48-bit RTC but with a full 64-bit range.
 ///
 /// **Traces:** L3-ERTC-001 ← L2-ABS-007 ← L1-ABS-004
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

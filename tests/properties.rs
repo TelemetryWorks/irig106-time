@@ -67,11 +67,11 @@ proptest! {
         let t = AbsoluteTime::new(doy, h, m, s, ns).unwrap();
         let added = t.add_nanos(delta);
         let restored = added.sub_nanos(delta);
-        prop_assert_eq!(t.day_of_year, restored.day_of_year);
-        prop_assert_eq!(t.hours, restored.hours);
-        prop_assert_eq!(t.minutes, restored.minutes);
-        prop_assert_eq!(t.seconds, restored.seconds);
-        prop_assert_eq!(t.nanoseconds, restored.nanoseconds);
+        prop_assert_eq!(t.day_of_year(), restored.day_of_year());
+        prop_assert_eq!(t.hours(), restored.hours());
+        prop_assert_eq!(t.minutes(), restored.minutes());
+        prop_assert_eq!(t.seconds(), restored.seconds());
+        prop_assert_eq!(t.nanoseconds(), restored.nanoseconds());
     }
 
     #[test]
@@ -85,8 +85,8 @@ proptest! {
     ) {
         let t = AbsoluteTime::new(doy, h, m, s, ns).unwrap();
         let t2 = t.add_nanos(delta);
-        let ns1 = (t.day_of_year as u64 - 1) * 86_400_000_000_000 + t.total_nanos_of_day();
-        let ns2 = (t2.day_of_year as u64 - 1) * 86_400_000_000_000 + t2.total_nanos_of_day();
+        let ns1 = (t.day_of_year() as u64 - 1) * 86_400_000_000_000 + t.total_nanos_of_day();
+        let ns2 = (t2.day_of_year() as u64 - 1) * 86_400_000_000_000 + t2.total_nanos_of_day();
         prop_assert!(ns2 > ns1, "time must advance: {} > {}", ns2, ns1);
     }
 
@@ -138,10 +138,10 @@ proptest! {
         // Any random bytes that successfully parse must produce in-range fields
         let buf = [b0, b1, b2, b3, b4, b5, b6, b7];
         if let Ok(t) = irig106_time::bcd::DayFormatTime::from_le_bytes(&buf) {
-            prop_assert!(t.hours <= 23);
-            prop_assert!(t.minutes <= 59);
-            prop_assert!(t.seconds <= 59);
-            prop_assert!((1..=366).contains(&t.day_of_year));
+            prop_assert!(t.hours() <= 23);
+            prop_assert!(t.minutes() <= 59);
+            prop_assert!(t.seconds() <= 59);
+            prop_assert!((1..=366).contains(&t.day_of_year()));
         }
     }
 

@@ -117,11 +117,11 @@ fn ntp_to_absolute() {
         fraction: 0,
     };
     let abs = ntp.to_absolute().unwrap();
-    assert_eq!(abs.year, Some(2025));
-    assert_eq!(abs.day_of_year, 1);
-    assert_eq!(abs.hours, 0);
-    assert_eq!(abs.minutes, 0);
-    assert_eq!(abs.seconds, 0);
+    assert_eq!(abs.year(), Some(2025));
+    assert_eq!(abs.day_of_year(), 1);
+    assert_eq!(abs.hours(), 0);
+    assert_eq!(abs.minutes(), 0);
+    assert_eq!(abs.seconds(), 0);
 }
 
 #[test]
@@ -171,9 +171,9 @@ fn ptp_to_absolute() {
         nanoseconds: 0,
     };
     let abs = ptp.to_absolute(37).unwrap();
-    assert_eq!(abs.year, Some(2025));
-    assert_eq!(abs.day_of_year, 1);
-    assert_eq!(abs.hours, 0);
+    assert_eq!(abs.year(), Some(2025));
+    assert_eq!(abs.day_of_year(), 1);
+    assert_eq!(abs.hours(), 0);
 }
 
 #[test]

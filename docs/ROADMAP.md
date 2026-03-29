@@ -120,7 +120,7 @@ Target: Reduce the hot path below 15 ns and optimize channel-filtered correlatio
 | P4-01 | **Channel-indexed correlation** | High | 2 days | ✅ Done (v0.5.0) |
 | P4-02 | **Cached jump detection** | Medium | 1 day | ✅ Done (v0.5.0) |
 | P4-03 | **BCD lookup table** | Low | 0.5 day | ✅ Done (v0.5.0) |
-| P4-04 | **`AbsoluteTime` as total nanoseconds** | Medium | 2 days | Deferred to v1.0 (breaking API change) |
+| P4-04 | **`AbsoluteTime` as total nanoseconds** | Medium | 2 days | ✅ Done (v0.7.0) |
 | P4-05 | **SIMD BCD decode** | Low | 1 day | Deferred (speculative, no profiling evidence) |
 | P4-06 | **Benchmark with criterion** | Medium | 0.5 day | ✅ Done (v0.5.0) |
 
@@ -149,7 +149,7 @@ Target: Stable API, full ecosystem wiring, migration to `irig106-types`.
 | P6-05 | ~~Wire `irig106-write` BCD encoding~~ | — | — | ✅ `to_le_bytes()` shipped in v0.4.0 for all wire-format types. |
 | P6-06 | **Wire `irig106-studio` WASM** | Medium | 1 day | Verify `#![no_std]` + `alloc` compiles to wasm32-unknown-unknown. Add WASM-specific tests. |
 | P6-07 | **Semantic versioning freeze** | High | — | Declare 1.0.0 stable API. No breaking changes without major version bump. |
-| P6-08 | **MSRV policy** | Medium | — | MSRV is `1.87` (declared in v0.3.0 for `is_multiple_of` support). Review for possible lowering before 1.0. |
+| P6-08 | **MSRV policy** | Medium | — | Reviewed in v0.7.0: MSRV stays at `1.87` — `is_multiple_of` used in 3 files, replacing with `%` triggers clippy `manual_is_multiple_of`. |
 
 ---
 
@@ -199,4 +199,5 @@ Target: Stable API, full ecosystem wiring, migration to `irig106-types`.
 | **0.4.0** | Phase 2 | Version detection, version-aware CSDW, OOO window, RTC reset detection, `to_le_bytes()` encoding | Released |
 | **0.5.0** | Phase 4 | Channel-indexed O(log n) correlation, BCD LUT, criterion benchmarks, serde, sub_nanos year fix | Released |
 | **0.6.0** | Phase 5 | Streaming correlator, Ch11 awareness, quality metrics, recording events, chrono interop, F1 leap seconds | Released |
-| **1.0.0** | Phase 6 | Stable API, ecosystem wiring, irig106-types migration | +5 months |
+| **0.7.0** | Pre-1.0 | AbsoluteTime u64 restructure (P4-04), MSRV review, API hardening | Released |
+| **1.0.0** | Phase 6 | Stable API, ecosystem wiring, irig106-types migration | Next |

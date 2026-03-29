@@ -1,6 +1,6 @@
 [package]
 name = "irig106-time-cli"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2021"
 description = "CLI tool for inspecting IRIG 106 Chapter 10 time data — summary, correlation, jump detection, and CSV export."
 license = "Apache-2.0"

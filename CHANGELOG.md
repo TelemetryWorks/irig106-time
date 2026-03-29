@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.7.0](https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.7.0) - 2026-03-29
+
+### ⚠️ BREAKING CHANGES
+
+- **`AbsoluteTime` restructured with `u64` internal representation** (P4-04) — Fields are now accessed via methods instead of direct field access. The internal representation is a single `u64` (nanoseconds since start of day 1), making `add_nanos`/`sub_nanos` single arithmetic operations on the common path.
+
+  **Migration guide:**
+  - Field reads: `t.hours` → `t.hours()`, `t.day_of_year` → `t.day_of_year()`, `t.nanoseconds` → `t.nanoseconds()`, etc.
+  - Optional fields: `t.year` → `t.year()`, `t.month` → `t.month()`, `t.day_of_month` → `t.day_of_month()`
+  - Field mutations: `t.year = Some(2025)` → `t.set_year(Some(2025))`, `t.month = Some(3)` → `t.set_month(Some(3))`, `t.day_of_month = Some(15)` → `t.set_day_of_month(Some(15))`
+  - Struct literals: `AbsoluteTime { day_of_year: 100, hours: 12, ... }` → `AbsoluteTime::new(100, 12, ...)`
+
+### Added
+
+- **`AbsoluteTime::as_total_ns()`** — Exposes the raw internal nanosecond count for efficient comparison and serialization.
+- **`AbsoluteTime::set_year()`, `set_month()`, `set_day_of_month()`** — Setter methods for optional calendar metadata fields.
+
+### Changed
+
+- **`AbsoluteTime` internal representation** (P4-04) — Single `u64` replaces 5 numeric fields. `add_nanos` is now a single `u64` addition (was 4-level carry chain). `sub_nanos` year rollover is cleaner arithmetic. `total_nanos_of_day()` is a single modulo operation.
+- **Custom serde for `AbsoluteTime`** — Serializes to the same expanded JSON shape as v0.6 (`day_of_year`, `hours`, `minutes`, `seconds`, `nanoseconds`, `year`, `month`, `day_of_month`) for backward compatibility. Deserializes and recomposes the `u64` internally.
+- **`Cargo.toml`** — Version bumped to 0.7.0.
+- **CLI (irig106-time-cli)** — Version bumped to 0.7.0. All `AbsoluteTime` field accesses migrated to methods.
+- **MSRV unchanged** at 1.87 — `is_multiple_of` still used in 3 source files. Replacing with `%` would trigger clippy `manual_is_multiple_of`.
+- All consumer modules migrated: `bcd.rs`, `chrono_interop.rs`, `network_time.rs`, `correlation.rs`, `quality.rs`, `streaming.rs`, and all test files.
+- Total test count: **244** (170 unit + 57 integration + 17 property) — unchanged from v0.6.0.
+
 ## [v0.6.0](https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.6.0) - 2026-03-29
 
 ### Added

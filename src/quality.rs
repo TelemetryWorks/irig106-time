@@ -132,9 +132,9 @@ pub fn compute_quality(refs: &[ReferencePoint]) -> TimeQuality {
             if rtc_ns == 0.0 {
                 continue;
             }
-            let abs_0 = ((r0.time.day_of_year as u64).saturating_sub(1)) * 86_400_000_000_000
+            let abs_0 = ((r0.time.day_of_year() as u64).saturating_sub(1)) * 86_400_000_000_000
                 + r0.time.total_nanos_of_day();
-            let abs_1 = ((r1.time.day_of_year as u64).saturating_sub(1)) * 86_400_000_000_000
+            let abs_1 = ((r1.time.day_of_year() as u64).saturating_sub(1)) * 86_400_000_000_000
                 + r1.time.total_nanos_of_day();
             let abs_ns = abs_1 as f64 - abs_0 as f64;
             if abs_ns == 0.0 {

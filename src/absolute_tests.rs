@@ -33,12 +33,12 @@ use super::*;
 #[test]
 fn absolute_time_valid() {
     let t = AbsoluteTime::new(100, 12, 30, 45, 500_000_000).unwrap();
-    assert_eq!(t.day_of_year, 100);
-    assert_eq!(t.hours, 12);
-    assert_eq!(t.minutes, 30);
-    assert_eq!(t.seconds, 45);
-    assert_eq!(t.nanoseconds, 500_000_000);
-    assert_eq!(t.month, None);
+    assert_eq!(t.day_of_year(), 100);
+    assert_eq!(t.hours(), 12);
+    assert_eq!(t.minutes(), 30);
+    assert_eq!(t.seconds(), 45);
+    assert_eq!(t.nanoseconds(), 500_000_000);
+    assert_eq!(t.month(), None);
 }
 
 #[test]
@@ -77,9 +77,9 @@ fn with_date_valid() {
         .unwrap()
         .with_date(2025, 2, 14)
         .unwrap();
-    assert_eq!(t.year, Some(2025));
-    assert_eq!(t.month, Some(2));
-    assert_eq!(t.day_of_month, Some(14));
+    assert_eq!(t.year(), Some(2025));
+    assert_eq!(t.month(), Some(2));
+    assert_eq!(t.day_of_month(), Some(14));
 }
 
 #[test]
@@ -98,43 +98,43 @@ fn with_date_month_13_rejected() {
 fn add_nanos_subsecond() {
     let t = AbsoluteTime::new(1, 0, 0, 0, 100_000_000).unwrap();
     let t2 = t.add_nanos(200_000_000);
-    assert_eq!(t2.seconds, 0);
-    assert_eq!(t2.nanoseconds, 300_000_000);
+    assert_eq!(t2.seconds(), 0);
+    assert_eq!(t2.nanoseconds(), 300_000_000);
 }
 
 #[test]
 fn add_nanos_carry_to_seconds() {
     let t = AbsoluteTime::new(1, 0, 0, 0, 900_000_000).unwrap();
     let t2 = t.add_nanos(200_000_000); // 1.1 seconds total
-    assert_eq!(t2.seconds, 1);
-    assert_eq!(t2.nanoseconds, 100_000_000);
+    assert_eq!(t2.seconds(), 1);
+    assert_eq!(t2.nanoseconds(), 100_000_000);
 }
 
 #[test]
 fn add_nanos_carry_to_minutes() {
     let t = AbsoluteTime::new(1, 0, 0, 59, 0).unwrap();
     let t2 = t.add_nanos(1_000_000_000); // +1 second → 60 secs → 1 min
-    assert_eq!(t2.minutes, 1);
-    assert_eq!(t2.seconds, 0);
+    assert_eq!(t2.minutes(), 1);
+    assert_eq!(t2.seconds(), 0);
 }
 
 #[test]
 fn add_nanos_carry_to_hours() {
     let t = AbsoluteTime::new(1, 0, 59, 59, 0).unwrap();
     let t2 = t.add_nanos(1_000_000_000); // +1 sec → 1:00:00
-    assert_eq!(t2.hours, 1);
-    assert_eq!(t2.minutes, 0);
-    assert_eq!(t2.seconds, 0);
+    assert_eq!(t2.hours(), 1);
+    assert_eq!(t2.minutes(), 0);
+    assert_eq!(t2.seconds(), 0);
 }
 
 #[test]
 fn add_nanos_carry_to_days() {
     let t = AbsoluteTime::new(1, 23, 59, 59, 0).unwrap();
     let t2 = t.add_nanos(1_000_000_000); // +1 sec → next day
-    assert_eq!(t2.day_of_year, 2);
-    assert_eq!(t2.hours, 0);
-    assert_eq!(t2.minutes, 0);
-    assert_eq!(t2.seconds, 0);
+    assert_eq!(t2.day_of_year(), 2);
+    assert_eq!(t2.hours(), 0);
+    assert_eq!(t2.minutes(), 0);
+    assert_eq!(t2.seconds(), 0);
 }
 
 #[test]

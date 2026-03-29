@@ -405,19 +405,19 @@ fn find_next_sync(buf: &[u8], start: usize) -> Option<usize> {
 // ────────────────────────────────────────────────────────────────────
 
 fn fmt_abs_time(t: &AbsoluteTime) -> String {
-    let ms = t.nanoseconds / 1_000_000;
-    let us = (t.nanoseconds % 1_000_000) / 1_000;
-    match (t.year, t.month, t.day_of_month) {
+    let ms = t.nanoseconds() / 1_000_000;
+    let us = (t.nanoseconds() % 1_000_000) / 1_000;
+    match (t.year(), t.month(), t.day_of_month()) {
         (Some(y), Some(m), Some(d)) => {
             format!(
                 "{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}.{:03}",
-                y, m, d, t.hours, t.minutes, t.seconds, ms, us
+                y, m, d, t.hours(), t.minutes(), t.seconds(), ms, us
             )
         }
         _ => {
             format!(
                 "Day {:03} {:02}:{:02}:{:02}.{:03}.{:03}",
-                t.day_of_year, t.hours, t.minutes, t.seconds, ms, us
+                t.day_of_year(), t.hours(), t.minutes(), t.seconds(), ms, us
             )
         }
     }
@@ -771,14 +771,14 @@ fn cmd_csv(mmap: &[u8], output_path: Option<&str>) {
                     fmt_data_type_short(r.data_type),
                     r.rtc.as_raw(),
                     r.rtc.to_nanos(),
-                    t.day_of_year,
-                    t.hours,
-                    t.minutes,
-                    t.seconds,
-                    t.nanoseconds,
-                    t.year.map(|y| y.to_string()).unwrap_or_default(),
-                    t.month.map(|m| m.to_string()).unwrap_or_default(),
-                    t.day_of_month.map(|d| d.to_string()).unwrap_or_default(),
+                    t.day_of_year(),
+                    t.hours(),
+                    t.minutes(),
+                    t.seconds(),
+                    t.nanoseconds(),
+                    t.year().map(|y| y.to_string()).unwrap_or_default(),
+                    t.month().map(|m| m.to_string()).unwrap_or_default(),
+                    t.day_of_month().map(|d| d.to_string()).unwrap_or_default(),
                 )
                 .unwrap();
             }

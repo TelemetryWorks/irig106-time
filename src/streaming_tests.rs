@@ -22,8 +22,8 @@ fn add_and_correlate_single_ref() {
     assert_eq!(sc.len(), 1);
 
     let result = sc.correlate(Rtc::from_raw(10_000_000), None).unwrap();
-    assert_eq!(result.hours, 12);
-    assert_eq!(result.minutes, 0);
+    assert_eq!(result.hours(), 12);
+    assert_eq!(result.minutes(), 0);
 }
 
 #[test]
@@ -41,10 +41,10 @@ fn correlate_by_channel() {
     );
 
     let ch1 = sc.correlate(Rtc::from_raw(10_000_000), Some(1)).unwrap();
-    assert_eq!(ch1.hours, 12);
+    assert_eq!(ch1.hours(), 12);
 
     let ch2 = sc.correlate(Rtc::from_raw(20_000_000), Some(2)).unwrap();
-    assert_eq!(ch2.hours, 13);
+    assert_eq!(ch2.hours(), 13);
 }
 
 #[test]

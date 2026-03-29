@@ -66,10 +66,10 @@ fn correlate_interpolation_forward() {
     let result = c.correlate(target, None).unwrap();
 
     // Expected: 12:30:25.015_000_000
-    assert_eq!(result.hours, 12);
-    assert_eq!(result.minutes, 30);
-    assert_eq!(result.seconds, 25);
-    assert_eq!(result.nanoseconds, 15_000_000);
+    assert_eq!(result.hours(), 12);
+    assert_eq!(result.minutes(), 30);
+    assert_eq!(result.seconds(), 25);
+    assert_eq!(result.nanoseconds(), 15_000_000);
 }
 
 #[test]
@@ -84,10 +84,10 @@ fn correlate_nearest_point() {
     let target = Rtc::from_raw(99_999_000);
     let result = c.correlate(target, None).unwrap();
     // Should use ref 2 (closer), interpolate backward slightly
-    assert_eq!(result.hours, 12);
-    assert_eq!(result.minutes, 0);
+    assert_eq!(result.hours(), 12);
+    assert_eq!(result.minutes(), 0);
     // 100 ticks = 10_000 ns = 10 µs before 10.0s
-    assert_eq!(result.seconds, 9);
+    assert_eq!(result.seconds(), 9);
 }
 
 #[test]
@@ -101,11 +101,11 @@ fn correlate_channel_filter() {
     // Correlate using only channel 2
     let target = Rtc::from_raw(2_000);
     let result = c.correlate(target, Some(2)).unwrap();
-    assert_eq!(result.hours, 13);
+    assert_eq!(result.hours(), 13);
 
     // Correlate using only channel 1
     let result = c.correlate(Rtc::from_raw(1_000), Some(1)).unwrap();
-    assert_eq!(result.hours, 12);
+    assert_eq!(result.hours(), 12);
 }
 
 #[test]

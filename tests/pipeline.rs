@@ -95,7 +95,7 @@ fn full_day_format_pipeline() {
 
     // Step 3: Convert to AbsoluteTime
     let abs_time = day_time.to_absolute();
-    assert_eq!(abs_time.nanoseconds, 340_000_000);
+    assert_eq!(abs_time.nanoseconds(), 340_000_000);
 
     // Step 4: Correlate — time packet arrived at RTC=50_000_000 (5 sec)
     let ref_rtc = Rtc::from_raw(50_000_000);
@@ -105,10 +105,10 @@ fn full_day_format_pipeline() {
     // Step 5: Resolve a data packet at RTC=50_150_000 (15ms later)
     let target_rtc = Rtc::from_raw(50_150_000);
     let resolved = correlator.correlate(target_rtc, None).unwrap();
-    assert_eq!(resolved.day_of_year, 100);
-    assert_eq!(resolved.hours, 12);
-    assert_eq!(resolved.minutes, 30);
-    assert_eq!(resolved.seconds, 25);
+    assert_eq!(resolved.day_of_year(), 100);
+    assert_eq!(resolved.hours(), 12);
+    assert_eq!(resolved.minutes(), 30);
+    assert_eq!(resolved.seconds(), 25);
     assert_eq!(resolved.nanoseconds, 355_000_000); // 340ms + 15ms
 }
 
@@ -122,14 +122,14 @@ fn full_dmy_format_pipeline() {
     let dmy_time = DmyFormatTime::from_le_bytes(&bcd_buf).unwrap();
     let abs = dmy_time.to_absolute();
 
-    assert_eq!(abs.year, Some(2025));
-    assert_eq!(abs.month, Some(3));
-    assert_eq!(abs.day_of_month, Some(15));
-    assert_eq!(abs.day_of_year, 74); // Jan(31) + Feb(28) + 15
-    assert_eq!(abs.hours, 8);
-    assert_eq!(abs.minutes, 45);
-    assert_eq!(abs.seconds, 30);
-    assert_eq!(abs.nanoseconds, 120_000_000);
+    assert_eq!(abs.year(), Some(2025));
+    assert_eq!(abs.month(), Some(3));
+    assert_eq!(abs.day_of_month(), Some(15));
+    assert_eq!(abs.day_of_year(), 74); // Jan(31) + Feb(28) + 15
+    assert_eq!(abs.hours(), 8);
+    assert_eq!(abs.minutes(), 45);
+    assert_eq!(abs.seconds(), 30);
+    assert_eq!(abs.nanoseconds(), 120_000_000);
 }
 
 /// Two time channels (IRIG-B and GPS) providing different absolute times
@@ -150,18 +150,18 @@ fn multi_channel_correlation() {
     let via_irig = correlator
         .correlate(Rtc::from_raw(20_000_000), Some(1))
         .unwrap();
-    assert_eq!(via_irig.hours, 12);
-    assert_eq!(via_irig.minutes, 0);
+    assert_eq!(via_irig.hours(), 12);
+    assert_eq!(via_irig.minutes(), 0);
     assert_eq!(via_irig.seconds, 1); // 12:00:01 per IRIG-B
 
     // Same RTC using GPS (channel 2)
     let via_gps = correlator
         .correlate(Rtc::from_raw(20_000_000), Some(2))
         .unwrap();
-    assert_eq!(via_gps.hours, 12);
-    assert_eq!(via_gps.minutes, 0);
+    assert_eq!(via_gps.hours(), 12);
+    assert_eq!(via_gps.minutes(), 0);
     assert_eq!(via_gps.seconds, 4); // 12:00:04.5 per GPS
-    assert_eq!(via_gps.nanoseconds, 500_000_000);
+    assert_eq!(via_gps.nanoseconds(), 500_000_000);
 }
 
 /// Simulate a GPS lock event: time jumps forward by 5 seconds.
@@ -236,10 +236,10 @@ fn intra_packet_rtc_to_absolute() {
     match ipt {
         IntraPacketTime::Rtc(rtc) => {
             let abs = correlator.correlate(rtc, Some(1)).unwrap();
-            assert_eq!(abs.day_of_year, 200);
-            assert_eq!(abs.hours, 8);
-            assert_eq!(abs.seconds, 0);
-            assert_eq!(abs.nanoseconds, 50_000_000); // 50ms
+            assert_eq!(abs.day_of_year(), 200);
+            assert_eq!(abs.hours(), 8);
+            assert_eq!(abs.seconds(), 0);
+            assert_eq!(abs.nanoseconds(), 50_000_000); // 50ms
         }
         other => panic!("expected Rtc, got {other:?}"),
     }
@@ -261,10 +261,10 @@ fn rtc_large_delta_correlation() {
     let target = Rtc::from_raw(30_000_000); // 2 sec later
     let result = correlator.correlate(target, None).unwrap();
 
-    assert_eq!(result.day_of_year, 2); // crossed midnight
-    assert_eq!(result.hours, 0);
-    assert_eq!(result.minutes, 0);
-    assert_eq!(result.seconds, 0);
+    assert_eq!(result.day_of_year(), 2); // crossed midnight
+    assert_eq!(result.hours(), 0);
+    assert_eq!(result.minutes(), 0);
+    assert_eq!(result.seconds(), 0);
 }
 
 /// Invalid BCD digit in the time message propagates a typed error.
@@ -362,11 +362,11 @@ fn full_ntp_pipeline() {
 
     // Convert to AbsoluteTime
     let abs = ntp.to_absolute().unwrap();
-    assert_eq!(abs.year, Some(2025));
-    assert_eq!(abs.day_of_year, 1);
-    assert_eq!(abs.hours, 0);
-    assert_eq!(abs.minutes, 0);
-    assert_eq!(abs.seconds, 0);
+    assert_eq!(abs.year(), Some(2025));
+    assert_eq!(abs.day_of_year(), 1);
+    assert_eq!(abs.hours(), 0);
+    assert_eq!(abs.minutes(), 0);
+    assert_eq!(abs.seconds(), 0);
 
     // Feed into correlator
     let mut correlator = TimeCorrelator::new();
@@ -375,11 +375,11 @@ fn full_ntp_pipeline() {
     // Resolve a data packet 500ms later
     let target = Rtc::from_raw(15_000_000);
     let resolved = correlator.correlate(target, Some(5)).unwrap();
-    assert_eq!(resolved.year, Some(2025));
-    assert_eq!(resolved.day_of_year, 1);
-    assert_eq!(resolved.hours, 0);
-    assert_eq!(resolved.minutes, 0);
-    assert_eq!(resolved.seconds, 0);
+    assert_eq!(resolved.year(), Some(2025));
+    assert_eq!(resolved.day_of_year(), 1);
+    assert_eq!(resolved.hours(), 0);
+    assert_eq!(resolved.minutes(), 0);
+    assert_eq!(resolved.seconds(), 0);
     assert_eq!(resolved.nanoseconds, 500_000_000); // 500ms
 }
 
@@ -410,9 +410,9 @@ fn full_ptp_pipeline() {
     assert_eq!(offset, 37);
 
     let abs = ptp.to_absolute(offset).unwrap();
-    assert_eq!(abs.year, Some(2025));
-    assert_eq!(abs.day_of_year, 1);
-    assert_eq!(abs.hours, 0);
+    assert_eq!(abs.year(), Some(2025));
+    assert_eq!(abs.day_of_year(), 1);
+    assert_eq!(abs.hours(), 0);
 
     // Feed into correlator via add_reference_f2
     let mut correlator = TimeCorrelator::new();
@@ -425,8 +425,8 @@ fn full_ptp_pipeline() {
     let resolved = correlator
         .correlate(Rtc::from_raw(20_000_000), Some(8))
         .unwrap();
-    assert_eq!(resolved.year, Some(2025));
-    assert_eq!(resolved.seconds, 1);
+    assert_eq!(resolved.year(), Some(2025));
+    assert_eq!(resolved.seconds(), 1);
 }
 
 /// Mixed F1 + F2 time sources in the same correlator.
@@ -447,7 +447,7 @@ fn mixed_f1_f2_correlation() {
     // We'll use add_reference directly with a pre-computed AbsoluteTime
     // to test that both sources coexist
     let mut ntp_abs = AbsoluteTime::new(100, 12, 0, 0, 0).unwrap();
-    ntp_abs.year = Some(2025);
+    ntp_abs.set_year(Some(2025));
     correlator.add_reference(8, Rtc::from_raw(10_000_000), ntp_abs);
 
     // Both channels should resolve the same RTC to the same time
@@ -457,9 +457,9 @@ fn mixed_f1_f2_correlation() {
     let f2_time = correlator
         .correlate(Rtc::from_raw(10_000_000), Some(8))
         .unwrap();
-    assert_eq!(f1_time.hours, f2_time.hours);
-    assert_eq!(f1_time.minutes, f2_time.minutes);
-    assert_eq!(f1_time.seconds, f2_time.seconds);
+    assert_eq!(f1_time.hours(), f2_time.hours());
+    assert_eq!(f1_time.minutes(), f2_time.minutes());
+    assert_eq!(f1_time.seconds(), f2_time.seconds());
 }
 
 /// NTP fractional seconds provide sub-millisecond precision.
@@ -473,7 +473,7 @@ fn ntp_sub_millisecond_precision() {
         fraction: 1 << 31,
     };
     let abs = ntp.to_absolute().unwrap();
-    assert!(abs.nanoseconds >= 499_999_999 && abs.nanoseconds <= 500_000_001);
+    assert!(abs.nanoseconds() >= 499_999_999 && abs.nanoseconds() <= 500_000_001);
 
     // fraction = 2^30 = quarter second → ~250,000,000 ns
     let ntp2 = NtpTime {
@@ -481,7 +481,7 @@ fn ntp_sub_millisecond_precision() {
         fraction: 1 << 30,
     };
     let abs2 = ntp2.to_absolute().unwrap();
-    assert!(abs2.nanoseconds >= 249_999_999 && abs2.nanoseconds <= 250_000_001);
+    assert!(abs2.nanoseconds() >= 249_999_999 && abs2.nanoseconds() <= 250_000_001);
 }
 
 /// Leap second table correctly differentiates historical offsets.
@@ -520,9 +520,9 @@ fn display_absolute_time_doy() {
 #[test]
 fn display_absolute_time_dmy() {
     let mut t = AbsoluteTime::new(1, 8, 30, 0, 0).unwrap();
-    t.year = Some(2025);
-    t.month = Some(3);
-    t.day_of_month = Some(15);
+    t.set_year(Some(2025));
+    t.set_month(Some(3));
+    t.set_day_of_month(Some(15));
     let s = format!("{}", t);
     assert_eq!(s, "2025-03-15 08:30:00.000.000");
 }
@@ -627,7 +627,7 @@ fn calendar_rejects_feb_30() {
     // This is a structural test — the actual BCD byte construction is tested
     // in unit tests.
     let t = AbsoluteTime::new(59, 12, 0, 0, 0).unwrap(); // Day 59 = Feb 28
-    assert_eq!(t.day_of_year, 59);
+    assert_eq!(t.day_of_year(), 59);
 }
 
 /// Year overflow guard: extreme PTP timestamps don't panic.
@@ -978,9 +978,9 @@ fn channel_indexed_correlate_same_result_as_any() {
 
     // Query at RTC 10M — channel 1 should give exact match
     let by_ch = c.correlate(Rtc::from_raw(10_000_000), Some(1)).unwrap();
-    assert_eq!(by_ch.hours, 12);
-    assert_eq!(by_ch.minutes, 0);
-    assert_eq!(by_ch.seconds, 0);
+    assert_eq!(by_ch.hours(), 12);
+    assert_eq!(by_ch.minutes(), 0);
+    assert_eq!(by_ch.seconds(), 0);
 }
 
 #[test]
@@ -1009,28 +1009,28 @@ fn channel_indexed_correlate_large_set() {
 #[test]
 fn sub_nanos_crosses_year_boundary() {
     let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap(); // Day 1, midnight
-    t.year = Some(2025);
+    t.set_year(Some(2025));
 
     // Subtract 1 second — should roll back to day 366, 23:59:59 of 2024
     // (2024 is a leap year → 366 days)
     let result = t.sub_nanos(1_000_000_000);
-    assert_eq!(result.year, Some(2024));
-    assert_eq!(result.day_of_year, 366);
-    assert_eq!(result.hours, 23);
-    assert_eq!(result.minutes, 59);
-    assert_eq!(result.seconds, 59);
+    assert_eq!(result.year(), Some(2024));
+    assert_eq!(result.day_of_year(), 366);
+    assert_eq!(result.hours(), 23);
+    assert_eq!(result.minutes(), 59);
+    assert_eq!(result.seconds(), 59);
 }
 
 #[test]
 fn sub_nanos_same_day_no_year_change() {
     let mut t = AbsoluteTime::new(100, 12, 0, 0, 0).unwrap();
-    t.year = Some(2025);
+    t.set_year(Some(2025));
 
     // Subtract 1 hour — same day
     let result = t.sub_nanos(3_600_000_000_000);
-    assert_eq!(result.year, Some(2025));
-    assert_eq!(result.day_of_year, 100);
-    assert_eq!(result.hours, 11);
+    assert_eq!(result.year(), Some(2025));
+    assert_eq!(result.day_of_year(), 100);
+    assert_eq!(result.hours(), 11);
 }
 
 #[test]
@@ -1038,10 +1038,10 @@ fn sub_nanos_no_year_info_wraps_gracefully() {
     // Without year info, should still compute days correctly (assumes 365)
     let t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap(); // Day 1, no year
     let result = t.sub_nanos(1_000_000_000); // 1 second back
-    assert_eq!(result.day_of_year, 365); // wraps to 365 (no year = non-leap assumed)
-    assert_eq!(result.hours, 23);
-    assert_eq!(result.minutes, 59);
-    assert_eq!(result.seconds, 59);
+    assert_eq!(result.day_of_year(), 365); // wraps to 365 (no year = non-leap assumed)
+    assert_eq!(result.hours(), 23);
+    assert_eq!(result.minutes(), 59);
+    assert_eq!(result.seconds(), 59);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1096,7 +1096,7 @@ fn streaming_correlator_basic_pipeline() {
     // Correlate a point between refs 3 and 4
     let mid = Rtc::from_raw(35_000_000);
     let result = sc.correlate(mid, Some(1)).unwrap();
-    assert_eq!(result.hours, 12);
+    assert_eq!(result.hours(), 12);
 }
 
 #[test]

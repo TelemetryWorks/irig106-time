@@ -150,12 +150,12 @@ fn day_fmt_to_absolute() {
     let buf = day100_123025_340_bytes();
     let t = DayFormatTime::from_le_bytes(&buf).unwrap();
     let abs = t.to_absolute();
-    assert_eq!(abs.day_of_year, 100);
-    assert_eq!(abs.hours, 12);
-    assert_eq!(abs.minutes, 30);
-    assert_eq!(abs.seconds, 25);
-    assert_eq!(abs.nanoseconds, 340_000_000);
-    assert_eq!(abs.month, None);
+    assert_eq!(abs.day_of_year(), 100);
+    assert_eq!(abs.hours(), 12);
+    assert_eq!(abs.minutes(), 30);
+    assert_eq!(abs.seconds(), 25);
+    assert_eq!(abs.nanoseconds(), 340_000_000);
+    assert_eq!(abs.month(), None);
 }
 
 #[test]
@@ -197,11 +197,11 @@ fn dmy_fmt_to_absolute_with_date() {
     buf[6..8].copy_from_slice(&w3.to_le_bytes());
     let t = DmyFormatTime::from_le_bytes(&buf).unwrap();
     let abs = t.to_absolute();
-    assert_eq!(abs.year, Some(2025));
-    assert_eq!(abs.month, Some(3));
-    assert_eq!(abs.day_of_month, Some(15));
+    assert_eq!(abs.year(), Some(2025));
+    assert_eq!(abs.month(), Some(3));
+    assert_eq!(abs.day_of_month(), Some(15));
     // March 15 in non-leap 2025 = 31+28+15 = 74
-    assert_eq!(abs.day_of_year, 74);
+    assert_eq!(abs.day_of_year(), 74);
 }
 
 #[test]

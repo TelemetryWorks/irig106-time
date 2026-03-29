@@ -190,7 +190,7 @@ impl TimeCorrelator {
                 let (year, doy, hour, minute, second) =
                     crate::network_time::unix_seconds_to_ymd_pub(utc_secs);
                 let mut abs = AbsoluteTime::new(doy, hour, minute, second, ptp.nanoseconds)?;
-                abs.year = Some(year);
+                abs.set_year(Some(year));
                 abs
             }
         };
@@ -386,9 +386,9 @@ impl TimeCorrelator {
                 continue;
             }
 
-            let abs_ns_0 = ((r0.time.day_of_year as u64).saturating_sub(1)) * 86_400_000_000_000
+            let abs_ns_0 = ((r0.time.day_of_year() as u64).saturating_sub(1)) * 86_400_000_000_000
                 + r0.time.total_nanos_of_day();
-            let abs_ns_1 = ((r1.time.day_of_year as u64).saturating_sub(1)) * 86_400_000_000_000
+            let abs_ns_1 = ((r1.time.day_of_year() as u64).saturating_sub(1)) * 86_400_000_000_000
                 + r1.time.total_nanos_of_day();
             let abs_delta_ns = abs_ns_1 as f64 - abs_ns_0 as f64;
 
@@ -423,7 +423,7 @@ impl TimeCorrelator {
         // Sort by absolute time to see temporal order
         let mut sorted: Vec<&ReferencePoint> = ch_refs.iter().collect();
         sorted.sort_by_key(|r| {
-            ((r.time.day_of_year as u64).saturating_sub(1)) * 86_400_000_000_000
+            ((r.time.day_of_year() as u64).saturating_sub(1)) * 86_400_000_000_000
                 + r.time.total_nanos_of_day()
         });
 
