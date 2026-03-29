@@ -138,10 +138,10 @@ proptest! {
         // Any random bytes that successfully parse must produce in-range fields
         let buf = [b0, b1, b2, b3, b4, b5, b6, b7];
         if let Ok(t) = irig106_time::bcd::DayFormatTime::from_le_bytes(&buf) {
-            prop_assert!(t.hours() <= 23);
-            prop_assert!(t.minutes() <= 59);
-            prop_assert!(t.seconds() <= 59);
-            prop_assert!((1..=366).contains(&t.day_of_year()));
+            prop_assert!(t.hours <= 23);
+            prop_assert!(t.minutes <= 59);
+            prop_assert!(t.seconds <= 59);
+            prop_assert!((1..=366).contains(&t.day_of_year));
         }
     }
 

@@ -109,7 +109,7 @@ fn full_day_format_pipeline() {
     assert_eq!(resolved.hours(), 12);
     assert_eq!(resolved.minutes(), 30);
     assert_eq!(resolved.seconds(), 25);
-    assert_eq!(resolved.nanoseconds, 355_000_000); // 340ms + 15ms
+    assert_eq!(resolved.nanoseconds(), 355_000_000); // 340ms + 15ms
 }
 
 /// Parse a DMY format time message and verify calendar date propagation.
@@ -152,7 +152,7 @@ fn multi_channel_correlation() {
         .unwrap();
     assert_eq!(via_irig.hours(), 12);
     assert_eq!(via_irig.minutes(), 0);
-    assert_eq!(via_irig.seconds, 1); // 12:00:01 per IRIG-B
+    assert_eq!(via_irig.seconds(), 1); // 12:00:01 per IRIG-B
 
     // Same RTC using GPS (channel 2)
     let via_gps = correlator
@@ -160,7 +160,7 @@ fn multi_channel_correlation() {
         .unwrap();
     assert_eq!(via_gps.hours(), 12);
     assert_eq!(via_gps.minutes(), 0);
-    assert_eq!(via_gps.seconds, 4); // 12:00:04.5 per GPS
+    assert_eq!(via_gps.seconds(), 4); // 12:00:04.5 per GPS
     assert_eq!(via_gps.nanoseconds(), 500_000_000);
 }
 
@@ -380,7 +380,7 @@ fn full_ntp_pipeline() {
     assert_eq!(resolved.hours(), 0);
     assert_eq!(resolved.minutes(), 0);
     assert_eq!(resolved.seconds(), 0);
-    assert_eq!(resolved.nanoseconds, 500_000_000); // 500ms
+    assert_eq!(resolved.nanoseconds(), 500_000_000); // 500ms
 }
 
 /// Full PTP pipeline: parse F2 payload → apply leap seconds → correlate.
