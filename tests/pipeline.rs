@@ -580,9 +580,7 @@ fn drift_ppm_channel_isolation() {
 /// Calendar validation rejects Feb 30.
 #[test]
 fn calendar_rejects_feb_30() {
-    use irig106_time::bcd::DmyFormatTime;
-    // We can't easily construct raw BCD bytes for Feb 30, but we can verify
-    // the behavior through the public API by checking that valid dates succeed.
+    // Verify valid dates succeed through the public API.
     // Feb 28 on a non-leap year should work:
     // This is a structural test — the actual BCD byte construction is tested
     // in unit tests.

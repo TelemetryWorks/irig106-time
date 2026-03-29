@@ -100,7 +100,8 @@ proptest! {
         let t = AbsoluteTime::new(doy, h, m, s, 0).unwrap();
         let display = format!("{}", t);
         // Should contain HH:MM:SS
-        prop_assert!(display.contains(&format!("{:02}:{:02}:{:02}", h, m, s)));
+        let expected = format!("{:02}:{:02}:{:02}", h, m, s);
+        prop_assert!(display.contains(&expected));
     }
 }
 
@@ -131,19 +132,16 @@ proptest! {
 
 proptest! {
     #[test]
-    fn bcd_valid_parse_fields_in_range(
-        ms in 0u16..=990,
-        s in 0u8..=59,
-        m in 0u8..=59,
-        h in 0u8..=23,
-        doy in 1u16..=366,
+    fn bcd_parsed_fields_always_in_range(
+        b0: u8, b1: u8, b2: u8, b3: u8, b4: u8, b5: u8, b6: u8, b7: u8,
     ) {
-        // Construct valid BCD bytes for DOY format and verify parsed fields in range
-        // (This tests the invariant, not the BCD encoding itself)
-        if let Ok(t) = irig106_time::bcd::DayFormatTime::from_le_bytes(&[0u8; 8]) {
+        // Any random bytes that successfully parse must produce in-range fields
+        let buf = [b0, b1, b2, b3, b4, b5, b6, b7];
+        if let Ok(t) = irig106_time::bcd::DayFormatTime::from_le_bytes(&buf) {
             prop_assert!(t.hours <= 23);
             prop_assert!(t.minutes <= 59);
             prop_assert!(t.seconds <= 59);
+            prop_assert!((1..=366).contains(&t.day_of_year));
         }
     }
 
