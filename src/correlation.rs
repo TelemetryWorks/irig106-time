@@ -377,12 +377,20 @@ impl TimeCorrelator {
     ///
     /// **Traces:** GAP-07
     pub fn detect_rtc_resets(&self, channel_id: u16) -> Vec<RtcReset> {
-        let filtered: Vec<(usize, &ReferencePoint)> = self
+        let mut filtered: Vec<(usize, &ReferencePoint)> = self
             .references
             .iter()
             .enumerate()
             .filter(|(_, r)| r.channel_id == channel_id)
             .collect();
+
+        // Sort by absolute time so we see temporal order, not RTC order.
+        // After a reset the RTC drops but absolute time keeps advancing,
+        // so absolute-time order reveals the reset.
+        filtered.sort_by_key(|(_, r)| {
+            ((r.time.day_of_year as u64).saturating_sub(1)) * 86_400_000_000_000
+                + r.time.total_nanos_of_day()
+        });
 
         let mut resets = Vec::new();
 
@@ -390,26 +398,17 @@ impl TimeCorrelator {
             let (_, prev) = window[0];
             let (idx_curr, curr) = window[1];
 
-            // RTC went backward (raw comparison)
+            // In temporal order, if the RTC of the later-in-time reference
+            // is less than the earlier one, the counter was reset.
             if curr.rtc < prev.rtc {
-                // But absolute time advanced — this is a reset, not a wrap
-                let prev_abs_ns = ((prev.time.day_of_year as u64).saturating_sub(1))
-                    * 86_400_000_000_000
-                    + prev.time.total_nanos_of_day();
-                let curr_abs_ns = ((curr.time.day_of_year as u64).saturating_sub(1))
-                    * 86_400_000_000_000
-                    + curr.time.total_nanos_of_day();
-
-                if curr_abs_ns > prev_abs_ns {
-                    resets.push(RtcReset {
-                        index: idx_curr,
-                        channel_id,
-                        rtc_before: prev.rtc,
-                        rtc_after: curr.rtc,
-                        time_before: prev.time,
-                        time_after: curr.time,
-                    });
-                }
+                resets.push(RtcReset {
+                    index: idx_curr,
+                    channel_id,
+                    rtc_before: prev.rtc,
+                    rtc_after: curr.rtc,
+                    time_before: prev.time,
+                    time_after: curr.time,
+                });
             }
         }
 
