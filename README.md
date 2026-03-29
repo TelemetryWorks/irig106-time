@@ -103,7 +103,9 @@ See `docs/L1_Requirements.md` for the full chain.
 
 ## Standard Version Support
 
-The crate targets IRIG 106-04 through 106-23, with version-aware CSDW parsing for the 106-04/05 time source mapping delta, configurable out-of-order tolerance for pre-105 files, and Time Data Format 2 (0x12, Network Time) support introduced in 106-22. See `docs/ROADMAP.md`.
+The crate targets IRIG 106-04 through 106-23, with version-aware CSDW parsing for the 106-04/05 time source mapping delta, configurable out-of-order tolerance for pre-105 files, and Time Data Format 2 (0x12, Network Time) support introduced in 106-22.
+
+> **Note:** Legacy 106-04/05 support is based on specification compliance and synthetic test coverage. It has not yet been validated against real Ch10 files from legacy recorders (Ampex DCRsi, L-3 MARS, Acra KAM-500). The Ch4 Binary Weighted Time bit layout is similarly unverified against multi-vendor samples. See `docs/ROADMAP.md` items P1-07, P2-05, and GAP-03.
 
 ## License
 

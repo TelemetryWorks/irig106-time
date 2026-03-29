@@ -39,6 +39,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`detect_rtc_resets` sorted by absolute time** — References are stored sorted by RTC for lookup efficiency. After a reset, the low RTC value was inserted before pre-reset values, masking the discontinuity. Now sorts filtered channel references by absolute time to restore temporal order.
 - **Removed unnecessary `as u16` casts** in `DayFormatTime::to_le_bytes()` and `DmyFormatTime::to_le_bytes()` — fields already typed `u16` (`milliseconds`, `day_of_year`, `year`) no longer carry redundant casts.
 
+### Known Issues
+
+- **Legacy support is specification-based only.** Version-aware CSDW parsing and OOO tolerance are implemented per the IRIG 106-04/05 specifications and validated with synthetic tests, but have not been tested against real Ch10 files from legacy recorders (Ampex DCRsi, L-3 MARS, Acra KAM-500). Tracked as P1-07 and P2-05.
+- **Ch4 Binary Weighted Time bit layout is unverified against multi-vendor samples.** The current decode assumes a single bit-field interpretation. Real-world validation against multiple recorder vendors is needed. Tracked as GAP-03.
+
 ## [v0.3.0](https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.3.0) - 2026-03-28
 
 ### Added
