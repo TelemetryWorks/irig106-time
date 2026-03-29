@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`Cargo.toml`** — Version bumped to 0.7.0. MSRV lowered from 1.87 to 1.56.
 - **CLI (irig106-time-cli)** — Version bumped to 0.7.0. All `AbsoluteTime` field accesses migrated to methods.
 - **MSRV lowered from 1.87 → 1.56** (P6-08) — Replaced `u16::is_multiple_of` (Rust 1.87) with `util::is_leap_year` and `u64::abs_diff` (Rust 1.60) with `util::abs_diff_u64`. The MSRV is now the Edition 2021 floor. Each helper carries a targeted clippy `#[allow]` and full documentation of the API it replaces, the Rust version it avoids, and when it can be upgraded.
-- **API audit** — `AbsoluteTime` intentionally omits `Ord`/`Hash` because derived `PartialEq` compares all fields including optional year metadata; callers needing within-year ordering should use `as_total_ns()`. To be finalized at 1.0 API freeze.
+- **API audit** — Added `Hash` to 25 public types, enabling use as `HashMap` keys and `HashSet` members. Added `Copy` to `TimeJump` and `RtcReset`. `AbsoluteTime` intentionally omits `Ord` because derived `PartialEq` compares all fields including optional year metadata; callers needing within-year ordering should use `as_total_ns()`. `TimeQuality` omits `Hash`/`Eq` (contains `f64`).
 - **Documentation** — All code examples in `usage.md` updated for method-based access. Version refs `0.6`→`0.7` across all docs.
 - All consumer modules migrated: `bcd.rs`, `chrono_interop.rs`, `network_time.rs`, `correlation.rs`, `quality.rs`, `streaming.rs`, and all test files.
 - Total test count: **269** (184 unit + 68 integration + 17 property).

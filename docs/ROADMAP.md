@@ -136,9 +136,11 @@ Target: Handle Ch11 packet formats and real-time UDP stream correlation.
 | P5-04 | **Time quality metrics** | Medium | 2 days | ✅ Done (v0.6.0) |
 | P5-05 | **Async correlation API** | — | — | Won't do — application concern, not library concern. The `StreamingTimeCorrelator` provides synchronous `&mut self` methods that work naturally in async contexts via `Arc<Mutex<_>>` or channel-based patterns. Adding `tokio` to a `#![no_std]` parsing library would violate layering and contaminate the dependency tree. |
 
-### Phase 6: Ecosystem Integration (v1.0.0)
+### Phase 6: Ecosystem Integration (v0.8.0)
 
-Target: Stable API, full ecosystem wiring, migration to `irig106-types`.
+Target: Wire `irig106-time` into the TelemetryWorks crate ecosystem. This phase
+**must complete before 1.0.0** because integration may surface API issues that
+require breaking changes. Better to discover them now than after the semver freeze.
 
 | ID | Item | Priority | Effort | Details |
 |----|------|----------|--------|---------|
@@ -148,8 +150,33 @@ Target: Stable API, full ecosystem wiring, migration to `irig106-types`.
 | P6-04 | **Wire `irig106-decode` intra-packet timestamps** | High | 1 day | Payload decoders should use `IntraPacketTime` for message-level timestamps. |
 | P6-05 | ~~Wire `irig106-write` BCD encoding~~ | — | — | ✅ `to_le_bytes()` shipped in v0.4.0 for all wire-format types. |
 | P6-06 | **Wire `irig106-studio` WASM** | Medium | 1 day | ✅ Done (v0.7.0) — CI verifies `wasm32-unknown-unknown` build with `--no-default-features` and `--features serde`. |
-| P6-07 | **Semantic versioning freeze** | High | — | Declare 1.0.0 stable API. No breaking changes without major version bump. |
 | P6-08 | **MSRV policy** | Medium | — | ✅ Done (v0.7.0). MSRV lowered from 1.87 → 1.56 (Edition 2021 floor). Replaced `u16::is_multiple_of` (1.87) with `util::is_leap_year` and `u64::abs_diff` (1.60) with `util::abs_diff_u64`. |
+
+### Phase 7: Validation and Hardening (v0.9.0)
+
+Target: Prove the crate works against real-world data and fix any API issues
+surfaced by Phase 6 ecosystem integration. This is the last opportunity for
+breaking changes before the 1.0.0 semver freeze.
+
+| ID | Item | Priority | Effort | Details |
+|----|------|----------|--------|---------|
+| P1-01 | **Run fuzz targets on real hardware** | Critical | 1 day | Run all 10 fuzz targets for 1 hour each. Document any findings. |
+| P1-02 | **Benchmark on NVMe hardware** | Critical | 0.5 day | Run criterion + zero-dep benchmarks on target hardware. Document baseline. |
+| P1-07 | **Validate against irig106.org sample files** | High | 1 day | Parse sample Ch10 files from irig106.org and verify round-trip correctness. |
+| P2-05 | **Legacy file corpus** | High | 1 day | Acquire or synthesize 106-04/05/07 files from Ampex DCRsi, L-3 MARS, Acra KAM-500. Validate version-aware parsing. |
+| GAP-03 | **Ch4 BWT multi-vendor validation** | Medium | 0.5 day | Validate Ch4 BinaryTime bit layout against real samples from multiple recorder vendors. Blocked on P2-05. |
+| P7-01 | **Fix API issues from ecosystem integration** | High | TBD | Any breaking changes required by P6-01 through P6-04 integration feedback. |
+| P7-02 | **Integration test suite with real files** | High | 1 day | End-to-end tests using real Ch10 files from P1-07 and P2-05 corpora. |
+
+### Phase 8: Stable Release (1.0.0)
+
+Target: Declare stable API. No breaking changes without major version bump.
+
+| ID | Item | Priority | Effort | Details |
+|----|------|----------|--------|---------|
+| P6-07 | **Semantic versioning freeze** | High | — | Declare 1.0.0 stable API after all ecosystem wiring and validation is complete. |
+| P8-01 | **Final API review** | High | 0.5 day | Confirm all public types, methods, and error variants are correct after Phase 6/7 feedback. |
+| P8-02 | **1.0.0 release notes** | Medium | 0.5 day | Comprehensive release notes covering the full journey from 0.1.0 to 1.0.0. |
 
 ---
 
@@ -199,5 +226,7 @@ Target: Stable API, full ecosystem wiring, migration to `irig106-types`.
 | **0.4.0** | Phase 2 | Version detection, version-aware CSDW, OOO window, RTC reset detection, `to_le_bytes()` encoding | Released |
 | **0.5.0** | Phase 4 | Channel-indexed O(log n) correlation, BCD LUT, criterion benchmarks, serde, sub_nanos year fix | Released |
 | **0.6.0** | Phase 5 | Streaming correlator, Ch11 awareness, quality metrics, recording events, chrono interop, F1 leap seconds | Released |
-| **0.7.0** | Pre-1.0 | AbsoluteTime u64 restructure (P4-04), MSRV 1.87→1.56 (P6-08), WASM CI (P6-06), UDP docs (P5-03), API audit | Released |
-| **1.0.0** | Phase 6 | Stable API, ecosystem wiring, irig106-types migration | Next |
+| **0.7.0** | Pre-1.0 | AbsoluteTime u64 restructure (P4-04), MSRV 1.87→1.56 (P6-08), WASM CI (P6-06), UDP docs (P5-03), API audit (Hash/Copy on 25+ types) | Current |
+| **0.8.0** | Phase 6 | Ecosystem wiring: irig106-types migration, irig106-core/decode/reader integration | Next |
+| **0.9.0** | Phase 7 | Validation: real-file testing, fuzz/benchmark on hardware, fix API issues from integration | Planned |
+| **1.0.0** | Phase 8 | Stable API: semver freeze after ecosystem proven in production | Planned |
