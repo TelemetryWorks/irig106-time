@@ -1,8 +1,8 @@
 # Usage Guide — irig106-time
 
-**Document:** USAGE.md
-**Crate:** irig106-time v0.1.0
-**Date:** 2026-03-26
+**Document:** usage.md
+**Crate:** irig106-time v0.2.0
+**Date:** 2026-03-27
 
 This guide shows how to use `irig106-time` in the context of a larger IRIG 106
 application. Every example assumes you are reading or processing Chapter 10
@@ -24,12 +24,15 @@ data — either from files or live UDP streams.
 10. [Parsing Secondary Header Time](#10-parsing-secondary-header-time)
 11. [Working with All Four Time Formats](#11-working-with-all-four-time-formats)
 12. [End-to-End File Processing](#12-end-to-end-file-processing)
-13. [Integration with irig106-core](#13-integration-with-irig106-core)
-14. [Integration with irig106-decode](#14-integration-with-irig106-decode)
-15. [Integration with irig106-write](#15-integration-with-irig106-write)
-16. [WASM / no_std Usage](#16-wasm--no_std-usage)
-17. [Error Handling Patterns](#17-error-handling-patterns)
-18. [Performance Considerations](#18-performance-considerations)
+13. [Processing Network Time Packets (0x12)](#13-processing-network-time-packets-0x12)
+14. [Working with the Leap Second Table](#14-working-with-the-leap-second-table)
+15. [Correlating with F1 + F2 Sources](#15-correlating-with-f1--f2-sources)
+16. [Integration with irig106-core](#16-integration-with-irig106-core)
+17. [Integration with irig106-decode](#17-integration-with-irig106-decode)
+18. [Integration with irig106-write](#18-integration-with-irig106-write)
+19. [WASM / no_std Usage](#19-wasm--no_std-usage)
+20. [Error Handling Patterns](#20-error-handling-patterns)
+21. [Performance Considerations](#21-performance-considerations)
 
 ---
 
@@ -38,10 +41,10 @@ data — either from files or live UDP streams.
 ```toml
 # Cargo.toml
 [dependencies]
-irig106-time = "0.1"
+irig106-time = "0.2"
 
 # For no_std environments (embedded, WASM):
-# irig106-time = { version = "0.1", default-features = false }
+# irig106-time = { version = "0.2", default-features = false }
 ```
 
 The crate re-exports all key types at the root, so most code only needs:
@@ -57,6 +60,10 @@ use irig106_time::bcd::DayFormatTime;
 use irig106_time::csdw::{TimeF1Csdw, DateFormat};
 use irig106_time::secondary::{parse_secondary_header, SecHdrTimeFormat};
 use irig106_time::intra_packet::{parse_intra_packet_time, IntraPacketTimeFormat};
+use irig106_time::network_time::{
+    parse_time_f2_payload, NtpTime, PtpTime, NetworkTime,
+    NetworkTimeProtocol, TimeF2Csdw, LeapSecondTable, LeapSecondEntry,
+};
 ```
 
 ---
@@ -72,15 +79,17 @@ Layer 1: RTC (Relative Time Counter)
   - No inherent meaning — could start at zero or random on power-on
   - This is what you have for EVERY packet
 
-Layer 2: Time Data Packets (Type 0x11)
+Layer 2: Time Data Packets (Type 0x11 or 0x12)
   - Periodic packets (~1/sec/channel) that pair an RTC with absolute time
-  - Absolute time is BCD-encoded (Day-of-Year or Day-Month-Year)
-  - Multiple channels possible (GPS on ch3, IRIG-B on ch7, etc.)
+  - Format 1 (0x11): BCD-encoded IRIG/GPS/RTC time (Day-of-Year or Day-Month-Year)
+  - Format 2 (0x12): Network time — NTP (UTC, epoch 1900) or PTP (TAI, epoch 1970)
+  - Multiple channels possible (GPS on ch3, IRIG-B on ch7, PTP on ch10, etc.)
   - This is what you COLLECT into a correlation table
 
 Layer 3: Correlation
   - Given any packet's RTC, find the nearest time reference point
   - Interpolate: abs_time = ref_time + (target_rtc - ref_rtc) * 100ns
+  - F1 and F2 reference points can coexist in the same correlator
   - This is what you DO to get human-readable timestamps
 ```
 
@@ -523,10 +532,12 @@ packet. This is the skeleton your application should follow.
 use irig106_time::*;
 use irig106_time::bcd::{DayFormatTime, DmyFormatTime};
 use irig106_time::csdw::{TimeF1Csdw, DateFormat};
+use irig106_time::network_time::{parse_time_f2_payload, LeapSecondTable};
 
 const SYNC: u16 = 0xEB25;
 const HEADER_SIZE: usize = 24;
 const TIME_F1: u8 = 0x11;
+const TIME_F2: u8 = 0x12;
 
 struct AnalysisResult {
     packet_num: usize,
@@ -537,6 +548,7 @@ struct AnalysisResult {
 
 fn analyze_file(data: &[u8]) -> Vec<AnalysisResult> {
     let mut correlator = TimeCorrelator::new();
+    let leap_table = LeapSecondTable::builtin();
     let mut results = Vec::new();
     let mut offset = 0;
     let mut pkt_num = 0;
@@ -592,6 +604,19 @@ fn analyze_file(data: &[u8]) -> Vec<AnalysisResult> {
             }
         }
 
+        // Format 2: Network Time (NTP / PTP)
+        if data_type == TIME_F2 {
+            let body_start = HEADER_SIZE
+                + if (flags & 0x04) != 0 { 12 } else { 0 };
+            let payload = &data[offset + body_start..offset + pkt_len];
+
+            if let Ok((_, net_time)) = parse_time_f2_payload(payload) {
+                let _ = correlator.add_reference_f2(
+                    channel_id, rtc, &net_time, &leap_table,
+                );
+            }
+        }
+
         offset += pkt_len;
     }
 
@@ -632,7 +657,213 @@ fn analyze_file(data: &[u8]) -> Vec<AnalysisResult> {
 
 ---
 
-## 13. Integration with irig106-core
+## 13. Processing Network Time Packets (0x12)
+
+*Added in v0.2.0.* Format 2 Network Time packets (Data Type 0x12) carry NTP or PTP
+timestamps instead of BCD-encoded IRIG time. The workflow is simpler than Format 1
+since there's no BCD decoding — just binary seconds and fractional/nanosecond fields.
+
+```rust
+use irig106_time::Rtc;
+use irig106_time::network_time::{
+    parse_time_f2_payload, NetworkTime, NetworkTimeProtocol,
+    TimeF2Csdw, NtpTime, PtpTime, LeapSecondTable,
+};
+
+/// Process a Time Data Format 2 packet payload.
+///
+/// `payload` starts AFTER the packet header (and secondary header if present).
+/// `rtc` is the RTC extracted from the packet header.
+fn process_time_f2_packet(
+    payload: &[u8],
+    rtc: Rtc,
+    leap_table: &LeapSecondTable,
+) -> Option<irig106_time::AbsoluteTime> {
+    let (csdw, network_time) = parse_time_f2_payload(payload).ok()?;
+
+    match network_time {
+        NetworkTime::Ntp(ntp) => {
+            // NTP: UTC epoch (1900-01-01), no leap second conversion needed
+            ntp.to_absolute().ok()
+        }
+        NetworkTime::Ptp(ptp) => {
+            // PTP: TAI epoch (1970-01-01), must apply leap-second offset
+            let offset = leap_table.offset_at_tai(ptp.seconds);
+            ptp.to_absolute(offset).ok()
+        }
+    }
+}
+```
+
+### NTP vs PTP: Key Differences
+
+```rust
+use irig106_time::network_time::{NtpTime, PtpTime, NTP_UNIX_EPOCH_OFFSET};
+
+// ── NTP ──────────────────────────────────────────────────────────
+// Epoch: 1900-01-01 00:00:00 UTC
+// Timescale: UTC (leap seconds already applied)
+// Resolution: 2⁻³² seconds ≈ 233 picoseconds
+let ntp = NtpTime { seconds: 3_944_678_400, fraction: 1 << 31 };
+let unix_secs = ntp.to_unix_seconds().unwrap();  // subtract 2,208,988,800
+let nanos = ntp.fraction_as_nanos();             // ~500,000,000
+
+// ── PTP ──────────────────────────────────────────────────────────
+// Epoch: 1970-01-01 00:00:00 TAI (not UTC!)
+// Timescale: TAI (no leap seconds — monotonic)
+// Resolution: 1 nanosecond
+let ptp = PtpTime { seconds: 1_735_689_637, nanoseconds: 0 };
+let utc_secs = ptp.to_utc_seconds(37);           // TAI - 37 = UTC
+// 1_735_689_637 - 37 = 1_735_689_600 = 2025-01-01 00:00:00 UTC
+```
+
+---
+
+## 14. Working with the Leap Second Table
+
+PTP time is in TAI, which diverges from UTC by the accumulated leap-second offset.
+The crate ships a built-in table covering all 28 leap seconds from 1972 to 2017.
+
+```rust
+use irig106_time::network_time::{LeapSecondTable, LeapSecondEntry};
+
+// Use the built-in table (28 entries, 1972–2017)
+let table = LeapSecondTable::builtin();
+
+// Look up offset for a known UTC timestamp
+let offset_2024 = table.offset_at_unix(1_718_409_600); // mid-2024
+assert_eq!(offset_2024, 37); // 37 seconds since 2017-01-01
+
+let offset_1995 = table.offset_at_unix(800_000_000);   // ~1995
+assert_eq!(offset_1995, 29);
+
+// For PTP timestamps (which are in TAI), use offset_at_tai
+// This approximates the UTC time first, then looks up the offset
+let tai_offset = table.offset_at_tai(1_735_689_637);
+assert_eq!(tai_offset, 37);
+```
+
+### Adding Future Leap Seconds
+
+If a new leap second is announced after the crate was released, you can extend
+the table at runtime:
+
+```rust
+use irig106_time::network_time::{LeapSecondTable, LeapSecondEntry};
+
+let mut table = LeapSecondTable::builtin();
+
+// Hypothetical: leap second on 2028-07-01
+table.add(LeapSecondEntry {
+    effective_unix: 1_845_849_600, // 2028-07-01 00:00:00 UTC
+    tai_utc_offset: 38,
+});
+
+// Now lookups after 2028-07-01 return 38
+assert_eq!(table.offset_at_unix(1_900_000_000), 38);
+```
+
+---
+
+## 15. Correlating with F1 + F2 Sources
+
+Real recordings may contain both Format 1 (BCD) and Format 2 (NTP/PTP) time
+channels. The correlator handles both through separate methods.
+
+```rust
+use irig106_time::*;
+use irig106_time::bcd::DayFormatTime;
+use irig106_time::csdw::{TimeF1Csdw, DateFormat};
+use irig106_time::network_time::{
+    parse_time_f2_payload, NetworkTime, LeapSecondTable,
+};
+
+const TIME_F1: u8 = 0x11;
+const TIME_F2: u8 = 0x12;
+
+let mut correlator = TimeCorrelator::new();
+let leap_table = LeapSecondTable::builtin();
+
+// During your file scan, dispatch on data_type:
+// (simplified — real code would parse headers first)
+fn ingest_time_packet(
+    data_type: u8,
+    channel_id: u16,
+    rtc: Rtc,
+    payload: &[u8],
+    correlator: &mut TimeCorrelator,
+    leap_table: &LeapSecondTable,
+) {
+    match data_type {
+        0x11 => {
+            // Format 1: BCD
+            let csdw = TimeF1Csdw::from_le_bytes([
+                payload[0], payload[1], payload[2], payload[3],
+            ]);
+            let abs = match csdw.date_format() {
+                DateFormat::DayOfYear => {
+                    DayFormatTime::from_le_bytes(&payload[4..])
+                        .ok().map(|t| t.to_absolute())
+                }
+                DateFormat::DayMonthYear => {
+                    irig106_time::bcd::DmyFormatTime::from_le_bytes(&payload[4..])
+                        .ok().map(|t| t.to_absolute())
+                }
+            };
+            if let Some(time) = abs {
+                correlator.add_reference(channel_id, rtc, time);
+            }
+        }
+        0x12 => {
+            // Format 2: NTP/PTP
+            if let Ok((_, net_time)) = parse_time_f2_payload(payload) {
+                let _ = correlator.add_reference_f2(
+                    channel_id, rtc, &net_time, leap_table,
+                );
+            }
+        }
+        _ => {} // not a time packet
+    }
+}
+```
+
+### Using `add_reference_f2`
+
+The `add_reference_f2` method handles all the epoch conversion internally:
+
+```rust
+use irig106_time::*;
+use irig106_time::network_time::{
+    NetworkTime, NtpTime, PtpTime, LeapSecondTable,
+};
+
+let mut correlator = TimeCorrelator::new();
+let table = LeapSecondTable::builtin();
+
+// NTP source on channel 5
+let ntp_time = NetworkTime::Ntp(NtpTime {
+    seconds: 3_944_678_400, // 2025-01-01 00:00:00 UTC
+    fraction: 0,
+});
+correlator.add_reference_f2(5, Rtc::from_raw(10_000_000), &ntp_time, &table).unwrap();
+
+// PTP source on channel 8
+let ptp_time = NetworkTime::Ptp(PtpTime {
+    seconds: 1_735_689_637, // 2025-01-01 00:00:00 TAI (UTC + 37)
+    nanoseconds: 0,
+});
+correlator.add_reference_f2(8, Rtc::from_raw(10_000_000), &ptp_time, &table).unwrap();
+
+// Both channels now resolve the same RTC to the same absolute time
+let from_ntp = correlator.correlate(Rtc::from_raw(10_000_000), Some(5)).unwrap();
+let from_ptp = correlator.correlate(Rtc::from_raw(10_000_000), Some(8)).unwrap();
+assert_eq!(from_ntp.day_of_year, from_ptp.day_of_year);
+assert_eq!(from_ntp.hours, from_ptp.hours);
+```
+
+---
+
+## 16. Integration with irig106-core
 
 When `irig106-core` provides packet header parsing, the integration simplifies:
 
@@ -658,7 +889,7 @@ fn rtc_from_reader(raw_rtc: u64) -> irig106_time::Rtc {
 
 ---
 
-## 14. Integration with irig106-decode
+## 17. Integration with irig106-decode
 
 Payload decoders need message-level timestamps from intra-packet time stamps.
 
@@ -687,7 +918,7 @@ Payload decoders need message-level timestamps from intra-packet time stamps.
 
 ---
 
-## 15. Integration with irig106-write
+## 18. Integration with irig106-write
 
 When constructing Ch10 files, you need to encode time data. The current crate
 provides decode only. Encode (`to_le_bytes`) is planned for v0.2 (see ROADMAP.md).
@@ -717,14 +948,14 @@ The pattern will be:
 
 ---
 
-## 16. WASM / no_std Usage
+## 19. WASM / no_std Usage
 
 The crate compiles to `no_std` targets including WebAssembly.
 
 ```toml
 # Cargo.toml for a WASM project
 [dependencies]
-irig106-time = { version = "0.1", default-features = false }
+irig106-time = { version = "0.2", default-features = false }
 ```
 
 ```rust
@@ -747,7 +978,7 @@ pub fn correlate_in_browser(rtc_raw: u64) -> (u16, u8, u8, u8, u32) {
 
 ---
 
-## 17. Error Handling Patterns
+## 20. Error Handling Patterns
 
 Every fallible function returns `Result<T, TimeError>`. The error enum is
 `#[non_exhaustive]` so new variants can be added without breaking your code.
@@ -797,7 +1028,7 @@ fn resolve_or_raw(correlator: &TimeCorrelator, rtc: Rtc) -> String {
 
 ---
 
-## 18. Performance Considerations
+## 21. Performance Considerations
 
 ### Hot Path vs. Cold Path
 
