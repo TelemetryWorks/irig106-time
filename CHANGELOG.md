@@ -24,6 +24,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`unix_seconds_to_ymd_pub`** (GAP-15) — Visibility reduced from `pub` to `pub(crate)`.
 - **Year overflow guard** (GAP-16) — `unix_seconds_to_ymd` now uses `saturating_add` and breaks at `u16::MAX` to prevent panic on malformed timestamps far in the future.
 - **`Cargo.toml`** — Version bumped to 0.3.0. `rust-version = "1.87"` MSRV declared.
+- **CLI (irig106-time-cli)** — Version bumped to 0.3.0.
+- Total test count: **163** (126 unit + 24 integration + 13 property).
+
+### Fixed
+
+- Escaped bit-range bracket notation (`[3:2]`, `[3:0]`, etc.) in rustdoc comments across `absolute.rs`, `csdw.rs`, `secondary.rs`, `intra_packet.rs`, and `network_time.rs` to resolve 9 intra-doc link warnings.
+- Resolved `prop_assert!` macro conflict with nested `format!` in property tests.
+- Removed unused imports and variables in `properties.rs` and `pipeline.rs`.
 
 ## [v0.2.0](https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.2.0) - 2026-03-28
 
