@@ -33,6 +33,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Total test count: **151** (126 unit + 15 integration + 10 property).
 - Total fuzz targets: **10** (8 original + 2 new).
 - Total benchmarks: **30** (23 original + 7 new).
+- CLI `process_time_f2_packet` refactored to use `add_reference_f2()` instead of manually duplicating NTP/PTP→AbsoluteTime conversion logic.
+- F2 L1 requirements merged from standalone addendum into canonical `L1_Requirements.md` (§3.10–3.14).
+- F2 L2/L3 requirements merged from standalone addendum into canonical `L2_Requirements.md` (§3.10–3.14) and `L3_Requirements.md` (§3.12–3.13). Removed `L2L3_REQUIREMENTS_F2_ADDENDUM.md`.
+- `usage.md` updated with 3 new Format 2 sections (§13 Processing Network Time Packets, §14 Working with the Leap Second Table, §15 Correlating with F1 + F2 Sources), updated imports and version references throughout.
+
+### Fixed
+
+- Resolved clippy `manual_is_multiple_of` in `network_time.rs` leap year check.
+- Resolved clippy `manual_range_contains` in `network_time_tests.rs` and `pipeline.rs` NTP fractional precision assertions.
+- Resolved clippy `unused_imports` in `pipeline.rs` F2 integration tests.
+- Resolved clippy `unused_must_use` in `time_benchmarks.rs` for `ntp_to_absolute` and `ptp_to_absolute` benchmarks.
+- Resolved clippy `needless_borrow`, `for_kv_map`, `redundant_closure`, `single_match`, and `manual_is_multiple_of` in CLI.
+
+### Known Issues
+
+- CLI `channels` command displays NTP sources as "External / UTC" and PTP sources as "External / GPS" — the specific network protocol identity is not shown. Tracked as GAP-12, planned for v0.3.0 (P1-09).
 
 ## [v0.1.0](https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.1.0) - 2026-03-26
 
