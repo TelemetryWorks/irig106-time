@@ -23,6 +23,8 @@ jobs:
           toolchain: ${{ matrix.rust }}
       - run: cargo test --all-features
       - run: cargo test --no-default-features
+      - run: cargo test --features serde
+      - run: cargo test --features chrono
 
   clippy:
     name: Clippy

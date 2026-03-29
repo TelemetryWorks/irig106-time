@@ -57,6 +57,9 @@ irig106-time = "0.6"
 
 # For JSON/CSV export with serde:
 # irig106-time = { version = "0.6", features = ["serde"] }
+
+# For chrono::NaiveDateTime conversions:
+# irig106-time = { version = "0.6", features = ["chrono"] }
 ```
 
 The crate re-exports all key types at the root, so most code only needs:

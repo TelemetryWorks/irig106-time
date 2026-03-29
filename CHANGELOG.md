@@ -22,9 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`Cargo.toml`** — Version bumped to 0.6.0. Added `chrono` optional dependency and feature gate.
 - **CLI (irig106-time-cli)** — Version bumped to 0.6.0.
+- **GitHub Actions CI** — Added `--features serde` and `--features chrono` individual test runs to catch cross-feature coupling. Pipeline now tests 4 feature combinations: `--all-features`, `--no-default-features`, `--features serde`, `--features chrono`.
 - **Crate docs updated** — `lib.rs` feature list now includes streaming correlation, quality metrics, packet standard, recording events, and chrono interop.
 - **Re-exports** — `PacketStandard`, `StreamingTimeCorrelator`, `StreamingRef`, `TimeQuality`, `compute_quality`, `RecordingEvent`, `RecordingEventType` added to crate root.
 - **P5-05 (async API)** permanently deferred — async runtime choice belongs to the application layer, not a `#![no_std]` parsing library.
+- **Rust formatting** — Ran `cargo fmt` across all new modules.
 - Total test count: **244** (170 unit + 57 integration + 17 property).
 
 ### Fixed
@@ -32,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`RtcReset.index` now reports global index** — v0.5.0 regression where `detect_rtc_resets` returned per-channel indices instead of global `references()` indices. Fixed via `global_index_of()` helper that matches on all fields.
 - **`TimeJump.index` correct for duplicate RTCs** — v0.5.0 regression where `.position()` matched only on `rtc + channel_id`, always returning the first match for duplicate RTC values. Same `global_index_of()` fix.
 - **README/lib.rs serde claim** — Now correctly says "except `TimeError`" to match usage.md and CHANGELOG.
+- **Clippy fixes** — Removed unused `Rtc` import in `quality.rs`. Added `alloc::format` and `alloc::vec` imports in `no_std` test modules. Replaced manual abs diff with `abs_diff()` in `is_near_leap_second`.
+- **chrono doc test** — Replaced `ignore` fence with real ```` ```rust ```` doc test that compiles under the `chrono` feature gate.
 
 ## [v0.5.0](https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.5.0) - 2026-03-29
 
