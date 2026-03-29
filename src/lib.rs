@@ -65,20 +65,20 @@ pub mod error;
 pub mod intra_packet;
 /// Time Data Format 2 (0x12) Network Time: NTP, PTP, and leap-second table.
 pub mod network_time;
-/// 48-bit Relative Time Counter (RTC) newtype.
-pub mod rtc;
-/// Secondary header time extraction and checksum validation.
-pub mod secondary;
-/// IRIG 106 standard version detection and version-aware dispatch.
-pub mod version;
 /// Ch10/Ch11 packet format provenance (106-17 split).
 pub mod packet_standard;
 /// Time quality metrics for correlation health assessment.
 pub mod quality;
 /// Recording Event (Data Type 0x02) time extraction.
 pub mod recording_event;
+/// 48-bit Relative Time Counter (RTC) newtype.
+pub mod rtc;
+/// Secondary header time extraction and checksum validation.
+pub mod secondary;
 /// Streaming RTC-to-absolute-time correlator for live data.
 pub mod streaming;
+/// IRIG 106 standard version detection and version-aware dispatch.
+pub mod version;
 
 /// Optional interop with the `chrono` crate.
 #[cfg(feature = "chrono")]

@@ -34,10 +34,7 @@
 ///
 /// Use [`from_version`](PacketStandard::from_version) to derive this
 /// automatically from an [`Irig106Version`](crate::version::Irig106Version).
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize)
-)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PacketStandard {
     /// Packet format defined by IRIG 106 Chapter 10 (pre-17 standards).

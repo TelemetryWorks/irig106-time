@@ -1055,10 +1055,22 @@ fn packet_standard_from_version() {
     use irig106_time::packet_standard::PacketStandard;
     use irig106_time::version::Irig106Version;
 
-    assert_eq!(PacketStandard::from_version(&Irig106Version::Pre07), PacketStandard::Ch10);
-    assert_eq!(PacketStandard::from_version(&Irig106Version::V15), PacketStandard::Ch10);
-    assert_eq!(PacketStandard::from_version(&Irig106Version::V17), PacketStandard::Ch11);
-    assert_eq!(PacketStandard::from_version(&Irig106Version::V22), PacketStandard::Ch11);
+    assert_eq!(
+        PacketStandard::from_version(&Irig106Version::Pre07),
+        PacketStandard::Ch10
+    );
+    assert_eq!(
+        PacketStandard::from_version(&Irig106Version::V15),
+        PacketStandard::Ch10
+    );
+    assert_eq!(
+        PacketStandard::from_version(&Irig106Version::V17),
+        PacketStandard::Ch11
+    );
+    assert_eq!(
+        PacketStandard::from_version(&Irig106Version::V22),
+        PacketStandard::Ch11
+    );
     assert!(PacketStandard::Ch11.is_ch11());
     assert!(!PacketStandard::Ch11.is_ch10());
 }
@@ -1094,9 +1106,17 @@ fn streaming_correlator_eviction_pipeline() {
     let mut sc = StreamingTimeCorrelator::new(5_000_000_000); // 5 sec window
 
     // Insert at RTC 10M (1 sec)
-    sc.add_reference(1, Rtc::from_raw(10_000_000), AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
+    sc.add_reference(
+        1,
+        Rtc::from_raw(10_000_000),
+        AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(),
+    );
     // Jump to RTC 200M (20 sec) — first ref is 19 sec old, evicted
-    sc.add_reference(1, Rtc::from_raw(200_000_000), AbsoluteTime::new(100, 12, 0, 20, 0).unwrap());
+    sc.add_reference(
+        1,
+        Rtc::from_raw(200_000_000),
+        AbsoluteTime::new(100, 12, 0, 20, 0).unwrap(),
+    );
 
     assert_eq!(sc.len(), 1);
     assert!(sc.total_evicted() > 0);
@@ -1109,9 +1129,21 @@ fn quality_metrics_from_correlator() {
     use irig106_time::quality::compute_quality;
 
     let mut c = TimeCorrelator::new();
-    c.add_reference(1, Rtc::from_raw(10_000_000), AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
-    c.add_reference(1, Rtc::from_raw(20_000_000), AbsoluteTime::new(100, 12, 0, 1, 0).unwrap());
-    c.add_reference(2, Rtc::from_raw(15_000_000), AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
+    c.add_reference(
+        1,
+        Rtc::from_raw(10_000_000),
+        AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(),
+    );
+    c.add_reference(
+        1,
+        Rtc::from_raw(20_000_000),
+        AbsoluteTime::new(100, 12, 0, 1, 0).unwrap(),
+    );
+    c.add_reference(
+        2,
+        Rtc::from_raw(15_000_000),
+        AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(),
+    );
 
     let q = compute_quality(c.references());
     assert_eq!(q.total_refs, 3);

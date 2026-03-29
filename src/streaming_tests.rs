@@ -145,9 +145,21 @@ fn channel_ids_reflects_active() {
 #[test]
 fn channel_len_per_channel() {
     let mut sc = StreamingTimeCorrelator::new(60_000_000_000);
-    sc.add_reference(1, Rtc::from_raw(10_000_000), AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
-    sc.add_reference(1, Rtc::from_raw(20_000_000), AbsoluteTime::new(100, 12, 0, 1, 0).unwrap());
-    sc.add_reference(2, Rtc::from_raw(30_000_000), AbsoluteTime::new(100, 12, 0, 2, 0).unwrap());
+    sc.add_reference(
+        1,
+        Rtc::from_raw(10_000_000),
+        AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(),
+    );
+    sc.add_reference(
+        1,
+        Rtc::from_raw(20_000_000),
+        AbsoluteTime::new(100, 12, 0, 1, 0).unwrap(),
+    );
+    sc.add_reference(
+        2,
+        Rtc::from_raw(30_000_000),
+        AbsoluteTime::new(100, 12, 0, 2, 0).unwrap(),
+    );
 
     assert_eq!(sc.channel_len(1), 2);
     assert_eq!(sc.channel_len(2), 1);
@@ -157,14 +169,26 @@ fn channel_len_per_channel() {
 #[test]
 fn latest_rtc_tracks_maximum() {
     let mut sc = StreamingTimeCorrelator::new(60_000_000_000);
-    sc.add_reference(1, Rtc::from_raw(50_000_000), AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
+    sc.add_reference(
+        1,
+        Rtc::from_raw(50_000_000),
+        AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(),
+    );
     assert_eq!(sc.latest_rtc(), Some(Rtc::from_raw(50_000_000)));
 
     // Earlier RTC doesn't update latest
-    sc.add_reference(1, Rtc::from_raw(10_000_000), AbsoluteTime::new(100, 11, 0, 0, 0).unwrap());
+    sc.add_reference(
+        1,
+        Rtc::from_raw(10_000_000),
+        AbsoluteTime::new(100, 11, 0, 0, 0).unwrap(),
+    );
     assert_eq!(sc.latest_rtc(), Some(Rtc::from_raw(50_000_000)));
 
     // Later RTC updates
-    sc.add_reference(1, Rtc::from_raw(100_000_000), AbsoluteTime::new(100, 13, 0, 0, 0).unwrap());
+    sc.add_reference(
+        1,
+        Rtc::from_raw(100_000_000),
+        AbsoluteTime::new(100, 13, 0, 0, 0).unwrap(),
+    );
     assert_eq!(sc.latest_rtc(), Some(Rtc::from_raw(100_000_000)));
 }

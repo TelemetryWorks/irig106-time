@@ -277,9 +277,7 @@ impl TimeCorrelator {
         self.references
             .iter()
             .position(|r| {
-                r.channel_id == point.channel_id
-                    && r.rtc == point.rtc
-                    && r.time == point.time
+                r.channel_id == point.channel_id && r.rtc == point.rtc && r.time == point.time
             })
             .unwrap_or(0)
     }

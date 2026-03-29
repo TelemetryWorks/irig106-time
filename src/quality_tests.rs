@@ -1,8 +1,8 @@
 use super::*;
-use alloc::vec;
 use crate::absolute::AbsoluteTime;
 use crate::correlation::ReferencePoint;
 use crate::rtc::Rtc;
+use alloc::vec;
 
 fn make_ref(ch: u16, rtc_raw: u64, doy: u16, h: u8, m: u8, s: u8) -> ReferencePoint {
     ReferencePoint {

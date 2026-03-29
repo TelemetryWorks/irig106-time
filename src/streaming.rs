@@ -65,10 +65,7 @@ pub struct StreamingTimeCorrelator {
 }
 
 /// A reference point in the streaming correlator.
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize)
-)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StreamingRef {
     /// Channel ID of the time source.

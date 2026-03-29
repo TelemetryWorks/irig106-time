@@ -32,10 +32,7 @@ use crate::rtc::Rtc;
 /// Recording event types from Data Type 0x02 packets.
 ///
 /// **Traces:** GAP-08
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize)
-)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RecordingEventType {
     /// Recording started (index 0x01).
@@ -80,10 +77,7 @@ impl RecordingEventType {
 /// header absolute time.
 ///
 /// **Traces:** GAP-08
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize)
-)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RecordingEvent {
     /// The type of recording event.
@@ -102,12 +96,7 @@ impl RecordingEvent {
     /// `event_index` is the Recording Event Index from the CSDW.
     /// `abs_time` is the decoded secondary header time, if the packet
     /// has a secondary header (Packet Flag bit 0 set).
-    pub fn new(
-        event_index: u8,
-        channel_id: u16,
-        rtc: Rtc,
-        abs_time: Option<AbsoluteTime>,
-    ) -> Self {
+    pub fn new(event_index: u8, channel_id: u16, rtc: Rtc, abs_time: Option<AbsoluteTime>) -> Self {
         Self {
             event_type: RecordingEventType::from_index(event_index),
             channel_id,

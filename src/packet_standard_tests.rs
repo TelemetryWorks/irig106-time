@@ -1,21 +1,45 @@
 use super::*;
-use alloc::format;
 use crate::version::Irig106Version;
+use alloc::format;
 
 #[test]
 fn pre17_is_ch10() {
-    assert_eq!(PacketStandard::from_version(&Irig106Version::Pre07), PacketStandard::Ch10);
-    assert_eq!(PacketStandard::from_version(&Irig106Version::V07), PacketStandard::Ch10);
-    assert_eq!(PacketStandard::from_version(&Irig106Version::V09), PacketStandard::Ch10);
-    assert_eq!(PacketStandard::from_version(&Irig106Version::V15), PacketStandard::Ch10);
+    assert_eq!(
+        PacketStandard::from_version(&Irig106Version::Pre07),
+        PacketStandard::Ch10
+    );
+    assert_eq!(
+        PacketStandard::from_version(&Irig106Version::V07),
+        PacketStandard::Ch10
+    );
+    assert_eq!(
+        PacketStandard::from_version(&Irig106Version::V09),
+        PacketStandard::Ch10
+    );
+    assert_eq!(
+        PacketStandard::from_version(&Irig106Version::V15),
+        PacketStandard::Ch10
+    );
 }
 
 #[test]
 fn v17_and_later_is_ch11() {
-    assert_eq!(PacketStandard::from_version(&Irig106Version::V17), PacketStandard::Ch11);
-    assert_eq!(PacketStandard::from_version(&Irig106Version::V19), PacketStandard::Ch11);
-    assert_eq!(PacketStandard::from_version(&Irig106Version::V22), PacketStandard::Ch11);
-    assert_eq!(PacketStandard::from_version(&Irig106Version::V23), PacketStandard::Ch11);
+    assert_eq!(
+        PacketStandard::from_version(&Irig106Version::V17),
+        PacketStandard::Ch11
+    );
+    assert_eq!(
+        PacketStandard::from_version(&Irig106Version::V19),
+        PacketStandard::Ch11
+    );
+    assert_eq!(
+        PacketStandard::from_version(&Irig106Version::V22),
+        PacketStandard::Ch11
+    );
+    assert_eq!(
+        PacketStandard::from_version(&Irig106Version::V23),
+        PacketStandard::Ch11
+    );
 }
 
 #[test]

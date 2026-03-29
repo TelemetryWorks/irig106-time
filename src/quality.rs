@@ -21,10 +21,7 @@ use alloc::vec::Vec;
 /// correlation results are trustworthy.
 ///
 /// **Traces:** P5-04
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize)
-)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq)]
 pub struct TimeQuality {
     /// Total number of reference points.
@@ -92,10 +89,8 @@ pub fn compute_quality(refs: &[ReferencePoint]) -> TimeQuality {
         by_channel.entry(r.channel_id).or_default().push(r);
     }
 
-    let refs_per_channel: Vec<(u16, usize)> = by_channel
-        .iter()
-        .map(|(&ch, v)| (ch, v.len()))
-        .collect();
+    let refs_per_channel: Vec<(u16, usize)> =
+        by_channel.iter().map(|(&ch, v)| (ch, v.len())).collect();
 
     // Global RTC span
     let min_rtc = refs.iter().map(|r| r.rtc).min().unwrap();
