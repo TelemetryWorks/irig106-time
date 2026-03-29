@@ -28,7 +28,7 @@ IRIG 106 Chapter 10 separates *when data was recorded* (a free-running 10 MHz co
 - **`chrono`** — Optional `From` conversions between `AbsoluteTime` and `chrono::NaiveDateTime`
 - **`#![no_std]`** — Works on embedded, WASM, and standard targets
 - **Zero required dependencies** — Only `core` and `alloc` (serde, chrono are optional)
-- **MSRV 1.56** — Edition 2021 floor. No nightly features required
+- **MSRV 1.56** — Library compiles on Rust 1.56+ (Edition 2021 floor). Dev tooling (benchmarks, fuzz, proptest) requires latest stable. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 - **Zero `unsafe`** — Safe Rust throughout
 
 ## Quick Start
@@ -120,6 +120,12 @@ See `docs/L1_Requirements.md` for the full chain.
 The crate targets IRIG 106-04 through 106-23, with version-aware CSDW parsing for the 106-04/05 time source mapping delta, configurable out-of-order tolerance for pre-105 files, and Time Data Format 2 (0x12, Network Time) support introduced in 106-22.
 
 > **Note:** Legacy 106-04/05 support is based on specification compliance and synthetic test coverage. It has not yet been validated against real Ch10 files from legacy recorders (Ampex DCRsi, L-3 MARS, Acra KAM-500). The Ch4 Binary Weighted Time bit layout is similarly unverified against multi-vendor samples. See `docs/ROADMAP.md` items P1-07, P2-05, and GAP-03.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, Rust version
+requirements, and instructions for running benchmarks, fuzz tests, and the
+full test suite.
 
 ## License
 

@@ -228,13 +228,37 @@ breaking changes before the 1.0.0 semver freeze.
 
 ### Phase 8: Stable Release (1.0.0)
 
-Target: Declare stable API. No breaking changes without major version bump.
+Target: Declare stable API with complete documentation, full requirements
+traceability, and architecture diagrams suitable for hosting on docs.rs.
+No breaking changes without major version bump after this release.
+
+#### 8A. Documentation (hosted on docs.rs)
 
 | ID | Item | Priority | Effort | Details |
 |----|------|----------|--------|---------|
-| P6-07 | **Semantic versioning freeze** | High | — | Declare 1.0.0 stable API after all ecosystem wiring and validation is complete. |
-| P8-01 | **Final API review** | High | 0.5 day | Confirm all public types, methods, and error variants are correct after Phase 6/7 feedback. |
-| P8-02 | **1.0.0 release notes** | Medium | 0.5 day | Comprehensive release notes covering the full journey from 0.1.0 to 1.0.0. |
+| P8-D01 | **Crate-level rustdoc overview** | High | 1 day | Expand `lib.rs` module docs into a comprehensive introduction rooted in IRIG 106 Chapter 10 concepts. Start with "what is IRIG 106", "what is a Ch10 file", "what is an RTC", then walk through the crate's modules and how they map to the standard. |
+| P8-D02 | **Per-module rustdoc with examples** | High | 2 days | Every `pub mod` gets a module-level doc block with IRIG 106 context, a "Quick Start" code example, and cross-references to related modules. Every `pub fn` and `pub struct` gets at least one `/// # Example` doc test. |
+| P8-D03 | **Architecture diagrams** | High | 1 day | Visual diagrams embedded in rustdoc (SVG or Mermaid rendered to SVG). Diagrams include: (1) Module dependency graph, (2) Data flow from raw Ch10 bytes → wire format → AbsoluteTime → correlated output, (3) Correlation engine internals (reference points, interpolation, channel indexing), (4) Time Data Format 1 vs Format 2 pipeline comparison. |
+| P8-D04 | **IRIG 106 primer in docs** | Medium | 1 day | Standalone `docs/irig106_primer.md` (and linked from rustdoc) covering: RTC semantics, time packet types (0x11, 0x12), BCD encoding, secondary headers, intra-packet timestamps. Written for developers who have never seen a Ch10 file. |
+| P8-D05 | **Usage guide finalization** | Medium | 0.5 day | Review and finalize `docs/usage.md` with complete end-to-end examples for every major workflow. Ensure all code examples compile as doc tests. |
+
+#### 8B. Requirements Traceability and VCRM
+
+| ID | Item | Priority | Effort | Details |
+|----|------|----------|--------|---------|
+| P8-V01 | **L1/L2/L3 requirements audit** | High | 1 day | Review all three requirements documents. Ensure every public function, method, struct, and enum has a traced L3 requirement. Add missing requirements for v0.6/v0.7 features (streaming, quality, recording events, util helpers). |
+| P8-V02 | **Requirement → Code forward trace** | High | 1 day | For every L3 requirement, verify at least one code item (`pub fn`, `pub struct`, `impl`) carries a `/// **Traces:** L3-XXX-NNN` annotation. Produce a forward-trace table: requirement → source file → line. |
+| P8-V03 | **Code → Test reverse trace** | High | 1 day | For every `pub fn`/`pub struct`, verify at least one test exercises it and carries a `Traces` annotation in the test module's doc table. Produce a reverse-trace table: source item → test name → test file. |
+| P8-V04 | **Verification Cross-Reference Matrix (VCRM)** | Critical | 2 days | A single document (`docs/VCRM.md`) connecting the full chain: L1 → L2 → L3 → Source (file:line) → Test (file:test_name) → Test Type (unit/integration/property/fuzz). Every row is a requirement; every column is a verification artifact. No empty cells — if a requirement has no test, that's a gap to fill. |
+| P8-V05 | **VCRM gap closure** | High | TBD | Fill any gaps identified by P8-V04. Add missing tests, missing requirements, or missing trace annotations until the VCRM has zero empty cells. |
+
+#### 8C. Release
+
+| ID | Item | Priority | Effort | Details |
+|----|------|----------|--------|---------|
+| P6-07 | **Semantic versioning freeze** | High | — | Declare 1.0.0 stable API after all ecosystem wiring, validation, documentation, and VCRM are complete. |
+| P8-R01 | **Final API review** | High | 0.5 day | Confirm all public types, methods, and error variants are correct after Phase 6/7 feedback. |
+| P8-R02 | **1.0.0 release notes** | Medium | 0.5 day | Comprehensive release notes covering the full journey from 0.1.0 to 1.0.0. |
 
 ---
 
@@ -287,4 +311,4 @@ Target: Declare stable API. No breaking changes without major version bump.
 | **0.7.0** | Pre-1.0 | AbsoluteTime u64 restructure (P4-04), MSRV 1.87→1.56 (P6-08), WASM CI (P6-06), UDP docs (P5-03), API audit (Hash/Copy on 25+ types) | Current |
 | **0.8.0** | Phase 6 | Ecosystem wiring: irig106-types migration, irig106-core/decode/reader integration | Next |
 | **0.9.0** | Phase 7 | Validation: real-file testing, fuzz/benchmark on hardware, fix API issues from integration | Planned |
-| **1.0.0** | Phase 8 | Stable API: semver freeze after ecosystem proven in production | Planned |
+| **1.0.0** | Phase 8 | Stable API: complete rustdoc with architecture diagrams, VCRM with zero gaps, IRIG 106 primer, semver freeze | Planned |
