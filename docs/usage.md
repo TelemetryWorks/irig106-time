@@ -1,8 +1,8 @@
 # Usage Guide — irig106-time
 
 **Document:** usage.md
-**Crate:** irig106-time v0.2.0
-**Date:** 2026-03-27
+**Crate:** irig106-time v0.4.0
+**Date:** 2026-03-28
 
 This guide shows how to use `irig106-time` in the context of a larger IRIG 106
 application. Every example assumes you are reading or processing Chapter 10
@@ -27,12 +27,15 @@ data — either from files or live UDP streams.
 13. [Processing Network Time Packets (0x12)](#13-processing-network-time-packets-0x12)
 14. [Working with the Leap Second Table](#14-working-with-the-leap-second-table)
 15. [Correlating with F1 + F2 Sources](#15-correlating-with-f1--f2-sources)
-16. [Integration with irig106-core](#16-integration-with-irig106-core)
-17. [Integration with irig106-decode](#17-integration-with-irig106-decode)
-18. [Integration with irig106-write](#18-integration-with-irig106-write)
-19. [WASM / no_std Usage](#19-wasm--no_std-usage)
-20. [Error Handling Patterns](#20-error-handling-patterns)
-21. [Performance Considerations](#21-performance-considerations)
+16. [Version Detection and Version-Aware Parsing](#16-version-detection-and-version-aware-parsing)
+17. [RTC Reset Detection](#17-rtc-reset-detection)
+18. [Encoding Time Data (to_le_bytes)](#18-encoding-time-data-to_le_bytes)
+19. [Integration with irig106-core](#19-integration-with-irig106-core)
+20. [Integration with irig106-decode](#20-integration-with-irig106-decode)
+21. [Integration with irig106-write](#21-integration-with-irig106-write)
+22. [WASM / no_std Usage](#22-wasm--no_std-usage)
+23. [Error Handling Patterns](#23-error-handling-patterns)
+24. [Performance Considerations](#24-performance-considerations)
 
 ---
 
@@ -41,10 +44,10 @@ data — either from files or live UDP streams.
 ```toml
 # Cargo.toml
 [dependencies]
-irig106-time = "0.2"
+irig106-time = "0.4"
 
 # For no_std environments (embedded, WASM):
-# irig106-time = { version = "0.2", default-features = false }
+# irig106-time = { version = "0.4", default-features = false }
 ```
 
 The crate re-exports all key types at the root, so most code only needs:
@@ -64,6 +67,7 @@ use irig106_time::network_time::{
     parse_time_f2_payload, NtpTime, PtpTime, NetworkTime,
     NetworkTimeProtocol, TimeF2Csdw, LeapSecondTable, LeapSecondEntry,
 };
+use irig106_time::version::{detect_version, Irig106Version};
 ```
 
 ---
@@ -863,7 +867,177 @@ assert_eq!(from_ntp.hours, from_ptp.hours);
 
 ---
 
-## 16. Integration with irig106-core
+## 16. Version Detection and Version-Aware Parsing
+
+*Added in v0.4.0.* Ch10 files span the full IRIG 106 standard range from 106-04
+(2004) through 106-23 (2023). The version is encoded in the TMATS CSDW's version
+field (bits \[7:0\]), defined from 106-07 onward. Pre-07 files have this field as zero.
+
+```rust
+use irig106_time::version::{detect_version, Irig106Version};
+
+// Extract version from TMATS packet CSDW (Data Type 0x01)
+let tmats_csdw: u32 = 0x0000_000E; // version field = 14 = 106-22
+let version = detect_version(tmats_csdw);
+assert_eq!(version, Irig106Version::V22);
+
+// Query version capabilities
+assert!(version.supports_format_2());    // NTP/PTP (106-22+)
+assert!(version.has_gps_time_source());  // GPS in CSDW (106-05+)
+assert!(!version.is_pre_ordering_guarantee()); // bounded OOO (106-05+)
+```
+
+### Version-Aware CSDW Parsing
+
+In IRIG 106-04, CSDW time source value 3 meant "None" (no time source). Starting
+with 106-05, value 3 was reassigned to "GPS". Since pre-07 files report version=0
+and we cannot distinguish 04 from 05, the version-aware parser returns
+`Reserved(3)` for pre-07 files to signal ambiguity.
+
+```rust
+use irig106_time::csdw::TimeF1Csdw;
+use irig106_time::version::Irig106Version;
+
+let csdw = TimeF1Csdw::from_raw(0x03); // time_source bits = 3
+
+// Non-versioned: always returns GPS (assumes 106-05+ behavior)
+let ts = csdw.time_source();
+// ts == TimeSource::Gps
+
+// Version-aware: returns Reserved(3) for pre-07 files
+let ts_v = csdw.time_source_versioned(&Irig106Version::Pre07);
+// ts_v == TimeSource::Reserved(3)  — ambiguous
+
+let ts_v07 = csdw.time_source_versioned(&Irig106Version::V07);
+// ts_v07 == TimeSource::Gps  — definitively GPS
+```
+
+### Configuring the Correlator for Legacy Files
+
+Pre-105 files have no packet ordering guarantee — packets may arrive 5+ seconds
+out of order. Post-105 files are bounded to ~1.1 seconds. Use the version to
+choose the right correlator configuration:
+
+```rust
+use irig106_time::{TimeCorrelator, version::Irig106Version};
+
+fn create_correlator(version: &Irig106Version) -> TimeCorrelator {
+    if version.is_pre_ordering_guarantee() {
+        // Pre-05: unbounded out-of-order tolerance
+        TimeCorrelator::with_ooo_window(None)
+    } else {
+        // Post-05: 2 second window (100ms buffer + 1s write deadline + margin)
+        TimeCorrelator::with_ooo_window(Some(TimeCorrelator::DEFAULT_OOO_WINDOW_NS))
+    }
+}
+```
+
+---
+
+## 17. RTC Reset Detection
+
+*Added in v0.4.0.* Some recorders reset the 48-bit RTC counter mid-recording
+(e.g., on power cycle or mode change) rather than letting it wrap naturally.
+The correlator can distinguish resets from 48-bit wraps by comparing RTC
+progression against absolute time progression.
+
+```rust
+use irig106_time::*;
+
+let mut correlator = TimeCorrelator::new();
+
+// Normal progression: RTC 100M → 200M
+correlator.add_reference(1, Rtc::from_raw(100_000_000),
+    AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
+correlator.add_reference(1, Rtc::from_raw(200_000_000),
+    AbsoluteTime::new(100, 12, 0, 10, 0).unwrap());
+
+// Reset: RTC drops to 1M, but absolute time advances to 12:00:20
+correlator.add_reference(1, Rtc::from_raw(1_000_000),
+    AbsoluteTime::new(100, 12, 0, 20, 0).unwrap());
+
+let resets = correlator.detect_rtc_resets(1);
+assert_eq!(resets.len(), 1);
+println!("Reset detected: RTC {} → {}, time {} → {}",
+    resets[0].rtc_before.as_raw(),
+    resets[0].rtc_after.as_raw(),
+    resets[0].time_before,
+    resets[0].time_after);
+```
+
+The heuristic sorts same-channel reference points by absolute time, then
+flags any pair where the RTC of the later-in-time reference is less than
+the previous one. In a true 48-bit wrap, `elapsed_ticks` handles the
+arithmetic correctly via wrapping subtraction.
+
+---
+
+## 18. Encoding Time Data (to_le_bytes)
+
+*Added in v0.4.0.* All wire-format types now support `to_le_bytes()` for
+packet construction, enabling round-trip encode/decode.
+
+```rust
+use irig106_time::*;
+use irig106_time::bcd::DayFormatTime;
+use irig106_time::csdw::TimeF1Csdw;
+
+// ── RTC ──────────────────────────────────────────────────────────────
+let rtc = Rtc::from_raw(10_000_000);
+let rtc_bytes: [u8; 6] = rtc.to_le_bytes();
+assert_eq!(Rtc::from_le_bytes(rtc_bytes), rtc);
+
+// ── CSDW ─────────────────────────────────────────────────────────────
+let csdw = TimeF1Csdw::from_raw(0x0000_0121);
+let csdw_bytes: [u8; 4] = csdw.to_le_bytes();
+assert_eq!(TimeF1Csdw::from_le_bytes(csdw_bytes).as_raw(), csdw.as_raw());
+
+// ── BCD Day-of-Year ──────────────────────────────────────────────────
+let day_time = DayFormatTime {
+    milliseconds: 340,
+    seconds: 25,
+    minutes: 30,
+    hours: 12,
+    day_of_year: 100,
+};
+let bcd_bytes: [u8; 8] = day_time.to_le_bytes();
+let decoded = DayFormatTime::from_le_bytes(&bcd_bytes).unwrap();
+assert_eq!(decoded.hours, 12);
+assert_eq!(decoded.day_of_year, 100);
+
+// ── Build a time packet payload ──────────────────────────────────────
+let mut payload = Vec::new();
+payload.extend_from_slice(&csdw.to_le_bytes());
+payload.extend_from_slice(&day_time.to_le_bytes());
+// payload is now 12 bytes: 4 CSDW + 8 BCD
+```
+
+### Network Time Encoding
+
+```rust
+use irig106_time::network_time::{NtpTime, PtpTime, TimeF2Csdw};
+
+// NTP round-trip
+let ntp = NtpTime { seconds: 3_944_678_400, fraction: 1 << 31 };
+let ntp_bytes: [u8; 8] = ntp.to_le_bytes();
+let ntp2 = NtpTime::from_le_bytes(&ntp_bytes).unwrap();
+assert_eq!(ntp.seconds, ntp2.seconds);
+
+// PTP round-trip
+let ptp = PtpTime { seconds: 1_735_689_637, nanoseconds: 500_000_000 };
+let ptp_bytes: [u8; 10] = ptp.to_le_bytes();
+let ptp2 = PtpTime::from_le_bytes(&ptp_bytes).unwrap();
+assert_eq!(ptp.seconds, ptp2.seconds);
+
+// F2 CSDW round-trip
+let f2_csdw = TimeF2Csdw::from_raw(0x01); // PTP
+let f2_bytes: [u8; 4] = f2_csdw.to_le_bytes();
+assert_eq!(TimeF2Csdw::from_le_bytes(f2_bytes).as_raw(), f2_csdw.as_raw());
+```
+
+---
+
+## 19. Integration with irig106-core
 
 When `irig106-core` provides packet header parsing, the integration simplifies:
 
@@ -889,7 +1063,7 @@ fn rtc_from_reader(raw_rtc: u64) -> irig106_time::Rtc {
 
 ---
 
-## 17. Integration with irig106-decode
+## 20. Integration with irig106-decode
 
 Payload decoders need message-level timestamps from intra-packet time stamps.
 
@@ -918,44 +1092,60 @@ Payload decoders need message-level timestamps from intra-packet time stamps.
 
 ---
 
-## 18. Integration with irig106-write
+## 21. Integration with irig106-write
 
-When constructing Ch10 files, you need to encode time data. The current crate
-provides decode only. Encode (`to_le_bytes`) is planned for v0.2 (see ROADMAP.md).
-
-The pattern will be:
+When constructing Ch10 files, use `to_le_bytes()` on time types to produce
+wire-format payloads. All encode methods round-trip with their corresponding
+`from_le_bytes` decoders.
 
 ```rust
-// Future (after GAP-11 is resolved):
-//
-// use irig106_time::bcd::DayFormatTime;
-// use irig106_time::csdw::TimeF1Csdw;
-//
-// // Build a time packet payload
-// let csdw = TimeF1Csdw::build(TimeSource::Gps, TimeFormat::IrigB, false, DateFormat::DayOfYear);
-// let day_time = DayFormatTime {
-//     milliseconds: 340,
-//     seconds: 25,
-//     minutes: 30,
-//     hours: 12,
-//     day_of_year: 100,
-// };
-//
-// let mut payload = Vec::new();
-// payload.extend_from_slice(&csdw.to_le_bytes());
-// payload.extend_from_slice(&day_time.to_le_bytes());
+use irig106_time::bcd::DayFormatTime;
+use irig106_time::csdw::TimeF1Csdw;
+
+// Build a CSDW for GPS time, IRIG-B format, DOY date, non-leap-year
+// Bits: [3:0]=0x3 (GPS), [7:4]=0x0 (IRIG-B), [8]=0 (not leap), [9]=0 (DOY)
+let csdw = TimeF1Csdw::from_raw(0x0000_0003);
+
+// Build the BCD time payload
+let day_time = DayFormatTime {
+    milliseconds: 340,
+    seconds: 25,
+    minutes: 30,
+    hours: 12,
+    day_of_year: 100,
+};
+
+// Assemble the time packet payload
+let mut payload = Vec::new();
+payload.extend_from_slice(&csdw.to_le_bytes());    // 4 bytes CSDW
+payload.extend_from_slice(&day_time.to_le_bytes()); // 8 bytes BCD
+assert_eq!(payload.len(), 12);
+```
+
+For Network Time (Format 2) packets:
+
+```rust
+use irig106_time::network_time::{TimeF2Csdw, NtpTime};
+
+let f2_csdw = TimeF2Csdw::from_raw(0x00); // NTP protocol
+let ntp = NtpTime { seconds: 3_944_678_400, fraction: 0 };
+
+let mut payload = Vec::new();
+payload.extend_from_slice(&f2_csdw.to_le_bytes()); // 4 bytes CSDW
+payload.extend_from_slice(&ntp.to_le_bytes());      // 8 bytes NTP
+assert_eq!(payload.len(), 12);
 ```
 
 ---
 
-## 19. WASM / no_std Usage
+## 22. WASM / no_std Usage
 
 The crate compiles to `no_std` targets including WebAssembly.
 
 ```toml
 # Cargo.toml for a WASM project
 [dependencies]
-irig106-time = { version = "0.2", default-features = false }
+irig106-time = { version = "0.4", default-features = false }
 ```
 
 ```rust
@@ -978,7 +1168,7 @@ pub fn correlate_in_browser(rtc_raw: u64) -> (u16, u8, u8, u8, u32) {
 
 ---
 
-## 20. Error Handling Patterns
+## 23. Error Handling Patterns
 
 Every fallible function returns `Result<T, TimeError>`. The error enum is
 `#[non_exhaustive]` so new variants can be added without breaking your code.
@@ -1028,7 +1218,7 @@ fn resolve_or_raw(correlator: &TimeCorrelator, rtc: Rtc) -> String {
 
 ---
 
-## 21. Performance Considerations
+## 24. Performance Considerations
 
 ### Hot Path vs. Cold Path
 
