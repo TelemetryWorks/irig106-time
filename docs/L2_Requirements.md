@@ -1,10 +1,10 @@
 # L2 Requirements — irig106-time
 
-**Document:** L2_REQUIREMENTS.md
+**Document:** L2_Requirements.md
 **Crate:** irig106-time
-**Version:** 0.1.0
-**Parent:** L1_REQUIREMENTS.md
-**Date:** 2026-03-25
+**Version:** 0.2.0
+**Parent:** L1_Requirements.md
+**Date:** 2026-03-27
 
 ---
 
@@ -131,6 +131,62 @@ parent L1 requirement.
 | L2-API-003 | The crate shall have zero required dependencies in `[dependencies]` of `Cargo.toml`. Only `[dev-dependencies]` may contain external crates. | L1-API-003 |
 | L2-API-004 | `Rtc` shall not implement `From<u64>` implicitly; construction shall go through `Rtc::from_raw()` to enforce 48-bit masking. | L1-API-004 |
 
+### 3.10 Time Data Format 2 CSDW
+
+*Added in v0.2.0.*
+
+| ID | Requirement | Traces |
+|----|-------------|--------|
+| L2-F2CSDW-001 | `TimeF2Csdw` shall be parsed from a `u32` value read in little-endian order. | L1-F2CSDW-001 |
+| L2-F2CSDW-002 | `TimeF2Csdw::time_protocol(&self) -> NetworkTimeProtocol` shall return an enum decoded from bits [3:0]. | L1-F2CSDW-002 |
+| L2-F2CSDW-003 | `TimeF2Csdw::validate_reserved(&self) -> Result<()>` shall verify bits [31:4] are zero. | L1-F2CSDW-003 |
+| L2-F2CSDW-004 | The `NetworkTimeProtocol` enum shall include variants `Ntp`, `Ptp`, and `Reserved(u8)`. | L1-F2CSDW-002 |
+
+### 3.11 NTP Time
+
+*Added in v0.2.0.*
+
+| ID | Requirement | Traces |
+|----|-------------|--------|
+| L2-NTP-001 | `NtpTime::from_le_bytes(&[u8]) -> Result<Self>` shall parse 8 bytes into seconds and fractional seconds. | L1-NTP-001 |
+| L2-NTP-002 | `NtpTime::fraction_as_nanos(&self) -> u32` shall convert the fractional field to nanoseconds via `(fraction * 10^9) >> 32`. | L1-NTP-003 |
+| L2-NTP-003 | `NtpTime::to_unix_seconds(&self) -> Option<u64>` shall subtract `NTP_UNIX_EPOCH_OFFSET` (2,208,988,800), returning `None` if underflow. | L1-NTP-004 |
+| L2-NTP-004 | `NtpTime::to_absolute(&self) -> Result<AbsoluteTime>` shall convert NTP time to year/doy/time-of-day. | L1-NTP-001..004 |
+| L2-NTP-005 | `NtpTime::to_nanos_since_ntp_epoch(&self) -> u64` shall return total nanoseconds since the NTP epoch. | L1-NTP-002 |
+
+### 3.12 PTP Time
+
+*Added in v0.2.0.*
+
+| ID | Requirement | Traces |
+|----|-------------|--------|
+| L2-PTP-001 | `PtpTime::from_le_bytes(&[u8]) -> Result<Self>` shall parse 10 bytes: 6-byte (48-bit) seconds and 4-byte nanoseconds. | L1-PTP-001 |
+| L2-PTP-002 | `PtpTime::from_le_bytes` shall return `Err(OutOfRange)` if nanoseconds >= 1,000,000,000. | L1-PTP-003 |
+| L2-PTP-003 | `PtpTime::to_utc_seconds(&self, tai_utc_offset: i32) -> u64` shall subtract the TAI-UTC offset. | L1-PTP-004 |
+| L2-PTP-004 | `PtpTime::to_absolute(&self, tai_utc_offset: i32) -> Result<AbsoluteTime>` shall convert to year/doy/time-of-day. | L1-PTP-001..004 |
+| L2-PTP-005 | `PtpTime::to_nanos_since_tai_epoch(&self) -> u128` shall return total nanoseconds since the TAI epoch. | L1-PTP-002 |
+
+### 3.13 Format 2 Correlation Integration
+
+*Added in v0.2.0.*
+
+| ID | Requirement | Traces |
+|----|-------------|--------|
+| L2-F2COR-001 | `TimeCorrelator::add_reference_f2(&mut self, channel_id, rtc, network_time, leap_table)` shall accept Format 2 time data as a reference point. | L1-F2COR-001 |
+| L2-F2COR-002 | For NTP sources, the correlator shall convert NTP time to `AbsoluteTime` before inserting. | L1-F2COR-001 |
+| L2-F2COR-003 | For PTP sources, the correlator shall apply the leap-second offset from the provided table before inserting. | L1-F2COR-001, L1-F2COR-002 |
+
+### 3.14 Leap Second Table
+
+*Added in v0.2.0.*
+
+| ID | Requirement | Traces |
+|----|-------------|--------|
+| L2-TAI-001 | `LeapSecondTable::builtin()` shall return a table with all leap seconds from 1972 through the crate release date. | L1-TAI-002 |
+| L2-TAI-002 | `LeapSecondTable::offset_at_unix(unix_seconds) -> i32` shall return the TAI-UTC offset effective at the given UTC time. | L1-TAI-001, L1-TAI-003 |
+| L2-TAI-003 | `LeapSecondTable::add(&mut self, entry)` shall allow runtime insertion of new entries. | L1-TAI-003 |
+| L2-TAI-004 | `LeapSecondTable::offset_at_tai(tai_seconds) -> i32` shall approximate the offset for a TAI timestamp. | L1-TAI-001 |
+
 ---
 
 ## 4. Traceability Matrix
@@ -174,3 +230,19 @@ parent L1 requirement.
 | L1-API-002 | L2-API-002 |
 | L1-API-003 | L2-API-003 |
 | L1-API-004 | L2-API-004 |
+| L1-F2CSDW-001 | L2-F2CSDW-001 |
+| L1-F2CSDW-002 | L2-F2CSDW-002, L2-F2CSDW-004 |
+| L1-F2CSDW-003 | L2-F2CSDW-003 |
+| L1-NTP-001 | L2-NTP-001 |
+| L1-NTP-002 | L2-NTP-005 |
+| L1-NTP-003 | L2-NTP-002 |
+| L1-NTP-004 | L2-NTP-003, L2-NTP-004 |
+| L1-PTP-001 | L2-PTP-001 |
+| L1-PTP-002 | L2-PTP-005 |
+| L1-PTP-003 | L2-PTP-002 |
+| L1-PTP-004 | L2-PTP-003, L2-PTP-004 |
+| L1-F2COR-001 | L2-F2COR-001, L2-F2COR-002 |
+| L1-F2COR-002 | L2-F2COR-003 |
+| L1-TAI-001 | L2-TAI-001, L2-TAI-002 |
+| L1-TAI-002 | L2-TAI-001 |
+| L1-TAI-003 | L2-TAI-002, L2-TAI-003 |

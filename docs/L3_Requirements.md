@@ -1,10 +1,10 @@
 # L3 Requirements — irig106-time
 
-**Document:** L3_REQUIREMENTS.md
+**Document:** L3_Requirements.md
 **Crate:** irig106-time
-**Version:** 0.1.0
-**Parent:** L2_REQUIREMENTS.md
-**Date:** 2026-03-25
+**Version:** 0.2.0
+**Parent:** L2_Requirements.md
+**Date:** 2026-03-27
 
 ---
 
@@ -28,6 +28,7 @@ and forward to specific source files and tests.
 | `secondary` | `src/secondary.rs` | `src/secondary_tests.rs` | Secondary header time |
 | `intra_packet` | `src/intra_packet.rs` | `src/intra_packet_tests.rs` | Intra-packet timestamps |
 | `correlation` | `src/correlation.rs` | `src/correlation_tests.rs` | RTC↔absolute correlation |
+| `network_time` | `src/network_time.rs` | `src/network_time_tests.rs` | Format 2 NTP/PTP/LeapSecondTable |
 
 ---
 
@@ -153,12 +154,40 @@ and forward to specific source files and tests.
 | L3-COR-006 | `TimeJump { index: usize, channel_id: u16, expected_nanos: u64, actual_nanos: u64, delta_nanos: i64 }` | L2-COR-006 |
 | L3-COR-007 | `detect_time_jump`: iterate consecutive same-channel pairs, compute expected absolute time from RTC delta, compare with actual, flag if |delta| > threshold. | L2-COR-006 |
 
+### 3.12 Network Time (`src/network_time.rs`)
+
+*Added in v0.2.0.*
+
+| ID | Specification | Traces |
+|----|--------------|--------|
+| L3-F2-001 | `pub struct TimeF2Csdw(u32);` — same newtype pattern as `TimeF1Csdw`. | L2-F2CSDW-001 |
+| L3-F2-002 | `pub enum NetworkTimeProtocol { Ntp, Ptp, Reserved(u8) }` from bits [3:0]. | L2-F2CSDW-004 |
+| L3-F2-003 | `pub struct NtpTime { pub seconds: u32, pub fraction: u32 }` — LE bytes [0..4] = seconds, [4..8] = fraction. | L2-NTP-001 |
+| L3-F2-004 | NTP fraction → nanos: `((fraction as u64 * 1_000_000_000) >> 32) as u32`. | L2-NTP-002 |
+| L3-F2-005 | `const NTP_UNIX_EPOCH_OFFSET: u64 = 2_208_988_800;` (70 years including 17 leap years). | L2-NTP-003 |
+| L3-F2-006 | `pub struct PtpTime { pub seconds: u64, pub nanoseconds: u32 }` — LE bytes [0..6] = 48-bit seconds, [6..10] = nanos. 48-bit masking via zero-extend. | L2-PTP-001 |
+| L3-F2-007 | `const DEFAULT_TAI_UTC_OFFSET: i32 = 37;` (since 2017-01-01). | L2-PTP-003 |
+| L3-F2-008 | `pub enum NetworkTime { Ntp(NtpTime), Ptp(PtpTime) }` — parsed payload discriminated union. | L2-F2CSDW-004 |
+| L3-F2-009 | `pub fn parse_time_f2_payload(payload: &[u8]) -> Result<(TimeF2Csdw, NetworkTime)>` — dispatch on CSDW protocol field. | L2-F2CSDW-001..004 |
+| L3-F2-010 | `pub struct LeapSecondEntry { pub effective_unix: u64, pub tai_utc_offset: i32 }` | L2-TAI-001 |
+| L3-F2-011 | `pub struct LeapSecondTable { entries: Vec<LeapSecondEntry> }` — sorted by `effective_unix`, binary search lookup. | L2-TAI-001..004 |
+| L3-F2-012 | Built-in table: 28 entries from 1972-01-01 (offset 10) through 2017-01-01 (offset 37). | L2-TAI-001 |
+| L3-F2-013 | `unix_seconds_to_ymd(unix_secs) -> (year, doy, hour, minute, second)` — internal helper, walks years from 1970. | L2-NTP-004, L2-PTP-004 |
+
+### 3.13 Correlator Format 2 Extension (`src/correlation.rs`)
+
+*Added in v0.2.0.*
+
+| ID | Specification | Traces |
+|----|--------------|--------|
+| L3-F2-014 | `TimeCorrelator::add_reference_f2(channel_id, rtc, network_time, leap_table)` dispatches NTP/PTP → `AbsoluteTime` → `add_reference`. | L2-F2COR-001..003 |
+
 ---
 
 ## 4. Shared Types (Candidates for `irig106-types`)
 
 The following types are used across multiple crates in the ecosystem and should
-eventually be migrated to `irig106-types`. See `SHARED_TYPES_FOR_IRIG106_TYPES.md`.
+eventually be migrated to `irig106-types`. See `shared_types_for_irig106_types.md`.
 
 - `Rtc` — used by `irig106-core`, `irig106-time`, `irig106-decode`, `irig106-write`
 - `Ch4BinaryTime` — used by `irig106-time`, `irig106-decode`
@@ -194,3 +223,8 @@ eventually be migrated to `irig106-types`. See `SHARED_TYPES_FOR_IRIG106_TYPES.m
 | L2-COR-001..007 | L3-COR-001..L3-COR-007 | correlation.rs |
 | L2-ERR-001..003 | L3-ERR-001..L3-ERR-004 | error.rs |
 | L2-API-001..004 | L3-RTC-013, L3-ABS-001, L3-CSDW-001 | (all modules) |
+| L2-F2CSDW-001..004 | L3-F2-001, L3-F2-002 | network_time.rs |
+| L2-NTP-001..005 | L3-F2-003..L3-F2-005, L3-F2-013 | network_time.rs |
+| L2-PTP-001..005 | L3-F2-006..L3-F2-007, L3-F2-013 | network_time.rs |
+| L2-F2COR-001..003 | L3-F2-014 | correlation.rs |
+| L2-TAI-001..004 | L3-F2-010..L3-F2-012 | network_time.rs |

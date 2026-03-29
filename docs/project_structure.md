@@ -57,9 +57,8 @@ irig106-time/
 │
 └── docs/
     ├── L1_Requirements.md              # 53 L1 → IRIG 106 standard (incl. Format 2)
-    ├── L2_Requirements.md              # 78 L2 → functional
-    ├── L2L3_REQUIREMENTS_F2_ADDENDUM.md # L2/L3 → Format 2
-    ├── L3_Requirements.md              # 65 L3 → design specs
+    ├── L2_Requirements.md              # L2 → functional (incl. Format 2)
+    ├── L3_Requirements.md              # L3 → design specs (incl. Format 2)
     ├── test_index.md                   # All tests documented
     ├── architecture.md                 # Data flow, packet layouts, ASCII diagrams
     ├── why_separate_repo.md           # Why time is its own crate
