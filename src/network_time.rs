@@ -586,11 +586,10 @@ impl LeapSecondTable {
     ///
     /// **Traces:** GAP-04
     pub fn is_near_leap_second(&self, unix_seconds: u64, window_secs: u64) -> bool {
-        // u64::abs_diff is the crate's MSRV constraint (stabilized in Rust 1.60).
-        // See util.rs for the full MSRV dependency table.
+        // Uses crate::util::abs_diff_u64 — see MSRV note in util.rs
         self.entries
             .iter()
-            .any(|e| unix_seconds.abs_diff(e.effective_unix) <= window_secs)
+            .any(|e| crate::util::abs_diff_u64(unix_seconds, e.effective_unix) <= window_secs)
     }
 }
 

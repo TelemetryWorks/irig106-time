@@ -39,16 +39,18 @@
 //!
 //! ## Minimum Supported Rust Version (MSRV)
 //!
-//! This crate requires **Rust 1.60** or later. The MSRV is constrained by:
+//! This crate requires **Rust 1.56** or later (Edition 2021 floor). The MSRV
+//! is maintained by providing crate-internal replacements for newer standard
+//! library APIs:
 //!
-//! | API | Stabilized | Used By |
-//! |-----|------------|---------|
-//! | `u64::abs_diff` | Rust 1.60 | `LeapSecondTable::is_near_leap_second` |
+//! | Replaced API | Stabilized In | Replacement |
+//! |-------------|---------------|-------------|
+//! | `u64::abs_diff` | Rust 1.60 | `util::abs_diff_u64` |
+//! | `u16::is_multiple_of` | Rust 1.87 | `util::is_leap_year` |
 //!
 //! All other APIs used (`saturating_sub`, `saturating_add`, etc.) are stable
-//! since Rust 1.0. Leap year calculations use modulo arithmetic instead of
-//! `u16::is_multiple_of` (Rust 1.87) to maintain this low MSRV. See
-//! `src/util.rs` for the full dependency table.
+//! since Rust 1.0. See `src/util.rs` for the full MSRV dependency table
+//! and rationale.
 //!
 //! ## Requirement Traceability
 //!

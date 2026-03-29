@@ -11,20 +11,29 @@ env:
 
 jobs:
   test:
-    name: Test (${{ matrix.rust }})
+    name: Test (stable)
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [stable, "1.60.0"]  # stable + MSRV
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ matrix.rust }}
+      - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --all-features
       - run: cargo test --no-default-features
       - run: cargo test --features serde
       - run: cargo test --features chrono
+
+  msrv:
+    name: MSRV Check (1.56.0)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.56.0"
+      # Dev-dependencies (criterion, proptest) require newer Rust.
+      # MSRV verification uses cargo check on the library only.
+      - run: cargo check --no-default-features
+      - run: cargo check
+      - run: cargo check --features serde
 
   clippy:
     name: Clippy

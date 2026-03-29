@@ -8,18 +8,20 @@
 //!
 //! | Function | Replaces | MSRV Impact |
 //! |----------|----------|-------------|
-//! | [`is_leap_year`] | `u16::is_multiple_of` (Rust 1.87) | Enables MSRV 1.60 |
+//! | [`is_leap_year`] | `u16::is_multiple_of` (Rust 1.87) | Enables MSRV below 1.87 |
+//! | [`abs_diff_u64`] | `u64::abs_diff` (Rust 1.60) | Enables MSRV below 1.60 |
 //!
 //! The crate's MSRV is determined by the highest-versioned stable API used:
 //!
-//! | API | Stabilized In | Used By |
-//! |-----|---------------|---------|
-//! | `u64::abs_diff` | Rust 1.60 | `LeapSecondTable::is_near_leap_second` |
-//! | `u16::saturating_sub` | Rust 1.0 | `AbsoluteTime::sub_nanos`, BCD helpers |
-//! | `u64::saturating_add` | Rust 1.0 | `network_time::unix_seconds_to_ymd` |
-//! | Edition 2021 | Rust 1.56 | `Cargo.toml` |
+//! | API | Stabilized In | Used By | Status |
+//! |-----|---------------|---------|--------|
+//! | `u64::abs_diff` | Rust 1.60 | `LeapSecondTable::is_near_leap_second` | Replaced by `abs_diff_u64` |
+//! | `u16::is_multiple_of` | Rust 1.87 | Leap year checks (3 files) | Replaced by `is_leap_year` |
+//! | `u16::saturating_sub` | Rust 1.0 | `AbsoluteTime::sub_nanos`, BCD helpers | No concern |
+//! | `u64::saturating_add` | Rust 1.0 | `network_time::unix_seconds_to_ymd` | No concern |
+//! | Edition 2021 | Rust 1.56 | `Cargo.toml` | Floor constraint |
 //!
-//! **Current MSRV: 1.60** (constrained by `u64::abs_diff`)
+//! **Current MSRV: 1.56** (constrained by Edition 2021)
 
 /// Determine whether a year is a leap year per the Gregorian calendar.
 ///
@@ -56,6 +58,40 @@
 #[inline]
 pub(crate) fn is_leap_year(year: u16) -> bool {
     (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
+}
+
+/// Compute the absolute difference between two `u64` values.
+///
+/// Returns `|a - b|` without risk of underflow. This replaces the standard
+/// library's `u64::abs_diff()` method, which was stabilized in Rust 1.60.
+/// Using this helper allows the crate to maintain an MSRV of 1.56 (Edition
+/// 2021 floor).
+///
+/// # MSRV Note
+///
+/// When the crate's MSRV is raised to 1.60 or higher, this function's
+/// internals can be updated to use `u64::abs_diff()` without changing
+/// callers. The `#[allow(clippy::manual_abs_diff)]` annotation suppresses
+/// the lint that would otherwise suggest that migration.
+///
+/// # Examples
+///
+/// ```
+/// # // This function is pub(crate), so we test it via the module's own tests.
+/// # // These examples document the expected behavior.
+/// // abs_diff_u64(10, 3) == 7
+/// // abs_diff_u64(3, 10) == 7
+/// // abs_diff_u64(5, 5) == 0
+/// // abs_diff_u64(0, u64::MAX) == u64::MAX
+/// ```
+#[allow(clippy::manual_abs_diff)]
+#[inline]
+pub(crate) fn abs_diff_u64(a: u64, b: u64) -> u64 {
+    if a >= b {
+        a - b
+    } else {
+        b - a
+    }
 }
 
 #[cfg(test)]
@@ -134,5 +170,58 @@ mod tests {
         assert!(!is_leap_year(2022)); // 106-22 (Network Time)
         assert!(!is_leap_year(2023)); // 106-23
         assert!(is_leap_year(2024)); // Current recordings
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // abs_diff_u64 tests
+    // ═══════════════════════════════════════════════════════════════════
+
+    #[test]
+    fn abs_diff_a_greater() {
+        assert_eq!(abs_diff_u64(10, 3), 7);
+        assert_eq!(abs_diff_u64(1_000_000, 1), 999_999);
+    }
+
+    #[test]
+    fn abs_diff_b_greater() {
+        assert_eq!(abs_diff_u64(3, 10), 7);
+        assert_eq!(abs_diff_u64(1, 1_000_000), 999_999);
+    }
+
+    #[test]
+    fn abs_diff_equal() {
+        assert_eq!(abs_diff_u64(0, 0), 0);
+        assert_eq!(abs_diff_u64(42, 42), 0);
+        assert_eq!(abs_diff_u64(u64::MAX, u64::MAX), 0);
+    }
+
+    #[test]
+    fn abs_diff_extremes() {
+        assert_eq!(abs_diff_u64(0, u64::MAX), u64::MAX);
+        assert_eq!(abs_diff_u64(u64::MAX, 0), u64::MAX);
+    }
+
+    #[test]
+    fn abs_diff_commutative() {
+        // abs_diff(a, b) == abs_diff(b, a) for all inputs
+        let pairs: [(u64, u64); 5] = [
+            (0, 1),
+            (100, 200),
+            (1_483_228_800, 1_600_000_000), // Unix timestamps near leap seconds
+            (u64::MAX - 1, u64::MAX),
+            (0, u64::MAX),
+        ];
+        for (a, b) in pairs {
+            assert_eq!(abs_diff_u64(a, b), abs_diff_u64(b, a));
+        }
+    }
+
+    #[test]
+    fn abs_diff_leap_second_timestamps() {
+        // Real-world use case: distance from a leap second boundary
+        let leap_2017 = 1_483_228_800u64; // 2017-01-01 leap second
+        assert_eq!(abs_diff_u64(leap_2017, leap_2017 + 10), 10);
+        assert_eq!(abs_diff_u64(leap_2017, leap_2017 - 10), 10);
+        assert_eq!(abs_diff_u64(leap_2017 + 5, leap_2017 - 5), 10);
     }
 }
