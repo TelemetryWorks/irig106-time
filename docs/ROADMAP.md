@@ -128,13 +128,13 @@ Target: Reduce the hot path below 15 ns and optimize channel-filtered correlatio
 
 Target: Handle Ch11 packet formats and real-time UDP stream correlation.
 
-| ID | Item | Priority | Effort | Details |
-|----|------|----------|--------|---------|
-| P5-01 | **Ch11 packet format awareness** | Medium | 1 day | IRIG 106-17 moved packet format definitions to Chapter 11. The wire format is identical for time fields, but software should recognize the provenance. Add `PacketStandard::Ch10` / `Ch11` metadata. |
-| P5-02 | **Streaming correlator** | High | 3 days | A `StreamingTimeCorrelator` that accepts packets in arrival order (potentially out-of-order), maintains a sliding window of reference points, and garbage-collects old references. Needed for live UDP stream processing. |
-| P5-03 | **UDP transfer header time handling** | Medium | 1 day | UDP Transfer Format 1 and 2 headers have sequence numbers but no additional time fields. Document the interaction between UDP framing and time correlation. |
-| P5-04 | **Time quality metrics** | Medium | 2 days | Track metrics: reference point density (refs/sec), max RTC gap between references, drift estimate (ppm), time source availability per channel. Expose via `TimeCorrelator::quality()`. |
-| P5-05 | **Async correlation API** | Low | 1 day | Optional `async` API for use in tokio-based streaming pipelines. Feature-gated behind `async` feature. |
+| ID | Item | Priority | Effort | Status |
+|----|------|----------|--------|--------|
+| P5-01 | **Ch11 packet format awareness** | Medium | 1 day | ✅ Done (v0.6.0) |
+| P5-02 | **Streaming correlator** | High | 3 days | ✅ Done (v0.6.0) |
+| P5-03 | **UDP transfer header time handling** | Medium | 1 day | Documentation-only (v0.6.0) |
+| P5-04 | **Time quality metrics** | Medium | 2 days | ✅ Done (v0.6.0) |
+| P5-05 | **Async correlation API** | — | — | Won't do — application concern, not library concern. The `StreamingTimeCorrelator` provides synchronous `&mut self` methods that work naturally in async contexts via `Arc<Mutex<_>>` or channel-based patterns. Adding `tokio` to a `#![no_std]` parsing library would violate layering and contaminate the dependency tree. |
 
 ### Phase 6: Ecosystem Integration (v1.0.0)
 
@@ -160,11 +160,11 @@ Target: Stable API, full ecosystem wiring, migration to `irig106-types`.
 | GAP-01 | ~~No `Display` for `AbsoluteTime`~~ | — | ✅ Resolved (v0.3.0). `impl Display` with ISO-like output. |
 | GAP-02 | ~~No `Serialize`/`Deserialize` (serde)~~ | — | ✅ Resolved (v0.5.0). Feature-gated behind `serde` feature on all public data types except `TimeError`. |
 | GAP-03 | Ch4 BinaryTime decode is simplified | Medium | The combined high/low word interpretation assumes a specific bit layout. Need to validate against real Ch4 BWT samples from legacy recorders (Ampex DCRsi, L-3 MARS, Acra KAM-500). Blocked on P2-05 file corpus. |
-| GAP-04 | No leap second handling for Format 1 time sources | Low | PTP leap seconds handled via `LeapSecondTable` (v0.2.0). IRIG-B/GPS Format 1 time codes can also carry leap second info — not yet decoded. |
+| GAP-04 | ~~No leap second handling for Format 1 time sources~~ | — | ✅ Resolved (v0.6.0). `LeapSecondTable::offset_for_f1(year, doy)` and `is_near_leap_second(unix_seconds, window_secs)`. |
 | GAP-05 | ~~`AbsoluteTime::sub_nanos` doesn't handle year rollover~~ | — | ✅ Resolved (v0.5.0). Correctly decrements year across day-1 boundary with leap-year-aware day count. |
-| GAP-06 | No `From`/`Into` conversions to `chrono` or `time` crates | Low | Optional feature-gated interop with popular Rust time libraries. |
+| GAP-06 | ~~No `From`/`Into` conversions to `chrono` or `time` crates~~ | — | ✅ Resolved (v0.6.0). Feature-gated `chrono` interop with `From<AbsoluteTime>` and reverse. |
 | GAP-07 | ~~Correlation doesn't handle RTC reset mid-recording~~ | — | ✅ Resolved (v0.4.0). `TimeCorrelator::detect_rtc_resets(channel_id)` with `RtcReset` struct. |
-| GAP-08 | No support for time data in Ch10 Recording Events (0x02) | Low | Event packets carry timestamps that could be used as additional correlation points. |
+| GAP-08 | ~~No support for time data in Ch10 Recording Events (0x02)~~ | — | ✅ Resolved (v0.6.0). `RecordingEvent` and `RecordingEventType` in `recording_event` module. |
 | GAP-09 | ~~DMY `to_absolute` doesn't validate day-for-month~~ | — | ✅ Resolved (v0.3.0). `days_in_month()` rejects Feb 30, Jun 31, etc. |
 | GAP-10 | ~~No RTC drift estimation~~ | — | ✅ Resolved (v0.3.0). `TimeCorrelator::drift_ppm(channel_id)`. |
 | GAP-11 | ~~Missing `to_le_bytes()` (encode) for BCD and CSDW types~~ | — | ✅ Resolved (v0.4.0). `to_le_bytes()` on `Rtc`, `TimeF1Csdw`, `TimeF2Csdw`, `NtpTime`, `PtpTime`, `DayFormatTime`, `DmyFormatTime`. |
@@ -198,5 +198,5 @@ Target: Stable API, full ecosystem wiring, migration to `irig106-types`.
 | **0.3.0** | Phase 1 | CI/CD, `#[deny(missing_docs)]`, proptest, `Display`, drift_ppm, calendar validation, CLI Proto column | Released |
 | **0.4.0** | Phase 2 | Version detection, version-aware CSDW, OOO window, RTC reset detection, `to_le_bytes()` encoding | Released |
 | **0.5.0** | Phase 4 | Channel-indexed O(log n) correlation, BCD LUT, criterion benchmarks, serde, sub_nanos year fix | Released |
-| **0.6.0** | Phase 5 | Streaming correlator, Ch11 awareness, quality metrics | +3 months |
+| **0.6.0** | Phase 5 | Streaming correlator, Ch11 awareness, quality metrics, recording events, chrono interop, F1 leap seconds | Released |
 | **1.0.0** | Phase 6 | Stable API, ecosystem wiring, irig106-types migration | +5 months |

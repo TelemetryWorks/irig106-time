@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.0](https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.6.0) - 2026-03-29
+
+### Added
+
+- **`streaming` module** (P5-02) — `StreamingTimeCorrelator` with sliding-window eviction for live UDP stream processing. Per-channel `BTreeMap` index with O(log n) lookup. Configurable `max_age_ns` window with automatic eviction of stale references. Methods: `add_reference`, `add_reference_f2`, `correlate`, `evict`, `len`, `is_empty`, `total_evicted`, `max_age_ns`, `latest_rtc`, `channel_ids`, `channel_len`. `StreamingRef` struct for reference points.
+- **`quality` module** (P5-04) — `TimeQuality` struct and `compute_quality(refs)` function. Metrics: `total_refs`, `channel_count`, `refs_per_channel`, `max_rtc_gap_ns`, `min_rtc_gap_ns`, `ref_density_per_sec`, `drift_ppm_per_channel`, `rtc_span_ns`.
+- **`packet_standard` module** (P5-01) — `PacketStandard::Ch10` / `Ch11` enum for IRIG 106-17 chapter provenance. `from_version()`, `is_ch10()`, `is_ch11()`, `Display`.
+- **`recording_event` module** (GAP-08) — `RecordingEventType` enum (Started, Stopped, Overrun, IndexPoint, Reserved) and `RecordingEvent` struct with `has_reference_time()` and `may_cause_time_gap()`. Parses Data Type 0x02 event packets for time context.
+- **`chrono_interop` module** (GAP-06) — Feature-gated `From<AbsoluteTime> for chrono::NaiveDateTime` and reverse. Enable with `features = ["chrono"]`.
+- **F1 leap second handling** (GAP-04) — `LeapSecondTable::offset_for_f1(year, doy)` for Format 1 time sources (IRIG-B, GPS). `is_near_leap_second(unix_seconds, window_secs)` for flagging packets near leap second boundaries.
+- **34 new unit tests** across 5 new test files: `packet_standard_tests.rs` (5), `streaming_tests.rs` (10), `quality_tests.rs` (6), `recording_event_tests.rs` (9), `chrono_interop.rs` (4).
+- **7 new integration tests** in `tests/pipeline.rs`: PacketStandard from version, streaming correlator basic pipeline, streaming eviction, quality metrics, F1 leap second offset, near leap second boundary, recording event pipeline.
+
+### Changed
+
+- **`Cargo.toml`** — Version bumped to 0.6.0. Added `chrono` optional dependency and feature gate.
+- **CLI (irig106-time-cli)** — Version bumped to 0.6.0.
+- **Crate docs updated** — `lib.rs` feature list now includes streaming correlation, quality metrics, packet standard, recording events, and chrono interop.
+- **Re-exports** — `PacketStandard`, `StreamingTimeCorrelator`, `StreamingRef`, `TimeQuality`, `compute_quality`, `RecordingEvent`, `RecordingEventType` added to crate root.
+- **P5-05 (async API)** permanently deferred — async runtime choice belongs to the application layer, not a `#![no_std]` parsing library.
+- Total test count: **244** (170 unit + 57 integration + 17 property).
+
+### Fixed
+
+- **`RtcReset.index` now reports global index** — v0.5.0 regression where `detect_rtc_resets` returned per-channel indices instead of global `references()` indices. Fixed via `global_index_of()` helper that matches on all fields.
+- **`TimeJump.index` correct for duplicate RTCs** — v0.5.0 regression where `.position()` matched only on `rtc + channel_id`, always returning the first match for duplicate RTC values. Same `global_index_of()` fix.
+- **README/lib.rs serde claim** — Now correctly says "except `TimeError`" to match usage.md and CHANGELOG.
+
 ## [v0.5.0](https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.5.0) - 2026-03-29
 
 ### Added

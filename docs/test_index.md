@@ -1,8 +1,8 @@
 # Test Documentation Index — irig106-time
 
 **Document:** TEST_INDEX.md
-**Crate:** irig106-time v0.5.0
-**Total Tests:** 203 (136 unit, 50 integration, 17 property)
+**Crate:** irig106-time v0.6.0
+**Total Tests:** 244 (170 unit, 57 integration, 17 property)
 **Date:** 2026-03-29
 
 ---
@@ -34,8 +34,17 @@ src/
   network_time_tests.rs ← 22 unit tests
   version.rs
   version_tests.rs      ← 10 unit tests
+  packet_standard.rs
+  packet_standard_tests.rs ← 5 unit tests
+  streaming.rs
+  streaming_tests.rs    ← 10 unit tests
+  quality.rs
+  quality_tests.rs      ← 6 unit tests
+  recording_event.rs
+  recording_event_tests.rs ← 9 unit tests
+  chrono_interop.rs     ← 4 unit tests (feature-gated)
 tests/
-  pipeline.rs         ← 50 integration tests
+  pipeline.rs         ← 57 integration tests
   properties.rs       ← 17 property-based tests
 ```
 
@@ -207,7 +216,7 @@ tests/
 
 ---
 
-## 3. Integration Tests (tests/pipeline.rs, 50 tests)
+## 3. Integration Tests (tests/pipeline.rs, 57 tests)
 
 | Test | Scenario | Traces |
 |------|----------|--------|

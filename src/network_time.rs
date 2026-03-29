@@ -558,6 +558,43 @@ impl LeapSecondTable {
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
+
+    /// Look up the TAI-UTC offset for a Format 1 (BCD) timestamp.
+    ///
+    /// Converts the year/day-of-year to an approximate Unix timestamp
+    /// and delegates to `offset_at_unix`. This allows F1 time sources
+    /// (IRIG-B, GPS, internal clock) to use the same leap second table
+    /// as PTP sources.
+    ///
+    /// **Traces:** GAP-04
+    pub fn offset_for_f1(&self, year: u16, day_of_year: u16) -> i32 {
+        // Approximate Unix seconds for this year/doy
+        let mut unix_secs: u64 = 0;
+        for y in 1970..year {
+            let days: u64 = if is_leap_year(y) { 366 } else { 365 };
+            unix_secs += days * 86_400;
+        }
+        unix_secs += (day_of_year as u64).saturating_sub(1) * 86_400;
+        self.offset_at_unix(unix_secs)
+    }
+
+    /// Check if a Unix timestamp falls within a window of a leap second boundary.
+    ///
+    /// Returns `true` if `unix_seconds` is within `window_secs` of any
+    /// leap second insertion point. Useful for flagging F1 time packets
+    /// that may be affected by a leap second transition.
+    ///
+    /// **Traces:** GAP-04
+    pub fn is_near_leap_second(&self, unix_seconds: u64, window_secs: u64) -> bool {
+        self.entries.iter().any(|e| {
+            let dist = if unix_seconds >= e.effective_unix {
+                unix_seconds - e.effective_unix
+            } else {
+                e.effective_unix - unix_seconds
+            };
+            dist <= window_secs
+        })
+    }
 }
 
 impl Default for LeapSecondTable {

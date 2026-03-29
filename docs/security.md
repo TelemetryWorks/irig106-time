@@ -1,7 +1,7 @@
 # Security Considerations — irig106-time
 
 **Document:** SECURITY.md
-**Crate:** irig106-time v0.5.0
+**Crate:** irig106-time v0.6.0
 **Date:** 2026-03-25
 
 ---

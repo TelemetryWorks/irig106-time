@@ -16,12 +16,20 @@
 //! - **Correlation** — RTC-to-absolute-time interpolation engine with
 //!   channel-indexed O(log n) lookup, time-jump detection, drift estimation,
 //!   and RTC reset detection
+//! - **Streaming correlation** — Sliding-window correlator for live UDP
+//!   streams with automatic max-age eviction
+//! - **Quality metrics** — Reference point density, RTC gaps, per-channel
+//!   drift assessment
 //! - **Version detection** — IRIG 106 standard version identification from
 //!   TMATS CSDW, with version-aware CSDW parsing for 106-04 through 106-23
+//! - **Packet standard** — Ch10/Ch11 provenance tracking (106-17 split)
+//! - **Recording events** — Data Type 0x02 event parsing with time context
 //! - **Encoding** — `to_le_bytes()` on all wire-format types for packet
 //!   construction (BCD, CSDW, NTP, PTP, RTC)
 //! - **serde** — Optional `Serialize`/`Deserialize` on all public data types
 //!   (except `TimeError`) via the `serde` feature gate
+//! - **chrono** — Optional `From` conversions between `AbsoluteTime` and
+//!   `chrono::NaiveDateTime` via the `chrono` feature gate
 //!
 //! ## `no_std` Support
 //!
@@ -63,6 +71,18 @@ pub mod rtc;
 pub mod secondary;
 /// IRIG 106 standard version detection and version-aware dispatch.
 pub mod version;
+/// Ch10/Ch11 packet format provenance (106-17 split).
+pub mod packet_standard;
+/// Time quality metrics for correlation health assessment.
+pub mod quality;
+/// Recording Event (Data Type 0x02) time extraction.
+pub mod recording_event;
+/// Streaming RTC-to-absolute-time correlator for live data.
+pub mod streaming;
+
+/// Optional interop with the `chrono` crate.
+#[cfg(feature = "chrono")]
+pub mod chrono_interop;
 
 // Re-export key types at crate root for convenience.
 pub use absolute::{AbsoluteTime, Ch4BinaryTime, Ertc, Ieee1588Time};
@@ -75,6 +95,10 @@ pub use network_time::{
     LeapSecondEntry, LeapSecondTable, NetworkTime, NetworkTimeProtocol, NtpTime, PtpTime,
     TimeF2Csdw, DEFAULT_TAI_UTC_OFFSET, NTP_UNIX_EPOCH_OFFSET,
 };
+pub use packet_standard::PacketStandard;
+pub use quality::{compute_quality, TimeQuality};
+pub use recording_event::{RecordingEvent, RecordingEventType};
 pub use rtc::Rtc;
 pub use secondary::{SecHdrTimeFormat, SecondaryHeaderTime};
+pub use streaming::{StreamingRef, StreamingTimeCorrelator};
 pub use version::{detect_version, Irig106Version};

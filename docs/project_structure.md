@@ -1,6 +1,6 @@
 # Project Structure — irig106-time
 
-**Date:** 2026-03-28
+**Date:** 2026-03-29
 
 ---
 
@@ -34,10 +34,19 @@ irig106-time/
 │   ├── network_time.rs                # Format 2 (0x12): NTP, PTP, LeapSecondTable
 │   ├── network_time_tests.rs          # 22 unit tests
 │   ├── version.rs                     # Irig106Version, detect_version
-│   └── version_tests.rs              # 10 unit tests
+│   ├── version_tests.rs              # 10 unit tests
+│   ├── packet_standard.rs            # PacketStandard::Ch10/Ch11
+│   ├── packet_standard_tests.rs      # 5 unit tests
+│   ├── streaming.rs                   # StreamingTimeCorrelator (sliding window)
+│   ├── streaming_tests.rs            # 10 unit tests
+│   ├── quality.rs                     # TimeQuality, compute_quality
+│   ├── quality_tests.rs              # 6 unit tests
+│   ├── recording_event.rs            # RecordingEvent, RecordingEventType
+│   ├── recording_event_tests.rs      # 9 unit tests
+│   └── chrono_interop.rs             # chrono From conversions (feature-gated, 4 tests)
 │
 ├── tests/
-│   ├── pipeline.rs                     # 50 integration tests (F1 + F2 pipelines, version, encode, channel index)
+│   ├── pipeline.rs                     # 57 integration tests
 │   └── properties.rs                  # 17 property-based tests (proptest)
 │
 ├── benches/
@@ -104,15 +113,15 @@ irig106-time-cli/
 
 | Metric | Value |
 |--------|-------|
-| Source modules | 11 |
-| Source lines (excl. tests) | ~2,900 |
-| Unit tests | 136 |
-| Integration tests | 50 |
+| Source modules | 16 |
+| Source lines (excl. tests) | ~3,800 |
+| Unit tests | 170 |
+| Integration tests | 57 |
 | Property-based tests | 17 |
 | Fuzz targets | 10 |
 | Benchmarks | 28 (zero-dep) + criterion suite |
-| **Total tests** | **203** |
-| Required runtime deps | **0** (serde optional) |
+| **Total tests** | **244** |
+| Required runtime deps | **0** (serde, chrono optional) |
 | L1 requirements | 53 (37 base + 16 F2) |
 | `#![no_std]` | Yes |
 | `unsafe` blocks | **0** |

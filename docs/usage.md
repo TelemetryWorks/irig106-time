@@ -1,7 +1,7 @@
 # Usage Guide — irig106-time
 
 **Document:** usage.md
-**Crate:** irig106-time v0.5.0
+**Crate:** irig106-time v0.6.0
 **Date:** 2026-03-29
 
 This guide shows how to use `irig106-time` in the context of a larger IRIG 106
@@ -31,12 +31,17 @@ data — either from files or live UDP streams.
 17. [RTC Reset Detection](#17-rtc-reset-detection)
 18. [Encoding Time Data (to_le_bytes)](#18-encoding-time-data-to_le_bytes)
 19. [Using serde for Serialization](#19-using-serde-for-serialization)
-20. [Integration with irig106-core](#20-integration-with-irig106-core)
-21. [Integration with irig106-decode](#21-integration-with-irig106-decode)
-22. [Integration with irig106-write](#22-integration-with-irig106-write)
-23. [WASM / no_std Usage](#23-wasm--no_std-usage)
-24. [Error Handling Patterns](#24-error-handling-patterns)
-25. [Performance Considerations](#25-performance-considerations)
+20. [Streaming Correlation](#20-streaming-correlation)
+21. [Time Quality Metrics](#21-time-quality-metrics)
+22. [Packet Standard (Ch10/Ch11)](#22-packet-standard-ch10ch11)
+23. [Recording Events](#23-recording-events)
+24. [chrono Interop](#24-chrono-interop)
+25. [Integration with irig106-core](#25-integration-with-irig106-core)
+26. [Integration with irig106-decode](#26-integration-with-irig106-decode)
+27. [Integration with irig106-write](#27-integration-with-irig106-write)
+28. [WASM / no_std Usage](#28-wasm--no_std-usage)
+29. [Error Handling Patterns](#29-error-handling-patterns)
+30. [Performance Considerations](#30-performance-considerations)
 
 ---
 
@@ -45,13 +50,13 @@ data — either from files or live UDP streams.
 ```toml
 # Cargo.toml
 [dependencies]
-irig106-time = "0.5"
+irig106-time = "0.6"
 
 # For no_std environments (embedded, WASM):
-# irig106-time = { version = "0.5", default-features = false }
+# irig106-time = { version = "0.6", default-features = false }
 
 # For JSON/CSV export with serde:
-# irig106-time = { version = "0.5", features = ["serde"] }
+# irig106-time = { version = "0.6", features = ["serde"] }
 ```
 
 The crate re-exports all key types at the root, so most code only needs:
@@ -1049,7 +1054,7 @@ assert_eq!(TimeF2Csdw::from_le_bytes(f2_bytes).as_raw(), f2_csdw.as_raw());
 
 ```toml
 [dependencies]
-irig106-time = { version = "0.5", features = ["serde"] }
+irig106-time = { version = "0.6", features = ["serde"] }
 ```
 
 ### JSON Export Example
@@ -1078,7 +1083,147 @@ All public data types carry `#[cfg_attr(feature = "serde", derive(Serialize, Des
 
 ---
 
-## 20. Integration with irig106-core
+## 20. Streaming Correlation
+
+*Added in v0.6.0.* The `StreamingTimeCorrelator` is designed for live UDP
+telemetry streams. Unlike the batch `TimeCorrelator`, it maintains a bounded
+sliding window and automatically evicts stale reference points.
+
+```rust
+use irig106_time::streaming::StreamingTimeCorrelator;
+use irig106_time::{Rtc, AbsoluteTime};
+
+// Keep a 60-second window of reference points
+let mut sc = StreamingTimeCorrelator::new(60_000_000_000);
+
+// As time packets arrive from the UDP stream:
+sc.add_reference(1, Rtc::from_raw(10_000_000),
+    AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
+
+// Correlate data packets against the sliding window
+let resolved = sc.correlate(Rtc::from_raw(10_500_000), Some(1)).unwrap();
+
+// Monitor window health
+println!("Window: {} refs, {} evicted", sc.len(), sc.total_evicted());
+```
+
+The correlator does not use async/await — it provides synchronous `&mut self`
+methods that work naturally in async pipelines via `Arc<Mutex<_>>` or
+channel-based patterns. The async runtime choice belongs to the application.
+
+---
+
+## 21. Time Quality Metrics
+
+*Added in v0.6.0.* The `compute_quality` function assesses the health of
+a correlator's reference point set.
+
+```rust
+use irig106_time::*;
+use irig106_time::quality::compute_quality;
+
+let mut c = TimeCorrelator::new();
+// ... add reference points ...
+c.add_reference(1, Rtc::from_raw(10_000_000),
+    AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
+c.add_reference(1, Rtc::from_raw(20_000_000),
+    AbsoluteTime::new(100, 12, 0, 1, 0).unwrap());
+
+let q = compute_quality(c.references());
+println!("Refs: {}, Channels: {}", q.total_refs, q.channel_count);
+println!("Max gap: {:?} ns", q.max_rtc_gap_ns);
+println!("Density: {:?} refs/sec", q.ref_density_per_sec);
+
+for (ch, drift) in &q.drift_ppm_per_channel {
+    println!("Channel {} drift: {:.2} ppm", ch, drift);
+}
+```
+
+---
+
+## 22. Packet Standard (Ch10/Ch11)
+
+*Added in v0.6.0.* IRIG 106-17 split Chapter 10 into two chapters. The
+`PacketStandard` enum tracks whether a file uses Ch10 or Ch11 packet formats.
+The wire format for time fields is identical — this is metadata for compliance
+reporting and tooling.
+
+```rust
+use irig106_time::packet_standard::PacketStandard;
+use irig106_time::version::{detect_version, Irig106Version};
+
+let version = detect_version(tmats_csdw);
+let standard = PacketStandard::from_version(&version);
+
+println!("File uses {} packet format", standard); // "Chapter 10" or "Chapter 11"
+assert!(standard.is_ch11() || standard.is_ch10());
+```
+
+---
+
+## 23. Recording Events
+
+*Added in v0.6.0.* Data Type 0x02 (Recording Event) packets carry
+timestamps that can supplement correlation. Events with secondary headers
+can serve as additional reference points.
+
+```rust
+use irig106_time::recording_event::{RecordingEvent, RecordingEventType};
+use irig106_time::{Rtc, AbsoluteTime};
+
+// Parse from packet header fields
+let abs = AbsoluteTime::new(100, 12, 0, 0, 0).unwrap();
+let event = RecordingEvent::new(0x01, 1, Rtc::from_raw(10_000_000), Some(abs));
+
+match event.event_type {
+    RecordingEventType::Started => println!("Recording started"),
+    RecordingEventType::Stopped => println!("Recording stopped"),
+    RecordingEventType::Overrun => println!("Data overrun — possible time gap"),
+    RecordingEventType::IndexPoint(n) => println!("Index point {}", n),
+    RecordingEventType::Reserved(v) => println!("Reserved event 0x{:02X}", v),
+}
+
+// Use as correlation reference if secondary header present
+if event.has_reference_time() {
+    // correlator.add_reference(event.channel_id, event.rtc, event.absolute_time.unwrap());
+}
+```
+
+---
+
+## 24. chrono Interop
+
+*Added in v0.6.0.* Enable the `chrono` feature for `From` conversions
+between `AbsoluteTime` and `chrono::NaiveDateTime`.
+
+```toml
+[dependencies]
+irig106-time = { version = "0.6", features = ["chrono"] }
+```
+
+```rust
+use irig106_time::AbsoluteTime;
+// use chrono::NaiveDateTime;
+
+let mut t = AbsoluteTime::new(100, 12, 30, 25, 340_000_000).unwrap();
+t.year = Some(2025);
+
+// Convert to chrono (requires "chrono" feature)
+// let dt: NaiveDateTime = t.into();
+// assert_eq!(dt.year(), 2025);
+
+// Convert back
+// let back: AbsoluteTime = dt.into();
+// assert_eq!(back.day_of_year, 100);
+```
+
+The conversion sets `year`, `day_of_year`, `month`, and `day_of_month` when
+converting from chrono. When converting to chrono without a `year` field,
+1970 is used as the default.
+
+---
+
+## 25. Integration with irig106-core
 
 When `irig106-core` provides packet header parsing, the integration simplifies:
 
@@ -1104,7 +1249,7 @@ fn rtc_from_reader(raw_rtc: u64) -> irig106_time::Rtc {
 
 ---
 
-## 21. Integration with irig106-decode
+## 26. Integration with irig106-decode
 
 Payload decoders need message-level timestamps from intra-packet time stamps.
 
@@ -1133,7 +1278,7 @@ Payload decoders need message-level timestamps from intra-packet time stamps.
 
 ---
 
-## 22. Integration with irig106-write
+## 27. Integration with irig106-write
 
 When constructing Ch10 files, use `to_le_bytes()` on time types to produce
 wire-format payloads. All encode methods round-trip with their corresponding
@@ -1179,14 +1324,14 @@ assert_eq!(payload.len(), 12);
 
 ---
 
-## 23. WASM / no_std Usage
+## 28. WASM / no_std Usage
 
 The crate compiles to `no_std` targets including WebAssembly.
 
 ```toml
 # Cargo.toml for a WASM project
 [dependencies]
-irig106-time = { version = "0.5", default-features = false }
+irig106-time = { version = "0.6", default-features = false }
 ```
 
 ```rust
@@ -1209,7 +1354,7 @@ pub fn correlate_in_browser(rtc_raw: u64) -> (u16, u8, u8, u8, u32) {
 
 ---
 
-## 24. Error Handling Patterns
+## 29. Error Handling Patterns
 
 Every fallible function returns `Result<T, TimeError>`. The error enum is
 `#[non_exhaustive]` so new variants can be added without breaking your code.
@@ -1259,7 +1404,7 @@ fn resolve_or_raw(correlator: &TimeCorrelator, rtc: Rtc) -> String {
 
 ---
 
-## 25. Performance Considerations
+## 30. Performance Considerations
 
 ### Hot Path vs. Cold Path
 

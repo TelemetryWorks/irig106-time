@@ -1043,3 +1043,117 @@ fn sub_nanos_no_year_info_wraps_gracefully() {
     assert_eq!(result.minutes, 59);
     assert_eq!(result.seconds, 59);
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// v0.6.0 integration tests
+// ═══════════════════════════════════════════════════════════════════════
+
+// ── P5-01: PacketStandard ───────────────────────────────────────────
+
+#[test]
+fn packet_standard_from_version() {
+    use irig106_time::packet_standard::PacketStandard;
+    use irig106_time::version::Irig106Version;
+
+    assert_eq!(PacketStandard::from_version(&Irig106Version::Pre07), PacketStandard::Ch10);
+    assert_eq!(PacketStandard::from_version(&Irig106Version::V15), PacketStandard::Ch10);
+    assert_eq!(PacketStandard::from_version(&Irig106Version::V17), PacketStandard::Ch11);
+    assert_eq!(PacketStandard::from_version(&Irig106Version::V22), PacketStandard::Ch11);
+    assert!(PacketStandard::Ch11.is_ch11());
+    assert!(!PacketStandard::Ch11.is_ch10());
+}
+
+// ── P5-02: StreamingTimeCorrelator ──────────────────────────────────
+
+#[test]
+fn streaming_correlator_basic_pipeline() {
+    use irig106_time::streaming::StreamingTimeCorrelator;
+
+    let mut sc = StreamingTimeCorrelator::new(30_000_000_000); // 30 sec window
+
+    // Simulate 1 Hz time packets for 5 seconds
+    for i in 0..5u64 {
+        sc.add_reference(
+            1,
+            Rtc::from_raw((i + 1) * 10_000_000),
+            AbsoluteTime::new(100, 12, 0, i as u8, 0).unwrap(),
+        );
+    }
+    assert_eq!(sc.len(), 5);
+
+    // Correlate a point between refs 3 and 4
+    let mid = Rtc::from_raw(35_000_000);
+    let result = sc.correlate(mid, Some(1)).unwrap();
+    assert_eq!(result.hours, 12);
+}
+
+#[test]
+fn streaming_correlator_eviction_pipeline() {
+    use irig106_time::streaming::StreamingTimeCorrelator;
+
+    let mut sc = StreamingTimeCorrelator::new(5_000_000_000); // 5 sec window
+
+    // Insert at RTC 10M (1 sec)
+    sc.add_reference(1, Rtc::from_raw(10_000_000), AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
+    // Jump to RTC 200M (20 sec) — first ref is 19 sec old, evicted
+    sc.add_reference(1, Rtc::from_raw(200_000_000), AbsoluteTime::new(100, 12, 0, 20, 0).unwrap());
+
+    assert_eq!(sc.len(), 1);
+    assert!(sc.total_evicted() > 0);
+}
+
+// ── P5-04: Quality metrics ──────────────────────────────────────────
+
+#[test]
+fn quality_metrics_from_correlator() {
+    use irig106_time::quality::compute_quality;
+
+    let mut c = TimeCorrelator::new();
+    c.add_reference(1, Rtc::from_raw(10_000_000), AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
+    c.add_reference(1, Rtc::from_raw(20_000_000), AbsoluteTime::new(100, 12, 0, 1, 0).unwrap());
+    c.add_reference(2, Rtc::from_raw(15_000_000), AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
+
+    let q = compute_quality(c.references());
+    assert_eq!(q.total_refs, 3);
+    assert_eq!(q.channel_count, 2);
+    assert!(q.rtc_span_ns.is_some());
+    assert!(q.ref_density_per_sec.is_some());
+}
+
+// ── GAP-04: F1 leap second handling ─────────────────────────────────
+
+#[test]
+fn f1_leap_second_offset() {
+    let table = LeapSecondTable::builtin();
+    // 2017 day 1 should have offset 37 (last leap second was 2017-01-01)
+    let offset = table.offset_for_f1(2017, 1);
+    assert_eq!(offset, 37);
+}
+
+#[test]
+fn is_near_leap_second_boundary() {
+    let table = LeapSecondTable::builtin();
+    // The 2017-01-01 leap second was at Unix 1483228800
+    assert!(table.is_near_leap_second(1483228800, 10));
+    // Far from any boundary
+    assert!(!table.is_near_leap_second(1_600_000_000, 10));
+}
+
+// ── GAP-08: Recording events ────────────────────────────────────────
+
+#[test]
+fn recording_event_pipeline() {
+    use irig106_time::recording_event::{RecordingEvent, RecordingEventType};
+
+    let abs = AbsoluteTime::new(100, 12, 0, 0, 0).unwrap();
+    let event = RecordingEvent::new(0x01, 1, Rtc::from_raw(10_000_000), Some(abs));
+
+    assert_eq!(event.event_type, RecordingEventType::Started);
+    assert!(event.has_reference_time());
+    assert!(!event.event_type.may_cause_time_gap());
+
+    // Overrun event without secondary header
+    let overrun = RecordingEvent::new(0x03, 1, Rtc::from_raw(50_000_000), None);
+    assert!(!overrun.has_reference_time());
+    assert!(overrun.event_type.may_cause_time_gap());
+}
