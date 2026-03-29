@@ -55,12 +55,12 @@ pub mod error;
 pub mod intra_packet;
 /// Time Data Format 2 (0x12) Network Time: NTP, PTP, and leap-second table.
 pub mod network_time;
-/// IRIG 106 standard version detection and version-aware dispatch.
-pub mod version;
 /// 48-bit Relative Time Counter (RTC) newtype.
 pub mod rtc;
 /// Secondary header time extraction and checksum validation.
 pub mod secondary;
+/// IRIG 106 standard version detection and version-aware dispatch.
+pub mod version;
 
 // Re-export key types at crate root for convenience.
 pub use absolute::{AbsoluteTime, Ch4BinaryTime, Ertc, Ieee1588Time};

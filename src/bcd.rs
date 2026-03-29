@@ -196,10 +196,8 @@ impl DayFormatTime {
         let ms_hundreds = self.milliseconds / 100;
         let sec_units = self.seconds % 10;
         let sec_tens = self.seconds / 10;
-        let w0: u16 = ms_tens
-            | (ms_hundreds << 4)
-            | ((sec_units as u16) << 8)
-            | ((sec_tens as u16) << 12);
+        let w0: u16 =
+            ms_tens | (ms_hundreds << 4) | ((sec_units as u16) << 8) | ((sec_tens as u16) << 12);
 
         let min_units = self.minutes % 10;
         let min_tens = self.minutes / 10;
@@ -423,10 +421,8 @@ impl DmyFormatTime {
         let ms_hundreds = self.milliseconds / 100;
         let sec_units = self.seconds % 10;
         let sec_tens = self.seconds / 10;
-        let w0: u16 = ms_tens
-            | (ms_hundreds << 4)
-            | ((sec_units as u16) << 8)
-            | ((sec_tens as u16) << 12);
+        let w0: u16 =
+            ms_tens | (ms_hundreds << 4) | ((sec_units as u16) << 8) | ((sec_tens as u16) << 12);
 
         let min_units = self.minutes % 10;
         let min_tens = self.minutes / 10;

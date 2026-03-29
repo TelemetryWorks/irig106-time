@@ -740,11 +740,23 @@ fn detect_rtc_reset_basic() {
     let mut c = TimeCorrelator::new();
 
     // Normal progression: RTC 100M → 200M, abs time 12:00:00 → 12:00:10
-    c.add_reference(1, Rtc::from_raw(100_000_000), AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
-    c.add_reference(1, Rtc::from_raw(200_000_000), AbsoluteTime::new(100, 12, 0, 10, 0).unwrap());
+    c.add_reference(
+        1,
+        Rtc::from_raw(100_000_000),
+        AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(),
+    );
+    c.add_reference(
+        1,
+        Rtc::from_raw(200_000_000),
+        AbsoluteTime::new(100, 12, 0, 10, 0).unwrap(),
+    );
 
     // Reset: RTC drops to 1M, but abs time advances to 12:00:20
-    c.add_reference(1, Rtc::from_raw(1_000_000), AbsoluteTime::new(100, 12, 0, 20, 0).unwrap());
+    c.add_reference(
+        1,
+        Rtc::from_raw(1_000_000),
+        AbsoluteTime::new(100, 12, 0, 20, 0).unwrap(),
+    );
 
     let resets = c.detect_rtc_resets(1);
     assert_eq!(resets.len(), 1);
@@ -756,9 +768,21 @@ fn detect_rtc_reset_basic() {
 fn detect_rtc_reset_no_false_positive_on_normal_progression() {
     let mut c = TimeCorrelator::new();
 
-    c.add_reference(1, Rtc::from_raw(10_000_000), AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
-    c.add_reference(1, Rtc::from_raw(20_000_000), AbsoluteTime::new(100, 12, 0, 1, 0).unwrap());
-    c.add_reference(1, Rtc::from_raw(30_000_000), AbsoluteTime::new(100, 12, 0, 2, 0).unwrap());
+    c.add_reference(
+        1,
+        Rtc::from_raw(10_000_000),
+        AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(),
+    );
+    c.add_reference(
+        1,
+        Rtc::from_raw(20_000_000),
+        AbsoluteTime::new(100, 12, 0, 1, 0).unwrap(),
+    );
+    c.add_reference(
+        1,
+        Rtc::from_raw(30_000_000),
+        AbsoluteTime::new(100, 12, 0, 2, 0).unwrap(),
+    );
 
     let resets = c.detect_rtc_resets(1);
     assert!(resets.is_empty());
@@ -769,12 +793,28 @@ fn detect_rtc_reset_channel_isolation() {
     let mut c = TimeCorrelator::new();
 
     // Channel 1: has a reset
-    c.add_reference(1, Rtc::from_raw(100_000_000), AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
-    c.add_reference(1, Rtc::from_raw(1_000_000), AbsoluteTime::new(100, 12, 0, 20, 0).unwrap());
+    c.add_reference(
+        1,
+        Rtc::from_raw(100_000_000),
+        AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(),
+    );
+    c.add_reference(
+        1,
+        Rtc::from_raw(1_000_000),
+        AbsoluteTime::new(100, 12, 0, 20, 0).unwrap(),
+    );
 
     // Channel 2: no reset
-    c.add_reference(2, Rtc::from_raw(50_000_000), AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
-    c.add_reference(2, Rtc::from_raw(60_000_000), AbsoluteTime::new(100, 12, 0, 1, 0).unwrap());
+    c.add_reference(
+        2,
+        Rtc::from_raw(50_000_000),
+        AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(),
+    );
+    c.add_reference(
+        2,
+        Rtc::from_raw(60_000_000),
+        AbsoluteTime::new(100, 12, 0, 1, 0).unwrap(),
+    );
 
     assert_eq!(c.detect_rtc_resets(1).len(), 1);
     assert!(c.detect_rtc_resets(2).is_empty());
