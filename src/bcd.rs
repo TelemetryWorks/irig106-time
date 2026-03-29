@@ -20,7 +20,9 @@ use crate::error::{Result, TimeError};
 /// invalid nibbles (10–15) map to 0xFF as an error sentinel.
 ///
 /// **Traces:** P4-03
-const BCD_LUT: [u8; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF];
+const BCD_LUT: [u8; 16] = [
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+];
 
 /// Extract a 4-bit BCD nibble from a u16 word and validate it via lookup table.
 ///

@@ -413,8 +413,7 @@ impl TimeCorrelator {
         };
 
         // Sort by absolute time to see temporal order
-        let mut sorted: Vec<(usize, &ReferencePoint)> =
-            ch_refs.iter().enumerate().collect();
+        let mut sorted: Vec<(usize, &ReferencePoint)> = ch_refs.iter().enumerate().collect();
         sorted.sort_by_key(|(_, r)| {
             ((r.time.day_of_year as u64).saturating_sub(1)) * 86_400_000_000_000
                 + r.time.total_nanos_of_day()

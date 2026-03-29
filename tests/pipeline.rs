@@ -914,9 +914,21 @@ fn bcd_dmy_to_le_bytes_round_trip() {
 #[test]
 fn channel_references_accessor() {
     let mut c = TimeCorrelator::new();
-    c.add_reference(1, Rtc::from_raw(10_000_000), AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
-    c.add_reference(2, Rtc::from_raw(20_000_000), AbsoluteTime::new(100, 12, 0, 1, 0).unwrap());
-    c.add_reference(1, Rtc::from_raw(30_000_000), AbsoluteTime::new(100, 12, 0, 2, 0).unwrap());
+    c.add_reference(
+        1,
+        Rtc::from_raw(10_000_000),
+        AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(),
+    );
+    c.add_reference(
+        2,
+        Rtc::from_raw(20_000_000),
+        AbsoluteTime::new(100, 12, 0, 1, 0).unwrap(),
+    );
+    c.add_reference(
+        1,
+        Rtc::from_raw(30_000_000),
+        AbsoluteTime::new(100, 12, 0, 2, 0).unwrap(),
+    );
 
     assert_eq!(c.channel_references(1).len(), 2);
     assert_eq!(c.channel_references(2).len(), 1);
@@ -926,9 +938,21 @@ fn channel_references_accessor() {
 #[test]
 fn channel_ids_returns_active_channels() {
     let mut c = TimeCorrelator::new();
-    c.add_reference(5, Rtc::from_raw(10_000_000), AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
-    c.add_reference(3, Rtc::from_raw(20_000_000), AbsoluteTime::new(100, 12, 0, 1, 0).unwrap());
-    c.add_reference(5, Rtc::from_raw(30_000_000), AbsoluteTime::new(100, 12, 0, 2, 0).unwrap());
+    c.add_reference(
+        5,
+        Rtc::from_raw(10_000_000),
+        AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(),
+    );
+    c.add_reference(
+        3,
+        Rtc::from_raw(20_000_000),
+        AbsoluteTime::new(100, 12, 0, 1, 0).unwrap(),
+    );
+    c.add_reference(
+        5,
+        Rtc::from_raw(30_000_000),
+        AbsoluteTime::new(100, 12, 0, 2, 0).unwrap(),
+    );
 
     let ids = c.channel_ids();
     assert_eq!(ids.len(), 2);
@@ -940,9 +964,17 @@ fn channel_ids_returns_active_channels() {
 fn channel_indexed_correlate_same_result_as_any() {
     let mut c = TimeCorrelator::new();
     // Channel 1 at RTC 10M
-    c.add_reference(1, Rtc::from_raw(10_000_000), AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
+    c.add_reference(
+        1,
+        Rtc::from_raw(10_000_000),
+        AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(),
+    );
     // Channel 2 at RTC 20M
-    c.add_reference(2, Rtc::from_raw(20_000_000), AbsoluteTime::new(100, 12, 0, 1, 0).unwrap());
+    c.add_reference(
+        2,
+        Rtc::from_raw(20_000_000),
+        AbsoluteTime::new(100, 12, 0, 1, 0).unwrap(),
+    );
 
     // Query at RTC 10M — channel 1 should give exact match
     let by_ch = c.correlate(Rtc::from_raw(10_000_000), Some(1)).unwrap();
