@@ -20,7 +20,7 @@ IRIG 106 Chapter 10 separates *when data was recorded* (a free-running 10 MHz co
 - **Version detection** — IRIG 106 standard version from TMATS CSDW (106-04 through 106-23), version-aware CSDW parsing, configurable out-of-order tolerance
 - **Encoding** — `to_le_bytes()` on all wire-format types for packet construction
 - **`impl Display`** — ISO-like formatting for `AbsoluteTime`
-- **`serde`** — Optional `Serialize`/`Deserialize` on all data types via the `serde` feature gate
+- **`serde`** — Optional `Serialize`/`Deserialize` on all public data types (except `TimeError`) via the `serde` feature gate
 - **`#![no_std]`** — Works on embedded, WASM, and standard targets
 - **Zero required dependencies** — Only `core` and `alloc` (serde is optional)
 - **Zero `unsafe`** — Safe Rust throughout

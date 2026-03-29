@@ -269,6 +269,21 @@ impl TimeCorrelator {
         }
     }
 
+    /// Find the global index of a reference point in the flat `references` list.
+    ///
+    /// Matches on all fields (channel_id, rtc, AND time) to correctly handle
+    /// duplicate RTC values on the same channel.
+    fn global_index_of(&self, point: &ReferencePoint) -> usize {
+        self.references
+            .iter()
+            .position(|r| {
+                r.channel_id == point.channel_id
+                    && r.rtc == point.rtc
+                    && r.time == point.time
+            })
+            .unwrap_or(0)
+    }
+
     /// Return whichever of two reference points is closer to the target RTC.
     fn closer_ref<'a>(
         &self,
@@ -309,12 +324,7 @@ impl TimeCorrelator {
 
             let delta = actual_nanos as i64 - expected_nanos as i64;
             if delta.unsigned_abs() > threshold_ns {
-                // Find the global index for this reference point
-                let global_idx = self
-                    .references
-                    .iter()
-                    .position(|r| r.rtc == curr.rtc && r.channel_id == channel_id)
-                    .unwrap_or(0);
+                let global_idx = self.global_index_of(curr);
 
                 jumps.push(TimeJump {
                     index: global_idx,
@@ -413,8 +423,8 @@ impl TimeCorrelator {
         };
 
         // Sort by absolute time to see temporal order
-        let mut sorted: Vec<(usize, &ReferencePoint)> = ch_refs.iter().enumerate().collect();
-        sorted.sort_by_key(|(_, r)| {
+        let mut sorted: Vec<&ReferencePoint> = ch_refs.iter().collect();
+        sorted.sort_by_key(|r| {
             ((r.time.day_of_year as u64).saturating_sub(1)) * 86_400_000_000_000
                 + r.time.total_nanos_of_day()
         });
@@ -422,12 +432,12 @@ impl TimeCorrelator {
         let mut resets = Vec::new();
 
         for window in sorted.windows(2) {
-            let (_, prev) = window[0];
-            let (idx_curr, curr) = window[1];
+            let prev = window[0];
+            let curr = window[1];
 
             if curr.rtc < prev.rtc {
                 resets.push(RtcReset {
-                    index: idx_curr,
+                    index: self.global_index_of(curr),
                     channel_id,
                     rtc_before: prev.rtc,
                     rtc_after: curr.rtc,

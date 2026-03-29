@@ -21,7 +21,7 @@
 //! - **Encoding** — `to_le_bytes()` on all wire-format types for packet
 //!   construction (BCD, CSDW, NTP, PTP, RTC)
 //! - **serde** — Optional `Serialize`/`Deserialize` on all public data types
-//!   via the `serde` feature gate
+//!   (except `TimeError`) via the `serde` feature gate
 //!
 //! ## `no_std` Support
 //!
