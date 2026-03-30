@@ -66,7 +66,7 @@ extern crate std;
 
 extern crate alloc;
 
-/// Absolute time representations: `AbsoluteTime`, `Ch4BinaryTime`, `Ieee1588Time`, `Ertc`.
+/// Absolute time representations: `AbsoluteTime`, `CalendarTime`, `Ch4BinaryTime`, `Ieee1588Time`, `Ertc`.
 pub mod absolute;
 /// BCD-encoded Day-of-Year and Day-Month-Year time message decoding.
 pub mod bcd;
@@ -103,7 +103,7 @@ pub(crate) mod util;
 pub mod chrono_interop;
 
 // Re-export key types at crate root for convenience.
-pub use absolute::{AbsoluteTime, Ch4BinaryTime, Ertc, Ieee1588Time};
+pub use absolute::{AbsoluteTime, CalendarTime, Ch4BinaryTime, Ertc, Ieee1588Time};
 pub use bcd::{DayFormatTime, DmyFormatTime};
 pub use correlation::{ReferencePoint, RtcReset, TimeCorrelator, TimeJump};
 pub use csdw::{DateFormat, TimeF1Csdw, TimeFormat, TimeSource};

@@ -11,9 +11,10 @@
 //! | `absolute_time_minutes_60_rejected` | minutes=60 is invalid | L3-ABS-002 |
 //! | `absolute_time_seconds_60_rejected` | seconds=60 is invalid | L3-ABS-002 |
 //! | `absolute_time_nanos_overflow_rejected` | nanos=1B is invalid | L3-ABS-002 |
-//! | `with_date_valid` | Attach DMY fields | L3-ABS-003 |
-//! | `with_date_month_zero_rejected` | month=0 is invalid | L3-ABS-003 |
-//! | `with_date_month_13_rejected` | month=13 is invalid | L3-ABS-003 |
+//! | `calendar_time_valid` | CalendarTime construction with validated date | L3-ABS-006 |
+//! | `calendar_time_month_zero_rejected` | month=0 is invalid | L3-ABS-006 |
+//! | `calendar_time_month_13_rejected` | month=13 is invalid | L3-ABS-006 |
+//! | `calendar_time_requires_year` | AbsoluteTime without year is rejected | L3-ABS-006 |
 //! | `add_nanos_subsecond` | Add nanos within same second | L3-ABS-004 |
 //! | `add_nanos_carry_to_seconds` | Carry from nanos to seconds | L3-ABS-004 |
 //! | `add_nanos_carry_to_minutes` | Carry from seconds to minutes | L3-ABS-004 |
@@ -38,7 +39,6 @@ fn absolute_time_valid() {
     assert_eq!(t.minutes(), 30);
     assert_eq!(t.seconds(), 45);
     assert_eq!(t.nanoseconds(), 500_000_000);
-    assert_eq!(t.month(), None);
 }
 
 #[test]
@@ -72,26 +72,64 @@ fn absolute_time_nanos_overflow_rejected() {
 }
 
 #[test]
-fn with_date_valid() {
-    let t = AbsoluteTime::new(45, 10, 30, 0, 0)
-        .unwrap()
-        .with_date(2025, 2, 14)
-        .unwrap();
-    assert_eq!(t.year(), Some(2025));
-    assert_eq!(t.month(), Some(2));
-    assert_eq!(t.day_of_month(), Some(14));
+fn calendar_time_valid() {
+    let mut t = AbsoluteTime::new(45, 10, 30, 0, 0).unwrap();
+    t.set_year(Some(2025));
+    let ct = super::CalendarTime::new(t, 2, 14).unwrap();
+    assert_eq!(ct.year(), Some(2025));
+    assert_eq!(ct.month(), 2);
+    assert_eq!(ct.day_of_month(), 14);
+    // Deref gives access to AbsoluteTime methods
+    assert_eq!(ct.hours(), 10);
+    assert_eq!(ct.day_of_year(), 45);
 }
 
 #[test]
-fn with_date_month_zero_rejected() {
-    let t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
-    assert!(t.with_date(2025, 0, 1).is_err());
+fn calendar_time_month_zero_rejected() {
+    let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
+    t.set_year(Some(2025));
+    assert!(super::CalendarTime::new(t, 0, 1).is_err());
 }
 
 #[test]
-fn with_date_month_13_rejected() {
+fn calendar_time_month_13_rejected() {
+    let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
+    t.set_year(Some(2025));
+    assert!(super::CalendarTime::new(t, 13, 1).is_err());
+}
+
+#[test]
+fn calendar_time_requires_year() {
     let t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
-    assert!(t.with_date(2025, 13, 1).is_err());
+    // No year set — CalendarTime requires it
+    assert!(super::CalendarTime::new(t, 1, 1).is_err());
+}
+
+#[test]
+fn calendar_time_from_parts() {
+    let ct = super::CalendarTime::from_parts(2025, 4, 10, 100, 12, 30, 25, 0).unwrap();
+    assert_eq!(ct.year(), Some(2025));
+    assert_eq!(ct.month(), 4);
+    assert_eq!(ct.day_of_month(), 10);
+    assert_eq!(ct.day_of_year(), 100);
+    assert_eq!(ct.hours(), 12);
+}
+
+#[test]
+fn calendar_time_into_absolute_time() {
+    let ct = super::CalendarTime::from_parts(2025, 4, 10, 100, 12, 0, 0, 0).unwrap();
+    let abs: AbsoluteTime = ct.into();
+    assert_eq!(abs.year(), Some(2025));
+    assert_eq!(abs.day_of_year(), 100);
+    // AbsoluteTime has no month() or day_of_month() — type safety enforced
+}
+
+#[test]
+fn calendar_time_display() {
+    let ct = super::CalendarTime::from_parts(2025, 4, 10, 100, 12, 30, 25, 340_000_000).unwrap();
+    let s = format!("{}", ct);
+    assert!(s.starts_with("2025-04-10"));
+    assert!(s.contains("12:30:25"));
 }
 
 #[test]

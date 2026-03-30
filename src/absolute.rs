@@ -1,21 +1,47 @@
 //! Absolute time representations for IRIG 106 Chapter 10.
 //!
-//! This module defines the core absolute time type (`AbsoluteTime`) and the
-//! three wire-format time types used in secondary headers and intra-packet
-//! timestamps: Chapter 4 Binary Weighted Time, IEEE-1588, and ERTC.
+//! This module defines two time types and three wire-format types:
 //!
-//! # v0.7.0 Breaking Change
+//! - [`AbsoluteTime`] — Day-of-year based time with optional year. The primary
+//!   time type produced by BCD DOY parsing, NTP/PTP conversion, and the
+//!   correlation engine.
+//! - [`CalendarTime`] — Calendar-aware time with validated year, month, and
+//!   day-of-month. Produced by BCD DMY parsing or by promoting an
+//!   `AbsoluteTime` with a validated date via [`CalendarTime::new`].
+//! - [`Ch4BinaryTime`] — Chapter 4 Binary Weighted Time (secondary headers)
+//! - [`Ieee1588Time`] — IEEE-1588 Precision Time Protocol value
+//! - [`Ertc`] — 64-bit Extended Relative Time Counter
 //!
-//! `AbsoluteTime` fields are now accessed via methods (`hours()`, `minutes()`,
-//! etc.) instead of direct field access. The internal representation is a
-//! single `u64` (nanoseconds since start of day 1), making `add_nanos` and
-//! `sub_nanos` single arithmetic operations on the common path.
+//! # Type Safety
+//!
+//! `AbsoluteTime` cannot hold partial calendar state — it has no month or
+//! day-of-month fields. `CalendarTime` requires all three date components
+//! (year, month, day) at construction and validates them. This is enforced
+//! at the type level:
+//!
+//! ```
+//! use irig106_time::{AbsoluteTime, CalendarTime};
+//!
+//! // DOY time — no calendar date, just day-of-year + time
+//! let mut t = AbsoluteTime::new(100, 12, 30, 25, 340_000_000).unwrap();
+//! t.set_year(Some(2025));
+//! assert_eq!(t.day_of_year(), 100);
+//! assert_eq!(t.year(), Some(2025));
+//! // t.month() does not exist — compile error if you try
+//!
+//! // Calendar time — full date required at construction
+//! let ct = CalendarTime::from_parts(2025, 4, 10, 100, 12, 30, 25, 340_000_000).unwrap();
+//! assert_eq!(ct.month(), 4);
+//! assert_eq!(ct.day_of_month(), 10);
+//! assert_eq!(ct.hours(), 12); // Deref to AbsoluteTime
+//! ```
 //!
 //! # Requirement Traceability
 //!
 //! | Requirement | Description |
 //! |-------------|-------------|
 //! | L3-ABS-001..005 | `AbsoluteTime` struct and operations |
+//! | L3-ABS-006      | `CalendarTime` struct and construction |
 //! | P4-04           | Internal u64 representation |
 //! | L3-CH4-001..005 | `Ch4BinaryTime` |
 //! | L3-1588-001..004 | `Ieee1588Time` |
@@ -28,22 +54,24 @@ const NANOS_PER_MINUTE: u64 = 60 * NANOS_PER_SECOND;
 const NANOS_PER_HOUR: u64 = 3600 * NANOS_PER_SECOND;
 const NANOS_PER_DAY: u64 = 86_400 * NANOS_PER_SECOND;
 
-/// Nanosecond-precision absolute time.
+// ═══════════════════════════════════════════════════════════════════════
+// AbsoluteTime — DOY-based time with optional year
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Nanosecond-precision absolute time based on day-of-year.
 ///
-/// Internally stored as a single `u64` (nanoseconds since start of day 1),
-/// with optional calendar metadata (year, month, day-of-month). Field access
-/// is via methods: `day_of_year()`, `hours()`, `minutes()`, `seconds()`,
-/// `nanoseconds()`.
+/// This is the primary time type in the crate. It is produced by:
+/// - BCD Day-of-Year format parsing (`DayFormatTime::to_absolute`)
+/// - NTP/PTP conversion (`NtpTime::to_absolute`, `PtpTime::to_absolute`)
+/// - The correlation engine (`TimeCorrelator::correlate`)
 ///
-/// # Construction
+/// The `year` field is optional because some IRIG 106 time sources (BCD DOY,
+/// IRIG-B) do not carry year information. When present, it is set by the
+/// time source that produced the value (NTP, PTP, DMY BCD).
 ///
-/// ```
-/// use irig106_time::AbsoluteTime;
-///
-/// let t = AbsoluteTime::new(100, 12, 30, 25, 340_000_000).unwrap();
-/// assert_eq!(t.day_of_year(), 100);
-/// assert_eq!(t.hours(), 12);
-/// ```
+/// **This type cannot hold month or day-of-month.** If you need calendar
+/// date fields, use [`CalendarTime`], which wraps `AbsoluteTime` with
+/// validated year/month/day.
 ///
 /// # Performance
 ///
@@ -55,12 +83,9 @@ const NANOS_PER_DAY: u64 = 86_400 * NANOS_PER_SECOND;
 pub struct AbsoluteTime {
     /// Nanoseconds since start of day 1 (day 1 00:00:00.000 = 0).
     total_ns: u64,
-    /// Optional year (0–9999), present when DMY format is used.
+    /// Optional year (0–9999). Present when the time source provides it
+    /// (NTP, PTP, DMY BCD). Absent for DOY BCD and IRIG-B.
     year: Option<u16>,
-    /// Optional month (1–12), present when DMY format is used.
-    month: Option<u8>,
-    /// Optional day of month (1–31), present when DMY format is used.
-    day_of_month: Option<u8>,
 }
 
 // ── Custom serde: serialize/deserialize as expanded fields ──────────
@@ -78,8 +103,6 @@ mod serde_impl {
         seconds: u8,
         nanoseconds: u32,
         year: Option<u16>,
-        month: Option<u8>,
-        day_of_month: Option<u8>,
     }
 
     impl Serialize for AbsoluteTime {
@@ -91,8 +114,6 @@ mod serde_impl {
                 seconds: self.seconds(),
                 nanoseconds: self.nanoseconds(),
                 year: self.year,
-                month: self.month,
-                day_of_month: self.day_of_month,
             };
             fields.serialize(serializer)
         }
@@ -112,8 +133,6 @@ mod serde_impl {
             )
             .map_err(serde::de::Error::custom)?;
             t.year = fields.year;
-            t.month = fields.month;
-            t.day_of_month = fields.day_of_month;
             Ok(t)
         }
     }
@@ -175,40 +194,7 @@ impl AbsoluteTime {
         Ok(Self {
             total_ns,
             year: None,
-            month: None,
-            day_of_month: None,
         })
-    }
-
-    /// Attach optional DMY calendar date fields.
-    ///
-    /// **Traces:** L3-ABS-003
-    pub fn with_date(mut self, year: u16, month: u8, day: u8) -> Result<Self> {
-        if month == 0 || month > 12 {
-            return Err(TimeError::OutOfRange {
-                field: "month",
-                value: month as u32,
-                max: 12,
-            });
-        }
-        if day == 0 || day > 31 {
-            return Err(TimeError::OutOfRange {
-                field: "day_of_month",
-                value: day as u32,
-                max: 31,
-            });
-        }
-        if year > 9999 {
-            return Err(TimeError::OutOfRange {
-                field: "year",
-                value: year as u32,
-                max: 9999,
-            });
-        }
-        self.year = Some(year);
-        self.month = Some(month);
-        self.day_of_month = Some(day);
-        Ok(self)
     }
 
     // ── Field accessors ─────────────────────────────────────────────
@@ -243,42 +229,22 @@ impl AbsoluteTime {
         (self.total_ns % NANOS_PER_SECOND) as u32
     }
 
-    /// Optional year (0–9999), present when DMY format is used.
+    /// Optional year (0–9999). Present when the time source provides it.
     #[inline]
     pub fn year(&self) -> Option<u16> {
         self.year
     }
 
-    /// Optional month (1–12), present when DMY format is used.
-    #[inline]
-    pub fn month(&self) -> Option<u8> {
-        self.month
-    }
-
-    /// Optional day of month (1–31), present when DMY format is used.
-    #[inline]
-    pub fn day_of_month(&self) -> Option<u8> {
-        self.day_of_month
-    }
-
-    // ── Mutators for calendar metadata ──────────────────────────────
+    // ── Year mutator ────────────────────────────────────────────────
 
     /// Set the year field.
+    ///
+    /// This is the only setter on `AbsoluteTime`. Year arrives independently
+    /// from NTP/PTP time sources and the correlation engine. Month and
+    /// day-of-month require [`CalendarTime`].
     #[inline]
     pub fn set_year(&mut self, year: Option<u16>) {
         self.year = year;
-    }
-
-    /// Set the month field.
-    #[inline]
-    pub fn set_month(&mut self, month: Option<u8>) {
-        self.month = month;
-    }
-
-    /// Set the day-of-month field.
-    #[inline]
-    pub fn set_day_of_month(&mut self, day: Option<u8>) {
-        self.day_of_month = day;
     }
 
     // ── Arithmetic ──────────────────────────────────────────────────
@@ -298,8 +264,6 @@ impl AbsoluteTime {
                 new_total
             },
             year: self.year,
-            month: self.month,
-            day_of_month: self.day_of_month,
         }
     }
 
@@ -311,15 +275,11 @@ impl AbsoluteTime {
     #[inline]
     pub fn sub_nanos(&self, nanos: u64) -> Self {
         if nanos <= self.total_ns {
-            // Common fast path: stays within the same year
             Self {
                 total_ns: self.total_ns - nanos,
                 year: self.year,
-                month: self.month,
-                day_of_month: self.day_of_month,
             }
         } else {
-            // Year rollover path
             self.sub_nanos_year_rollover(nanos)
         }
     }
@@ -349,8 +309,6 @@ impl AbsoluteTime {
                 return Self {
                     total_ns: prev_year_ns - remaining,
                     year: new_year,
-                    month: self.month,
-                    day_of_month: self.day_of_month,
                 };
             }
             remaining -= prev_year_ns;
@@ -376,20 +334,19 @@ impl AbsoluteTime {
 }
 
 impl core::fmt::Display for AbsoluteTime {
-    /// Formats as `YYYY-MM-DD HH:MM:SS.mmm.uuu` when year/month/day are
-    /// available, or `Day DDD HH:MM:SS.mmm.uuu` otherwise.
+    /// Formats as `YYYY Day DDD HH:MM:SS.mmm.uuu` when year is present,
+    /// or `Day DDD HH:MM:SS.mmm.uuu` otherwise.
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let ns = self.nanoseconds();
         let ms = ns / 1_000_000;
         let us = (ns / 1_000) % 1_000;
-        match (self.year, self.month, self.day_of_month) {
-            (Some(y), Some(m), Some(d)) => {
+        match self.year {
+            Some(y) => {
                 write!(
                     f,
-                    "{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}.{:03}",
+                    "{:04} Day {:03} {:02}:{:02}:{:02}.{:03}.{:03}",
                     y,
-                    m,
-                    d,
+                    self.day_of_year(),
                     self.hours(),
                     self.minutes(),
                     self.seconds(),
@@ -397,7 +354,7 @@ impl core::fmt::Display for AbsoluteTime {
                     us
                 )
             }
-            _ => {
+            None => {
                 write!(
                     f,
                     "Day {:03} {:02}:{:02}:{:02}.{:03}.{:03}",
@@ -413,9 +370,178 @@ impl core::fmt::Display for AbsoluteTime {
     }
 }
 
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════
+// CalendarTime — AbsoluteTime enriched with validated calendar date
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Calendar-aware absolute time with validated year, month, and day-of-month.
+///
+/// This type wraps [`AbsoluteTime`] and adds calendar metadata that is
+/// guaranteed to be present and validated. It is produced by:
+/// - BCD Day-Month-Year format parsing (`DmyFormatTime::to_calendar_time`)
+/// - Promotion from `AbsoluteTime` via [`CalendarTime::new`]
+/// - Conversion from `chrono::NaiveDateTime` (with the `chrono` feature)
+///
+/// # Type Safety
+///
+/// Unlike `AbsoluteTime`, which can represent partial states (year without
+/// month, or no date at all), `CalendarTime` enforces that year, month, and
+/// day-of-month are all present and valid. This is checked at construction
+/// time — there are no piecemeal setters.
+///
+/// # Accessing Time Fields
+///
+/// `CalendarTime` implements `Deref<Target = AbsoluteTime>`, so all
+/// `AbsoluteTime` methods (`hours()`, `minutes()`, `seconds()`,
+/// `nanoseconds()`, `day_of_year()`, `year()`, `add_nanos()`, etc.)
+/// are directly callable:
+///
+/// ```
+/// use irig106_time::{AbsoluteTime, CalendarTime};
+///
+/// let ct = CalendarTime::from_parts(2025, 4, 10, 100, 12, 30, 25, 340_000_000).unwrap();
+/// assert_eq!(ct.hours(), 12);        // via Deref
+/// assert_eq!(ct.month(), 4);          // CalendarTime's own method
+/// assert_eq!(ct.day_of_month(), 10);  // CalendarTime's own method
+/// ```
+///
+/// **Traces:** L3-ABS-006 ← L2-ABS-001 ← L1-ABS-001
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct CalendarTime {
+    /// The underlying DOY-based time. Year is always `Some`.
+    time: AbsoluteTime,
+    /// Month (1–12), validated at construction.
+    month: u8,
+    /// Day of month (1–31), validated at construction.
+    day_of_month: u8,
+}
+
+impl CalendarTime {
+    /// Create a `CalendarTime` from an `AbsoluteTime` and validated date fields.
+    ///
+    /// The `AbsoluteTime` must have `year` set (`year().is_some()`). The month
+    /// must be 1–12 and the day must be 1–31.
+    ///
+    /// **Traces:** L3-ABS-006
+    pub fn new(time: AbsoluteTime, month: u8, day_of_month: u8) -> Result<Self> {
+        if time.year().is_none() {
+            return Err(TimeError::OutOfRange {
+                field: "year",
+                value: 0,
+                max: 9999,
+            });
+        }
+        if month == 0 || month > 12 {
+            return Err(TimeError::OutOfRange {
+                field: "month",
+                value: month as u32,
+                max: 12,
+            });
+        }
+        if day_of_month == 0 || day_of_month > 31 {
+            return Err(TimeError::OutOfRange {
+                field: "day_of_month",
+                value: day_of_month as u32,
+                max: 31,
+            });
+        }
+
+        Ok(Self {
+            time,
+            month,
+            day_of_month,
+        })
+    }
+
+    /// Create a `CalendarTime` from all component parts.
+    ///
+    /// Convenience constructor that combines `AbsoluteTime::new` + `set_year`
+    /// + `CalendarTime::new` into a single validated call.
+    pub fn from_parts(
+        year: u16,
+        month: u8,
+        day_of_month: u8,
+        day_of_year: u16,
+        hours: u8,
+        minutes: u8,
+        seconds: u8,
+        nanoseconds: u32,
+    ) -> Result<Self> {
+        let mut t = AbsoluteTime::new(day_of_year, hours, minutes, seconds, nanoseconds)?;
+        t.set_year(Some(year));
+        Self::new(t, month, day_of_month)
+    }
+
+    // ── Calendar accessors ──────────────────────────────────────────
+
+    /// Month (1–12). Always present and valid.
+    #[inline]
+    pub fn month(&self) -> u8 {
+        self.month
+    }
+
+    /// Day of month (1–31). Always present and valid.
+    #[inline]
+    pub fn day_of_month(&self) -> u8 {
+        self.day_of_month
+    }
+
+    /// Get the inner `AbsoluteTime` (year is always `Some`).
+    #[inline]
+    pub fn as_absolute_time(&self) -> &AbsoluteTime {
+        &self.time
+    }
+
+    /// Consume self and return the inner `AbsoluteTime`.
+    #[inline]
+    pub fn into_absolute_time(self) -> AbsoluteTime {
+        self.time
+    }
+}
+
+impl core::ops::Deref for CalendarTime {
+    type Target = AbsoluteTime;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.time
+    }
+}
+
+impl From<CalendarTime> for AbsoluteTime {
+    /// Convert to `AbsoluteTime`, preserving the year but dropping
+    /// month and day-of-month (which `AbsoluteTime` cannot hold).
+    fn from(ct: CalendarTime) -> Self {
+        ct.time
+    }
+}
+
+impl core::fmt::Display for CalendarTime {
+    /// Formats as `YYYY-MM-DD HH:MM:SS.mmm.uuu`.
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let ns = self.nanoseconds();
+        let ms = ns / 1_000_000;
+        let us = (ns / 1_000) % 1_000;
+        let y = self.time.year().unwrap_or(0);
+        write!(
+            f,
+            "{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}.{:03}",
+            y,
+            self.month,
+            self.day_of_month,
+            self.hours(),
+            self.minutes(),
+            self.seconds(),
+            ms,
+            us
+        )
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Chapter 4 Binary Weighted Time
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════
 
 /// IRIG 106 Chapter 4 Binary Weighted Time.
 ///
@@ -489,9 +615,9 @@ impl Ch4BinaryTime {
     }
 }
 
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════
 // IEEE-1588 Time
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════
 
 /// IEEE-1588 Precision Time Protocol time value.
 ///
@@ -541,9 +667,9 @@ impl Ieee1588Time {
     }
 }
 
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════
 // Extended RTC (ERTC)
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════
 
 /// 64-bit Extended Relative Time Counter.
 ///

@@ -120,11 +120,11 @@ fn full_dmy_format_pipeline() {
 
     let bcd_buf = encode_mar15_2025_084530_120();
     let dmy_time = DmyFormatTime::from_le_bytes(&bcd_buf).unwrap();
-    let abs = dmy_time.to_absolute();
+    let abs = dmy_time.to_calendar_time();
 
     assert_eq!(abs.year(), Some(2025));
-    assert_eq!(abs.month(), Some(3));
-    assert_eq!(abs.day_of_month(), Some(15));
+    assert_eq!(abs.month(), 3);
+    assert_eq!(abs.day_of_month(), 15);
     assert_eq!(abs.day_of_year(), 74); // Jan(31) + Feb(28) + 15
     assert_eq!(abs.hours(), 8);
     assert_eq!(abs.minutes(), 45);
@@ -516,15 +516,21 @@ fn display_absolute_time_doy() {
     assert_eq!(s, "Day 042 13:05:30.123.456");
 }
 
-/// AbsoluteTime Display impl formats DMY correctly.
+/// CalendarTime Display impl formats YYYY-MM-DD correctly.
 #[test]
-fn display_absolute_time_dmy() {
-    let mut t = AbsoluteTime::new(1, 8, 30, 0, 0).unwrap();
-    t.set_year(Some(2025));
-    t.set_month(Some(3));
-    t.set_day_of_month(Some(15));
-    let s = format!("{}", t);
+fn display_calendar_time_dmy() {
+    let ct = CalendarTime::from_parts(2025, 3, 15, 74, 8, 30, 0, 0).unwrap();
+    let s = format!("{}", ct);
     assert_eq!(s, "2025-03-15 08:30:00.000.000");
+}
+
+/// AbsoluteTime Display with year shows YYYY Day DDD format.
+#[test]
+fn display_absolute_time_with_year() {
+    let mut t = AbsoluteTime::new(74, 8, 30, 0, 0).unwrap();
+    t.set_year(Some(2025));
+    let s = format!("{}", t);
+    assert_eq!(s, "2025 Day 074 08:30:00.000.000");
 }
 
 /// Display zeroes are correctly padded.
@@ -1256,7 +1262,7 @@ fn bcd_dmy_feb_29_leap_year_accepted() {
         month: 2,
         year: 2024,
     };
-    let abs = t.to_absolute();
+    let abs = t.to_calendar_time();
     assert_eq!(abs.day_of_year(), 60); // Jan(31) + Feb(29) = day 60
     assert_eq!(abs.year(), Some(2024));
 }
@@ -1276,7 +1282,7 @@ fn bcd_dmy_feb_29_non_leap_year_doy_calculation() {
         month: 2,
         year: 2023,
     };
-    let abs = t.to_absolute();
+    let abs = t.to_calendar_time();
     // On non-leap year, month_day_to_doy gives 31+29=60 (no extra day for leap)
     assert_eq!(abs.day_of_year(), 60);
 }

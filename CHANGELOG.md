@@ -13,14 +13,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   **Migration guide:**
   - Field reads: `t.hours` → `t.hours()`, `t.day_of_year` → `t.day_of_year()`, `t.nanoseconds` → `t.nanoseconds()`, etc.
-  - Optional fields: `t.year` → `t.year()`, `t.month` → `t.month()`, `t.day_of_month` → `t.day_of_month()`
-  - Field mutations: `t.year = Some(2025)` → `t.set_year(Some(2025))`, `t.month = Some(3)` → `t.set_month(Some(3))`, `t.day_of_month = Some(15)` → `t.set_day_of_month(Some(15))`
+  - Optional fields: `t.year` → `t.year()`
+  - Field mutations: `t.year = Some(2025)` → `t.set_year(Some(2025))`
   - Struct literals: `AbsoluteTime { day_of_year: 100, hours: 12, ... }` → `AbsoluteTime::new(100, 12, ...)`
+
+- **`AbsoluteTime` no longer holds calendar metadata** — The `month`, `day_of_month`, `set_month()`, `set_day_of_month()`, and `with_date()` APIs have been removed. Calendar date information is now carried by the new `CalendarTime` type, which enforces that year, month, and day are all present and valid at construction time. This eliminates the class of bugs where partial calendar state (e.g., month set without day) could be constructed.
+
+  **Migration guide:**
+  - `t.month()` / `t.day_of_month()` → use `CalendarTime` instead of `AbsoluteTime`
+  - `t.set_month(Some(3))` / `t.set_day_of_month(Some(15))` → `CalendarTime::new(t, 3, 15)?`
+  - `t.with_date(2025, 3, 15)?` → `CalendarTime::from_parts(2025, 3, 15, doy, h, m, s, ns)?`
+  - `DmyFormatTime::to_absolute()` → `DmyFormatTime::to_calendar_time()` (returns `CalendarTime`)
+  - `From<NaiveDateTime> for AbsoluteTime` → `From<NaiveDateTime> for CalendarTime`
+  - `CalendarTime` implements `Deref<Target=AbsoluteTime>`, so all `AbsoluteTime` methods work directly on `CalendarTime` values
+  - To convert back: `let abs: AbsoluteTime = calendar_time.into();`
 
 ### Added
 
+- **`CalendarTime` type** (L3-ABS-006) — Calendar-aware absolute time with validated year, month, and day-of-month. Wraps `AbsoluteTime` with `Deref<Target=AbsoluteTime>`. Constructed via `CalendarTime::new(abs_time, month, day)` or `CalendarTime::from_parts(year, month, day, doy, h, m, s, ns)`. Enforces at the type level that calendar metadata is either fully present and valid, or absent entirely.
+- **`DmyFormatTime::to_calendar_time()`** — Replaces `to_absolute()` for DMY BCD format. Returns `CalendarTime` with validated year/month/day.
+- **`From<CalendarTime> for chrono::NaiveDateTime`** — Direct conversion using validated month/day fields.
+- **`From<chrono::NaiveDateTime> for CalendarTime`** — chrono always provides full date, so this returns `CalendarTime` (was `AbsoluteTime`).
 - **`AbsoluteTime::as_total_ns()`** — Exposes the raw internal nanosecond count for efficient comparison and serialization.
-- **`AbsoluteTime::set_year()`, `set_month()`, `set_day_of_month()`** — Setter methods for optional calendar metadata fields.
+- **`AbsoluteTime::set_year()`** — The only remaining setter on `AbsoluteTime`. Year arrives independently from NTP/PTP and the correlation engine.
 - **UDP framing documentation** (P5-03) — New `docs/udp_framing.md` documenting that UDP Transfer Format 1 and 2 headers carry no time fields, and how to use `StreamingTimeCorrelator` for live UDP streams.
 - **WASM build verification** (P6-06) — CI now verifies `wasm32-unknown-unknown` compilation with `--no-default-features` and `--no-default-features --features serde`.
 - **`util` module** (P6-08) — Crate-internal `is_leap_year` and `abs_diff_u64` helpers that replace `u16::is_multiple_of` (Rust 1.87) and `u64::abs_diff` (Rust 1.60) respectively. Each carries a targeted `#[allow(clippy::...)]` and full MSRV dependency documentation. 18 unit tests covering leap year rules (common, century, quad-century, edge cases, IRIG 106 era years) and abs_diff properties (symmetry, extremes, leap second timestamps).

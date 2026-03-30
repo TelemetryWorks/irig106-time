@@ -13,7 +13,7 @@
 //! | `day_fmt_buffer_too_short` | <8 bytes rejected | L3-BCD-003 |
 //! | `day_fmt_to_absolute` | Conversion to AbsoluteTime | L3-BCD-007 |
 //! | `dmy_fmt_decode_known` | Known DMY time decodes correctly | L3-BCD-004 |
-//! | `dmy_fmt_to_absolute_with_date` | Conversion includes year/month/day | L3-BCD-007 |
+//! | `dmy_fmt_to_absolute_with_date` | Conversion to CalendarTime includes year/month/day | L3-BCD-007 |
 //! | `dmy_fmt_invalid_month_zero` | Month=0 rejected | L3-BCD-006 |
 //! | `dmy_fmt_buffer_too_short` | <10 bytes rejected | L3-BCD-004 |
 //! | `millisecond_resolution_10ms` | MS field has 10ms granularity | L3-BCD-005 |
@@ -155,7 +155,6 @@ fn day_fmt_to_absolute() {
     assert_eq!(abs.minutes(), 30);
     assert_eq!(abs.seconds(), 25);
     assert_eq!(abs.nanoseconds(), 340_000_000);
-    assert_eq!(abs.month(), None);
 }
 
 #[test]
@@ -196,12 +195,12 @@ fn dmy_fmt_to_absolute_with_date() {
     buf[4..6].copy_from_slice(&w2.to_le_bytes());
     buf[6..8].copy_from_slice(&w3.to_le_bytes());
     let t = DmyFormatTime::from_le_bytes(&buf).unwrap();
-    let abs = t.to_absolute();
-    assert_eq!(abs.year(), Some(2025));
-    assert_eq!(abs.month(), Some(3));
-    assert_eq!(abs.day_of_month(), Some(15));
+    let ct = t.to_calendar_time();
+    assert_eq!(ct.year(), Some(2025));
+    assert_eq!(ct.month(), 3);
+    assert_eq!(ct.day_of_month(), 15);
     // March 15 in non-leap 2025 = 31+28+15 = 74
-    assert_eq!(abs.day_of_year(), 74);
+    assert_eq!(ct.day_of_year(), 74);
 }
 
 #[test]

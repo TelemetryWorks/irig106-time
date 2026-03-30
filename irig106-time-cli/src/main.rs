@@ -407,13 +407,12 @@ fn find_next_sync(buf: &[u8], start: usize) -> Option<usize> {
 fn fmt_abs_time(t: &AbsoluteTime) -> String {
     let ms = t.nanoseconds() / 1_000_000;
     let us = (t.nanoseconds() % 1_000_000) / 1_000;
-    match (t.year(), t.month(), t.day_of_month()) {
-        (Some(y), Some(m), Some(d)) => {
+    match t.year() {
+        Some(y) => {
             format!(
-                "{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}.{:03}",
+                "{:04} Day {:03} {:02}:{:02}:{:02}.{:03}.{:03}",
                 y,
-                m,
-                d,
+                t.day_of_year(),
                 t.hours(),
                 t.minutes(),
                 t.seconds(),
@@ -421,7 +420,7 @@ fn fmt_abs_time(t: &AbsoluteTime) -> String {
                 us
             )
         }
-        _ => {
+        None => {
             format!(
                 "Day {:03} {:02}:{:02}:{:02}.{:03}.{:03}",
                 t.day_of_year(),
@@ -789,8 +788,8 @@ fn cmd_csv(mmap: &[u8], output_path: Option<&str>) {
                     t.seconds(),
                     t.nanoseconds(),
                     t.year().map(|y| y.to_string()).unwrap_or_default(),
-                    t.month().map(|m| m.to_string()).unwrap_or_default(),
-                    t.day_of_month().map(|d| d.to_string()).unwrap_or_default(),
+                    "", // month — requires CalendarTime
+                    "", // day — requires CalendarTime
                 )
                 .unwrap();
             }
