@@ -179,8 +179,36 @@ integration feed into Phase 7 (P7-01).
 
 | Side | Work |
 |------|------|
-| `irig106-types` (new crate) | Create crate. Define `Rtc`, `Ertc`, `Ch4BinaryTime`, `Ieee1588Time`, `TimeSource`, `TimeFormat`, `DateFormat`. Carry all derives (`Debug`, `Clone`, `Copy`, `PartialEq`, `Eq`, `Hash`, serde). |
-| `irig106-time` | Add `irig106-types` dependency. Replace local type definitions with re-exports (`pub use irig106_types::Rtc;`). Verify all existing tests pass — this must be a drop-in replacement. |
+| `irig106-types` (new crate) | Create crate. Define existing types: `Rtc`, `Ertc`, `Ch4BinaryTime`, `Ieee1588Time`, `TimeSource`, `TimeFormat`, `DateFormat`. Define new epoch/duration newtypes (see below). Carry all derives (`Debug`, `Clone`, `Copy`, `PartialEq`, `Eq`, `Hash`, serde). |
+| `irig106-time` | Add `irig106-types` dependency. Replace local type definitions with re-exports. Replace raw `u64`/`i32` parameters with newtypes at the call sites listed below. Verify all existing tests pass. |
+
+**Epoch and duration newtypes** (team review #3 — unit/epoch safety):
+
+The following newtypes replace raw integer parameters where unit or epoch
+confusion is a realistic risk. These belong in `irig106-types` because
+they are fundamental concepts shared across the crate ecosystem.
+
+| Newtype | Wraps | Replaces | Purpose |
+|---------|-------|----------|---------|
+| `UnixSeconds(u64)` | `u64` | `unix_seconds` parameters | Seconds since 1970-01-01 UTC |
+| `TaiSeconds(u64)` | `u64` | `tai_seconds` parameters | Seconds since TAI epoch |
+| `TaiUtcOffset(i32)` | `i32` | `tai_utc_offset` parameters | TAI − UTC leap second offset |
+| `NanosDuration(u64)` | `u64` | `max_age_ns`, `ooo_window_ns`, `threshold_ns` | A duration in nanoseconds |
+
+**Call sites to migrate in `irig106-time`:**
+
+| Current signature | File | New signature |
+|-------------------|------|---------------|
+| `with_ooo_window(ooo_window_ns: Option<u64>)` | `correlation.rs:125` | `with_ooo_window(window: Option<NanosDuration>)` |
+| `detect_time_jump(channel_id: u16, threshold_ns: u64)` | `correlation.rs:306` | `detect_time_jump(channel_id: u16, threshold: NanosDuration)` |
+| `StreamingTimeCorrelator::new(max_age_ns: u64)` | `streaming.rs:88` | `new(max_age: NanosDuration)` |
+| `to_utc_seconds(tai_utc_offset: i32)` | `network_time.rs:263` | `to_utc_seconds(offset: TaiUtcOffset)` |
+| `is_near_leap_second(unix_seconds: u64, window_secs: u64)` | `network_time.rs:522` | `is_near_leap_second(time: UnixSeconds, window_secs: u64)` |
+| `offset_at_tai(tai_seconds: u64)` | `network_time.rs:545` | `offset_at_tai(time: TaiSeconds)` |
+| `offset_at_unix(unix_seconds: u64)` | `network_time.rs:546` | `offset_at_unix(time: UnixSeconds)` |
+
+**Deferred (lower value):** `ChannelId(u16)` — improves readability but no
+concrete bug-prone swap identified. Revisit during Phase 8 API review.
 
 **P6-02 — Wire `irig106-core`**
 
