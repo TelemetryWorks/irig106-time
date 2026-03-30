@@ -474,8 +474,6 @@ impl DmyFormatTime {
     }
 }
 
-/// Convert month/day to day-of-year.
-#[inline]
 /// Convert month/day to day-of-year. Delegates to [`crate::util::month_day_to_doy`].
 #[inline]
 fn month_day_to_doy(year: u16, month: u8, day: u8) -> u16 {
