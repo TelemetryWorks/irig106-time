@@ -58,6 +58,11 @@ fn check_reserved(word: u16, mask: u16, position: &'static str) -> Result<()> {
 
 /// Decoded Day-of-Year format time message (8 bytes).
 ///
+/// This is a **BCD-validated decoded representation** — field ranges are
+/// guaranteed to match the BCD wire format (e.g., hours 0–23, DOY 1–366).
+/// It is not a calendar-validated type; for that, convert to
+/// [`crate::absolute::AbsoluteTime`] via [`to_absolute()`](Self::to_absolute).
+///
 /// Fields are private to prevent construction of invalid states. Use
 /// [`DayFormatTime::from_le_bytes`] to parse from wire format, or
 /// [`DayFormatTime::new`] for programmatic construction with validation.
@@ -366,6 +371,14 @@ impl DayFormatTime {
 // ---------------------------------------------------------------------------
 
 /// Decoded Day-Month-Year format time message (10 bytes).
+///
+/// This is a **BCD-validated decoded representation** — field ranges are
+/// guaranteed to match the BCD wire format (e.g., month 1–12, day 1–31,
+/// year 0–9999). It is **not** a calendar-validated type: values like
+/// Feb 31 are representable here because they are valid BCD encodings.
+/// For full calendar validation (leap-aware day-of-month, DOY consistency),
+/// use [`to_calendar_time()`](Self::to_calendar_time), which returns
+/// `Result<CalendarTime>` and rejects impossible dates.
 ///
 /// Fields are private to prevent construction of invalid states. Use
 /// [`DmyFormatTime::from_le_bytes`] to parse from wire format, or
