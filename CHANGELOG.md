@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **Migration guide:**
   - Field reads: `t.hours` → `t.hours()`, `t.day_of_year` → `t.day_of_year()`, `t.nanoseconds` → `t.nanoseconds()`, etc.
   - Optional fields: `t.year` → `t.year()`
-  - Field mutations: `t.year = Some(2025)` → `t.set_year(Some(2025))`
+  - Field mutations: `t.year = Some(2025)` → `AbsoluteTime::new(...).unwrap().with_year(Some(2025)).unwrap()`
   - Struct literals: `AbsoluteTime { day_of_year: 100, hours: 12, ... }` → `AbsoluteTime::new(100, 12, ...)`
 
 - **`AbsoluteTime` no longer holds calendar metadata** — The `month`, `day_of_month`, `set_month()`, `set_day_of_month()`, and `with_date()` APIs have been removed. Calendar date information is now carried by the new `CalendarTime` type, which enforces that year, month, and day are all present and valid at construction time. This eliminates the class of bugs where partial calendar state (e.g., month set without day) could be constructed.
@@ -35,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`From<CalendarTime> for chrono::NaiveDateTime`** — Direct conversion using validated month/day fields.
 - **`From<chrono::NaiveDateTime> for CalendarTime`** — chrono always provides full date, so this returns `CalendarTime` (was `AbsoluteTime`).
 - **`AbsoluteTime::as_total_ns()`** — Exposes the raw internal nanosecond count for efficient comparison and serialization.
-- **`AbsoluteTime::set_year()`** — The only remaining setter on `AbsoluteTime`. Year arrives independently from NTP/PTP and the correlation engine.
+- **`AbsoluteTime::with_year()`** — Consuming builder method that enriches a DOY timestamp with year metadata (0–9999). Returns `Result<Self>` for chaining: `AbsoluteTime::new(...).unwrap().with_year(Some(2025)).unwrap()`. Year is metadata, not a calendar invariant — see `CalendarTime` for full date validation.
 - **UDP framing documentation** (P5-03) — New `docs/udp_framing.md` documenting that UDP Transfer Format 1 and 2 headers carry no time fields, and how to use `StreamingTimeCorrelator` for live UDP streams.
 - **WASM build verification** (P6-06) — CI now verifies `wasm32-unknown-unknown` compilation with `--no-default-features` and `--no-default-features --features serde`.
 - **`util` module** (P6-08) — Crate-internal `is_leap_year` and `abs_diff_u64` helpers that replace `u16::is_multiple_of` (Rust 1.87) and `u64::abs_diff` (Rust 1.60) respectively. Each carries a targeted `#[allow(clippy::...)]` and full MSRV dependency documentation. 18 unit tests covering leap year rules (common, century, quad-century, edge cases, IRIG 106 era years) and abs_diff properties (symmetry, extremes, leap second timestamps).

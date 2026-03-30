@@ -417,14 +417,14 @@ impl DmyFormatTime {
     /// **Traces:** L3-BCD-007 ← L2-BCD-008
     pub fn to_calendar_time(&self) -> crate::error::Result<crate::absolute::CalendarTime> {
         let doy = month_day_to_doy(self.year, self.month, self.day);
-        let mut abs = crate::absolute::AbsoluteTime::new(
+        let abs = crate::absolute::AbsoluteTime::new(
             doy,
             self.hours,
             self.minutes,
             self.seconds,
             (self.milliseconds as u32) * 1_000_000,
-        )?;
-        abs.set_year(Some(self.year))?;
+        )?
+        .with_year(Some(self.year))?;
         crate::absolute::CalendarTime::new(abs, self.month, self.day)
     }
 

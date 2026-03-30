@@ -184,8 +184,8 @@ impl NtpTime {
         // Convert Unix seconds to year/day-of-year/time-of-day
         let (year, doy, hour, minute, second) = unix_seconds_to_ymd(unix_secs);
 
-        let mut abs = AbsoluteTime::new(doy, hour, minute, second, nanos)?;
-        abs.set_year(Some(year))?;
+        let abs = AbsoluteTime::new(doy, hour, minute, second, nanos)?
+            .with_year(Some(year))?;
         Ok(abs)
     }
 
@@ -277,8 +277,8 @@ impl PtpTime {
         let utc_secs = self.to_utc_seconds(tai_utc_offset);
         let (year, doy, hour, minute, second) = unix_seconds_to_ymd(utc_secs);
 
-        let mut abs = AbsoluteTime::new(doy, hour, minute, second, self.nanoseconds)?;
-        abs.set_year(Some(year))?;
+        let abs = AbsoluteTime::new(doy, hour, minute, second, self.nanoseconds)?
+            .with_year(Some(year))?;
         Ok(abs)
     }
 

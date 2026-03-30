@@ -23,8 +23,8 @@
 //! use irig106_time::{AbsoluteTime, CalendarTime};
 //!
 //! // DOY time — no calendar date, just day-of-year + time
-//! let mut t = AbsoluteTime::new(100, 12, 30, 25, 340_000_000).unwrap();
-//! t.set_year(Some(2025)).unwrap();
+//! let t = AbsoluteTime::new(100, 12, 30, 25, 340_000_000).unwrap()
+//!     .with_year(Some(2025)).unwrap();
 //! assert_eq!(t.day_of_year(), 100);
 //! assert_eq!(t.year(), Some(2025));
 //! // t.month() does not exist — compile error if you try
@@ -60,18 +60,41 @@ const NANOS_PER_DAY: u64 = 86_400 * NANOS_PER_SECOND;
 
 /// Nanosecond-precision absolute time based on day-of-year.
 ///
-/// This is the primary time type in the crate. It is produced by:
+/// This is the primary time type in the crate. It represents a **DOY-based
+/// timestamp** — a day-of-year (1–366) plus time-of-day, with an optional
+/// year annotation. It is produced by:
 /// - BCD Day-of-Year format parsing (`DayFormatTime::to_absolute`)
 /// - NTP/PTP conversion (`NtpTime::to_absolute`, `PtpTime::to_absolute`)
 /// - The correlation engine (`TimeCorrelator::correlate`)
 ///
-/// The `year` field is optional because some IRIG 106 time sources (BCD DOY,
-/// IRIG-B) do not carry year information. When present, it is set by the
-/// time source that produced the value (NTP, PTP, DMY BCD).
+/// # Year as Metadata, Not Proof
+///
+/// The `year` field is **metadata, not a calendar invariant**. When present,
+/// it indicates which year the DOY belongs to (e.g., year=2025, DOY=100),
+/// but `AbsoluteTime` does not validate that DOY 100 is meaningful for
+/// year 2025 (it always is — every year has 100 days — but DOY 366 is only
+/// valid in leap years, and `AbsoluteTime` does not enforce this).
+///
+/// This is intentional: IRIG 106 time sources often provide DOY and year
+/// from different packets at different times. The correlation engine may
+/// attach a year to a DOY timestamp after the fact. Validating DOY against
+/// year at this level would reject legitimate intermediate states.
+///
+/// For **fully validated calendar dates** (year + month + day, all consistent
+/// with each other and with DOY), use [`CalendarTime`].
+///
+/// # Type Hierarchy
+///
+/// ```text
+/// AbsoluteTime     = DOY + time + optional year (metadata only)
+/// CalendarTime     = AbsoluteTime + validated month + day (full calendar proof)
+/// ```
+///
+/// A future `YearDoyTime` type (DOY + year, validated that DOY fits the year)
+/// may be added if year-sensitive logic grows. See ROADMAP.md.
 ///
 /// **This type cannot hold month or day-of-month.** If you need calendar
-/// date fields, use [`CalendarTime`], which wraps `AbsoluteTime` with
-/// validated year/month/day.
+/// date fields, use [`CalendarTime`].
 ///
 /// # Performance
 ///
@@ -124,15 +147,16 @@ mod serde_impl {
             deserializer: D,
         ) -> core::result::Result<Self, D::Error> {
             let fields = AbsoluteTimeFields::deserialize(deserializer)?;
-            let mut t = AbsoluteTime::new(
+            let t = AbsoluteTime::new(
                 fields.day_of_year,
                 fields.hours,
                 fields.minutes,
                 fields.seconds,
                 fields.nanoseconds,
             )
+            .map_err(serde::de::Error::custom)?
+            .with_year(fields.year)
             .map_err(serde::de::Error::custom)?;
-            t.set_year(fields.year).map_err(serde::de::Error::custom)?;
             Ok(t)
         }
     }
@@ -237,18 +261,23 @@ impl AbsoluteTime {
 
     // ── Year mutator ────────────────────────────────────────────────
 
-    /// Set the year field, validating the range (0–9999).
+    /// Attach a year annotation to this DOY timestamp.
     ///
-    /// This is the only setter on `AbsoluteTime`. Year arrives independently
-    /// from NTP/PTP time sources and the correlation engine. Month and
-    /// day-of-month require [`CalendarTime`].
+    /// This enriches the timestamp with year metadata — it does **not** turn
+    /// it into a full calendar date (use [`CalendarTime`] for that). The year
+    /// must be 0–9999 or `None` to clear.
     ///
-    /// Passing `None` clears the year. Passing `Some(year)` validates that
-    /// `year <= 9999`.
+    /// Returns `self` for chaining:
+    /// ```
+    /// # use irig106_time::AbsoluteTime;
+    /// let t = AbsoluteTime::new(100, 12, 0, 0, 0).unwrap()
+    ///     .with_year(Some(2025)).unwrap();
+    /// assert_eq!(t.year(), Some(2025));
+    /// ```
     ///
     /// **Traces:** L3-ABS-002
     #[inline]
-    pub fn set_year(&mut self, year: Option<u16>) -> Result<()> {
+    pub fn with_year(mut self, year: Option<u16>) -> Result<Self> {
         if let Some(y) = year {
             if y > 9999 {
                 return Err(TimeError::OutOfRange {
@@ -259,7 +288,7 @@ impl AbsoluteTime {
             }
         }
         self.year = year;
-        Ok(())
+        Ok(self)
     }
 
     // ── Arithmetic ──────────────────────────────────────────────────
@@ -481,7 +510,7 @@ impl CalendarTime {
 
     /// Create a `CalendarTime` from all component parts.
     ///
-    /// Convenience constructor that combines `AbsoluteTime::new` + `set_year`
+    /// Convenience constructor that combines `AbsoluteTime::new` + `with_year`
     /// + `CalendarTime::new` into a single validated call.
     #[allow(clippy::too_many_arguments)]
     pub fn from_parts(
@@ -494,8 +523,8 @@ impl CalendarTime {
         seconds: u8,
         nanoseconds: u32,
     ) -> Result<Self> {
-        let mut t = AbsoluteTime::new(day_of_year, hours, minutes, seconds, nanoseconds)?;
-        t.set_year(Some(year))?;
+        let t = AbsoluteTime::new(day_of_year, hours, minutes, seconds, nanoseconds)?
+            .with_year(Some(year))?;
         Self::new(t, month, day_of_month)
     }
 

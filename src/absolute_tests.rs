@@ -24,9 +24,9 @@
 //! | `calendar_time_apr_31_rejected` | Apr 31 is never valid | L3-ABS-006 |
 //! | `calendar_time_doy_mismatch_rejected` | DOY inconsistent with date rejected | L3-ABS-006 |
 //! | `calendar_time_doy_consistent` | DOY consistent with date accepted | L3-ABS-006 |
-//! | `set_year_rejects_invalid` | Year > 9999 rejected | L3-ABS-002 |
-//! | `set_year_accepts_valid_range` | Year 0-9999 and None accepted | L3-ABS-002 |
-//! | `set_year_10000_rejected` | Year 10000 rejected | L3-ABS-002 |
+//! | `with_year_rejects_invalid` | Year > 9999 rejected | L3-ABS-002 |
+//! | `with_year_accepts_valid_range` | Year 0-9999 and None accepted | L3-ABS-002 |
+//! | `with_year_10000_rejected` | Year 10000 rejected | L3-ABS-002 |
 //! | `add_nanos_subsecond` | Add nanos within same second | L3-ABS-004 |
 //! | `add_nanos_carry_to_seconds` | Carry from nanos to seconds | L3-ABS-004 |
 //! | `add_nanos_carry_to_minutes` | Carry from seconds to minutes | L3-ABS-004 |
@@ -85,8 +85,10 @@ fn absolute_time_nanos_overflow_rejected() {
 
 #[test]
 fn calendar_time_valid() {
-    let mut t = AbsoluteTime::new(45, 10, 30, 0, 0).unwrap();
-    t.set_year(Some(2025)).unwrap();
+    let t = AbsoluteTime::new(45, 10, 30, 0, 0)
+        .unwrap()
+        .with_year(Some(2025))
+        .unwrap();
     let ct = super::CalendarTime::new(t, 2, 14).unwrap();
     assert_eq!(ct.year(), Some(2025));
     assert_eq!(ct.month(), 2);
@@ -98,15 +100,19 @@ fn calendar_time_valid() {
 
 #[test]
 fn calendar_time_month_zero_rejected() {
-    let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
-    t.set_year(Some(2025)).unwrap();
+    let t = AbsoluteTime::new(1, 0, 0, 0, 0)
+        .unwrap()
+        .with_year(Some(2025))
+        .unwrap();
     assert!(super::CalendarTime::new(t, 0, 1).is_err());
 }
 
 #[test]
 fn calendar_time_month_13_rejected() {
-    let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
-    t.set_year(Some(2025)).unwrap();
+    let t = AbsoluteTime::new(1, 0, 0, 0, 0)
+        .unwrap()
+        .with_year(Some(2025))
+        .unwrap();
     assert!(super::CalendarTime::new(t, 13, 1).is_err());
 }
 
@@ -194,29 +200,27 @@ fn calendar_time_doy_consistent() {
 }
 
 #[test]
-fn set_year_rejects_invalid() {
+fn with_year_rejects_invalid() {
     // u16::MAX = 65535, which exceeds 9999
-    let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
-    assert!(t.set_year(Some(65_535)).is_err());
-    // Year should remain None (not partially set)
-    assert_eq!(t.year(), None);
+    let t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
+    assert!(t.with_year(Some(65_535)).is_err());
 }
 
 #[test]
-fn set_year_accepts_valid_range() {
-    let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
-    t.set_year(Some(0)).unwrap();
+fn with_year_accepts_valid_range() {
+    let t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
+    let t = t.with_year(Some(0)).unwrap();
     assert_eq!(t.year(), Some(0));
-    t.set_year(Some(9999)).unwrap();
+    let t = t.with_year(Some(9999)).unwrap();
     assert_eq!(t.year(), Some(9999));
-    t.set_year(None).unwrap();
+    let t = t.with_year(None).unwrap();
     assert_eq!(t.year(), None);
 }
 
 #[test]
-fn set_year_10000_rejected() {
-    let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
-    assert!(t.set_year(Some(10_000)).is_err());
+fn with_year_10000_rejected() {
+    let t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
+    assert!(t.with_year(Some(10_000)).is_err());
 }
 
 #[test]

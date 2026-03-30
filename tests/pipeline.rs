@@ -446,8 +446,10 @@ fn mixed_f1_f2_correlation() {
     // Construct NTP time for 2025, day 100, 12:00:00
     // We'll use add_reference directly with a pre-computed AbsoluteTime
     // to test that both sources coexist
-    let mut ntp_abs = AbsoluteTime::new(100, 12, 0, 0, 0).unwrap();
-    ntp_abs.set_year(Some(2025)).unwrap();
+    let ntp_abs = AbsoluteTime::new(100, 12, 0, 0, 0)
+        .unwrap()
+        .with_year(Some(2025))
+        .unwrap();
     correlator.add_reference(8, Rtc::from_raw(10_000_000), ntp_abs);
 
     // Both channels should resolve the same RTC to the same time
@@ -527,8 +529,10 @@ fn display_calendar_time_dmy() {
 /// AbsoluteTime Display with year shows YYYY Day DDD format.
 #[test]
 fn display_absolute_time_with_year() {
-    let mut t = AbsoluteTime::new(74, 8, 30, 0, 0).unwrap();
-    t.set_year(Some(2025)).unwrap();
+    let t = AbsoluteTime::new(74, 8, 30, 0, 0)
+        .unwrap()
+        .with_year(Some(2025))
+        .unwrap();
     let s = format!("{}", t);
     assert_eq!(s, "2025 Day 074 08:30:00.000.000");
 }
@@ -1014,8 +1018,10 @@ fn channel_indexed_correlate_large_set() {
 
 #[test]
 fn sub_nanos_crosses_year_boundary() {
-    let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap(); // Day 1, midnight
-    t.set_year(Some(2025)).unwrap();
+    let t = AbsoluteTime::new(1, 0, 0, 0, 0) // Day 1, midnight
+        .unwrap()
+        .with_year(Some(2025))
+        .unwrap();
 
     // Subtract 1 second — should roll back to day 366, 23:59:59 of 2024
     // (2024 is a leap year → 366 days)
@@ -1029,8 +1035,10 @@ fn sub_nanos_crosses_year_boundary() {
 
 #[test]
 fn sub_nanos_same_day_no_year_change() {
-    let mut t = AbsoluteTime::new(100, 12, 0, 0, 0).unwrap();
-    t.set_year(Some(2025)).unwrap();
+    let t = AbsoluteTime::new(100, 12, 0, 0, 0)
+        .unwrap()
+        .with_year(Some(2025))
+        .unwrap();
 
     // Subtract 1 hour — same day
     let result = t.sub_nanos(3_600_000_000_000);
@@ -1207,8 +1215,10 @@ fn recording_event_pipeline() {
 fn sub_nanos_leap_year_rollover_366_days() {
     // 2024 is a leap year (366 days). Rolling back from Day 1 of 2025
     // by 1 day should land on Day 366 of 2024.
-    let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
-    t.set_year(Some(2025)).unwrap();
+    let t = AbsoluteTime::new(1, 0, 0, 0, 0)
+        .unwrap()
+        .with_year(Some(2025))
+        .unwrap();
     let result = t.sub_nanos(86_400_000_000_000); // exactly 1 day
     assert_eq!(result.year(), Some(2024));
     assert_eq!(result.day_of_year(), 366); // 2024 is leap
@@ -1219,8 +1229,10 @@ fn sub_nanos_leap_year_rollover_366_days() {
 fn sub_nanos_non_leap_year_rollover_365_days() {
     // 2023 is not a leap year (365 days). Rolling back from Day 1 of 2024
     // by 1 day should land on Day 365 of 2023.
-    let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
-    t.set_year(Some(2024)).unwrap();
+    let t = AbsoluteTime::new(1, 0, 0, 0, 0)
+        .unwrap()
+        .with_year(Some(2024))
+        .unwrap();
     let result = t.sub_nanos(86_400_000_000_000); // exactly 1 day
     assert_eq!(result.year(), Some(2023));
     assert_eq!(result.day_of_year(), 365); // 2023 is not leap
@@ -1229,8 +1241,10 @@ fn sub_nanos_non_leap_year_rollover_365_days() {
 #[test]
 fn sub_nanos_century_non_leap_year() {
     // 1900 is divisible by 100 but NOT by 400 → not a leap year (365 days)
-    let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
-    t.set_year(Some(1901)).unwrap();
+    let t = AbsoluteTime::new(1, 0, 0, 0, 0)
+        .unwrap()
+        .with_year(Some(1901))
+        .unwrap();
     let result = t.sub_nanos(86_400_000_000_000);
     assert_eq!(result.year(), Some(1900));
     assert_eq!(result.day_of_year(), 365); // 1900 NOT leap
@@ -1239,8 +1253,10 @@ fn sub_nanos_century_non_leap_year() {
 #[test]
 fn sub_nanos_quad_century_leap_year() {
     // 2000 is divisible by 400 → leap year (366 days)
-    let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
-    t.set_year(Some(2001)).unwrap();
+    let t = AbsoluteTime::new(1, 0, 0, 0, 0)
+        .unwrap()
+        .with_year(Some(2001))
+        .unwrap();
     let result = t.sub_nanos(86_400_000_000_000);
     assert_eq!(result.year(), Some(2000));
     assert_eq!(result.day_of_year(), 366); // 2000 IS leap

@@ -306,6 +306,7 @@ No breaking changes without major version bump after this release.
 | GAP-14 | ~~Pub items missing `///` doc comments~~ | — | ✅ Resolved (v0.3.0). `#[deny(missing_docs)]` enforced. |
 | GAP-15 | ~~`unix_seconds_to_ymd_pub` is `pub` but should be crate-internal~~ | — | ✅ Resolved (v0.3.0). Changed to `pub(crate)`. |
 | GAP-16 | ~~`unix_seconds_to_ymd` can overflow `u16` year~~ | — | ✅ Resolved (v0.3.0). `saturating_add` + `u16::MAX` guard. |
+| GAP-17 | **Future: `YearDoyTime` intermediate type** | Low | `AbsoluteTime` is a DOY-based timestamp where year is metadata, not a calendar proof. `CalendarTime` is the fully-validated calendar type. A `YearDoyTime` (DOY + year, validated that DOY fits that year — e.g., DOY 366 only in leap years) would sit between them. Not worth the API complexity unless year-sensitive logic grows significantly. Revisit during Phase 8 API review. |
 
 ---
 
