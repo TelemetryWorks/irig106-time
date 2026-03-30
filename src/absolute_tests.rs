@@ -126,6 +126,7 @@ fn calendar_time_into_absolute_time() {
 
 #[test]
 fn calendar_time_display() {
+    use alloc::format;
     let ct = super::CalendarTime::from_parts(2025, 4, 10, 100, 12, 30, 25, 340_000_000).unwrap();
     let s = format!("{}", ct);
     assert!(s.starts_with("2025-04-10"));

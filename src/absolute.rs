@@ -458,6 +458,7 @@ impl CalendarTime {
     ///
     /// Convenience constructor that combines `AbsoluteTime::new` + `set_year`
     /// + `CalendarTime::new` into a single validated call.
+    #[allow(clippy::too_many_arguments)]
     pub fn from_parts(
         year: u16,
         month: u8,
