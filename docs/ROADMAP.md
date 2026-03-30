@@ -172,6 +172,7 @@ integration feed into Phase 7 (P7-01).
 | P6-06a | **WASM build verification** | Medium | — | ✅ Done (v0.7.0) — CI verifies `wasm32-unknown-unknown` build. |
 | P6-06b | **`irig106-studio` WASM integration** | Medium | 1 day | P6-01 |
 | P6-08 | **MSRV policy** | Medium | — | ✅ Done (v0.7.0). MSRV 1.87 → 1.60. Replaced `u16::is_multiple_of` (1.87) with `util::is_leap_year` and `u64::abs_diff` (1.60) with `util::abs_diff_u64`. Constrained by `dep:` namespaced features in `Cargo.toml`. |
+| P6-09 | **Audit all `unwrap()` usage** | High | 1 day | — | Analyze every `.unwrap()` call in library source (`src/*.rs`). For each: determine if it can actually panic, document the invariant that prevents it (or replace with `?` / `expect` with a message if it can). Goal: zero `unwrap()` calls without a documented safety justification, or replace with propagating error handling. |
 
 #### Detailed Scope Per Item
 
@@ -254,6 +255,7 @@ breaking changes before the 1.0.0 semver freeze.
 | GAP-03 | **Ch4 BWT multi-vendor validation** | Medium | 0.5 day | Validate Ch4 BinaryTime bit layout against real samples from multiple recorder vendors. Blocked on P2-05. |
 | P7-01 | **Fix API issues from ecosystem integration** | High | TBD | Any breaking changes required by P6-01 through P6-04 integration feedback. |
 | P7-02 | **Integration test suite with real files** | High | 1 day | End-to-end tests using real Ch10 files from P1-07 and P2-05 corpora. |
+| P7-03 | **Validate requirement traces in source** | High | 1 day | The v0.7.0 refactoring (CalendarTime split, BCD private fields, `with_year` rename) has likely invalidated many `/// **Traces:** L3-XXX-NNN` annotations in source code. Walk every `pub fn`, `pub struct`, and test doc-table entry to verify the traced requirement still matches the implementation. Update L1/L2/L3 docs where needed. This is a prerequisite for the Phase 8 VCRM (P8-V04). |
 
 #### 7B. Performance Validation
 
@@ -362,6 +364,6 @@ No breaking changes without major version bump after this release.
 | **0.5.0** | Phase 4 | Channel-indexed O(log n) correlation, BCD LUT, criterion benchmarks, serde, sub_nanos year fix | Released |
 | **0.6.0** | Phase 5 | Streaming correlator, Ch11 awareness, quality metrics, recording events, chrono interop, F1 leap seconds | Released |
 | **0.7.0** | Pre-1.0 | AbsoluteTime u64 restructure (P4-04), MSRV 1.87→1.60 (P6-08), WASM CI (P6-06), UDP docs (P5-03), API audit (Hash/Copy on 25+ types) | Current |
-| **0.8.0** | Phase 6 | Ecosystem wiring: irig106-types migration, irig106-core/decode/reader integration | Next |
-| **0.9.0** | Phase 7 | Validation: real-file testing, fuzz/benchmark on hardware, security analysis (SonarQube, cargo-audit, coverage), cyber security report | Planned |
+| **0.8.0** | Phase 6 | Ecosystem wiring: irig106-types migration (incl. epoch/duration newtypes), irig106-core/decode/reader integration, unwrap() audit | Next |
+| **0.9.0** | Phase 7 | Validation: real-file testing, fuzz/benchmark on hardware, requirement trace validation, security analysis (SonarQube, cargo-audit, coverage), cyber security report | Planned |
 | **1.0.0** | Phase 8 | Stable API: complete rustdoc with architecture diagrams, VCRM with zero gaps, IRIG 106 primer, semver freeze | Planned |
