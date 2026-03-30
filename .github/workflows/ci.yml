@@ -22,17 +22,19 @@ jobs:
       - run: cargo test --features chrono
 
   msrv:
-    name: MSRV Check (1.70.0)
+    name: MSRV Check (1.78.0)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.70.0"
-      # The declared MSRV is 1.60 (Cargo.toml rust-version), but CI checks
-      # at 1.70 because Rust < 1.70 uses the git-based crates.io index
-      # which is too slow/unreliable for CI. The rust-version field in
-      # Cargo.toml is what downstream users and cargo-msrv check.
+          toolchain: "1.78.0"
+      # The declared MSRV is 1.60 (Cargo.toml rust-version). API-level
+      # MSRV enforcement is handled by clippy::incompatible_msrv in the
+      # stable clippy job. This job validates that dependency resolution
+      # and cargo check succeed on an older toolchain.
+      # 1.78 is the minimum that supports Cargo.lock v4 format and the
+      # sparse crates.io registry.
       # Dev-dependencies (criterion, proptest) require newer Rust.
       # MSRV verification uses cargo check on the library only.
       - run: cargo check --no-default-features
