@@ -774,7 +774,7 @@ fn cmd_csv(mmap: &[u8], output_path: Option<&str>) {
             Some(t) => {
                 writeln!(
                     out,
-                    "{},{:#X},{},0x{:02X},{},{},{},{},{},{},{},{},{},{},{}",
+                    "{},{:#X},{},0x{:02X},{},{},{},{},{},{},{},{},{},,",
                     r.packet_num,
                     r.offset,
                     r.channel_id,
@@ -788,8 +788,6 @@ fn cmd_csv(mmap: &[u8], output_path: Option<&str>) {
                     t.seconds(),
                     t.nanoseconds(),
                     t.year().map(|y| y.to_string()).unwrap_or_default(),
-                    "", // month — requires CalendarTime
-                    "", // day — requires CalendarTime
                 )
                 .unwrap();
             }
