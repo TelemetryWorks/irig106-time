@@ -144,9 +144,8 @@ impl StreamingTimeCorrelator {
                 let utc_secs = ptp.to_utc_seconds(leap_table.offset_at_tai(ptp.seconds));
                 let (year, doy, hour, minute, second) =
                     crate::network_time::unix_seconds_to_ymd_pub(utc_secs);
-                let abs = AbsoluteTime::new(doy, hour, minute, second, ptp.nanoseconds)?
-                    .with_year(Some(year))?;
-                abs
+                AbsoluteTime::new(doy, hour, minute, second, ptp.nanoseconds)?
+                    .with_year(Some(year))?
             }
         };
         self.add_reference(channel_id, rtc, abs_time);
