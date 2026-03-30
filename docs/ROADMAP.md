@@ -208,8 +208,10 @@ they are fundamental concepts shared across the crate ecosystem.
 | `offset_at_tai(tai_seconds: u64)` | `network_time.rs:545` | `offset_at_tai(time: TaiSeconds)` |
 | `offset_at_unix(unix_seconds: u64)` | `network_time.rs:546` | `offset_at_unix(time: UnixSeconds)` |
 
-**Deferred (lower value):** `ChannelId(u16)` — improves readability but no
-concrete bug-prone swap identified. Revisit during Phase 8 API review.
+**Deferred (lower value, tracked for Phase 8 API review):**
+
+- `ChannelId(u16)` — improves readability but no concrete bug-prone swap identified.
+- `ChannelSelection::Any | ChannelSelection::Exact(ChannelId)` — replaces `Option<u16>` used as a mode selector in `correlate(target_rtc, channel_id: Option<u16>)` at `correlation.rs:206` and `streaming.rs:160`. The current `Option<u16>` encodes API behavior (any-channel vs specific-channel), not optional data. An enum or split methods (`correlate_any` / `correlate_channel`) would make call sites self-documenting. Not a safety issue — purely API clarity. (Team review #4)
 
 **P6-02 — Wire `irig106-core`**
 
@@ -311,7 +313,7 @@ No breaking changes without major version bump after this release.
 | ID | Item | Priority | Effort | Details |
 |----|------|----------|--------|---------|
 | P6-07 | **Semantic versioning freeze** | High | — | Declare 1.0.0 stable API after all ecosystem wiring, validation, documentation, and VCRM are complete. |
-| P8-R01 | **Final API review** | High | 0.5 day | Confirm all public types, methods, and error variants are correct after Phase 6/7 feedback. |
+| P8-R01 | **Final API review** | High | 0.5 day | Confirm all public types, methods, and error variants are correct after Phase 6/7 feedback. Includes deferred items: `ChannelId` newtype, `ChannelSelection` enum (team review #4), and `YearDoyTime` consideration (GAP-17). |
 | P8-R02 | **1.0.0 release notes** | Medium | 0.5 day | Comprehensive release notes covering the full journey from 0.1.0 to 1.0.0. |
 
 ---
