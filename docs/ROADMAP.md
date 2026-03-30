@@ -210,21 +210,45 @@ integration feed into Phase 7 (P7-01).
 | `irig106-studio` | Import `irig106-time` as WASM module. Load a Ch10 file, parse time packets, correlate data packet timestamps, display in the UI. |
 | `irig106-time` | P6-06a (WASM build check) is already done. Integration may reveal `alloc` usage patterns that don't work in the browser. Fix here if needed. |
 
-### Phase 7: Validation and Hardening (v0.9.0)
+### Phase 7: Validation, Hardening, and Security (v0.9.0)
 
-Target: Prove the crate works against real-world data and fix any API issues
-surfaced by Phase 6 ecosystem integration. This is the last opportunity for
+Target: Prove the crate works against real-world data, fix any API issues
+surfaced by Phase 6 ecosystem integration, and produce the evidence artifacts
+required for the cyber security report. This is the last opportunity for
 breaking changes before the 1.0.0 semver freeze.
+
+#### 7A. Real-World Data Validation
 
 | ID | Item | Priority | Effort | Details |
 |----|------|----------|--------|---------|
-| P1-01 | **Run fuzz targets on real hardware** | Critical | 1 day | Run all 10 fuzz targets for 1 hour each. Document any findings. |
-| P1-02 | **Benchmark on NVMe hardware** | Critical | 0.5 day | Run criterion + zero-dep benchmarks on target hardware. Document baseline. |
 | P1-07 | **Validate against irig106.org sample files** | High | 1 day | Parse sample Ch10 files from irig106.org and verify round-trip correctness. |
 | P2-05 | **Legacy file corpus** | High | 1 day | Acquire or synthesize 106-04/05/07 files from Ampex DCRsi, L-3 MARS, Acra KAM-500. Validate version-aware parsing. |
 | GAP-03 | **Ch4 BWT multi-vendor validation** | Medium | 0.5 day | Validate Ch4 BinaryTime bit layout against real samples from multiple recorder vendors. Blocked on P2-05. |
 | P7-01 | **Fix API issues from ecosystem integration** | High | TBD | Any breaking changes required by P6-01 through P6-04 integration feedback. |
 | P7-02 | **Integration test suite with real files** | High | 1 day | End-to-end tests using real Ch10 files from P1-07 and P2-05 corpora. |
+
+#### 7B. Performance Validation
+
+| ID | Item | Priority | Effort | Details |
+|----|------|----------|--------|---------|
+| P1-02 | **Benchmark baseline on target hardware** | Critical | 0.5 day | Run criterion + zero-dep benchmarks on NVMe workstation. Save baseline with `cargo bench -- --save-baseline v0.9.0`. Document machine spec and results in `docs/benchmark_results.md`. |
+| P7-B01 | **Regression check vs. v0.7.0 baseline** | High | 0.5 day | Compare v0.9.0 performance against v0.7.0 baseline. Document any regressions > 5% on hot-path benchmarks. If regressions exist, either fix or justify in the security report. |
+
+#### 7C. Security Analysis and Cyber Report
+
+| ID | Item | Priority | Effort | Details |
+|----|------|----------|--------|---------|
+| P1-01 | **Run all 10 fuzz targets for 1 hour each** | Critical | 1 day | Document results in `docs/fuzz_report.md` using the template in `CONTRIBUTING.md`. Generate fuzz coverage report. |
+| P7-S01 | **`cargo audit` — dependency vulnerability scan** | High | 0.25 day | Run `cargo audit` and `cargo deny check`. Zero advisories required. Include output in security report. |
+| P7-S02 | **`cargo geiger` — unsafe code audit** | High | 0.25 day | Confirm zero `unsafe` blocks in library code. Include output in security report. |
+| P7-S03 | **Code coverage measurement** | High | 0.5 day | Run `cargo-tarpaulin` or `cargo-llvm-cov`. Target: > 80% line coverage on library code. Document per-module breakdown. Generate LCOV for SonarQube. |
+| P7-S04 | **SonarQube / SonarCloud analysis** | High | 0.5 day | Run SonarQube static analysis. Capture: code smells, complexity metrics, duplication, security hotspots. Export dashboard for security report. |
+| P7-S05 | **Produce cyber security report** | Critical | 1 day | Compile `docs/security_report.md` with sections: executive summary, static analysis, dependency audit, fuzz testing, code coverage, unsafe audit, VCRM summary, benchmark baseline. See `CONTRIBUTING.md` for the full report outline. |
+
+All security tools are run **locally on demand** (not in CI) to manage cost and
+nightly-toolchain requirements. Results are committed as report artifacts in `docs/`.
+See `CONTRIBUTING.md` § "Security Analysis and Reporting" for tool installation
+and usage instructions.
 
 ### Phase 8: Stable Release (1.0.0)
 
@@ -310,5 +334,5 @@ No breaking changes without major version bump after this release.
 | **0.6.0** | Phase 5 | Streaming correlator, Ch11 awareness, quality metrics, recording events, chrono interop, F1 leap seconds | Released |
 | **0.7.0** | Pre-1.0 | AbsoluteTime u64 restructure (P4-04), MSRV 1.87→1.56 (P6-08), WASM CI (P6-06), UDP docs (P5-03), API audit (Hash/Copy on 25+ types) | Current |
 | **0.8.0** | Phase 6 | Ecosystem wiring: irig106-types migration, irig106-core/decode/reader integration | Next |
-| **0.9.0** | Phase 7 | Validation: real-file testing, fuzz/benchmark on hardware, fix API issues from integration | Planned |
+| **0.9.0** | Phase 7 | Validation: real-file testing, fuzz/benchmark on hardware, security analysis (SonarQube, cargo-audit, coverage), cyber security report | Planned |
 | **1.0.0** | Phase 8 | Stable API: complete rustdoc with architecture diagrams, VCRM with zero gaps, IRIG 106 primer, semver freeze | Planned |
