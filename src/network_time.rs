@@ -184,8 +184,7 @@ impl NtpTime {
         // Convert Unix seconds to year/day-of-year/time-of-day
         let (year, doy, hour, minute, second) = unix_seconds_to_ymd(unix_secs);
 
-        let abs = AbsoluteTime::new(doy, hour, minute, second, nanos)?
-            .with_year(Some(year))?;
+        let abs = AbsoluteTime::new(doy, hour, minute, second, nanos)?.with_year(Some(year))?;
         Ok(abs)
     }
 
