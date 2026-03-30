@@ -195,7 +195,7 @@ fn dmy_fmt_to_absolute_with_date() {
     buf[4..6].copy_from_slice(&w2.to_le_bytes());
     buf[6..8].copy_from_slice(&w3.to_le_bytes());
     let t = DmyFormatTime::from_le_bytes(&buf).unwrap();
-    let ct = t.to_calendar_time();
+    let ct = t.to_calendar_time().unwrap();
     assert_eq!(ct.year(), Some(2025));
     assert_eq!(ct.month(), 3);
     assert_eq!(ct.day_of_month(), 15);

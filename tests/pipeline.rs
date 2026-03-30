@@ -120,7 +120,7 @@ fn full_dmy_format_pipeline() {
 
     let bcd_buf = encode_mar15_2025_084530_120();
     let dmy_time = DmyFormatTime::from_le_bytes(&bcd_buf).unwrap();
-    let abs = dmy_time.to_calendar_time();
+    let abs = dmy_time.to_calendar_time().unwrap();
 
     assert_eq!(abs.year(), Some(2025));
     assert_eq!(abs.month(), 3);
@@ -1262,17 +1262,16 @@ fn bcd_dmy_feb_29_leap_year_accepted() {
         month: 2,
         year: 2024,
     };
-    let abs = t.to_calendar_time();
+    let abs = t.to_calendar_time().unwrap();
     assert_eq!(abs.day_of_year(), 60); // Jan(31) + Feb(29) = day 60
     assert_eq!(abs.year(), Some(2024));
 }
 
 #[test]
-fn bcd_dmy_feb_29_non_leap_year_doy_calculation() {
+fn bcd_dmy_feb_29_non_leap_year_rejected() {
     use irig106_time::bcd::DmyFormatTime;
-    // On a non-leap year, Feb has 28 days so day 29 is technically March 1
-    // The DOY calculation uses month_day_to_doy which doesn't reject — it
-    // just computes. Feb 29 on a non-leap year → day 60 (no leap day added)
+    // On a non-leap year, Feb 29 does not exist. CalendarTime validation
+    // now correctly rejects this — days_in_month(2023, 2) = 28.
     let t = DmyFormatTime {
         milliseconds: 0,
         seconds: 0,
@@ -1282,9 +1281,7 @@ fn bcd_dmy_feb_29_non_leap_year_doy_calculation() {
         month: 2,
         year: 2023,
     };
-    let abs = t.to_calendar_time();
-    // On non-leap year, month_day_to_doy gives 31+29=60 (no extra day for leap)
-    assert_eq!(abs.day_of_year(), 60);
+    assert!(t.to_calendar_time().is_err());
 }
 
 // ── abs_diff via is_near_leap_second ────────────────────────────────

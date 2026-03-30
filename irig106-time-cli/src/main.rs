@@ -280,7 +280,16 @@ impl Ch10TimeScanner {
                     return;
                 }
                 match DmyFormatTime::from_le_bytes(&pkt_buf[bcd_start..]) {
-                    Ok(t) => t.to_calendar_time().into_absolute_time(),
+                    Ok(t) => match t.to_calendar_time() {
+                        Ok(ct) => ct.into_absolute_time(),
+                        Err(e) => {
+                            self.errors.push(format!(
+                                "Time packet ch={}: DMY date invalid: {}",
+                                hdr.channel_id, e
+                            ));
+                            return;
+                        }
+                    },
                     Err(e) => {
                         self.errors.push(format!(
                             "Time packet ch={}: DMY BCD error: {}",

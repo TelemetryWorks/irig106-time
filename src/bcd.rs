@@ -407,25 +407,25 @@ impl DmyFormatTime {
     /// Note: `day_of_year` is set to `day` as a placeholder; callers needing
     /// Convert to [`crate::absolute::CalendarTime`] with validated year, month, and day.
     ///
+    /// Returns `Err` if the decoded date is invalid (e.g., Feb 29 on a
+    /// non-leap year). This can happen with malformed Ch10 data from
+    /// misconfigured recorders.
+    ///
     /// The day-of-year is computed from the calendar date. If callers need a
     /// plain `AbsoluteTime`, use `.into_absolute_time()` on the result.
     ///
     /// **Traces:** L3-BCD-007 ← L2-BCD-008
-    pub fn to_calendar_time(&self) -> crate::absolute::CalendarTime {
+    pub fn to_calendar_time(&self) -> crate::error::Result<crate::absolute::CalendarTime> {
         let doy = month_day_to_doy(self.year, self.month, self.day);
-        // Safe to unwrap: values were validated in from_le_bytes
         let mut abs = crate::absolute::AbsoluteTime::new(
             doy,
             self.hours,
             self.minutes,
             self.seconds,
             (self.milliseconds as u32) * 1_000_000,
-        )
-        .unwrap();
-        // Safe to unwrap: BCD year is 0–9999 (4 BCD digits), always valid for set_year
-        abs.set_year(Some(self.year)).unwrap();
-        // Safe to unwrap: year is set, month/day were validated in from_le_bytes
-        crate::absolute::CalendarTime::new(abs, self.month, self.day).unwrap()
+        )?;
+        abs.set_year(Some(self.year))?;
+        crate::absolute::CalendarTime::new(abs, self.month, self.day)
     }
 
     /// Encode as 10 little-endian bytes (5× u16 LE) in the BCD Day-Month-Year wire format.
