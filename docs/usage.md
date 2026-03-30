@@ -1206,23 +1206,29 @@ irig106-time = { version = "0.7", features = ["chrono"] }
 
 ```rust
 use irig106_time::AbsoluteTime;
+// use irig106_time::CalendarTime;
 // use chrono::NaiveDateTime;
 
-let mut t = AbsoluteTime::new(100, 12, 30, 25, 340_000_000).unwrap();
-t.set_year(Some(2025));
+let t = AbsoluteTime::new(100, 12, 30, 25, 340_000_000).unwrap()
+    .with_year(Some(2025)).unwrap();
 
-// Convert to chrono (requires "chrono" feature)
+// Convert AbsoluteTime to chrono (requires "chrono" feature, uses DOY)
 // let dt: NaiveDateTime = t.into();
 // assert_eq!(dt.year(), 2025);
 
-// Convert back
-// let back: AbsoluteTime = dt.into();
-// assert_eq!(back.day_of_year, 100);
+// Convert chrono to CalendarTime (chrono always has full date)
+// let ct: CalendarTime = dt.into();
+// assert_eq!(ct.month(), 4);
+// assert_eq!(ct.day_of_month(), 10);
+
+// Drop to AbsoluteTime if needed
+// let abs: AbsoluteTime = ct.into();
 ```
 
-The conversion sets `year`, `day_of_year`, `month`, and `day_of_month` when
-converting from chrono. When converting to chrono without a `year` field,
-1970 is used as the default.
+When converting `AbsoluteTime` to chrono, the year defaults to 1970 if absent.
+When converting from chrono, the result is a `CalendarTime` (chrono always
+provides year, month, and day). Use `.into_absolute_time()` or `.into()` to
+drop the calendar fields if you only need `AbsoluteTime`.
 
 ---
 

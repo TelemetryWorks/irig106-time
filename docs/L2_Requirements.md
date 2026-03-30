@@ -45,8 +45,8 @@ parent L1 requirement.
 
 | ID | Requirement | Traces |
 |----|-------------|--------|
-| L2-ABS-001 | `AbsoluteTime` shall represent a point in time with nanosecond precision using day-of-year (1–366), hours (0–23), minutes (0–59), seconds (0–59), and nanoseconds (0–999_999_999). | L1-ABS-001 |
-| L2-ABS-002 | `AbsoluteTime` shall optionally carry month (1–12), day-of-month (1–31), and year when DMY data is available. | L1-ABS-001 |
+| L2-ABS-001 | `AbsoluteTime` shall represent a point in time with nanosecond precision using day-of-year (1–366), hours (0–23), minutes (0–59), seconds (0–59), and nanoseconds (0–999_999_999). It may optionally carry a year annotation (0–9999) as metadata; year does not imply calendar validation. | L1-ABS-001 |
+| L2-ABS-002 | `CalendarTime` shall represent a calendar-validated point in time with year (0–9999), month (1–12), day-of-month (1–N, leap-aware), and all `AbsoluteTime` fields. Construction shall validate that day-of-month does not exceed the number of days in the given month/year, and that day-of-year is consistent with the calendar date. `CalendarTime` wraps `AbsoluteTime` and provides transparent access to its fields. | L1-ABS-001 |
 | L2-ABS-003 | `Ch4BinaryTime` shall represent the Chapter 4 Binary Weighted Time with fields: `high_order: u16`, `low_order: u16`, `microseconds: u16`. | L1-ABS-002 |
 | L2-ABS-004 | `Ch4BinaryTime::to_absolute(&self) -> AbsoluteTime` shall decode the BWT fields into day, hour, minute, second, and microsecond. | L1-ABS-002 |
 | L2-ABS-005 | `Ieee1588Time` shall represent IEEE-1588 time with fields: `nanoseconds: u32`, `seconds: u32`. | L1-ABS-003 |

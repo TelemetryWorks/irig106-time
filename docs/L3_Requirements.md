@@ -65,11 +65,12 @@ and forward to specific source files and tests.
 
 | ID | Specification | Traces |
 |----|--------------|--------|
-| L3-ABS-001 | `pub struct AbsoluteTime { day_of_year: u16, hours: u8, minutes: u8, seconds: u8, nanoseconds: u32, month: Option<u8>, day_of_month: Option<u8>, year: Option<u16> }` | L2-ABS-001, L2-ABS-002 |
-| L3-ABS-002 | Constructor `AbsoluteTime::new(day_of_year, hours, minutes, seconds, nanoseconds)` shall validate ranges and return `Result`. | L2-ABS-001 |
-| L3-ABS-003 | `AbsoluteTime::with_date(mut self, year, month, day) -> Result<Self>` sets optional DMY fields. | L2-ABS-002 |
-| L3-ABS-004 | `AbsoluteTime::add_nanos(&self, nanos: u64) -> AbsoluteTime` shall carry into seconds, minutes, hours, days. | L2-ABS-001 |
+| L3-ABS-001 | `pub struct AbsoluteTime { total_ns: u64, year: Option<u16> }` — DOY-based timestamp with optional year metadata. Internal `u64` representation (nanoseconds since start of day 1). Year is metadata, not a calendar invariant. Cannot hold month or day-of-month. | L2-ABS-001, L2-ABS-002 |
+| L3-ABS-002 | Constructor `AbsoluteTime::new(day_of_year, hours, minutes, seconds, nanoseconds)` shall validate ranges and return `Result`. `with_year(self, year: Option<u16>) -> Result<Self>` attaches year metadata (0–9999) as a consuming builder. | L2-ABS-001 |
+| L3-ABS-003 | `CalendarTime` wraps `AbsoluteTime` with validated `month: u8` (1–12) and `day_of_month: u8` (1–N, leap-aware). Constructor `CalendarTime::new(time, month, day)` validates: year is present, day ≤ `days_in_month(year, month)`, and DOY matches `month_day_to_doy(year, month, day)`. Implements `Deref<Target=AbsoluteTime>`. | L2-ABS-002 |
+| L3-ABS-004 | `AbsoluteTime::add_nanos(&self, nanos: u64) -> AbsoluteTime` shall carry into seconds, minutes, hours, days. Single `u64` add on the common path. | L2-ABS-001 |
 | L3-ABS-005 | `AbsoluteTime::total_nanos_of_day(&self) -> u64` returns nanoseconds since midnight. | L2-ABS-001 |
+| L3-ABS-006 | `CalendarTime::from_parts(year, month, day, doy, h, m, s, ns) -> Result<Self>` convenience constructor combining `new` + `with_year` + `CalendarTime::new`. `DmyFormatTime::to_calendar_time() -> Result<CalendarTime>` produces calendar time from BCD DMY wire format. `From<NaiveDateTime> for CalendarTime` (chrono feature). | L2-ABS-002 |
 
 ### 3.4 Chapter 4 Binary Weighted Time
 
