@@ -15,6 +15,18 @@
 //! | `calendar_time_month_zero_rejected` | month=0 is invalid | L3-ABS-006 |
 //! | `calendar_time_month_13_rejected` | month=13 is invalid | L3-ABS-006 |
 //! | `calendar_time_requires_year` | AbsoluteTime without year is rejected | L3-ABS-006 |
+//! | `calendar_time_from_parts` | from_parts convenience constructor | L3-ABS-006 |
+//! | `calendar_time_into_absolute_time` | Convert CalendarTime to AbsoluteTime | L3-ABS-006 |
+//! | `calendar_time_display` | Display formats YYYY-MM-DD | L3-ABS-006 |
+//! | `calendar_time_feb_31_rejected` | Feb 31 is never valid | L3-ABS-006 |
+//! | `calendar_time_feb_29_non_leap_rejected` | Feb 29 on non-leap year rejected | L3-ABS-006 |
+//! | `calendar_time_feb_29_leap_accepted` | Feb 29 on leap year accepted | L3-ABS-006 |
+//! | `calendar_time_apr_31_rejected` | Apr 31 is never valid | L3-ABS-006 |
+//! | `calendar_time_doy_mismatch_rejected` | DOY inconsistent with date rejected | L3-ABS-006 |
+//! | `calendar_time_doy_consistent` | DOY consistent with date accepted | L3-ABS-006 |
+//! | `set_year_rejects_invalid` | Year > 9999 rejected | L3-ABS-002 |
+//! | `set_year_accepts_valid_range` | Year 0-9999 and None accepted | L3-ABS-002 |
+//! | `set_year_10000_rejected` | Year 10000 rejected | L3-ABS-002 |
 //! | `add_nanos_subsecond` | Add nanos within same second | L3-ABS-004 |
 //! | `add_nanos_carry_to_seconds` | Carry from nanos to seconds | L3-ABS-004 |
 //! | `add_nanos_carry_to_minutes` | Carry from seconds to minutes | L3-ABS-004 |
@@ -74,7 +86,7 @@ fn absolute_time_nanos_overflow_rejected() {
 #[test]
 fn calendar_time_valid() {
     let mut t = AbsoluteTime::new(45, 10, 30, 0, 0).unwrap();
-    t.set_year(Some(2025));
+    t.set_year(Some(2025)).unwrap();
     let ct = super::CalendarTime::new(t, 2, 14).unwrap();
     assert_eq!(ct.year(), Some(2025));
     assert_eq!(ct.month(), 2);
@@ -87,14 +99,14 @@ fn calendar_time_valid() {
 #[test]
 fn calendar_time_month_zero_rejected() {
     let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
-    t.set_year(Some(2025));
+    t.set_year(Some(2025)).unwrap();
     assert!(super::CalendarTime::new(t, 0, 1).is_err());
 }
 
 #[test]
 fn calendar_time_month_13_rejected() {
     let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
-    t.set_year(Some(2025));
+    t.set_year(Some(2025)).unwrap();
     assert!(super::CalendarTime::new(t, 13, 1).is_err());
 }
 
@@ -131,6 +143,80 @@ fn calendar_time_display() {
     let s = format!("{}", ct);
     assert!(s.starts_with("2025-04-10"));
     assert!(s.contains("12:30:25"));
+}
+
+// ── Calendar correctness validation (team review regression tests) ──
+
+#[test]
+fn calendar_time_feb_31_rejected() {
+    // 2025-02-31 does not exist — February has 28 days in 2025
+    let result = super::CalendarTime::from_parts(2025, 2, 31, 59, 12, 0, 0, 0);
+    assert!(result.is_err());
+}
+
+#[test]
+fn calendar_time_feb_29_non_leap_rejected() {
+    // 2025-02-29 does not exist — 2025 is not a leap year
+    let result = super::CalendarTime::from_parts(2025, 2, 29, 60, 12, 0, 0, 0);
+    assert!(result.is_err());
+}
+
+#[test]
+fn calendar_time_feb_29_leap_accepted() {
+    // 2024-02-29 is valid — 2024 is a leap year. DOY = 31 + 29 = 60
+    let ct = super::CalendarTime::from_parts(2024, 2, 29, 60, 12, 0, 0, 0).unwrap();
+    assert_eq!(ct.month(), 2);
+    assert_eq!(ct.day_of_month(), 29);
+    assert_eq!(ct.day_of_year(), 60);
+}
+
+#[test]
+fn calendar_time_apr_31_rejected() {
+    // 2025-04-31 does not exist — April has 30 days
+    let result = super::CalendarTime::from_parts(2025, 4, 31, 121, 12, 0, 0, 0);
+    assert!(result.is_err());
+}
+
+#[test]
+fn calendar_time_doy_mismatch_rejected() {
+    // 2025-04-10 = DOY 100, but we claim DOY 42 — rejected
+    let result = super::CalendarTime::from_parts(2025, 4, 10, 42, 12, 0, 0, 0);
+    assert!(result.is_err());
+}
+
+#[test]
+fn calendar_time_doy_consistent() {
+    // 2025-04-10 = DOY 100 — matches
+    let ct = super::CalendarTime::from_parts(2025, 4, 10, 100, 12, 0, 0, 0).unwrap();
+    assert_eq!(ct.day_of_year(), 100);
+    assert_eq!(ct.month(), 4);
+    assert_eq!(ct.day_of_month(), 10);
+}
+
+#[test]
+fn set_year_rejects_invalid() {
+    // u16::MAX = 65535, which exceeds 9999
+    let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
+    assert!(t.set_year(Some(65_535)).is_err());
+    // Year should remain None (not partially set)
+    assert_eq!(t.year(), None);
+}
+
+#[test]
+fn set_year_accepts_valid_range() {
+    let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
+    t.set_year(Some(0)).unwrap();
+    assert_eq!(t.year(), Some(0));
+    t.set_year(Some(9999)).unwrap();
+    assert_eq!(t.year(), Some(9999));
+    t.set_year(None).unwrap();
+    assert_eq!(t.year(), None);
+}
+
+#[test]
+fn set_year_10000_rejected() {
+    let mut t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
+    assert!(t.set_year(Some(10_000)).is_err());
 }
 
 #[test]

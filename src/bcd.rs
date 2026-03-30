@@ -422,7 +422,8 @@ impl DmyFormatTime {
             (self.milliseconds as u32) * 1_000_000,
         )
         .unwrap();
-        abs.set_year(Some(self.year));
+        // Safe to unwrap: BCD year is 0–9999 (4 BCD digits), always valid for set_year
+        abs.set_year(Some(self.year)).unwrap();
         // Safe to unwrap: year is set, month/day were validated in from_le_bytes
         crate::absolute::CalendarTime::new(abs, self.month, self.day).unwrap()
     }
@@ -475,30 +476,16 @@ impl DmyFormatTime {
 
 /// Convert month/day to day-of-year.
 #[inline]
+/// Convert month/day to day-of-year. Delegates to [`crate::util::month_day_to_doy`].
+#[inline]
 fn month_day_to_doy(year: u16, month: u8, day: u8) -> u16 {
-    // Uses crate::util::is_leap_year — see MSRV note in util.rs
-    let is_leap = crate::util::is_leap_year(year);
-    let days_before: [u16; 12] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
-    let m = (month as usize).saturating_sub(1).min(11);
-    let mut doy = days_before[m] + day as u16;
-    if is_leap && month > 2 {
-        doy += 1;
-    }
-    doy
+    crate::util::month_day_to_doy(year, month, day)
 }
 
-/// Returns the number of days in a given month (1-indexed), accounting for leap years.
+/// Returns the number of days in a given month. Delegates to [`crate::util::days_in_month`].
 #[inline]
 fn days_in_month(year: u16, month: u8) -> u8 {
-    const DAYS: [u8; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    // Uses crate::util::is_leap_year — see MSRV note in util.rs
-    let is_leap = crate::util::is_leap_year(year);
-    let m = (month as usize).saturating_sub(1).min(11);
-    if m == 1 && is_leap {
-        29
-    } else {
-        DAYS[m]
-    }
+    crate::util::days_in_month(year, month)
 }
 
 #[cfg(test)]

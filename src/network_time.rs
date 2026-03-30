@@ -185,7 +185,7 @@ impl NtpTime {
         let (year, doy, hour, minute, second) = unix_seconds_to_ymd(unix_secs);
 
         let mut abs = AbsoluteTime::new(doy, hour, minute, second, nanos)?;
-        abs.set_year(Some(year));
+        abs.set_year(Some(year))?;
         Ok(abs)
     }
 
@@ -278,7 +278,7 @@ impl PtpTime {
         let (year, doy, hour, minute, second) = unix_seconds_to_ymd(utc_secs);
 
         let mut abs = AbsoluteTime::new(doy, hour, minute, second, self.nanoseconds)?;
-        abs.set_year(Some(year));
+        abs.set_year(Some(year))?;
         Ok(abs)
     }
 

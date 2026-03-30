@@ -10,6 +10,8 @@
 //! |----------|----------|-------------|
 //! | [`is_leap_year`] | `u16::is_multiple_of` (Rust 1.87) | Avoids MSRV creep to 1.87 |
 //! | [`abs_diff_u64`] | `u64::abs_diff` (Rust 1.60) | Avoids clippy `manual_abs_diff` lint |
+//! | [`days_in_month`] | (shared helper) | Used by `CalendarTime` and `bcd.rs` |
+//! | [`month_day_to_doy`] | (shared helper) | Used by `CalendarTime` and `bcd.rs` |
 //!
 //! The crate's MSRV is determined by the highest-versioned stable API or
 //! Cargo feature used:
@@ -94,6 +96,37 @@ pub(crate) fn abs_diff_u64(a: u64, b: u64) -> u64 {
     } else {
         b - a
     }
+}
+
+/// Returns the number of days in a given month (1-indexed), accounting for
+/// leap years.
+///
+/// Used by `CalendarTime::new` for day-of-month validation and by `bcd.rs`
+/// for DMY parsing.
+#[inline]
+pub(crate) fn days_in_month(year: u16, month: u8) -> u8 {
+    const DAYS: [u8; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    let m = (month as usize).saturating_sub(1).min(11);
+    if m == 1 && is_leap_year(year) {
+        29
+    } else {
+        DAYS[m]
+    }
+}
+
+/// Convert a calendar date (year, month 1–12, day 1–31) to day-of-year (1–366).
+///
+/// Used by `CalendarTime::new` for DOY consistency validation and by `bcd.rs`
+/// for DMY-to-DOY conversion.
+#[inline]
+pub(crate) fn month_day_to_doy(year: u16, month: u8, day: u8) -> u16 {
+    let days_before: [u16; 12] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+    let m = (month as usize).saturating_sub(1).min(11);
+    let mut doy = days_before[m] + day as u16;
+    if is_leap_year(year) && month > 2 {
+        doy += 1;
+    }
+    doy
 }
 
 #[cfg(test)]
@@ -225,5 +258,68 @@ mod tests {
         assert_eq!(abs_diff_u64(leap_2017, leap_2017 + 10), 10);
         assert_eq!(abs_diff_u64(leap_2017, leap_2017 - 10), 10);
         assert_eq!(abs_diff_u64(leap_2017 + 5, leap_2017 - 5), 10);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // days_in_month tests
+    // ═══════════════════════════════════════════════════════════════════
+
+    #[test]
+    fn days_in_month_standard() {
+        assert_eq!(days_in_month(2025, 1), 31);
+        assert_eq!(days_in_month(2025, 2), 28);
+        assert_eq!(days_in_month(2025, 3), 31);
+        assert_eq!(days_in_month(2025, 4), 30);
+        assert_eq!(days_in_month(2025, 5), 31);
+        assert_eq!(days_in_month(2025, 6), 30);
+        assert_eq!(days_in_month(2025, 7), 31);
+        assert_eq!(days_in_month(2025, 8), 31);
+        assert_eq!(days_in_month(2025, 9), 30);
+        assert_eq!(days_in_month(2025, 10), 31);
+        assert_eq!(days_in_month(2025, 11), 30);
+        assert_eq!(days_in_month(2025, 12), 31);
+    }
+
+    #[test]
+    fn days_in_month_leap_feb() {
+        assert_eq!(days_in_month(2024, 2), 29);
+        assert_eq!(days_in_month(2000, 2), 29);
+    }
+
+    #[test]
+    fn days_in_month_century_non_leap_feb() {
+        assert_eq!(days_in_month(1900, 2), 28);
+        assert_eq!(days_in_month(2100, 2), 28);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // month_day_to_doy tests
+    // ═══════════════════════════════════════════════════════════════════
+
+    #[test]
+    fn month_day_to_doy_jan_1() {
+        assert_eq!(month_day_to_doy(2025, 1, 1), 1);
+    }
+
+    #[test]
+    fn month_day_to_doy_dec_31_non_leap() {
+        assert_eq!(month_day_to_doy(2025, 12, 31), 365);
+    }
+
+    #[test]
+    fn month_day_to_doy_dec_31_leap() {
+        assert_eq!(month_day_to_doy(2024, 12, 31), 366);
+    }
+
+    #[test]
+    fn month_day_to_doy_mar_1_leap() {
+        // Jan(31) + Feb(29) + 1 = 61
+        assert_eq!(month_day_to_doy(2024, 3, 1), 61);
+    }
+
+    #[test]
+    fn month_day_to_doy_mar_1_non_leap() {
+        // Jan(31) + Feb(28) + 1 = 60
+        assert_eq!(month_day_to_doy(2025, 3, 1), 60);
     }
 }

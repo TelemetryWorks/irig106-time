@@ -190,7 +190,7 @@ impl TimeCorrelator {
                 let (year, doy, hour, minute, second) =
                     crate::network_time::unix_seconds_to_ymd_pub(utc_secs);
                 let mut abs = AbsoluteTime::new(doy, hour, minute, second, ptp.nanoseconds)?;
-                abs.set_year(Some(year));
+                abs.set_year(Some(year))?;
                 abs
             }
         };

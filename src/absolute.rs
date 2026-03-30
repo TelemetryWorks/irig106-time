@@ -24,7 +24,7 @@
 //!
 //! // DOY time — no calendar date, just day-of-year + time
 //! let mut t = AbsoluteTime::new(100, 12, 30, 25, 340_000_000).unwrap();
-//! t.set_year(Some(2025));
+//! t.set_year(Some(2025)).unwrap();
 //! assert_eq!(t.day_of_year(), 100);
 //! assert_eq!(t.year(), Some(2025));
 //! // t.month() does not exist — compile error if you try
@@ -132,7 +132,8 @@ mod serde_impl {
                 fields.nanoseconds,
             )
             .map_err(serde::de::Error::custom)?;
-            t.year = fields.year;
+            t.set_year(fields.year)
+                .map_err(serde::de::Error::custom)?;
             Ok(t)
         }
     }
@@ -237,14 +238,29 @@ impl AbsoluteTime {
 
     // ── Year mutator ────────────────────────────────────────────────
 
-    /// Set the year field.
+    /// Set the year field, validating the range (0–9999).
     ///
     /// This is the only setter on `AbsoluteTime`. Year arrives independently
     /// from NTP/PTP time sources and the correlation engine. Month and
     /// day-of-month require [`CalendarTime`].
+    ///
+    /// Passing `None` clears the year. Passing `Some(year)` validates that
+    /// `year <= 9999`.
+    ///
+    /// **Traces:** L3-ABS-002
     #[inline]
-    pub fn set_year(&mut self, year: Option<u16>) {
+    pub fn set_year(&mut self, year: Option<u16>) -> Result<()> {
+        if let Some(y) = year {
+            if y > 9999 {
+                return Err(TimeError::OutOfRange {
+                    field: "year",
+                    value: y as u32,
+                    max: 9999,
+                });
+            }
+        }
         self.year = year;
+        Ok(())
     }
 
     // ── Arithmetic ──────────────────────────────────────────────────
@@ -420,18 +436,19 @@ pub struct CalendarTime {
 impl CalendarTime {
     /// Create a `CalendarTime` from an `AbsoluteTime` and validated date fields.
     ///
-    /// The `AbsoluteTime` must have `year` set (`year().is_some()`). The month
-    /// must be 1–12 and the day must be 1–31.
+    /// Validates:
+    /// - `time.year()` is `Some` (year must be set)
+    /// - `month` is 1–12
+    /// - `day_of_month` is 1–N where N = days in that month/year (leap-aware)
+    /// - `time.day_of_year()` matches the DOY computed from year/month/day
     ///
     /// **Traces:** L3-ABS-006
     pub fn new(time: AbsoluteTime, month: u8, day_of_month: u8) -> Result<Self> {
-        if time.year().is_none() {
-            return Err(TimeError::OutOfRange {
-                field: "year",
-                value: 0,
-                max: 9999,
-            });
-        }
+        let year = time.year().ok_or(TimeError::OutOfRange {
+            field: "year",
+            value: 0,
+            max: 9999,
+        })?;
         if month == 0 || month > 12 {
             return Err(TimeError::OutOfRange {
                 field: "month",
@@ -439,11 +456,20 @@ impl CalendarTime {
                 max: 12,
             });
         }
-        if day_of_month == 0 || day_of_month > 31 {
+        let max_day = crate::util::days_in_month(year, month);
+        if day_of_month == 0 || day_of_month > max_day {
             return Err(TimeError::OutOfRange {
                 field: "day_of_month",
                 value: day_of_month as u32,
-                max: 31,
+                max: max_day as u32,
+            });
+        }
+        let expected_doy = crate::util::month_day_to_doy(year, month, day_of_month);
+        if time.day_of_year() != expected_doy {
+            return Err(TimeError::OutOfRange {
+                field: "day_of_year",
+                value: time.day_of_year() as u32,
+                max: expected_doy as u32,
             });
         }
 
@@ -470,7 +496,7 @@ impl CalendarTime {
         nanoseconds: u32,
     ) -> Result<Self> {
         let mut t = AbsoluteTime::new(day_of_year, hours, minutes, seconds, nanoseconds)?;
-        t.set_year(Some(year));
+        t.set_year(Some(year))?;
         Self::new(t, month, day_of_month)
     }
 

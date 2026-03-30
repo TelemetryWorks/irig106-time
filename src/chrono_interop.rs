@@ -42,7 +42,7 @@ use crate::absolute::{AbsoluteTime, CalendarTime};
 /// use chrono::Datelike;
 ///
 /// let mut t = AbsoluteTime::new(100, 12, 30, 25, 340_000_000).unwrap();
-/// t.set_year(Some(2025));
+/// t.set_year(Some(2025)).unwrap();
 /// let dt: NaiveDateTime = t.into();
 /// assert_eq!(dt.year(), 2025);
 /// assert_eq!(dt.ordinal(), 100);
@@ -132,7 +132,7 @@ mod tests {
     #[test]
     fn absolute_to_chrono() {
         let mut t = AbsoluteTime::new(100, 12, 30, 25, 340_000_000).unwrap();
-        t.set_year(Some(2025));
+        t.set_year(Some(2025)).unwrap();
         let dt: NaiveDateTime = t.into();
         assert_eq!(dt.year(), 2025);
         assert_eq!(dt.ordinal(), 100);
