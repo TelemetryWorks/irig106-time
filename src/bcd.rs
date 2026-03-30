@@ -405,7 +405,7 @@ impl DmyFormatTime {
     /// Convert to `AbsoluteTime` with full date.
     ///
     /// Note: `day_of_year` is set to `day` as a placeholder; callers needing
-    /// Convert to [`CalendarTime`] with validated year, month, and day.
+    /// Convert to [`crate::absolute::CalendarTime`] with validated year, month, and day.
     ///
     /// The day-of-year is computed from the calendar date. If callers need a
     /// plain `AbsoluteTime`, use `.into_absolute_time()` on the result.
