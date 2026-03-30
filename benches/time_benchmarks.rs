@@ -5,7 +5,7 @@
 //! # Run
 //!
 // Benchmarks are dev-only and require stable Rust (for criterion, black_box, etc.).
-// The crate's MSRV of 1.56 applies to the library, not to dev tooling.
+// The crate's MSRV of 1.60 applies to the library, not to dev tooling.
 // See src/util.rs for the full MSRV rationale.
 #![allow(clippy::incompatible_msrv)]
 //! ```sh

@@ -171,7 +171,7 @@ integration feed into Phase 7 (P7-01).
 | P6-05 | ~~Wire `irig106-write` BCD encoding~~ | — | — | ✅ `to_le_bytes()` shipped in v0.4.0. |
 | P6-06a | **WASM build verification** | Medium | — | ✅ Done (v0.7.0) — CI verifies `wasm32-unknown-unknown` build. |
 | P6-06b | **`irig106-studio` WASM integration** | Medium | 1 day | P6-01 |
-| P6-08 | **MSRV policy** | Medium | — | ✅ Done (v0.7.0). MSRV 1.87 → 1.56. |
+| P6-08 | **MSRV policy** | Medium | — | ✅ Done (v0.7.0). MSRV 1.87 → 1.60. Replaced `u16::is_multiple_of` (1.87) with `util::is_leap_year` and `u64::abs_diff` (1.60) with `util::abs_diff_u64`. Constrained by `dep:` namespaced features in `Cargo.toml`. |
 
 #### Detailed Scope Per Item
 
@@ -332,7 +332,7 @@ No breaking changes without major version bump after this release.
 | **0.4.0** | Phase 2 | Version detection, version-aware CSDW, OOO window, RTC reset detection, `to_le_bytes()` encoding | Released |
 | **0.5.0** | Phase 4 | Channel-indexed O(log n) correlation, BCD LUT, criterion benchmarks, serde, sub_nanos year fix | Released |
 | **0.6.0** | Phase 5 | Streaming correlator, Ch11 awareness, quality metrics, recording events, chrono interop, F1 leap seconds | Released |
-| **0.7.0** | Pre-1.0 | AbsoluteTime u64 restructure (P4-04), MSRV 1.87→1.56 (P6-08), WASM CI (P6-06), UDP docs (P5-03), API audit (Hash/Copy on 25+ types) | Current |
+| **0.7.0** | Pre-1.0 | AbsoluteTime u64 restructure (P4-04), MSRV 1.87→1.60 (P6-08), WASM CI (P6-06), UDP docs (P5-03), API audit (Hash/Copy on 25+ types) | Current |
 | **0.8.0** | Phase 6 | Ecosystem wiring: irig106-types migration, irig106-core/decode/reader integration | Next |
 | **0.9.0** | Phase 7 | Validation: real-file testing, fuzz/benchmark on hardware, security analysis (SonarQube, cargo-audit, coverage), cyber security report | Planned |
 | **1.0.0** | Phase 8 | Stable API: complete rustdoc with architecture diagrams, VCRM with zero gaps, IRIG 106 primer, semver freeze | Planned |

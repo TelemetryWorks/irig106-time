@@ -6,13 +6,13 @@ This project has two Rust version floors:
 
 | Context | Minimum Rust Version | Reason |
 |---------|---------------------|--------|
-| **Library users** | **1.56** (Edition 2021 floor) | Anyone adding `irig106-time` to their `Cargo.toml` needs Rust 1.56+. All library source code compiles on 1.56. |
+| **Library users** | **1.60** (`dep:` feature syntax floor) | Anyone adding `irig106-time` to their `Cargo.toml` needs Rust 1.60+. All library source code compiles on 1.60. |
 | **Repository developers** | **Latest stable** | Running benchmarks, fuzz tests, and property tests requires modern Rust. Dev-dependencies (criterion, proptest, libfuzzer-sys) and `std::hint::black_box` (Rust 1.66) require stable Rust newer than the library MSRV. |
 
 The CI enforces this separation: the MSRV job runs `cargo check` (library only),
 while the stable job runs `cargo test --all-features` (with dev-dependencies).
 
-If you add new library code, verify it compiles on Rust 1.56 by avoiding APIs
+If you add new library code, verify it compiles on Rust 1.60 by avoiding APIs
 stabilized after that version. See `src/util.rs` for the MSRV dependency table
 and the pattern for providing backward-compatible helpers.
 
@@ -193,7 +193,7 @@ ls fuzz/artifacts/fuzz_bcd_day/
 ```
 
 **Important:** Fuzz testing requires **nightly Rust** (`cargo +nightly`). This is
-separate from the library MSRV (1.56) and the dev tooling floor (stable).
+separate from the library MSRV (1.60) and the dev tooling floor (stable).
 
 **When to run fuzz tests:**
 

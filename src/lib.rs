@@ -39,9 +39,9 @@
 //!
 //! ## Minimum Supported Rust Version (MSRV)
 //!
-//! This crate requires **Rust 1.56** or later (Edition 2021 floor). The MSRV
-//! is maintained by providing crate-internal replacements for newer standard
-//! library APIs:
+//! This crate requires **Rust 1.60** or later. The MSRV is constrained by
+//! `dep:` namespaced features in `Cargo.toml` (stabilized in Rust 1.60).
+//! Crate-internal helpers avoid newer APIs to prevent accidental MSRV creep:
 //!
 //! | Replaced API | Stabilized In | Replacement |
 //! |-------------|---------------|-------------|

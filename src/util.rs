@@ -8,20 +8,22 @@
 //!
 //! | Function | Replaces | MSRV Impact |
 //! |----------|----------|-------------|
-//! | [`is_leap_year`] | `u16::is_multiple_of` (Rust 1.87) | Enables MSRV below 1.87 |
-//! | [`abs_diff_u64`] | `u64::abs_diff` (Rust 1.60) | Enables MSRV below 1.60 |
+//! | [`is_leap_year`] | `u16::is_multiple_of` (Rust 1.87) | Avoids MSRV creep to 1.87 |
+//! | [`abs_diff_u64`] | `u64::abs_diff` (Rust 1.60) | Avoids clippy `manual_abs_diff` lint |
 //!
-//! The crate's MSRV is determined by the highest-versioned stable API used:
+//! The crate's MSRV is determined by the highest-versioned stable API or
+//! Cargo feature used:
 //!
-//! | API | Stabilized In | Used By | Status |
-//! |-----|---------------|---------|--------|
+//! | API / Feature | Stabilized In | Used By | Status |
+//! |---------------|---------------|---------|--------|
+//! | `dep:` namespaced features | Rust 1.60 | `Cargo.toml` `[features]` | **MSRV constraint** |
 //! | `u64::abs_diff` | Rust 1.60 | `LeapSecondTable::is_near_leap_second` | Replaced by `abs_diff_u64` |
 //! | `u16::is_multiple_of` | Rust 1.87 | Leap year checks (3 files) | Replaced by `is_leap_year` |
 //! | `u16::saturating_sub` | Rust 1.0 | `AbsoluteTime::sub_nanos`, BCD helpers | No concern |
 //! | `u64::saturating_add` | Rust 1.0 | `network_time::unix_seconds_to_ymd` | No concern |
-//! | Edition 2021 | Rust 1.56 | `Cargo.toml` | Floor constraint |
+//! | Edition 2021 | Rust 1.56 | `Cargo.toml` | Below MSRV floor |
 //!
-//! **Current MSRV: 1.56** (constrained by Edition 2021)
+//! **Current MSRV: 1.60** (constrained by `dep:` namespaced features in `Cargo.toml`)
 
 /// Determine whether a year is a leap year per the Gregorian calendar.
 ///
@@ -64,8 +66,8 @@ pub(crate) fn is_leap_year(year: u16) -> bool {
 ///
 /// Returns `|a - b|` without risk of underflow. This replaces the standard
 /// library's `u64::abs_diff()` method, which was stabilized in Rust 1.60.
-/// Using this helper allows the crate to maintain an MSRV of 1.56 (Edition
-/// 2021 floor).
+/// Using this helper allows the crate to avoid the `clippy::manual_abs_diff`
+/// lint without raising the MSRV beyond 1.60.
 ///
 /// # MSRV Note
 ///
