@@ -87,11 +87,11 @@ fn full_day_format_pipeline() {
     // Step 2: Decode BCD time message
     let bcd_buf = encode_day100_123025_340();
     let day_time = DayFormatTime::from_le_bytes(&bcd_buf).unwrap();
-    assert_eq!(day_time.day_of_year, 100);
-    assert_eq!(day_time.hours, 12);
-    assert_eq!(day_time.minutes, 30);
-    assert_eq!(day_time.seconds, 25);
-    assert_eq!(day_time.milliseconds, 340);
+    assert_eq!(day_time.day_of_year(), 100);
+    assert_eq!(day_time.hours(), 12);
+    assert_eq!(day_time.minutes(), 30);
+    assert_eq!(day_time.seconds(), 25);
+    assert_eq!(day_time.milliseconds(), 340);
 
     // Step 3: Convert to AbsoluteTime
     let abs_time = day_time.to_absolute();
@@ -875,44 +875,30 @@ fn ptp_to_le_bytes_round_trip() {
 #[test]
 fn bcd_day_to_le_bytes_round_trip() {
     use irig106_time::bcd::DayFormatTime;
-    // Construct known-good BCD bytes for Day 123, 14:30:45.670
-    let dt = DayFormatTime {
-        milliseconds: 670,
-        seconds: 45,
-        minutes: 30,
-        hours: 14,
-        day_of_year: 123,
-    };
+    // Construct known-good BCD values for Day 123, 14:30:45.670
+    let dt = DayFormatTime::new(123, 14, 30, 45, 670).unwrap();
     let encoded = dt.to_le_bytes();
     let decoded = DayFormatTime::from_le_bytes(&encoded).unwrap();
-    assert_eq!(decoded.milliseconds, 670);
-    assert_eq!(decoded.seconds, 45);
-    assert_eq!(decoded.minutes, 30);
-    assert_eq!(decoded.hours, 14);
-    assert_eq!(decoded.day_of_year, 123);
+    assert_eq!(decoded.milliseconds(), 670);
+    assert_eq!(decoded.seconds(), 45);
+    assert_eq!(decoded.minutes(), 30);
+    assert_eq!(decoded.hours(), 14);
+    assert_eq!(decoded.day_of_year(), 123);
 }
 
 #[test]
 fn bcd_dmy_to_le_bytes_round_trip() {
     use irig106_time::bcd::DmyFormatTime;
-    let dt = DmyFormatTime {
-        milliseconds: 120,
-        seconds: 59,
-        minutes: 0,
-        hours: 23,
-        day: 15,
-        month: 3,
-        year: 2025,
-    };
+    let dt = DmyFormatTime::new(2025, 3, 15, 23, 0, 59, 120).unwrap();
     let encoded = dt.to_le_bytes();
     let decoded = DmyFormatTime::from_le_bytes(&encoded).unwrap();
-    assert_eq!(decoded.milliseconds, 120);
-    assert_eq!(decoded.seconds, 59);
-    assert_eq!(decoded.minutes, 0);
-    assert_eq!(decoded.hours, 23);
-    assert_eq!(decoded.day, 15);
-    assert_eq!(decoded.month, 3);
-    assert_eq!(decoded.year, 2025);
+    assert_eq!(decoded.milliseconds(), 120);
+    assert_eq!(decoded.seconds(), 59);
+    assert_eq!(decoded.minutes(), 0);
+    assert_eq!(decoded.hours(), 23);
+    assert_eq!(decoded.day(), 15);
+    assert_eq!(decoded.month(), 3);
+    assert_eq!(decoded.year(), 2025);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1268,16 +1254,7 @@ fn sub_nanos_quad_century_leap_year() {
 fn bcd_dmy_feb_29_leap_year_accepted() {
     use irig106_time::bcd::DmyFormatTime;
     // Feb 29 on a leap year should be valid
-    // Manually construct a DmyFormatTime for 2024-02-29
-    let t = DmyFormatTime {
-        milliseconds: 0,
-        seconds: 0,
-        minutes: 0,
-        hours: 12,
-        day: 29,
-        month: 2,
-        year: 2024,
-    };
+    let t = DmyFormatTime::new(2024, 2, 29, 12, 0, 0, 0).unwrap();
     let abs = t.to_calendar_time().unwrap();
     assert_eq!(abs.day_of_year(), 60); // Jan(31) + Feb(29) = day 60
     assert_eq!(abs.year(), Some(2024));
@@ -1288,15 +1265,9 @@ fn bcd_dmy_feb_29_non_leap_year_rejected() {
     use irig106_time::bcd::DmyFormatTime;
     // On a non-leap year, Feb 29 does not exist. CalendarTime validation
     // now correctly rejects this — days_in_month(2023, 2) = 28.
-    let t = DmyFormatTime {
-        milliseconds: 0,
-        seconds: 0,
-        minutes: 0,
-        hours: 12,
-        day: 29,
-        month: 2,
-        year: 2023,
-    };
+    // DmyFormatTime::new accepts day 1–31 at the BCD level, but
+    // to_calendar_time() rejects Feb 29 on a non-leap year.
+    let t = DmyFormatTime::new(2023, 2, 29, 12, 0, 0, 0).unwrap();
     assert!(t.to_calendar_time().is_err());
 }
 

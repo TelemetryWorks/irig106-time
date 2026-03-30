@@ -58,23 +58,149 @@ fn check_reserved(word: u16, mask: u16, position: &'static str) -> Result<()> {
 
 /// Decoded Day-of-Year format time message (8 bytes).
 ///
+/// Fields are private to prevent construction of invalid states. Use
+/// [`DayFormatTime::from_le_bytes`] to parse from wire format, or
+/// [`DayFormatTime::new`] for programmatic construction with validation.
+///
 /// **Traces:** L3-BCD-003 ← L2-BCD-001, L2-BCD-002 ← L1-BCD-001
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DayFormatTime {
     /// Milliseconds (0–990, resolution 10 ms).
-    pub milliseconds: u16,
+    milliseconds: u16,
     /// Seconds (0–59).
-    pub seconds: u8,
+    seconds: u8,
     /// Minutes (0–59).
-    pub minutes: u8,
+    minutes: u8,
     /// Hours (0–23).
-    pub hours: u8,
+    hours: u8,
     /// Day of year (1–366).
-    pub day_of_year: u16,
+    day_of_year: u16,
+}
+
+#[cfg(feature = "serde")]
+mod day_serde {
+    use super::*;
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    #[derive(Serialize, Deserialize)]
+    struct Fields {
+        milliseconds: u16,
+        seconds: u8,
+        minutes: u8,
+        hours: u8,
+        day_of_year: u16,
+    }
+
+    impl Serialize for DayFormatTime {
+        fn serialize<S: Serializer>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error> {
+            Fields {
+                milliseconds: self.milliseconds,
+                seconds: self.seconds,
+                minutes: self.minutes,
+                hours: self.hours,
+                day_of_year: self.day_of_year,
+            }
+            .serialize(serializer)
+        }
+    }
+
+    impl<'de> Deserialize<'de> for DayFormatTime {
+        fn deserialize<D: Deserializer<'de>>(
+            deserializer: D,
+        ) -> core::result::Result<Self, D::Error> {
+            let f = Fields::deserialize(deserializer)?;
+            DayFormatTime::new(f.day_of_year, f.hours, f.minutes, f.seconds, f.milliseconds)
+                .map_err(serde::de::Error::custom)
+        }
+    }
 }
 
 impl DayFormatTime {
+    /// Construct a validated `DayFormatTime`.
+    ///
+    /// Returns `Err` if any field is out of the valid BCD range.
+    pub fn new(
+        day_of_year: u16,
+        hours: u8,
+        minutes: u8,
+        seconds: u8,
+        milliseconds: u16,
+    ) -> Result<Self> {
+        if day_of_year == 0 || day_of_year > 366 {
+            return Err(TimeError::OutOfRange {
+                field: "day_of_year",
+                value: day_of_year as u32,
+                max: 366,
+            });
+        }
+        if hours > 23 {
+            return Err(TimeError::OutOfRange {
+                field: "hours",
+                value: hours as u32,
+                max: 23,
+            });
+        }
+        if minutes > 59 {
+            return Err(TimeError::OutOfRange {
+                field: "minutes",
+                value: minutes as u32,
+                max: 59,
+            });
+        }
+        if seconds > 59 {
+            return Err(TimeError::OutOfRange {
+                field: "seconds",
+                value: seconds as u32,
+                max: 59,
+            });
+        }
+        if milliseconds > 999 {
+            return Err(TimeError::OutOfRange {
+                field: "milliseconds",
+                value: milliseconds as u32,
+                max: 999,
+            });
+        }
+        Ok(Self {
+            milliseconds,
+            seconds,
+            minutes,
+            hours,
+            day_of_year,
+        })
+    }
+
+    // ── Field accessors ─────────────────────────────────────────────
+
+    /// Milliseconds (0–990, resolution 10 ms).
+    #[inline]
+    pub fn milliseconds(&self) -> u16 {
+        self.milliseconds
+    }
+
+    /// Seconds (0–59).
+    #[inline]
+    pub fn seconds(&self) -> u8 {
+        self.seconds
+    }
+
+    /// Minutes (0–59).
+    #[inline]
+    pub fn minutes(&self) -> u8 {
+        self.minutes
+    }
+
+    /// Hours (0–23).
+    #[inline]
+    pub fn hours(&self) -> u8 {
+        self.hours
+    }
+
+    /// Day of year (1–366).
+    #[inline]
+    pub fn day_of_year(&self) -> u16 {
+        self.day_of_year
+    }
     /// Parse from 8 little-endian bytes (4× u16 words).
     ///
     /// # Wire Format (per RCC 123-20 Figure 5-13)
@@ -241,27 +367,191 @@ impl DayFormatTime {
 
 /// Decoded Day-Month-Year format time message (10 bytes).
 ///
+/// Fields are private to prevent construction of invalid states. Use
+/// [`DmyFormatTime::from_le_bytes`] to parse from wire format, or
+/// [`DmyFormatTime::new`] for programmatic construction with validation.
+///
 /// **Traces:** L3-BCD-004 ← L2-BCD-003, L2-BCD-004 ← L1-BCD-002
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DmyFormatTime {
     /// Milliseconds (0–990, resolution 10 ms).
-    pub milliseconds: u16,
+    milliseconds: u16,
     /// Seconds (0–59).
-    pub seconds: u8,
+    seconds: u8,
     /// Minutes (0–59).
-    pub minutes: u8,
+    minutes: u8,
     /// Hours (0–23).
-    pub hours: u8,
+    hours: u8,
     /// Day of month (1–31).
-    pub day: u8,
+    day: u8,
     /// Month (1–12).
-    pub month: u8,
+    month: u8,
     /// Year (0–9999).
-    pub year: u16,
+    year: u16,
+}
+
+#[cfg(feature = "serde")]
+mod dmy_serde {
+    use super::*;
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    #[derive(Serialize, Deserialize)]
+    struct Fields {
+        milliseconds: u16,
+        seconds: u8,
+        minutes: u8,
+        hours: u8,
+        day: u8,
+        month: u8,
+        year: u16,
+    }
+
+    impl Serialize for DmyFormatTime {
+        fn serialize<S: Serializer>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error> {
+            Fields {
+                milliseconds: self.milliseconds,
+                seconds: self.seconds,
+                minutes: self.minutes,
+                hours: self.hours,
+                day: self.day,
+                month: self.month,
+                year: self.year,
+            }
+            .serialize(serializer)
+        }
+    }
+
+    impl<'de> Deserialize<'de> for DmyFormatTime {
+        fn deserialize<D: Deserializer<'de>>(
+            deserializer: D,
+        ) -> core::result::Result<Self, D::Error> {
+            let f = Fields::deserialize(deserializer)?;
+            DmyFormatTime::new(f.year, f.month, f.day, f.hours, f.minutes, f.seconds, f.milliseconds)
+                .map_err(serde::de::Error::custom)
+        }
+    }
 }
 
 impl DmyFormatTime {
+    /// Construct a validated `DmyFormatTime`.
+    ///
+    /// Returns `Err` if any field is out of the valid BCD range.
+    /// Note: this validates BCD-level ranges (month 1–12, day 1–31) but
+    /// does **not** validate that day fits the month (e.g., Feb 31 is
+    /// accepted here). Use [`to_calendar_time()`](Self::to_calendar_time)
+    /// for full calendar validation.
+    pub fn new(
+        year: u16,
+        month: u8,
+        day: u8,
+        hours: u8,
+        minutes: u8,
+        seconds: u8,
+        milliseconds: u16,
+    ) -> Result<Self> {
+        if year > 9999 {
+            return Err(TimeError::OutOfRange {
+                field: "year",
+                value: year as u32,
+                max: 9999,
+            });
+        }
+        if month == 0 || month > 12 {
+            return Err(TimeError::OutOfRange {
+                field: "month",
+                value: month as u32,
+                max: 12,
+            });
+        }
+        if day == 0 || day > 31 {
+            return Err(TimeError::OutOfRange {
+                field: "day",
+                value: day as u32,
+                max: 31,
+            });
+        }
+        if hours > 23 {
+            return Err(TimeError::OutOfRange {
+                field: "hours",
+                value: hours as u32,
+                max: 23,
+            });
+        }
+        if minutes > 59 {
+            return Err(TimeError::OutOfRange {
+                field: "minutes",
+                value: minutes as u32,
+                max: 59,
+            });
+        }
+        if seconds > 59 {
+            return Err(TimeError::OutOfRange {
+                field: "seconds",
+                value: seconds as u32,
+                max: 59,
+            });
+        }
+        if milliseconds > 999 {
+            return Err(TimeError::OutOfRange {
+                field: "milliseconds",
+                value: milliseconds as u32,
+                max: 999,
+            });
+        }
+        Ok(Self {
+            milliseconds,
+            seconds,
+            minutes,
+            hours,
+            day,
+            month,
+            year,
+        })
+    }
+
+    // ── Field accessors ─────────────────────────────────────────────
+
+    /// Milliseconds (0–990, resolution 10 ms).
+    #[inline]
+    pub fn milliseconds(&self) -> u16 {
+        self.milliseconds
+    }
+
+    /// Seconds (0–59).
+    #[inline]
+    pub fn seconds(&self) -> u8 {
+        self.seconds
+    }
+
+    /// Minutes (0–59).
+    #[inline]
+    pub fn minutes(&self) -> u8 {
+        self.minutes
+    }
+
+    /// Hours (0–23).
+    #[inline]
+    pub fn hours(&self) -> u8 {
+        self.hours
+    }
+
+    /// Day of month (1–31).
+    #[inline]
+    pub fn day(&self) -> u8 {
+        self.day
+    }
+
+    /// Month (1–12).
+    #[inline]
+    pub fn month(&self) -> u8 {
+        self.month
+    }
+
+    /// Year (0–9999).
+    #[inline]
+    pub fn year(&self) -> u16 {
+        self.year
+    }
     /// Parse from 10 little-endian bytes (5× u16 words).
     ///
     /// # Wire Format (per RCC 123-20 Figure 5-14)

@@ -47,11 +47,11 @@ fn day100_123025_340_bytes() -> [u8; 8] {
 fn day_fmt_decode_known() {
     let buf = day100_123025_340_bytes();
     let t = DayFormatTime::from_le_bytes(&buf).unwrap();
-    assert_eq!(t.day_of_year, 100);
-    assert_eq!(t.hours, 12);
-    assert_eq!(t.minutes, 30);
-    assert_eq!(t.seconds, 25);
-    assert_eq!(t.milliseconds, 340);
+    assert_eq!(t.day_of_year(), 100);
+    assert_eq!(t.hours(), 12);
+    assert_eq!(t.minutes(), 30);
+    assert_eq!(t.seconds(), 25);
+    assert_eq!(t.milliseconds(), 340);
 }
 
 #[test]
@@ -63,11 +63,11 @@ fn day_fmt_midnight_day1() {
     let mut buf = [0u8; 8];
     buf[4] = 0x01; // w2 LE low byte: Dn=1
     let t = DayFormatTime::from_le_bytes(&buf).unwrap();
-    assert_eq!(t.day_of_year, 1);
-    assert_eq!(t.hours, 0);
-    assert_eq!(t.minutes, 0);
-    assert_eq!(t.seconds, 0);
-    assert_eq!(t.milliseconds, 0);
+    assert_eq!(t.day_of_year(), 1);
+    assert_eq!(t.hours(), 0);
+    assert_eq!(t.minutes(), 0);
+    assert_eq!(t.seconds(), 0);
+    assert_eq!(t.milliseconds(), 0);
 }
 
 #[test]
@@ -84,11 +84,11 @@ fn day_fmt_max_day() {
     buf[2..4].copy_from_slice(&w1.to_le_bytes());
     buf[4..6].copy_from_slice(&w2.to_le_bytes());
     let t = DayFormatTime::from_le_bytes(&buf).unwrap();
-    assert_eq!(t.day_of_year, 366);
-    assert_eq!(t.hours, 23);
-    assert_eq!(t.minutes, 59);
-    assert_eq!(t.seconds, 59);
-    assert_eq!(t.milliseconds, 990);
+    assert_eq!(t.day_of_year(), 366);
+    assert_eq!(t.hours(), 23);
+    assert_eq!(t.minutes(), 59);
+    assert_eq!(t.seconds(), 59);
+    assert_eq!(t.milliseconds(), 990);
 }
 
 #[test]
@@ -174,13 +174,13 @@ fn dmy_fmt_decode_known() {
     buf[4..6].copy_from_slice(&w2.to_le_bytes());
     buf[6..8].copy_from_slice(&w3.to_le_bytes());
     let t = DmyFormatTime::from_le_bytes(&buf).unwrap();
-    assert_eq!(t.year, 2025);
-    assert_eq!(t.month, 3);
-    assert_eq!(t.day, 15);
-    assert_eq!(t.hours, 8);
-    assert_eq!(t.minutes, 45);
-    assert_eq!(t.seconds, 30);
-    assert_eq!(t.milliseconds, 120);
+    assert_eq!(t.year(), 2025);
+    assert_eq!(t.month(), 3);
+    assert_eq!(t.day(), 15);
+    assert_eq!(t.hours(), 8);
+    assert_eq!(t.minutes(), 45);
+    assert_eq!(t.seconds(), 30);
+    assert_eq!(t.milliseconds(), 120);
 }
 
 #[test]
@@ -230,5 +230,5 @@ fn millisecond_resolution_10ms() {
     buf[0..2].copy_from_slice(&w0.to_le_bytes());
     buf[4] = 0x01; // day=1
     let t = DayFormatTime::from_le_bytes(&buf).unwrap();
-    assert_eq!(t.milliseconds, 250);
+    assert_eq!(t.milliseconds(), 250);
 }
