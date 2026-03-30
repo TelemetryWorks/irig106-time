@@ -132,8 +132,7 @@ mod serde_impl {
                 fields.nanoseconds,
             )
             .map_err(serde::de::Error::custom)?;
-            t.set_year(fields.year)
-                .map_err(serde::de::Error::custom)?;
+            t.set_year(fields.year).map_err(serde::de::Error::custom)?;
             Ok(t)
         }
     }
