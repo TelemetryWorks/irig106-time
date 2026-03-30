@@ -426,8 +426,16 @@ mod dmy_serde {
             deserializer: D,
         ) -> core::result::Result<Self, D::Error> {
             let f = Fields::deserialize(deserializer)?;
-            DmyFormatTime::new(f.year, f.month, f.day, f.hours, f.minutes, f.seconds, f.milliseconds)
-                .map_err(serde::de::Error::custom)
+            DmyFormatTime::new(
+                f.year,
+                f.month,
+                f.day,
+                f.hours,
+                f.minutes,
+                f.seconds,
+                f.milliseconds,
+            )
+            .map_err(serde::de::Error::custom)
         }
     }
 }
