@@ -2,6 +2,12 @@
 
 **Document:** SHARED_TYPES_FOR_IRIG106_TYPES.md
 **Date:** 2026-03-25
+**Status:** ✅ Migrated (P6-01, 2026-09-24). All types below now live in `irig106-types` v0.1.0 and are
+re-exported by `irig106-time`. `SecHdrTimeFormat` and the unit/epoch newtypes (`UnixSeconds`,
+`TaiSeconds`, `TaiUtcOffset`, `NanosDuration`) were migrated as well. Because inherent methods
+cannot be added to foreign types, `Ch4BinaryTime::to_absolute` became the `Ch4BinaryTimeExt`
+trait in `irig106-time`, and byte parsers now return `irig106_types::TypesError`
+(convertible into `TimeError`).
 
 ---
 

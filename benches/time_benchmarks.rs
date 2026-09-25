@@ -204,7 +204,7 @@ fn main() {
     // Use reduced iterations for O(n) scan
     let start = Instant::now();
     for _ in 0..1_000 {
-        black_box(lg.detect_time_jump(black_box(1), black_box(1_000_000_000)));
+        black_box(lg.detect_time_jump(black_box(1), black_box(NanosDuration::from_secs(1))));
     }
     r.push(Bench {
         name: "corr_detect_jumps_3600",
@@ -257,13 +257,13 @@ fn main() {
     }));
     let ptp = irig106_time::network_time::PtpTime::from_le_bytes(&ptp_buf).unwrap();
     r.push(bench("ptp_to_absolute", || {
-        let _ = black_box(black_box(ptp).to_absolute(black_box(37)));
+        let _ = black_box(black_box(ptp).to_absolute(black_box(TaiUtcOffset::new(37))));
     }));
 
     // Leap second table lookup
     let lst = irig106_time::network_time::LeapSecondTable::builtin();
     r.push(bench("leap_table_lookup", || {
-        black_box(lst.offset_at_unix(black_box(1_718_409_600)));
+        black_box(lst.offset_at_unix(black_box(UnixSeconds::new(1_718_409_600))));
     }));
 
     // Full F2 payload parse

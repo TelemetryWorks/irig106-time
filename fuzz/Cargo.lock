@@ -46,7 +46,10 @@ dependencies = [
 
 [[package]]
 name = "irig106-time"
-version = "0.1.0"
+version = "0.7.0"
+dependencies = [
+ "irig106-types",
+]
 
 [[package]]
 name = "irig106-time-fuzz"
@@ -55,6 +58,10 @@ dependencies = [
  "irig106-time",
  "libfuzzer-sys",
 ]
+
+[[package]]
+name = "irig106-types"
+version = "0.1.0"
 
 [[package]]
 name = "jobserver"

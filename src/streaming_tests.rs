@@ -1,10 +1,11 @@
 use super::*;
 use crate::absolute::AbsoluteTime;
 use crate::rtc::Rtc;
+use irig106_types::NanosDuration;
 
 #[test]
 fn new_streaming_correlator_empty() {
-    let sc = StreamingTimeCorrelator::new(10_000_000_000);
+    let sc = StreamingTimeCorrelator::new(NanosDuration::from_secs(10));
     assert!(sc.is_empty());
     assert_eq!(sc.len(), 0);
     assert_eq!(sc.total_evicted(), 0);
@@ -13,7 +14,7 @@ fn new_streaming_correlator_empty() {
 
 #[test]
 fn add_and_correlate_single_ref() {
-    let mut sc = StreamingTimeCorrelator::new(60_000_000_000);
+    let mut sc = StreamingTimeCorrelator::new(NanosDuration::from_secs(60));
     sc.add_reference(
         1,
         Rtc::from_raw(10_000_000),
@@ -28,7 +29,7 @@ fn add_and_correlate_single_ref() {
 
 #[test]
 fn correlate_by_channel() {
-    let mut sc = StreamingTimeCorrelator::new(60_000_000_000);
+    let mut sc = StreamingTimeCorrelator::new(NanosDuration::from_secs(60));
     sc.add_reference(
         1,
         Rtc::from_raw(10_000_000),
@@ -49,14 +50,14 @@ fn correlate_by_channel() {
 
 #[test]
 fn correlate_no_ref_returns_error() {
-    let sc = StreamingTimeCorrelator::new(60_000_000_000);
+    let sc = StreamingTimeCorrelator::new(NanosDuration::from_secs(60));
     assert!(sc.correlate(Rtc::from_raw(10_000_000), None).is_err());
 }
 
 #[test]
 fn eviction_removes_stale_refs() {
     // Window of 10 seconds = 10_000_000_000 ns = 100_000_000 ticks
-    let mut sc = StreamingTimeCorrelator::new(10_000_000_000);
+    let mut sc = StreamingTimeCorrelator::new(NanosDuration::from_secs(10));
 
     // Insert ref at RTC 10M (1 second)
     sc.add_reference(
@@ -79,7 +80,7 @@ fn eviction_removes_stale_refs() {
 
 #[test]
 fn eviction_preserves_recent_refs() {
-    let mut sc = StreamingTimeCorrelator::new(60_000_000_000); // 60 sec window
+    let mut sc = StreamingTimeCorrelator::new(NanosDuration::from_secs(60)); // 60 sec window
 
     // Insert 10 refs, 1 second apart
     for i in 0..10u64 {
@@ -96,7 +97,7 @@ fn eviction_preserves_recent_refs() {
 
 #[test]
 fn multi_channel_eviction() {
-    let mut sc = StreamingTimeCorrelator::new(5_000_000_000); // 5 sec window
+    let mut sc = StreamingTimeCorrelator::new(NanosDuration::from_secs(5)); // 5 sec window
 
     // Channel 1 at RTC 10M
     sc.add_reference(
@@ -124,7 +125,7 @@ fn multi_channel_eviction() {
 
 #[test]
 fn channel_ids_reflects_active() {
-    let mut sc = StreamingTimeCorrelator::new(60_000_000_000);
+    let mut sc = StreamingTimeCorrelator::new(NanosDuration::from_secs(60));
     sc.add_reference(
         5,
         Rtc::from_raw(10_000_000),
@@ -144,7 +145,7 @@ fn channel_ids_reflects_active() {
 
 #[test]
 fn channel_len_per_channel() {
-    let mut sc = StreamingTimeCorrelator::new(60_000_000_000);
+    let mut sc = StreamingTimeCorrelator::new(NanosDuration::from_secs(60));
     sc.add_reference(
         1,
         Rtc::from_raw(10_000_000),
@@ -168,7 +169,7 @@ fn channel_len_per_channel() {
 
 #[test]
 fn latest_rtc_tracks_maximum() {
-    let mut sc = StreamingTimeCorrelator::new(60_000_000_000);
+    let mut sc = StreamingTimeCorrelator::new(NanosDuration::from_secs(60));
     sc.add_reference(
         1,
         Rtc::from_raw(50_000_000),

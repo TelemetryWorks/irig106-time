@@ -318,7 +318,7 @@ Before GPS acquires satellites, the internal clock may be seconds off. When GPS
 locks, absolute time jumps forward while the RTC continues smoothly.
 
 ```rust
-use irig106_time::{Rtc, AbsoluteTime, TimeCorrelator};
+use irig106_time::{AbsoluteTime, NanosDuration, Rtc, TimeCorrelator};
 
 let mut correlator = TimeCorrelator::new();
 
@@ -335,7 +335,7 @@ correlator.add_reference(3, Rtc::from_raw(30_000_000),
     AbsoluteTime::new(50, 14, 0, 7, 0).unwrap());
 
 // Detect jumps with a 1-second threshold:
-let jumps = correlator.detect_time_jump(3, 1_000_000_000);
+let jumps = correlator.detect_time_jump(3, NanosDuration::from_secs(1));
 
 for jump in &jumps {
     let delta_ms = jump.delta_nanos as f64 / 1_000_000.0;
@@ -505,6 +505,9 @@ for when you encounter each one:
 ```rust
 use irig106_time::*;
 use irig106_time::absolute::{Ch4BinaryTime, Ieee1588Time, Ertc};
+// `Ch4BinaryTime`, `Ieee1588Time`, and `Ertc` are defined in `irig106-types`
+// and re-exported here. `to_absolute()` on `Ch4BinaryTime` comes from the
+// `Ch4BinaryTimeExt` trait (included in `irig106_time::*`).
 
 // ── 1. The 48-bit RTC ─────────────────────────────────────────────
 // WHERE: Every packet header, most intra-packet timestamps
@@ -704,7 +707,7 @@ fn process_time_f2_packet(
         }
         NetworkTime::Ptp(ptp) => {
             // PTP: TAI epoch (1970-01-01), must apply leap-second offset
-            let offset = leap_table.offset_at_tai(ptp.seconds);
+            let offset = leap_table.offset_at_tai(ptp.tai_seconds());
             ptp.to_absolute(offset).ok()
         }
     }
@@ -715,6 +718,7 @@ fn process_time_f2_packet(
 
 ```rust
 use irig106_time::network_time::{NtpTime, PtpTime, NTP_UNIX_EPOCH_OFFSET};
+use irig106_time::TaiUtcOffset;
 
 // ── NTP ──────────────────────────────────────────────────────────
 // Epoch: 1900-01-01 00:00:00 UTC
@@ -729,7 +733,7 @@ let nanos = ntp.fraction_as_nanos();             // ~500,000,000
 // Timescale: TAI (no leap seconds — monotonic)
 // Resolution: 1 nanosecond
 let ptp = PtpTime { seconds: 1_735_689_637, nanoseconds: 0 };
-let utc_secs = ptp.to_utc_seconds(37);           // TAI - 37 = UTC
+let utc_secs = ptp.to_utc_seconds(TaiUtcOffset::new(37)); // TAI - 37 = UTC
 // 1_735_689_637 - 37 = 1_735_689_600 = 2025-01-01 00:00:00 UTC
 ```
 
@@ -742,21 +746,22 @@ The crate ships a built-in table covering all 28 leap seconds from 1972 to 2017.
 
 ```rust
 use irig106_time::network_time::{LeapSecondTable, LeapSecondEntry};
+use irig106_time::{TaiSeconds, TaiUtcOffset, UnixSeconds};
 
 // Use the built-in table (28 entries, 1972–2017)
 let table = LeapSecondTable::builtin();
 
 // Look up offset for a known UTC timestamp
-let offset_2024 = table.offset_at_unix(1_718_409_600); // mid-2024
-assert_eq!(offset_2024, 37); // 37 seconds since 2017-01-01
+let offset_2024 = table.offset_at_unix(UnixSeconds::new(1_718_409_600)); // mid-2024
+assert_eq!(offset_2024, TaiUtcOffset::new(37)); // 37 seconds since 2017-01-01
 
-let offset_1995 = table.offset_at_unix(800_000_000);   // ~1995
-assert_eq!(offset_1995, 29);
+let offset_1995 = table.offset_at_unix(UnixSeconds::new(800_000_000)); // ~1995
+assert_eq!(offset_1995.get(), 29);
 
 // For PTP timestamps (which are in TAI), use offset_at_tai
 // This approximates the UTC time first, then looks up the offset
-let tai_offset = table.offset_at_tai(1_735_689_637);
-assert_eq!(tai_offset, 37);
+let tai_offset = table.offset_at_tai(TaiSeconds::new(1_735_689_637));
+assert_eq!(tai_offset.get(), 37);
 ```
 
 ### Adding Future Leap Seconds
@@ -776,7 +781,7 @@ table.add(LeapSecondEntry {
 });
 
 // Now lookups after 2028-07-01 return 38
-assert_eq!(table.offset_at_unix(1_900_000_000), 38);
+assert_eq!(table.offset_at_unix(UnixSeconds::new(1_900_000_000)).get(), 38);
 ```
 
 ---
@@ -939,7 +944,7 @@ fn create_correlator(version: &Irig106Version) -> TimeCorrelator {
         TimeCorrelator::with_ooo_window(None)
     } else {
         // Post-05: 2 second window (100ms buffer + 1s write deadline + margin)
-        TimeCorrelator::with_ooo_window(Some(TimeCorrelator::DEFAULT_OOO_WINDOW_NS))
+        TimeCorrelator::with_ooo_window(Some(TimeCorrelator::DEFAULT_OOO_WINDOW))
     }
 }
 ```
@@ -1094,10 +1099,10 @@ sliding window and automatically evicts stale reference points.
 
 ```rust
 use irig106_time::streaming::StreamingTimeCorrelator;
-use irig106_time::{Rtc, AbsoluteTime};
+use irig106_time::{AbsoluteTime, NanosDuration, Rtc};
 
 // Keep a 60-second window of reference points
-let mut sc = StreamingTimeCorrelator::new(60_000_000_000);
+let mut sc = StreamingTimeCorrelator::new(NanosDuration::from_secs(60));
 
 // As time packets arrive from the UDP stream:
 sc.add_reference(1, Rtc::from_raw(10_000_000),

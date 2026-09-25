@@ -9,33 +9,7 @@
 use crate::absolute::{Ch4BinaryTime, Ertc, Ieee1588Time};
 use crate::error::{Result, TimeError};
 
-/// Time format discriminant derived from Packet Flag bits \[3:2\].
-///
-/// **Traces:** L3-SEC-001
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum SecHdrTimeFormat {
-    /// IRIG 106 Chapter 4 Binary Weighted Time.
-    Ch4,
-    /// IEEE-1588 Precision Time Protocol.
-    Ieee1588,
-    /// Extended Relative Time Counter (64-bit).
-    Ertc,
-    /// Reserved/unknown format.
-    Reserved(u8),
-}
-
-impl SecHdrTimeFormat {
-    /// Decode from Packet Flag bits \[3:2\].
-    pub fn from_packet_flags(flags: u8) -> Self {
-        match (flags >> 2) & 0x03 {
-            0 => SecHdrTimeFormat::Ch4,
-            1 => SecHdrTimeFormat::Ieee1588,
-            2 => SecHdrTimeFormat::Ertc,
-            other => SecHdrTimeFormat::Reserved(other),
-        }
-    }
-}
+pub use irig106_types::SecHdrTimeFormat;
 
 /// Parsed secondary header time value.
 ///

@@ -138,7 +138,7 @@ fn detect_no_jump() {
     c.add_reference(1, rtc1, abs(1, 12, 0, 0, 0));
     c.add_reference(1, rtc2, abs(1, 12, 0, 1, 0)); // exactly 1 sec later
 
-    let jumps = c.detect_time_jump(1, 1_000_000); // 1ms threshold
+    let jumps = c.detect_time_jump(1, NanosDuration::from_millis(1)); // 1ms threshold
     assert!(jumps.is_empty());
 }
 
@@ -150,7 +150,7 @@ fn detect_gps_lock_jump() {
     // 1 second later by RTC, but GPS corrects to 12:00:05 (5 second jump)
     c.add_reference(1, Rtc::from_raw(20_000_000), abs(1, 12, 0, 5, 0));
 
-    let jumps = c.detect_time_jump(1, 1_000_000_000); // 1 sec threshold
+    let jumps = c.detect_time_jump(1, NanosDuration::from_secs(1)); // 1 sec threshold
     assert_eq!(jumps.len(), 1);
     assert_eq!(jumps[0].channel_id, 1);
     // Expected: 12:00:01, Actual: 12:00:05 → delta = +4 sec = +4_000_000_000 ns
@@ -169,10 +169,10 @@ fn detect_jump_threshold() {
     );
 
     // With 1ms threshold, 500µs drift should NOT be flagged
-    let jumps = c.detect_time_jump(1, 1_000_000);
+    let jumps = c.detect_time_jump(1, NanosDuration::from_millis(1));
     assert!(jumps.is_empty());
 
     // With 100µs threshold, it SHOULD be flagged
-    let jumps = c.detect_time_jump(1, 100_000);
+    let jumps = c.detect_time_jump(1, NanosDuration::from_micros(100));
     assert_eq!(jumps.len(), 1);
 }

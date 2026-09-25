@@ -329,7 +329,15 @@ version = "0.7.0"
 dependencies = [
  "chrono",
  "criterion",
+ "irig106-types",
  "proptest",
+ "serde",
+]
+
+[[package]]
+name = "irig106-types"
+version = "0.1.0"
+dependencies = [
  "serde",
 ]
 

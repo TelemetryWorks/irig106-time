@@ -11,6 +11,7 @@
 //! | `display_no_reference_point` | `Display` for `NoReferencePoint` | L3-ERR-002 |
 //! | `display_buffer_too_short` | `Display` for `BufferTooShort` | L3-ERR-002 |
 //! | `error_is_clone_eq` | Derive traits on `TimeError` | L3-ERR-001 |
+//! | `from_types_error_maps_to_matching_variants` | `irig106-types` errors lift into `TimeError` | P6-01 |
 
 use super::*;
 use alloc::format;
@@ -85,4 +86,33 @@ fn error_is_clone_eq() {
     let err = TimeError::NoReferencePoint;
     let cloned = err.clone();
     assert_eq!(err, cloned);
+}
+
+#[test]
+fn from_types_error_maps_to_matching_variants() {
+    let short = irig106_types::TypesError::BufferTooShort {
+        expected: 8,
+        actual: 3,
+    };
+    assert_eq!(
+        TimeError::from(short),
+        TimeError::BufferTooShort {
+            expected: 8,
+            actual: 3
+        }
+    );
+
+    let range = irig106_types::TypesError::OutOfRange {
+        field: "ieee1588_nanoseconds",
+        value: 1_000_000_000,
+        max: 999_999_999,
+    };
+    assert_eq!(
+        TimeError::from(range),
+        TimeError::OutOfRange {
+            field: "ieee1588_nanoseconds",
+            value: 1_000_000_000,
+            max: 999_999_999
+        }
+    );
 }

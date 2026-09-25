@@ -5,6 +5,9 @@ version = 4
 [[package]]
 name = "irig106-time"
 version = "0.7.0"
+dependencies = [
+ "irig106-types",
+]
 
 [[package]]
 name = "irig106-time-cli"
@@ -13,6 +16,10 @@ dependencies = [
  "irig106-time",
  "memmap2",
 ]
+
+[[package]]
+name = "irig106-types"
+version = "0.1.0"
 
 [[package]]
 name = "libc"

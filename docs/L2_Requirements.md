@@ -48,7 +48,7 @@ parent L1 requirement.
 | L2-ABS-001 | `AbsoluteTime` shall represent a point in time with nanosecond precision using day-of-year (1–366), hours (0–23), minutes (0–59), seconds (0–59), and nanoseconds (0–999_999_999). It may optionally carry a year annotation (0–9999) as metadata; year does not imply calendar validation. | L1-ABS-001 |
 | L2-ABS-002 | `CalendarTime` shall represent a calendar-validated point in time with year (0–9999), month (1–12), day-of-month (1–N, leap-aware), and all `AbsoluteTime` fields. Construction shall validate that day-of-month does not exceed the number of days in the given month/year, and that day-of-year is consistent with the calendar date. `CalendarTime` wraps `AbsoluteTime` and provides transparent access to its fields. | L1-ABS-001 |
 | L2-ABS-003 | `Ch4BinaryTime` shall represent the Chapter 4 Binary Weighted Time with fields: `high_order: u16`, `low_order: u16`, `microseconds: u16`. | L1-ABS-002 |
-| L2-ABS-004 | `Ch4BinaryTime::to_absolute(&self) -> AbsoluteTime` shall decode the BWT fields into day, hour, minute, second, and microsecond. | L1-ABS-002 |
+| L2-ABS-004 | `Ch4BinaryTimeExt::to_absolute(&self) -> Result<AbsoluteTime>` (extension trait on `irig106_types::Ch4BinaryTime`) shall decode the BWT fields into day, hour, minute, second, and microsecond. | L1-ABS-002 |
 | L2-ABS-005 | `Ieee1588Time` shall represent IEEE-1588 time with fields: `nanoseconds: u32`, `seconds: u32`. | L1-ABS-003 |
 | L2-ABS-006 | `Ieee1588Time::to_nanos_since_epoch(&self) -> u64` shall return `seconds * 1_000_000_000 + nanoseconds`. | L1-ABS-003 |
 | L2-ABS-007 | `Ertc` shall represent the 64-bit Extended RTC as a newtype wrapping `u64` with 100 ns resolution. | L1-ABS-004 |
@@ -111,7 +111,7 @@ parent L1 requirement.
 | L2-COR-003 | `TimeCorrelator::correlate(&self, rtc: Rtc, channel_id: Option<u16>) -> Result<AbsoluteTime, TimeError>` shall find the nearest reference point (by RTC) and interpolate. | L1-COR-002 |
 | L2-COR-004 | Interpolation shall compute: `ref_time + ((target_rtc - ref_rtc) * 100 ns)` using the nearest reference point. | L1-COR-002 |
 | L2-COR-005 | When `channel_id` is `Some(id)`, correlation shall use only reference points from that channel. | L1-COR-003 |
-| L2-COR-006 | `TimeCorrelator::detect_time_jump(&self, channel_id: u16, threshold_ns: u64) -> Vec<TimeJump>` shall identify discontinuities where consecutive reference points on the same channel differ by more than the threshold in absolute time vs. expected RTC-based progression. | L1-COR-004 |
+| L2-COR-006 | `TimeCorrelator::detect_time_jump(&self, channel_id: u16, threshold: NanosDuration) -> Vec<TimeJump>` shall identify discontinuities where consecutive reference points on the same channel differ by more than the threshold in absolute time vs. expected RTC-based progression. | L1-COR-004 |
 | L2-COR-007 | `TimeCorrelator` shall return `Err(TimeError::NoReferencePoint)` when correlation is attempted with no reference points (or none for the requested channel). | L1-COR-001, L1-ERR-001 |
 
 ### 3.8 Error Handling
@@ -162,7 +162,7 @@ parent L1 requirement.
 |----|-------------|--------|
 | L2-PTP-001 | `PtpTime::from_le_bytes(&[u8]) -> Result<Self>` shall parse 10 bytes: 6-byte (48-bit) seconds and 4-byte nanoseconds. | L1-PTP-001 |
 | L2-PTP-002 | `PtpTime::from_le_bytes` shall return `Err(OutOfRange)` if nanoseconds >= 1,000,000,000. | L1-PTP-003 |
-| L2-PTP-003 | `PtpTime::to_utc_seconds(&self, tai_utc_offset: i32) -> u64` shall subtract the TAI-UTC offset. | L1-PTP-004 |
+| L2-PTP-003 | `PtpTime::to_utc_seconds(&self, offset: TaiUtcOffset) -> u64` shall subtract the TAI-UTC offset. | L1-PTP-004 |
 | L2-PTP-004 | `PtpTime::to_absolute(&self, tai_utc_offset: i32) -> Result<AbsoluteTime>` shall convert to year/doy/time-of-day. | L1-PTP-001..004 |
 | L2-PTP-005 | `PtpTime::to_nanos_since_tai_epoch(&self) -> u128` shall return total nanoseconds since the TAI epoch. | L1-PTP-002 |
 
@@ -183,9 +183,9 @@ parent L1 requirement.
 | ID | Requirement | Traces |
 |----|-------------|--------|
 | L2-TAI-001 | `LeapSecondTable::builtin()` shall return a table with all leap seconds from 1972 through the crate release date. | L1-TAI-002 |
-| L2-TAI-002 | `LeapSecondTable::offset_at_unix(unix_seconds) -> i32` shall return the TAI-UTC offset effective at the given UTC time. | L1-TAI-001, L1-TAI-003 |
+| L2-TAI-002 | `LeapSecondTable::offset_at_unix(time: UnixSeconds) -> TaiUtcOffset` shall return the TAI-UTC offset effective at the given UTC time. | L1-TAI-001, L1-TAI-003 |
 | L2-TAI-003 | `LeapSecondTable::add(&mut self, entry)` shall allow runtime insertion of new entries. | L1-TAI-003 |
-| L2-TAI-004 | `LeapSecondTable::offset_at_tai(tai_seconds) -> i32` shall approximate the offset for a TAI timestamp. | L1-TAI-001 |
+| L2-TAI-004 | `LeapSecondTable::offset_at_tai(time: TaiSeconds) -> TaiUtcOffset` shall approximate the offset for a TAI timestamp. | L1-TAI-001 |
 
 ---
 

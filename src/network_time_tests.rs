@@ -157,7 +157,7 @@ fn ptp_to_utc_seconds() {
         nanoseconds: 0,
     };
     // TAI-UTC offset = 37 → UTC = TAI - 37
-    let utc = ptp.to_utc_seconds(37);
+    let utc = ptp.to_utc_seconds(TaiUtcOffset::new(37));
     assert_eq!(utc, 1_000_000_000);
 }
 
@@ -170,7 +170,7 @@ fn ptp_to_absolute() {
         seconds: 1_735_689_637,
         nanoseconds: 0,
     };
-    let abs = ptp.to_absolute(37).unwrap();
+    let abs = ptp.to_absolute(TaiUtcOffset::new(37)).unwrap();
     assert_eq!(abs.year(), Some(2025));
     assert_eq!(abs.day_of_year(), 1);
     assert_eq!(abs.hours(), 0);
@@ -232,16 +232,16 @@ fn leap_second_table_builtin() {
 fn leap_second_table_lookup_2024() {
     let table = LeapSecondTable::builtin();
     // 2024-06-15 00:00:00 UTC = approx 1_718_409_600
-    let offset = table.offset_at_unix(1_718_409_600);
-    assert_eq!(offset, 37);
+    let offset = table.offset_at_unix(UnixSeconds::new(1_718_409_600));
+    assert_eq!(offset.get(), 37);
 }
 
 #[test]
 fn leap_second_table_lookup_1980() {
     let table = LeapSecondTable::builtin();
     // 1980-06-01 = approx 328_665_600
-    let offset = table.offset_at_unix(328_665_600);
-    assert_eq!(offset, 19);
+    let offset = table.offset_at_unix(UnixSeconds::new(328_665_600));
+    assert_eq!(offset.get(), 19);
 }
 
 #[test]
@@ -252,5 +252,8 @@ fn leap_second_table_custom() {
         tai_utc_offset: 38,
     });
     assert_eq!(table.len(), 1);
-    assert_eq!(table.offset_at_unix(2_500_000_000), 38);
+    assert_eq!(
+        table.offset_at_unix(UnixSeconds::new(2_500_000_000)).get(),
+        38
+    );
 }

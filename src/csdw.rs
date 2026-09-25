@@ -6,100 +6,21 @@
 //! |-------------|-------------|
 //! | L3-CSDW-001..010 | CSDW parsing and enum definitions |
 
-/// Time source applied to the recorder.
+pub use irig106_types::{DateFormat, TimeFormat, TimeSource};
+
+/// Decode a time source with version-specific mapping.
 ///
-/// **Traces:** L3-CSDW-008 ← L2-CSDW-003 ← L1-CSDW-002
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum TimeSource {
-    /// Internal time source (0x0).
-    Internal,
-    /// External time source (0x1).
-    External,
-    /// Internal RTC (0x2).
-    InternalRtc,
-    /// GPS time (0x3).
-    Gps,
-    /// No time source (0xF).
-    None,
-    /// Reserved or unrecognized value.
-    Reserved(u8),
-}
-
-impl TimeSource {
-    fn from_raw(val: u8) -> Self {
-        match val {
-            0 => TimeSource::Internal,
-            1 => TimeSource::External,
-            2 => TimeSource::InternalRtc,
-            3 => TimeSource::Gps,
-            0xF => TimeSource::None,
-            other => TimeSource::Reserved(other),
-        }
+/// In IRIG 106-04, value 3 was "None" (no time source). Starting with
+/// 106-05, value 3 was reassigned to "GPS". For pre-07 files where we
+/// cannot distinguish 04 from 05, value 3 is mapped to `Reserved(3)`
+/// to signal ambiguity.
+fn time_source_versioned(val: u8, version: &crate::version::Irig106Version) -> TimeSource {
+    if val == 3 && !version.has_gps_time_source() {
+        // Pre-07: ambiguous — could be "None" (04) or "GPS" (05)
+        TimeSource::Reserved(3)
+    } else {
+        TimeSource::from_raw(val)
     }
-
-    /// Decode with version-specific mapping.
-    ///
-    /// In IRIG 106-04, value 3 was "None" (no time source). Starting with
-    /// 106-05, value 3 was reassigned to "GPS". For pre-07 files where we
-    /// cannot distinguish 04 from 05, value 3 is mapped to `Reserved(3)`
-    /// to signal ambiguity.
-    fn from_raw_versioned(val: u8, version: &crate::version::Irig106Version) -> Self {
-        if val == 3 && !version.has_gps_time_source() {
-            // Pre-07: ambiguous — could be "None" (04) or "GPS" (05)
-            TimeSource::Reserved(3)
-        } else {
-            Self::from_raw(val)
-        }
-    }
-}
-
-/// Format of the external time source.
-///
-/// **Traces:** L3-CSDW-009 ← L2-CSDW-005 ← L1-CSDW-003
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum TimeFormat {
-    /// IRIG-B (0x0).
-    IrigB,
-    /// IRIG-A (0x1).
-    IrigA,
-    /// IRIG-G (0x2).
-    IrigG,
-    /// Internal RTC (0x3).
-    Rtc,
-    /// UTC from GPS (0x4).
-    Utc,
-    /// GPS time (0x5).
-    Gps,
-    /// Reserved or unrecognized value.
-    Reserved(u8),
-}
-
-impl TimeFormat {
-    fn from_raw(val: u8) -> Self {
-        match val {
-            0 => TimeFormat::IrigB,
-            1 => TimeFormat::IrigA,
-            2 => TimeFormat::IrigG,
-            3 => TimeFormat::Rtc,
-            4 => TimeFormat::Utc,
-            5 => TimeFormat::Gps,
-            other => TimeFormat::Reserved(other),
-        }
-    }
-}
-
-/// Date representation format in the time message.
-///
-/// **Traces:** L3-CSDW-010 ← L2-CSDW-007 ← L1-CSDW-005
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum DateFormat {
-    /// Day-of-year format (bit 9 = 0).
-    DayOfYear,
-    /// Day-month-year format (bit 9 = 1).
-    DayMonthYear,
 }
 
 /// Parsed Time Data Format 1 (0x11) Channel-Specific Data Word.
@@ -188,7 +109,7 @@ impl TimeF1Csdw {
     /// **Traces:** P2-01, P2-04
     #[inline]
     pub fn time_source_versioned(self, version: &crate::version::Irig106Version) -> TimeSource {
-        TimeSource::from_raw_versioned((self.0 & 0x0F) as u8, version)
+        time_source_versioned((self.0 & 0x0F) as u8, version)
     }
 }
 

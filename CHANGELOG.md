@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### ⚠️ BREAKING CHANGES
+
+- **Shared types moved to `irig106-types`** (P6-01) — `Rtc`, `Ertc`, `Ch4BinaryTime`, `Ieee1588Time`, `TimeSource`, `TimeFormat`, `DateFormat`, and `SecHdrTimeFormat` are now defined in the new [`irig106-types`](https://github.com/TelemetryWorks/irig106-types) crate and re-exported from their existing `irig106_time` paths, so imports keep working.
+
+  **Migration guide:**
+  - `Ch4BinaryTime::to_absolute()` is now provided by the `Ch4BinaryTimeExt` trait. `use irig106_time::*;` or `use irig106_time::Ch4BinaryTimeExt;` brings it into scope.
+  - `Ieee1588Time::from_le_bytes`, `Ertc::from_le_bytes`, and `Ch4BinaryTime::from_secondary_bytes` / `from_intra_packet_bytes` now return `irig106_types::TypesError`. `TimeError` implements `From<TypesError>`, so `?` inside functions returning `irig106_time::Result` is unchanged.
+
+- **Unit and epoch newtypes replace raw integers** (P6-01, team review #3) — `UnixSeconds`, `TaiSeconds`, `TaiUtcOffset`, and `NanosDuration` (from `irig106-types`, re-exported at the crate root).
+
+  | Before | After |
+  |--------|-------|
+  | `TimeCorrelator::with_ooo_window(Option<u64>)` | `with_ooo_window(Option<NanosDuration>)` |
+  | `detect_time_jump(ch, 1_000_000_000)` | `detect_time_jump(ch, NanosDuration::from_secs(1))` |
+  | `StreamingTimeCorrelator::new(60_000_000_000)` | `StreamingTimeCorrelator::new(NanosDuration::from_secs(60))` |
+  | `PtpTime::to_utc_seconds(37)` / `to_absolute(37)` | `to_utc_seconds(TaiUtcOffset::new(37))` / `to_absolute(TaiUtcOffset::new(37))` |
+  | `LeapSecondTable::offset_at_unix(u64) -> i32` | `offset_at_unix(UnixSeconds) -> TaiUtcOffset` |
+  | `LeapSecondTable::offset_at_tai(u64) -> i32` | `offset_at_tai(TaiSeconds) -> TaiUtcOffset` |
+  | `LeapSecondTable::offset_for_f1(..) -> i32` | `offset_for_f1(..) -> TaiUtcOffset` |
+  | `LeapSecondTable::is_near_leap_second(u64, u64)` | `is_near_leap_second(UnixSeconds, u64)` |
+  | `DEFAULT_TAI_UTC_OFFSET: i32` | `DEFAULT_TAI_UTC_OFFSET: TaiUtcOffset` |
+
+  `offset_at_*` now return `TaiUtcOffset` so they compose directly with `to_utc_seconds` / `to_absolute`; use `.get()` for the raw `i32`.
+
+### Added
+
+- `Ch4BinaryTimeExt` trait (see above).
+- `PtpTime::tai_seconds() -> TaiSeconds`.
+- `TimeCorrelator::DEFAULT_OOO_WINDOW: NanosDuration` (`DEFAULT_OOO_WINDOW_NS` is kept for comparison with `ooo_window_ns()`).
+- `TimeError::Types(TypesError)` for `irig106-types` errors without a more specific equivalent.
+- `Ertc::from_raw` and public `TimeSource::from_raw` / `TimeFormat::from_raw` (via `irig106-types`).
+
+### Fixed
+
+- Clippy `collapsible_match` in `AbsoluteTime::sub_nanos_year_rollover` (new lint in current stable).
+
 ## [v0.7.0](https://github.com/TelemetryWorks/irig106-time/releases/tag/v0.7.0) - 2026-03-29
 
 ### ⚠️ BREAKING CHANGES

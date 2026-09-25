@@ -34,12 +34,6 @@
 //! | `add_nanos_carry_to_days` | Carry to next day | L3-ABS-004 |
 //! | `total_nanos_of_day_midnight` | Midnight = 0 ns | L3-ABS-005 |
 //! | `total_nanos_of_day_noon` | Noon = 12h in ns | L3-ABS-005 |
-//! | `ieee1588_from_le_bytes` | Parse IEEE-1588 from buffer | L3-1588-002 |
-//! | `ieee1588_nanos_overflow_rejected` | nanos >= 1B rejected | L3-1588-004 |
-//! | `ieee1588_to_nanos_since_epoch` | Conversion to total ns | L3-1588-003 |
-//! | `ertc_from_le_bytes` | Parse ERTC from buffer | L3-ERTC-002 |
-//! | `ertc_to_nanos` | Conversion to ns (u128) | L3-ERTC-003 |
-//! | `ertc_max_no_overflow` | MAX u64 doesn't overflow u128 | L3-ERTC-003 |
 
 use super::*;
 
@@ -276,52 +270,4 @@ fn total_nanos_of_day_midnight() {
 fn total_nanos_of_day_noon() {
     let t = AbsoluteTime::new(1, 12, 0, 0, 0).unwrap();
     assert_eq!(t.total_nanos_of_day(), 12 * 3600 * 1_000_000_000);
-}
-
-#[test]
-fn ieee1588_from_le_bytes() {
-    // 500_000_000 ns = 0x1DCD_6500, 1000 seconds = 0x0000_03E8
-    let buf: [u8; 8] = [0x00, 0x65, 0xCD, 0x1D, 0xE8, 0x03, 0x00, 0x00];
-    let t = Ieee1588Time::from_le_bytes(&buf).unwrap();
-    assert_eq!(t.nanoseconds, 500_000_000);
-    assert_eq!(t.seconds, 1000);
-}
-
-#[test]
-fn ieee1588_nanos_overflow_rejected() {
-    // nanoseconds = 1_000_000_000 (too large)
-    let buf: [u8; 8] = [0x00, 0xCA, 0x9A, 0x3B, 0x00, 0x00, 0x00, 0x00];
-    assert!(Ieee1588Time::from_le_bytes(&buf).is_err());
-}
-
-#[test]
-fn ieee1588_to_nanos_since_epoch() {
-    let t = Ieee1588Time {
-        nanoseconds: 500_000_000,
-        seconds: 10,
-    };
-    assert_eq!(t.to_nanos_since_epoch(), 10_500_000_000);
-}
-
-#[test]
-fn ertc_from_le_bytes() {
-    let buf: [u8; 8] = [0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-    let e = Ertc::from_le_bytes(&buf).unwrap();
-    assert_eq!(e.as_raw(), 1);
-}
-
-#[test]
-fn ertc_to_nanos() {
-    let e = Ertc::from_le_bytes(&[10, 0, 0, 0, 0, 0, 0, 0]).unwrap();
-    assert_eq!(e.to_nanos(), 1_000); // 10 * 100
-}
-
-#[test]
-fn ertc_max_no_overflow() {
-    let buf = [0xFF; 8];
-    let e = Ertc::from_le_bytes(&buf).unwrap();
-    let nanos = e.to_nanos();
-    assert!(nanos > 0);
-    // u64::MAX * 100 fits in u128
-    assert_eq!(nanos, (u64::MAX as u128) * 100);
 }

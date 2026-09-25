@@ -33,6 +33,7 @@ use alloc::vec::Vec;
 use crate::absolute::AbsoluteTime;
 use crate::error::{Result, TimeError};
 use crate::rtc::Rtc;
+use irig106_types::NanosDuration;
 
 /// A reference point pairing an RTC value with an absolute time on a channel.
 ///
@@ -122,16 +123,22 @@ impl TimeCorrelator {
     /// (100 ms buffer + 1 sec write deadline), so 2 seconds is a safe default.
     ///
     /// **Traces:** P2-02
-    pub fn with_ooo_window(ooo_window_ns: Option<u64>) -> Self {
+    pub fn with_ooo_window(window: Option<NanosDuration>) -> Self {
         Self {
             references: Vec::new(),
             channel_index: BTreeMap::new(),
-            ooo_window_ns,
+            ooo_window_ns: window.map(NanosDuration::get),
         }
     }
 
+    /// Default out-of-order window for post-105 files: 2 seconds.
+    pub const DEFAULT_OOO_WINDOW: NanosDuration = NanosDuration::from_secs(2);
+
     /// Default out-of-order window for post-105 files: 2 seconds in nanoseconds.
-    pub const DEFAULT_OOO_WINDOW_NS: u64 = 2_000_000_000;
+    ///
+    /// Raw-nanosecond form of [`Self::DEFAULT_OOO_WINDOW`], comparable with
+    /// [`Self::ooo_window_ns`].
+    pub const DEFAULT_OOO_WINDOW_NS: u64 = Self::DEFAULT_OOO_WINDOW.get();
 
     /// Number of reference points currently stored.
     pub fn len(&self) -> usize {
@@ -186,7 +193,7 @@ impl TimeCorrelator {
         let abs_time = match network_time {
             crate::network_time::NetworkTime::Ntp(ntp) => ntp.to_absolute()?,
             crate::network_time::NetworkTime::Ptp(ptp) => {
-                let utc_secs = ptp.to_utc_seconds(leap_table.offset_at_tai(ptp.seconds));
+                let utc_secs = ptp.to_utc_seconds(leap_table.offset_at_tai(ptp.tai_seconds()));
                 let (year, doy, hour, minute, second) =
                     crate::network_time::unix_seconds_to_ymd_pub(utc_secs);
                 AbsoluteTime::new(doy, hour, minute, second, ptp.nanoseconds)?
@@ -303,7 +310,8 @@ impl TimeCorrelator {
     /// of reference points on this channel (no cross-channel filtering).
     ///
     /// **Traces:** L3-COR-007 ← L2-COR-006, P4-02
-    pub fn detect_time_jump(&self, channel_id: u16, threshold_ns: u64) -> Vec<TimeJump> {
+    pub fn detect_time_jump(&self, channel_id: u16, threshold: NanosDuration) -> Vec<TimeJump> {
+        let threshold_ns = threshold.get();
         let ch_refs = match self.channel_index.get(&channel_id) {
             Some(refs) => refs,
             None => return Vec::new(),

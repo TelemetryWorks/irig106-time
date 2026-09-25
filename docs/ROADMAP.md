@@ -164,7 +164,7 @@ integration feed into Phase 7 (P7-01).
 
 | ID | Item | Priority | Effort | Depends On |
 |----|------|----------|--------|------------|
-| P6-01 | **Migrate shared types to `irig106-types`** | High | 2 days | — |
+| P6-01 | **Migrate shared types to `irig106-types`** | High | 2 days | — | ✅ Done — `irig106-types` v0.1.0; all 7 call sites migrated to newtypes. |
 | P6-02 | **Wire `irig106-core`** | High | 1 day | P6-01 |
 | P6-03 | **Wire `irig106-ch10-reader`** | High | 2 days | P6-02 |
 | P6-04 | **Wire `irig106-decode`** | High | 1 day | P6-02 |
@@ -365,7 +365,7 @@ No breaking changes without major version bump after this release.
 | **0.4.0** | Phase 2 | Version detection, version-aware CSDW, OOO window, RTC reset detection, `to_le_bytes()` encoding | Released |
 | **0.5.0** | Phase 4 | Channel-indexed O(log n) correlation, BCD LUT, criterion benchmarks, serde, sub_nanos year fix | Released |
 | **0.6.0** | Phase 5 | Streaming correlator, Ch11 awareness, quality metrics, recording events, chrono interop, F1 leap seconds | Released |
-| **0.7.0** | Pre-1.0 | AbsoluteTime u64 restructure (P4-04), MSRV 1.87→1.60 (P6-08), WASM CI (P6-06), UDP docs (P5-03), API audit (Hash/Copy on 25+ types) | Current |
-| **0.8.0** | Phase 6 | Ecosystem wiring: irig106-types migration (incl. epoch/duration newtypes), irig106-core/decode/reader integration, unwrap() audit | Next |
+| **0.7.0** | Pre-1.0 | AbsoluteTime u64 restructure (P4-04), MSRV 1.87→1.60 (P6-08), WASM CI (P6-06), UDP docs (P5-03), API audit (Hash/Copy on 25+ types) | Released |
+| **0.8.0** | Phase 6 | Ecosystem wiring: irig106-types migration (incl. epoch/duration newtypes), irig106-core/decode/reader integration, unwrap() audit | In progress (P6-01 done) |
 | **0.9.0** | Phase 7 | Validation: real-file testing, fuzz/benchmark on hardware, requirement trace validation, security analysis (SonarQube, cargo-audit, coverage), cyber security report | Planned |
 | **1.0.0** | Phase 8 | Stable API: complete rustdoc with architecture diagrams, VCRM with zero gaps, IRIG 106 primer, semver freeze | Planned |

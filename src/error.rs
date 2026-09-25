@@ -64,6 +64,29 @@ pub enum TimeError {
         /// Number of bytes actually available.
         actual: usize,
     },
+
+    /// An `irig106-types` error with no more specific `TimeError` equivalent.
+    ///
+    /// `BufferTooShort` and `OutOfRange` from `irig106-types` are mapped to
+    /// the matching `TimeError` variants; this carries anything else.
+    Types(irig106_types::TypesError),
+}
+
+/// Lift errors from `irig106-types` constructors (e.g.,
+/// [`Ieee1588Time::from_le_bytes`](irig106_types::Ieee1588Time::from_le_bytes))
+/// into [`TimeError`] so they compose with `?`.
+impl From<irig106_types::TypesError> for TimeError {
+    fn from(e: irig106_types::TypesError) -> Self {
+        match e {
+            irig106_types::TypesError::BufferTooShort { expected, actual } => {
+                TimeError::BufferTooShort { expected, actual }
+            }
+            irig106_types::TypesError::OutOfRange { field, value, max } => {
+                TimeError::OutOfRange { field, value, max }
+            }
+            other => TimeError::Types(other),
+        }
+    }
 }
 
 /// **Traces:** L3-ERR-002 ← L2-ERR-003 ← L1-ERR-001
@@ -91,6 +114,7 @@ impl fmt::Display for TimeError {
             TimeError::BufferTooShort { expected, actual } => {
                 write!(f, "buffer too short: need {expected} bytes, got {actual}")
             }
+            TimeError::Types(e) => fmt::Display::fmt(e, f),
         }
     }
 }

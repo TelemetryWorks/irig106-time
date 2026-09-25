@@ -581,7 +581,9 @@ fn cmd_summary(mmap: &[u8], filename: &str) {
     let all_channels: Vec<u16> = scanner.time_channels.keys().cloned().collect();
     let mut any_jumps = false;
     for ch in &all_channels {
-        let jumps = scanner.correlator.detect_time_jump(*ch, 1_000_000_000); // 1s threshold
+        let jumps = scanner
+            .correlator
+            .detect_time_jump(*ch, NanosDuration::from_secs(1));
         if !jumps.is_empty() {
             if !any_jumps {
                 println!("Time Jumps Detected (threshold: 1 second)");
@@ -700,7 +702,9 @@ fn cmd_jumps(mmap: &[u8], threshold_ms: u64) {
     println!("{}", "═".repeat(70));
 
     for ch in &channels {
-        let jumps = scanner.correlator.detect_time_jump(*ch, threshold_ns);
+        let jumps = scanner
+            .correlator
+            .detect_time_jump(*ch, NanosDuration::new(threshold_ns));
         if !jumps.is_empty() {
             println!();
             println!("Channel {} — {} jump(s):", ch, jumps.len());

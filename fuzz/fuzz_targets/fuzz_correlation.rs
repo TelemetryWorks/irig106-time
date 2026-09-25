@@ -1,6 +1,6 @@
 #![no_main]
 use libfuzzer_sys::fuzz_target;
-use irig106_time::{AbsoluteTime, Rtc, TimeCorrelator};
+use irig106_time::{AbsoluteTime, NanosDuration, Rtc, TimeCorrelator};
 
 fuzz_target!(|data: &[u8]| {
     // Need at least 16 bytes to construct a reference point + target
@@ -42,6 +42,6 @@ fuzz_target!(|data: &[u8]| {
     }
 
     // Jump detection must never panic
-    let _ = correlator.detect_time_jump(0, 1_000_000);
-    let _ = correlator.detect_time_jump(1, 0); // zero threshold
+    let _ = correlator.detect_time_jump(0, NanosDuration::from_millis(1));
+    let _ = correlator.detect_time_jump(1, NanosDuration::ZERO); // zero threshold
 });

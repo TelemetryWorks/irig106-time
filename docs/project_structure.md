@@ -19,7 +19,7 @@ irig106-time/
 |   |-- error_tests.rs                 # 7 unit tests
 |   |-- rtc.rs                         # Rtc newtype (48-bit, 10 MHz)
 |   |-- rtc_tests.rs                   # 18 unit tests
-|   |-- absolute.rs                    # AbsoluteTime, Ch4BinaryTime, Ieee1588Time, Ertc
+|   |-- absolute.rs                    # AbsoluteTime, CalendarTime, Ch4BinaryTimeExt (+ re-exports from irig106-types)
 |   |-- absolute_tests.rs              # 23 unit tests
 |   |-- csdw.rs                        # TimeF1Csdw, TimeSource, TimeFormat, DateFormat
 |   |-- csdw_tests.rs                  # 14 unit tests

@@ -11,11 +11,12 @@ keywords = ["irig106", "telemetry", "time", "chapter10", "flight-test"]
 
 [features]
 default = ["std"]
-std = []
-serde = ["dep:serde"]
+std = ["irig106-types/std"]
+serde = ["dep:serde", "irig106-types/serde"]
 chrono = ["dep:chrono"]
 
 [dependencies]
+irig106-types = { version = "0.1", path = "../irig106-types", default-features = false }
 serde = { version = "1", features = ["derive"], optional = true }
 chrono = { version = "0.4", default-features = false, optional = true }
 

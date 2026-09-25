@@ -27,6 +27,7 @@ use alloc::vec::Vec;
 use crate::absolute::AbsoluteTime;
 use crate::error::{Result, TimeError};
 use crate::rtc::Rtc;
+use irig106_types::NanosDuration;
 
 /// A streaming correlator that maintains a bounded sliding window of
 /// reference points for live UDP/network telemetry processing.
@@ -38,10 +39,10 @@ use crate::rtc::Rtc;
 ///
 /// ```
 /// use irig106_time::streaming::StreamingTimeCorrelator;
-/// use irig106_time::{Rtc, AbsoluteTime};
+/// use irig106_time::{AbsoluteTime, NanosDuration, Rtc};
 ///
 /// // Keep a 60-second window
-/// let mut sc = StreamingTimeCorrelator::new(60_000_000_000);
+/// let mut sc = StreamingTimeCorrelator::new(NanosDuration::from_secs(60));
 ///
 /// sc.add_reference(1, Rtc::from_raw(10_000_000),
 ///     AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
@@ -79,16 +80,15 @@ pub struct StreamingRef {
 impl StreamingTimeCorrelator {
     /// Create a new streaming correlator with the given maximum age window.
     ///
-    /// `max_age_ns` is the maximum age in nanoseconds. Reference points
-    /// whose RTC is more than this far behind the latest-seen RTC are
-    /// evicted on the next insert.
+    /// Reference points whose RTC is more than `max_age` behind the
+    /// latest-seen RTC are evicted on the next insert.
     ///
     /// A typical value for 1 Hz time packets with 30 seconds of lookback:
-    /// `30_000_000_000` (30 billion nanoseconds).
-    pub fn new(max_age_ns: u64) -> Self {
+    /// `NanosDuration::from_secs(30)`.
+    pub fn new(max_age: NanosDuration) -> Self {
         Self {
             channel_refs: BTreeMap::new(),
-            max_age_ns,
+            max_age_ns: max_age.get(),
             latest_rtc: None,
             total_refs: 0,
             total_evicted: 0,
@@ -141,7 +141,7 @@ impl StreamingTimeCorrelator {
         let abs_time = match network_time {
             crate::network_time::NetworkTime::Ntp(ntp) => ntp.to_absolute()?,
             crate::network_time::NetworkTime::Ptp(ptp) => {
-                let utc_secs = ptp.to_utc_seconds(leap_table.offset_at_tai(ptp.seconds));
+                let utc_secs = ptp.to_utc_seconds(leap_table.offset_at_tai(ptp.tai_seconds()));
                 let (year, doy, hour, minute, second) =
                     crate::network_time::unix_seconds_to_ymd_pub(utc_secs);
                 AbsoluteTime::new(doy, hour, minute, second, ptp.nanoseconds)?

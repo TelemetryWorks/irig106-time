@@ -103,7 +103,9 @@ pub(crate) mod util;
 pub mod chrono_interop;
 
 // Re-export key types at crate root for convenience.
-pub use absolute::{AbsoluteTime, CalendarTime, Ch4BinaryTime, Ertc, Ieee1588Time};
+pub use absolute::{
+    AbsoluteTime, CalendarTime, Ch4BinaryTime, Ch4BinaryTimeExt, Ertc, Ieee1588Time,
+};
 pub use bcd::{DayFormatTime, DmyFormatTime};
 pub use correlation::{ReferencePoint, RtcReset, TimeCorrelator, TimeJump};
 pub use csdw::{DateFormat, TimeF1Csdw, TimeFormat, TimeSource};
@@ -120,3 +122,6 @@ pub use rtc::Rtc;
 pub use secondary::{SecHdrTimeFormat, SecondaryHeaderTime};
 pub use streaming::{StreamingRef, StreamingTimeCorrelator};
 pub use version::{detect_version, Irig106Version};
+
+/// Unit and epoch newtypes from [`irig106_types`], re-exported for convenience.
+pub use irig106_types::{NanosDuration, TaiSeconds, TaiUtcOffset, UnixSeconds};

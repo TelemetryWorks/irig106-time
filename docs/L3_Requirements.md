@@ -167,7 +167,7 @@ and forward to specific source files and tests.
 | L3-F2-004 | NTP fraction → nanos: `((fraction as u64 * 1_000_000_000) >> 32) as u32`. | L2-NTP-002 |
 | L3-F2-005 | `const NTP_UNIX_EPOCH_OFFSET: u64 = 2_208_988_800;` (70 years including 17 leap years). | L2-NTP-003 |
 | L3-F2-006 | `pub struct PtpTime { pub seconds: u64, pub nanoseconds: u32 }` — LE bytes [0..6] = 48-bit seconds, [6..10] = nanos. 48-bit masking via zero-extend. | L2-PTP-001 |
-| L3-F2-007 | `const DEFAULT_TAI_UTC_OFFSET: i32 = 37;` (since 2017-01-01). | L2-PTP-003 |
+| L3-F2-007 | `const DEFAULT_TAI_UTC_OFFSET: TaiUtcOffset = TaiUtcOffset::new(37);` (since 2017-01-01). | L2-PTP-003 |
 | L3-F2-008 | `pub enum NetworkTime { Ntp(NtpTime), Ptp(PtpTime) }` — parsed payload discriminated union. | L2-F2CSDW-004 |
 | L3-F2-009 | `pub fn parse_time_f2_payload(payload: &[u8]) -> Result<(TimeF2Csdw, NetworkTime)>` — dispatch on CSDW protocol field. | L2-F2CSDW-001..004 |
 | L3-F2-010 | `pub struct LeapSecondEntry { pub effective_unix: u64, pub tai_utc_offset: i32 }` | L2-TAI-001 |
@@ -185,16 +185,18 @@ and forward to specific source files and tests.
 
 ---
 
-## 4. Shared Types (Candidates for `irig106-types`)
+## 4. Shared Types (Migrated to `irig106-types` in v0.8.0)
 
-The following types are used across multiple crates in the ecosystem and should
-eventually be migrated to `irig106-types`. See `shared_types_for_irig106_types.md`.
+The following types are used across multiple crates in the ecosystem and are
+now defined in `irig106-types` and re-exported by `irig106-time` (P6-01).
+See `shared_types_for_irig106_types.md`.
 
 - `Rtc` — used by `irig106-core`, `irig106-time`, `irig106-decode`, `irig106-write`
 - `Ch4BinaryTime` — used by `irig106-time`, `irig106-decode`
 - `Ieee1588Time` — used by `irig106-time`, `irig106-decode`
 - `Ertc` — used by `irig106-time`, `irig106-decode`
-- `TimeSource`, `TimeFormat`, `DateFormat` enums — used by `irig106-time`, `irig106-decode`
+- `TimeSource`, `TimeFormat`, `DateFormat`, `SecHdrTimeFormat` enums — used by `irig106-time`, `irig106-decode`
+- `UnixSeconds`, `TaiSeconds`, `TaiUtcOffset`, `NanosDuration` — unit/epoch newtypes (team review #3)
 
 ---
 

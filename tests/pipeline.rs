@@ -190,7 +190,7 @@ fn gps_lock_time_jump_detection() {
         AbsoluteTime::new(50, 14, 0, 7, 0).unwrap(), // 1 sec after correction
     );
 
-    let jumps = correlator.detect_time_jump(3, 1_000_000_000); // 1 sec threshold
+    let jumps = correlator.detect_time_jump(3, NanosDuration::from_secs(1)); // 1 sec threshold
     assert_eq!(jumps.len(), 1);
     assert!(jumps[0].delta_nanos > 0); // jumped forward
 }
@@ -406,8 +406,8 @@ fn full_ptp_pipeline() {
 
     // Convert to AbsoluteTime using leap table
     let table = LeapSecondTable::builtin();
-    let offset = table.offset_at_tai(ptp.seconds);
-    assert_eq!(offset, 37);
+    let offset = table.offset_at_tai(ptp.tai_seconds());
+    assert_eq!(offset.get(), 37);
 
     let abs = ptp.to_absolute(offset).unwrap();
     assert_eq!(abs.year(), Some(2025));
@@ -494,16 +494,28 @@ fn leap_second_table_historical_accuracy() {
     let table = LeapSecondTable::builtin();
 
     // 1975-06-01 ≈ Unix 168307200 → offset should be 14
-    assert_eq!(table.offset_at_unix(168_307_200), 14);
+    assert_eq!(
+        table.offset_at_unix(UnixSeconds::new(168_307_200)).get(),
+        14
+    );
 
     // 2000-06-01 ≈ Unix 959817600 → offset should be 32
-    assert_eq!(table.offset_at_unix(959_817_600), 32);
+    assert_eq!(
+        table.offset_at_unix(UnixSeconds::new(959_817_600)).get(),
+        32
+    );
 
     // 2017-06-01 ≈ Unix 1496275200 → offset should be 37
-    assert_eq!(table.offset_at_unix(1_496_275_200), 37);
+    assert_eq!(
+        table.offset_at_unix(UnixSeconds::new(1_496_275_200)).get(),
+        37
+    );
 
     // 2026 → still 37 (no new leap seconds since 2017)
-    assert_eq!(table.offset_at_unix(1_800_000_000), 37);
+    assert_eq!(
+        table.offset_at_unix(UnixSeconds::new(1_800_000_000)).get(),
+        37
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -733,7 +745,7 @@ fn correlator_default_has_no_ooo_window() {
 
 #[test]
 fn correlator_with_ooo_window() {
-    let c = TimeCorrelator::with_ooo_window(Some(TimeCorrelator::DEFAULT_OOO_WINDOW_NS));
+    let c = TimeCorrelator::with_ooo_window(Some(TimeCorrelator::DEFAULT_OOO_WINDOW));
     assert_eq!(c.ooo_window_ns(), Some(2_000_000_000));
 }
 
@@ -1081,7 +1093,7 @@ fn packet_standard_from_version() {
 fn streaming_correlator_basic_pipeline() {
     use irig106_time::streaming::StreamingTimeCorrelator;
 
-    let mut sc = StreamingTimeCorrelator::new(30_000_000_000); // 30 sec window
+    let mut sc = StreamingTimeCorrelator::new(NanosDuration::from_secs(30)); // 30 sec window
 
     // Simulate 1 Hz time packets for 5 seconds
     for i in 0..5u64 {
@@ -1103,7 +1115,7 @@ fn streaming_correlator_basic_pipeline() {
 fn streaming_correlator_eviction_pipeline() {
     use irig106_time::streaming::StreamingTimeCorrelator;
 
-    let mut sc = StreamingTimeCorrelator::new(5_000_000_000); // 5 sec window
+    let mut sc = StreamingTimeCorrelator::new(NanosDuration::from_secs(5)); // 5 sec window
 
     // Insert at RTC 10M (1 sec)
     sc.add_reference(
@@ -1159,16 +1171,16 @@ fn f1_leap_second_offset() {
     let table = LeapSecondTable::builtin();
     // 2017 day 1 should have offset 37 (last leap second was 2017-01-01)
     let offset = table.offset_for_f1(2017, 1);
-    assert_eq!(offset, 37);
+    assert_eq!(offset.get(), 37);
 }
 
 #[test]
 fn is_near_leap_second_boundary() {
     let table = LeapSecondTable::builtin();
     // The 2017-01-01 leap second was at Unix 1483228800
-    assert!(table.is_near_leap_second(1483228800, 10));
+    assert!(table.is_near_leap_second(UnixSeconds::new(1483228800), 10));
     // Far from any boundary
-    assert!(!table.is_near_leap_second(1_600_000_000, 10));
+    assert!(!table.is_near_leap_second(UnixSeconds::new(1_600_000_000), 10));
 }
 
 // ── GAP-08: Recording events ────────────────────────────────────────
@@ -1277,23 +1289,23 @@ fn bcd_dmy_feb_29_non_leap_year_rejected() {
 fn is_near_leap_second_exact_boundary() {
     let table = LeapSecondTable::builtin();
     // 2017-01-01 leap second at Unix 1483228800
-    assert!(table.is_near_leap_second(1483228800, 0)); // exact match, window=0
+    assert!(table.is_near_leap_second(UnixSeconds::new(1483228800), 0)); // exact match, window=0
 }
 
 #[test]
 fn is_near_leap_second_within_window() {
     let table = LeapSecondTable::builtin();
     // 5 seconds before the boundary
-    assert!(table.is_near_leap_second(1483228795, 10));
+    assert!(table.is_near_leap_second(UnixSeconds::new(1483228795), 10));
     // 5 seconds after the boundary
-    assert!(table.is_near_leap_second(1483228805, 10));
+    assert!(table.is_near_leap_second(UnixSeconds::new(1483228805), 10));
 }
 
 #[test]
 fn is_near_leap_second_outside_window() {
     let table = LeapSecondTable::builtin();
     // 100 seconds away, window=10
-    assert!(!table.is_near_leap_second(1483228900, 10));
+    assert!(!table.is_near_leap_second(UnixSeconds::new(1483228900), 10));
 }
 
 #[test]
@@ -1302,8 +1314,8 @@ fn is_near_leap_second_symmetry() {
     let boundary = 1483228800u64;
     // Distance 5 from below and above should give same result
     assert_eq!(
-        table.is_near_leap_second(boundary - 5, 10),
-        table.is_near_leap_second(boundary + 5, 10),
+        table.is_near_leap_second(UnixSeconds::new(boundary - 5), 10),
+        table.is_near_leap_second(UnixSeconds::new(boundary + 5), 10),
     );
 }
 
@@ -1311,5 +1323,5 @@ fn is_near_leap_second_symmetry() {
 fn is_near_leap_second_far_future() {
     let table = LeapSecondTable::builtin();
     // Very large Unix timestamp — far from any known leap second
-    assert!(!table.is_near_leap_second(u64::MAX, 1000));
+    assert!(!table.is_near_leap_second(UnixSeconds::new(u64::MAX), 1000));
 }

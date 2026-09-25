@@ -80,10 +80,10 @@ This is why `irig106-time` provides two correlators:
 
 ```rust
 use irig106_time::streaming::StreamingTimeCorrelator;
-use irig106_time::{Rtc, AbsoluteTime};
+use irig106_time::{AbsoluteTime, NanosDuration, Rtc};
 
 // 60-second sliding window for a 1 Hz time source
-let mut correlator = StreamingTimeCorrelator::new(60_000_000_000);
+let mut correlator = StreamingTimeCorrelator::new(NanosDuration::from_secs(60));
 
 // For each received UDP datagram:
 // 1. Strip the 4-byte (Format 1) or 12-byte (Format 2) transfer header

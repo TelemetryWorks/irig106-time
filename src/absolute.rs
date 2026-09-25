@@ -49,6 +49,8 @@
 
 use crate::error::{Result, TimeError};
 
+pub use irig106_types::{Ch4BinaryTime, Ertc, Ieee1588Time};
+
 const NANOS_PER_SECOND: u64 = 1_000_000_000;
 const NANOS_PER_MINUTE: u64 = 60 * NANOS_PER_SECOND;
 const NANOS_PER_HOUR: u64 = 3600 * NANOS_PER_SECOND;
@@ -338,14 +340,8 @@ impl AbsoluteTime {
             let prev_year = new_year.map(|y| y.saturating_sub(1));
             let days_in_prev_year = match prev_year {
                 // Uses crate::util::is_leap_year — see MSRV note in util.rs
-                Some(y) => {
-                    if crate::util::is_leap_year(y) {
-                        366u64
-                    } else {
-                        365
-                    }
-                }
-                None => 365,
+                Some(y) if crate::util::is_leap_year(y) => 366u64,
+                _ => 365,
             };
             let prev_year_ns = days_in_prev_year * NANOS_PER_DAY;
             new_year = prev_year;
@@ -598,55 +594,21 @@ impl core::fmt::Display for CalendarTime {
 // Chapter 4 Binary Weighted Time
 // ═══════════════════════════════════════════════════════════════════════
 
-/// IRIG 106 Chapter 4 Binary Weighted Time.
+/// Interpretation of [`Ch4BinaryTime`] as an absolute time of day.
 ///
-/// Used in secondary headers (Packet Flag bits \[3:2\] = 0b00) and intra-packet
-/// timestamps.
-///
-/// **Traces:** L3-CH4-001 ← L2-ABS-003 ← L1-ABS-002
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Ch4BinaryTime {
-    /// High-order 16 bits of the binary time word.
-    pub high_order: u16,
-    /// Low-order 16 bits of the binary time word.
-    pub low_order: u16,
-    /// Microsecond component.
-    pub microseconds: u16,
-}
-
-impl Ch4BinaryTime {
-    /// Parse from a 6-byte little-endian buffer: `[unused(2), high(2), low(2), usec(2)]`.
-    ///
-    /// **Traces:** L3-CH4-005
-    pub fn from_secondary_bytes(buf: &[u8]) -> Result<Self> {
-        if buf.len() < 8 {
-            return Err(TimeError::BufferTooShort {
-                expected: 8,
-                actual: buf.len(),
-            });
-        }
-        let high_order = u16::from_le_bytes([buf[2], buf[3]]);
-        let low_order = u16::from_le_bytes([buf[4], buf[5]]);
-        let microseconds = u16::from_le_bytes([buf[6], buf[7]]);
-        Ok(Self {
-            high_order,
-            low_order,
-            microseconds,
-        })
-    }
-
-    /// Parse from an 8-byte intra-packet time stamp buffer.
-    ///
-    /// **Traces:** L3-CH4-005
-    pub fn from_intra_packet_bytes(buf: &[u8]) -> Result<Self> {
-        Self::from_secondary_bytes(buf)
-    }
-
+/// `Ch4BinaryTime` is defined in [`irig106_types`], which has no notion of
+/// [`AbsoluteTime`]; this extension trait supplies the decoding. It is
+/// re-exported at the crate root, so `use irig106_time::*` or
+/// `use irig106_time::Ch4BinaryTimeExt` brings `to_absolute()` into scope.
+pub trait Ch4BinaryTimeExt {
     /// Decode to absolute time.
     ///
     /// **Traces:** L3-CH4-002, L3-CH4-003, L3-CH4-004
-    pub fn to_absolute(&self) -> Result<AbsoluteTime> {
+    fn to_absolute(&self) -> Result<AbsoluteTime>;
+}
+
+impl Ch4BinaryTimeExt for Ch4BinaryTime {
+    fn to_absolute(&self) -> Result<AbsoluteTime> {
         let combined = ((self.high_order as u32) << 16) | (self.low_order as u32);
         let time_10ms = combined & 0x0001_FFFF;
         let day_of_year = ((combined >> 17) & 0x01FF) as u16;
@@ -667,99 +629,6 @@ impl Ch4BinaryTime {
             seconds,
             nanoseconds,
         )
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// IEEE-1588 Time
-// ═══════════════════════════════════════════════════════════════════════
-
-/// IEEE-1588 Precision Time Protocol time value.
-///
-/// **Traces:** L3-1588-001 ← L2-ABS-005 ← L1-ABS-003
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Ieee1588Time {
-    /// Nanoseconds within the current second (0–999_999_999).
-    pub nanoseconds: u32,
-    /// Seconds since the IEEE-1588 epoch.
-    pub seconds: u32,
-}
-
-impl Ieee1588Time {
-    /// Parse from an 8-byte little-endian buffer: `[nanoseconds(4), seconds(4)]`.
-    ///
-    /// **Traces:** L3-1588-002
-    #[inline]
-    pub fn from_le_bytes(buf: &[u8]) -> Result<Self> {
-        if buf.len() < 8 {
-            return Err(TimeError::BufferTooShort {
-                expected: 8,
-                actual: buf.len(),
-            });
-        }
-        let nanoseconds = u32::from_le_bytes([buf[0], buf[1], buf[2], buf[3]]);
-        let seconds = u32::from_le_bytes([buf[4], buf[5], buf[6], buf[7]]);
-        if nanoseconds >= 1_000_000_000 {
-            return Err(TimeError::OutOfRange {
-                field: "ieee1588_nanoseconds",
-                value: nanoseconds,
-                max: 999_999_999,
-            });
-        }
-        Ok(Self {
-            nanoseconds,
-            seconds,
-        })
-    }
-
-    /// Total nanoseconds since the IEEE-1588 epoch.
-    ///
-    /// **Traces:** L3-1588-003 ← L2-ABS-006
-    #[inline]
-    pub fn to_nanos_since_epoch(&self) -> u64 {
-        (self.seconds as u64) * 1_000_000_000 + (self.nanoseconds as u64)
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// Extended RTC (ERTC)
-// ═══════════════════════════════════════════════════════════════════════
-
-/// 64-bit Extended Relative Time Counter.
-///
-/// **Traces:** L3-ERTC-001 ← L2-ABS-007 ← L1-ABS-004
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Ertc(u64);
-
-impl Ertc {
-    /// Parse from an 8-byte little-endian buffer.
-    ///
-    /// **Traces:** L3-ERTC-002
-    #[inline]
-    pub fn from_le_bytes(buf: &[u8]) -> Result<Self> {
-        if buf.len() < 8 {
-            return Err(TimeError::BufferTooShort {
-                expected: 8,
-                actual: buf.len(),
-            });
-        }
-        Ok(Ertc(u64::from_le_bytes([
-            buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7],
-        ])))
-    }
-
-    /// Raw 64-bit tick count.
-    pub fn as_raw(self) -> u64 {
-        self.0
-    }
-
-    /// Convert to nanoseconds. Returns `u128` to avoid overflow.
-    ///
-    /// **Traces:** L3-ERTC-003 ← L2-ABS-008
-    pub fn to_nanos(self) -> u128 {
-        (self.0 as u128) * 100
     }
 }
 

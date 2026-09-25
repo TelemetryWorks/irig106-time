@@ -58,7 +58,9 @@ fn bench_detect_time_jump(c: &mut Criterion) {
     for n in [100, 1000, 3600] {
         let corr = build_correlator(n, 4);
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
-            b.iter(|| corr.detect_time_jump(black_box(1), black_box(1_000_000)));
+            b.iter(|| {
+                corr.detect_time_jump(black_box(1), black_box(NanosDuration::from_millis(1)))
+            });
         });
     }
     group.finish();

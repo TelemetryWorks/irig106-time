@@ -63,7 +63,7 @@ let resolved = correlator.correlate(data_rtc, None).unwrap();
 | Module | Purpose |
 |--------|---------|
 | `rtc` | 48-bit Relative Time Counter newtype |
-| `absolute` | AbsoluteTime, Ch4BinaryTime, Ieee1588Time, Ertc |
+| `absolute` | AbsoluteTime, CalendarTime, Ch4BinaryTimeExt; re-exports Ch4BinaryTime, Ieee1588Time, Ertc from `irig106-types` |
 | `csdw` | Time F1 CSDW bitfield parsing, TimeSource/TimeFormat enums |
 | `bcd` | BCD Day-of-Year and Day-Month-Year decoding |
 | `secondary` | Secondary header checksum validation and time extraction |

@@ -15,6 +15,7 @@
 
 use crate::absolute::AbsoluteTime;
 use crate::error::{Result, TimeError};
+use irig106_types::{TaiSeconds, TaiUtcOffset, UnixSeconds};
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -27,7 +28,7 @@ pub const NTP_UNIX_EPOCH_OFFSET: u64 = 2_208_988_800;
 ///
 /// This value is 37 seconds and has been stable since 2017.
 /// Use `LeapSecondTable` for accurate historical conversions.
-pub const DEFAULT_TAI_UTC_OFFSET: i32 = 37;
+pub const DEFAULT_TAI_UTC_OFFSET: TaiUtcOffset = TaiUtcOffset::new(37);
 
 // ── Format 2 CSDW ───────────────────────────────────────────────────
 
@@ -260,20 +261,22 @@ impl PtpTime {
     ///
     /// **Traces:** L1-PTP-004
     #[inline]
-    pub fn to_utc_seconds(&self, tai_utc_offset: i32) -> u64 {
-        if tai_utc_offset >= 0 {
-            self.seconds.saturating_sub(tai_utc_offset as u64)
-        } else {
-            self.seconds.saturating_add((-tai_utc_offset) as u64)
-        }
+    pub fn to_utc_seconds(&self, offset: TaiUtcOffset) -> u64 {
+        self.tai_seconds().to_unix(offset).get()
+    }
+
+    /// The seconds field as a [`TaiSeconds`] value.
+    #[inline]
+    pub fn tai_seconds(&self) -> TaiSeconds {
+        TaiSeconds::new(self.seconds)
     }
 
     /// Convert to `AbsoluteTime` using the given TAI-UTC offset.
     ///
     /// The offset accounts for accumulated leap seconds. As of 2017, the
     /// offset is 37 seconds (TAI = UTC + 37).
-    pub fn to_absolute(&self, tai_utc_offset: i32) -> Result<AbsoluteTime> {
-        let utc_secs = self.to_utc_seconds(tai_utc_offset);
+    pub fn to_absolute(&self, offset: TaiUtcOffset) -> Result<AbsoluteTime> {
+        let utc_secs = self.to_utc_seconds(offset);
         let (year, doy, hour, minute, second) = unix_seconds_to_ymd(utc_secs);
 
         let abs = AbsoluteTime::new(doy, hour, minute, second, self.nanoseconds)?
@@ -519,15 +522,15 @@ impl LeapSecondTable {
     /// Returns `DEFAULT_TAI_UTC_OFFSET` if the table is empty.
     ///
     /// **Traces:** L1-TAI-003
-    pub fn offset_at_unix(&self, unix_seconds: u64) -> i32 {
+    pub fn offset_at_unix(&self, time: UnixSeconds) -> TaiUtcOffset {
         if self.entries.is_empty() {
             return DEFAULT_TAI_UTC_OFFSET;
         }
 
-        // Find the last entry with effective_unix <= unix_seconds
-        match self
+        // Find the last entry with effective_unix <= time
+        let raw = match self
             .entries
-            .binary_search_by_key(&unix_seconds, |e| e.effective_unix)
+            .binary_search_by_key(&time.get(), |e| e.effective_unix)
         {
             Ok(i) => self.entries[i].tai_utc_offset,
             Err(0) => {
@@ -535,17 +538,17 @@ impl LeapSecondTable {
                 self.entries[0].tai_utc_offset
             }
             Err(i) => self.entries[i - 1].tai_utc_offset,
-        }
+        };
+        TaiUtcOffset::new(raw)
     }
 
     /// Look up the TAI-UTC offset for a given TAI timestamp.
     ///
     /// Approximates by converting TAI to UTC using the current best guess,
     /// then looking up the offset for that UTC time.
-    pub fn offset_at_tai(&self, tai_seconds: u64) -> i32 {
+    pub fn offset_at_tai(&self, time: TaiSeconds) -> TaiUtcOffset {
         // First approximation: assume current default offset
-        let approx_utc = tai_seconds.saturating_sub(DEFAULT_TAI_UTC_OFFSET as u64);
-        self.offset_at_unix(approx_utc)
+        self.offset_at_unix(time.to_unix(DEFAULT_TAI_UTC_OFFSET))
     }
 
     /// Number of entries in the table.
@@ -566,7 +569,7 @@ impl LeapSecondTable {
     /// as PTP sources.
     ///
     /// **Traces:** GAP-04
-    pub fn offset_for_f1(&self, year: u16, day_of_year: u16) -> i32 {
+    pub fn offset_for_f1(&self, year: u16, day_of_year: u16) -> TaiUtcOffset {
         // Approximate Unix seconds for this year/doy
         let mut unix_secs: u64 = 0;
         for y in 1970..year {
@@ -574,21 +577,21 @@ impl LeapSecondTable {
             unix_secs += days * 86_400;
         }
         unix_secs += (day_of_year as u64).saturating_sub(1) * 86_400;
-        self.offset_at_unix(unix_secs)
+        self.offset_at_unix(UnixSeconds::new(unix_secs))
     }
 
     /// Check if a Unix timestamp falls within a window of a leap second boundary.
     ///
-    /// Returns `true` if `unix_seconds` is within `window_secs` of any
+    /// Returns `true` if `time` is within `window_secs` of any
     /// leap second insertion point. Useful for flagging F1 time packets
     /// that may be affected by a leap second transition.
     ///
     /// **Traces:** GAP-04
-    pub fn is_near_leap_second(&self, unix_seconds: u64, window_secs: u64) -> bool {
+    pub fn is_near_leap_second(&self, time: UnixSeconds, window_secs: u64) -> bool {
         // Uses crate::util::abs_diff_u64 — see MSRV note in util.rs
         self.entries
             .iter()
-            .any(|e| crate::util::abs_diff_u64(unix_seconds, e.effective_unix) <= window_secs)
+            .any(|e| crate::util::abs_diff_u64(time.get(), e.effective_unix) <= window_secs)
     }
 }
 
