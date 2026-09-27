@@ -20,7 +20,7 @@
 | 4. Contracts per consumer | **draft for review** |
 | 5. Time over a recording | **draft for review** |
 | 6. When time is missing, wrong, or disagrees | **draft for review** |
-| 7. A worked example | to be written |
+| 7. A worked example | **draft for review** |
 | 8. What changes as a result | to be written |
 
 ---
@@ -852,3 +852,107 @@ the last reference, is labelled with the distance to its reference.
 | Counter reset | yes, in the new session | new session | the time timeline |
 | No year | without a year | — | the answer |
 | Leap-second table out of date | yes | possibly stale | the conversion |
+
+---
+
+## 7. A worked example: from a time packet to a data packet's time
+
+The standard has no complete time example, so this one is synthesized from
+its layouts: the packet header (Chapter 11 §11.2.1.1), the Format 1
+channel-specific data word (Figure 11-12), and the day-format body (Figure
+11-13), all 106-24R1. Every byte below was computed from those layouts,
+including the header checksum.
+
+### 7.1 The recording
+
+The setup record declares a time channel and a PCM channel:
+
+```
+R-1\TK1-1:1; R-1\CDT-1:TIMEIN; R-1\TTF-1:1; R-1\TFMT-1:B; R-1\TSRC-1:E;
+R-1\TK1-2:3; R-1\CDT-2:PCMIN;
+```
+
+— channel 1 carries time data (`TTF` 1, "Time data"), IRIG-B (`TFMT` B), from
+an external source (`TSRC` E). After the setup record, in file order: a time
+packet on channel 1 with counter r1 = 100,000,000; a PCM packet on channel 3
+with counter 104,200,000; and the next time packet on channel 1 with counter
+r1 + 10,000,000, one second later, saying 13:45:28.350.
+
+### 7.2 The time packet, byte by byte
+
+![A Format 1 time packet, byte by byte](diagrams/worked-example-time-packet.svg)
+
+| Bytes | Field | Value | Meaning |
+|-------|-------|-------|---------|
+| `25 EB` | packet sync pattern | `0xEB25` | a packet starts here |
+| `01 00` | channel ID | 1 | the time channel TMATS declares |
+| `24 00 00 00` | packet length | 36 | the whole packet, filler included |
+| `0A 00 00 00` | data length | 10 | the data word (4) and the body (6); "does not include packet trailer filler and data checksum" (§11.2.1.1 d) |
+| `06` | data type version | `0x06` | 106-13 on the packet header's list, the current version for `0x11` (Table 11-4) |
+| `00` | sequence number | 0 | — |
+| `00` | packet flags | `0x00` | no secondary header, no data checksum |
+| `11` | data type | `0x11` | Time Data, Format 1 |
+| `00 E1 F5 05 00 00` | relative time counter | 100,000,000 | r1: 10 s after the counter's zero |
+| `4F E3` | header checksum | `0xE34F` | "a 16-bit arithmetic sum of all 16-bit words in the header excluding the header checksum word" (§11.2.1.1 j) |
+| `01 30 00 00` | channel-specific data word | `0x00003001` | SRC `0x1` external; FMT `0x0` IRIG-B; leap-year bit 0; date bit 0, day of year; ITS `0x3`, "IRIG TCG locked to external IRIG time signal" |
+| `35 27` | body word 0 | `0x2735` | tens of seconds 2, seconds 7, hundreds of ms 3, tens of ms 5: 27.35 s |
+| `45 13` | body word 1 | `0x1345` | tens of hours 1, hours 3, tens of minutes 4, minutes 5: 13:45 |
+| `87 01` | body word 2 | `0x0187` | hundreds of days 1, tens of days 8, days 7: day 187 |
+| `00 00` | filler | — | to a multiple of 4 bytes; outside the data length (§11.2.1.4) |
+
+The reference point is **(channel 1, r1 = 100,000,000, day 187 13:45:27.350)**,
+from an external IRIG-B source locked, with no year (the day format has none).
+
+### 7.3 The data packet's time
+
+The PCM packet on channel 3 has counter r = 104,200,000:
+
+- r − r1 = 4,200,000 ticks × 100 ns = 0.420 s;
+- absolute time = 13:45:27.350 + 0.420 s = **day 187, 13:45:27.770**.
+
+With the default time policy (section 5.6), the answer carries its basis:
+
+| Basis | Value |
+|-------|-------|
+| Session | 1 (no counter reset) |
+| Time channel | 1 — the declared external channel (5.2, rule 4) |
+| Reference | r1, 13:45:27.350; the nearest of the two around the packet (the next is 0.580 s away) |
+| Position | between two references, 0.420 s after the earlier |
+| Source and format | external, IRIG-B, ITS "locked to external IRIG time signal" |
+| Year | unknown: no day-month-year packet, none from the caller, and no `R-x\RI4` in this setup record (5.3) |
+| Policy | defaults |
+
+### 7.4 What the crate does with it today
+
+- **The data word** reads as external and IRIG-B (`TimeF1Csdw`), but the ITS
+  field (locked to external IRIG) is not read (T-7).
+- **The body** cannot be read if the caller slices it by the data length:
+  `DayFormatTime::from_le_bytes` asks for 8 bytes and the body is 6 (T-12). A
+  caller that passes the filler too gets the right time, reading the filler
+  as a "reserved" word.
+- **The correlation** gives 13:45:27.770 — the right time — but without its
+  basis (section 3.1).
+- **The CLI** reports the time channel and its source, but not what TMATS
+  declared for it (section 3.7).
+
+### 7.5 The same data packet with its own time
+
+Had the PCM packet carried a secondary header (packet flags bit 7) in IEEE
+1588 format (bits 3–2 = `01`), its own time would govern it, and the time
+derived from the counter would be compared with it; a difference beyond the
+policy's tolerance is reported, and both are kept (section 6.6). Its
+intra-packet time stamps would use the secondary header's format only if
+packet flags bit 6 were also set.
+
+### 7.6 What the example teaches
+
+- **Data Length is the boundary.** A body read by the figures' length, and
+  no further, is correct; anything more reads filler (T-12).
+- **The year is often missing.** A day-of-year recording needs the year from
+  somewhere the caller controls, and the answer must say where it came from.
+- **The basis is the difference between a time and an answer.** The same
+  13:45:27.770 from a freewheeling internal clock an hour past its last
+  reference would be a very different claim.
+
+This example becomes a test of the crate: the exact bytes above, decoded
+and correlated, with the basis of 7.3 (section 8).

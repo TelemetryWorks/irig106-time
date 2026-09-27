@@ -148,6 +148,28 @@ X1; the packet header's data type version is a different list, where
 **Change:** `0x0F` and above are unknown; `0x0E` reads as "106-22 or later"
 (with the shared mapping in `irig106-types`).
 
+### T-12 Time packet bodies are read as longer than the standard defines
+
+**Code:** `src/bcd.rs` — `DayFormatTime::from_le_bytes` requires 8 bytes
+(four 16-bit words, "w3 is reserved") and `DmyFormatTime::from_le_bytes`
+requires 10 (five words, "w4 is reserved"); L1-BCD-001 says an 8-byte
+message.
+
+**Standard:** Figure 11-13 (day format) shows three 16-bit words and Figure
+11-14 (day, month, and year) four — the same in 106-13 (Figure 10-20),
+106-17 (Figure 11-12), and 106-24R1. The body is therefore 6 or 8 bytes,
+and the packet's "Data Length … does not include packet trailer filler"
+(§11.2.1.1 d).
+
+**Effect:** a caller that slices the body by Data Length — as it must, to
+exclude filler — passes 6 bytes and gets `BufferTooShort`; one that passes
+more reads filler as a "reserved" word. Found while writing the worked
+example (`docs/TIME-IN-CHAPTER-10.md` section 7), where Data Length is 10:
+the data word (4) and the body (6).
+
+**Change:** read 6 bytes for the day format and 8 for day, month, and year,
+and never read past Data Length.
+
 ## To confirm on the page image
 
 ### T-10 Chapter 4 binary time

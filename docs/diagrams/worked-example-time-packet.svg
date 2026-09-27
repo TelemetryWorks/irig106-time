@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540" role="img" aria-label="A worked example: a 36-byte Format 1 time packet on time channel 1, decoded field by field: a 24-byte header with relative time counter 100,000,000; a channel-specific data word saying external source, IRIG-B, day format, IRIG time code generator locked to external IRIG; three binary-coded decimal words giving day 187, 13:45:27.350; two bytes of filler outside the data length. A PCM packet with counter 104,200,000 is 4,200,000 ticks later, 0.420 seconds, so its absolute time is day 187 13:45:27.770, with its basis.">
+  <style>
+    text { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; fill: #1f2328; }
+    .t { font-size: 15px; font-weight: 600; }
+    .h { font-size: 13px; font-weight: 600; }
+    .b { font-weight: 600; }
+    .l { font-size: 10.5px; fill: #57606a; }
+    .m { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 11.5px; white-space: pre; }
+    .by { fill: #f6f8fa; stroke: #57606a; stroke-width: 1; }
+    .cs { fill: #fff8c5; stroke: #9a6700; stroke-width: 1; }
+    .bd { fill: #ddf4ff; stroke: #0969da; stroke-width: 1; }
+    .fil { fill: #eaeef2; stroke: #8c959f; stroke-width: 1; stroke-dasharray: 3 2; }
+    .br { stroke: #57606a; stroke-width: 1; fill: none; }
+    .pan { fill: #f6f8fa; stroke: #57606a; stroke-width: 1.2; }
+    .res { fill: #dafbe1; stroke: #1a7f37; stroke-width: 1.5; }
+    @media (prefers-color-scheme: dark) {
+      text { fill: #e6edf3; } .l { fill: #9198a1; }
+      .by, .pan { fill: #161b22; stroke: #9198a1; } .cs { fill: #3b2e00; stroke: #d29922; }
+      .bd { fill: #0c2d6b; stroke: #4493f8; } .fil { fill: #21262d; stroke: #6e7681; }
+      .br { stroke: #9198a1; } .res { fill: #0f2e1a; stroke: #3fb950; }
+    }
+  </style>
+
+  <text class="t" x="20" y="30">A Format 1 time packet, byte by byte</text>
+  <text class="l" x="20" y="48">Synthesized from the layouts of Chapter 11 (106-24R1): section 11.2.1.1 (header), Figure 11-12 (data word), Figure 11-13 (day format). Bytes in file order, little-endian.</text>
+  <text class="h" x="20" y="80">Packet header (24 bytes)</text>
+  <text class="h" x="20" y="200">Packet body and trailer</text>
+  <rect class="by" x="40" y="92" width="36" height="26"/><text class="m" x="58.0" y="110" text-anchor="middle">25</text>
+  <rect class="by" x="76" y="92" width="36" height="26"/><text class="m" x="94.0" y="110" text-anchor="middle">EB</text>
+  <rect class="by" x="112" y="92" width="36" height="26"/><text class="m" x="130.0" y="110" text-anchor="middle">01</text>
+  <rect class="by" x="148" y="92" width="36" height="26"/><text class="m" x="166.0" y="110" text-anchor="middle">00</text>
+  <rect class="by" x="184" y="92" width="36" height="26"/><text class="m" x="202.0" y="110" text-anchor="middle">24</text>
+  <rect class="by" x="220" y="92" width="36" height="26"/><text class="m" x="238.0" y="110" text-anchor="middle">00</text>
+  <rect class="by" x="256" y="92" width="36" height="26"/><text class="m" x="274.0" y="110" text-anchor="middle">00</text>
+  <rect class="by" x="292" y="92" width="36" height="26"/><text class="m" x="310.0" y="110" text-anchor="middle">00</text>
+  <rect class="by" x="328" y="92" width="36" height="26"/><text class="m" x="346.0" y="110" text-anchor="middle">0A</text>
+  <rect class="by" x="364" y="92" width="36" height="26"/><text class="m" x="382.0" y="110" text-anchor="middle">00</text>
+  <rect class="by" x="400" y="92" width="36" height="26"/><text class="m" x="418.0" y="110" text-anchor="middle">00</text>
+  <rect class="by" x="436" y="92" width="36" height="26"/><text class="m" x="454.0" y="110" text-anchor="middle">00</text>
+  <rect class="by" x="472" y="92" width="36" height="26"/><text class="m" x="490.0" y="110" text-anchor="middle">06</text>
+  <rect class="by" x="508" y="92" width="36" height="26"/><text class="m" x="526.0" y="110" text-anchor="middle">00</text>
+  <rect class="by" x="544" y="92" width="36" height="26"/><text class="m" x="562.0" y="110" text-anchor="middle">00</text>
+  <rect class="by" x="580" y="92" width="36" height="26"/><text class="m" x="598.0" y="110" text-anchor="middle">11</text>
+  <rect class="by" x="616" y="92" width="36" height="26"/><text class="m" x="634.0" y="110" text-anchor="middle">00</text>
+  <rect class="by" x="652" y="92" width="36" height="26"/><text class="m" x="670.0" y="110" text-anchor="middle">E1</text>
+  <rect class="by" x="688" y="92" width="36" height="26"/><text class="m" x="706.0" y="110" text-anchor="middle">F5</text>
+  <rect class="by" x="724" y="92" width="36" height="26"/><text class="m" x="742.0" y="110" text-anchor="middle">05</text>
+  <rect class="by" x="760" y="92" width="36" height="26"/><text class="m" x="778.0" y="110" text-anchor="middle">00</text>
+  <rect class="by" x="796" y="92" width="36" height="26"/><text class="m" x="814.0" y="110" text-anchor="middle">00</text>
+  <rect class="by" x="832" y="92" width="36" height="26"/><text class="m" x="850.0" y="110" text-anchor="middle">4F</text>
+  <rect class="by" x="868" y="92" width="36" height="26"/><text class="m" x="886.0" y="110" text-anchor="middle">E3</text>
+  <rect class="cs" x="40" y="212" width="36" height="26"/><text class="m" x="58.0" y="230" text-anchor="middle">01</text>
+  <rect class="cs" x="76" y="212" width="36" height="26"/><text class="m" x="94.0" y="230" text-anchor="middle">30</text>
+  <rect class="cs" x="112" y="212" width="36" height="26"/><text class="m" x="130.0" y="230" text-anchor="middle">00</text>
+  <rect class="cs" x="148" y="212" width="36" height="26"/><text class="m" x="166.0" y="230" text-anchor="middle">00</text>
+  <rect class="bd" x="184" y="212" width="36" height="26"/><text class="m" x="202.0" y="230" text-anchor="middle">35</text>
+  <rect class="bd" x="220" y="212" width="36" height="26"/><text class="m" x="238.0" y="230" text-anchor="middle">27</text>
+  <rect class="bd" x="256" y="212" width="36" height="26"/><text class="m" x="274.0" y="230" text-anchor="middle">45</text>
+  <rect class="bd" x="292" y="212" width="36" height="26"/><text class="m" x="310.0" y="230" text-anchor="middle">13</text>
+  <rect class="bd" x="328" y="212" width="36" height="26"/><text class="m" x="346.0" y="230" text-anchor="middle">87</text>
+  <rect class="bd" x="364" y="212" width="36" height="26"/><text class="m" x="382.0" y="230" text-anchor="middle">01</text>
+  <rect class="fil" x="400" y="212" width="36" height="26"/><text class="m" x="418.0" y="230" text-anchor="middle">00</text>
+  <rect class="fil" x="436" y="212" width="36" height="26"/><text class="m" x="454.0" y="230" text-anchor="middle">00</text>
+  <path class="br" d="M43,122 L43,128 L109,128 L109,122"/><text class="l" x="76.0" y="142" text-anchor="middle">sync</text><text class="l" x="76.0" y="155" text-anchor="middle">0xEB25</text><path class="br" d="M115,122 L115,128 L181,128 L181,122"/><text class="l" x="148.0" y="142" text-anchor="middle">channel</text><text class="l" x="148.0" y="155" text-anchor="middle">1</text><path class="br" d="M187,122 L187,128 L325,128 L325,122"/><text class="l" x="256.0" y="142" text-anchor="middle">packet length</text><text class="l" x="256.0" y="155" text-anchor="middle">36</text><path class="br" d="M331,122 L331,128 L469,128 L469,122"/><text class="l" x="400.0" y="142" text-anchor="middle">data length</text><text class="l" x="400.0" y="155" text-anchor="middle">10</text><path class="br" d="M475,122 L475,128 L505,128 L505,122"/><text class="l" x="490.0" y="142" text-anchor="middle">ver</text><text class="l" x="490.0" y="155" text-anchor="middle">0x06</text><path class="br" d="M511,122 L511,128 L541,128 L541,122"/><text class="l" x="526.0" y="142" text-anchor="middle">seq</text><text class="l" x="526.0" y="155" text-anchor="middle">0</text><path class="br" d="M547,122 L547,128 L577,128 L577,122"/><text class="l" x="562.0" y="142" text-anchor="middle">flags</text><text class="l" x="562.0" y="155" text-anchor="middle">0x00</text><path class="br" d="M583,122 L583,128 L613,128 L613,122"/><text class="l" x="598.0" y="142" text-anchor="middle">type</text><text class="l" x="598.0" y="155" text-anchor="middle">0x11</text><path class="br" d="M619,122 L619,128 L829,128 L829,122"/><text class="l" x="724.0" y="142" text-anchor="middle">relative time counter</text><text class="l" x="724.0" y="155" text-anchor="middle">r1 = 100,000,000</text><path class="br" d="M835,122 L835,128 L901,128 L901,122"/><text class="l" x="868.0" y="142" text-anchor="middle">checksum</text><text class="l" x="868.0" y="155" text-anchor="middle">0xE34F</text>
+  <path class="br" d="M43,242 L43,248 L181,248 L181,242"/><text class="l" x="112.0" y="262" text-anchor="middle">channel-specific data word</text><text class="l" x="112.0" y="275" text-anchor="middle">0x00003001</text><path class="br" d="M187,242 L187,248 L253,248 L253,242"/><text class="l" x="220.0" y="262" text-anchor="middle">word 0</text><text class="l" x="220.0" y="275" text-anchor="middle">0x2735</text><path class="br" d="M259,242 L259,248 L325,248 L325,242"/><text class="l" x="292.0" y="262" text-anchor="middle">word 1</text><text class="l" x="292.0" y="275" text-anchor="middle">0x1345</text><path class="br" d="M331,242 L331,248 L397,248 L397,242"/><text class="l" x="364.0" y="262" text-anchor="middle">word 2</text><text class="l" x="364.0" y="275" text-anchor="middle">0x0187</text><path class="br" d="M403,242 L403,248 L469,248 L469,242"/><text class="l" x="436.0" y="262" text-anchor="middle">filler</text><text class="l" x="436.0" y="275" text-anchor="middle">not in data length</text>
+
+  <rect class="pan" x="20" y="300" width="300" height="152" rx="6"/>
+  <text class="b" x="32" y="320">Data word 0x00003001</text>
+  <text class="m" x="32" y="340">bits 3-0    SRC  0x1  external</text>
+  <text class="m" x="32" y="356">bits 7-4    FMT  0x0  IRIG-B</text>
+  <text class="m" x="32" y="372">bit 8       leap 0    not a leap year</text>
+  <text class="m" x="32" y="388">bit 9       date 0    day of year</text>
+  <text class="m" x="32" y="404">bits 15-12  ITS  0x3  TCG locked to</text>
+  <text class="m" x="32" y="420">                      external IRIG</text>
+  <text class="l" x="32" y="440">bits 31-16 and 11-10 reserved, zero</text>
+
+  <rect class="pan" x="340" y="300" width="300" height="152" rx="6"/>
+  <text class="b" x="352" y="320">Body, binary-coded decimal</text>
+  <text class="m" x="352" y="340">0x2735  TSn 2 Sn 7 Hmn 3 Tmn 5</text>
+  <text class="m" x="352" y="356">        = 27.35 s</text>
+  <text class="m" x="352" y="376">0x1345  THn 1 Hn 3 TMn 4 Mn 5</text>
+  <text class="m" x="352" y="392">        = 13 h 45 min</text>
+  <text class="m" x="352" y="412">0x0187  HDn 1 TDn 8 Dn 7</text>
+  <text class="m" x="352" y="428">        = day 187</text>
+  <text class="b" x="352" y="446">day 187, 13:45:27.350</text>
+
+  <rect class="res" x="660" y="300" width="320" height="152" rx="6"/>
+  <text class="b" x="672" y="320">A PCM packet on channel 3</text>
+  <text class="m" x="672" y="340">counter r = 104,200,000</text>
+  <text class="m" x="672" y="356">r - r1 = 4,200,000 ticks</text>
+  <text class="m" x="672" y="372">       x 100 ns = 0.420 s</text>
+  <text class="b" x="672" y="394">day 187, 13:45:27.770</text>
+  <text class="l" x="672" y="414">basis: reference on time channel 1 at r1,</text>
+  <text class="l" x="672" y="428">0.420 s after it; external, IRIG-B, locked;</text>
+  <text class="l" x="672" y="442">year unknown (day-of-year packet)</text>
+
+  <text class="l" x="20" y="480">The body is 6 bytes (three 16-bit words); data length 10 = data word 4 + body 6. Two bytes of filler bring the packet to 36, a multiple of 4,</text>
+  <text class="l" x="20" y="494">and are outside the data length (section 11.2.1.1 d, 11.2.1.4). The header checksum 0xE34F is the 16-bit sum of the header's other eleven words.</text>
+  <text class="l" x="20" y="520">TMATS declares the channels: R-1\TK1-1:1; R-1\CDT-1:TIMEIN; R-1\TTF-1:1; R-1\TFMT-1:B; R-1\TSRC-1:E; and R-1\TK1-2:3; R-1\CDT-2:PCMIN;</text>
+</svg>
