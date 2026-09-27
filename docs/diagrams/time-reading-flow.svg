@@ -92,5 +92,5 @@
   <path class="rt" d="M640,738 L878,738" marker-end="url(#a)"/>
 
   <text class="l" x="20" y="806">Basis: session 1 · channel 1, the declared external channel · reference r1 at 13:45:27.350 · 0.420 s after it · between two references ·</text>
-  <text class="l" x="20" y="820">external, IRIG-B, ITS locked to external IRIG · year unknown · default policy. A caller that must answer while reading uses the streaming form.</text>
+  <text class="l" x="20" y="820">external, IRIG-B, ITS locked · UTC, assumed · precision 10 ms · year unknown · default policy. The streaming form answers while reading.</text>
 </svg>

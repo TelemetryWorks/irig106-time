@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540" role="img" aria-label="What an answer carries, and where it comes from. A time timeline holds sessions; session 1 has two time channels: channel 1, declared external IRIG-B, chosen, with references r1, r2, r3; channel 2, undeclared, not used under the default policy. Session 2 follows a counter reset. The timeline also holds findings, quality, and the policy. The answer for a PCM packet with counter 104,200,000 is day 187 13:45:27.770, with its basis: session 1; channel 1, the declared external channel; reference r1 at counter 100,000,000 and 13:45:27.350; distance 0.420 seconds; between two references; external, IRIG-B, IRIG time source locked to external IRIG; year unknown; no corrections; no own time; default policy.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540" role="img" aria-label="What an answer carries, and where it comes from. A time timeline holds sessions; session 1 has two time channels: channel 1, declared external IRIG-B, chosen, with references r1, r2, r3; channel 2, undeclared, not used under the default policy. Session 2 follows a counter reset. The timeline also holds findings, quality, and the policy. The answer for a PCM packet with counter 104,200,000 is day 187 13:45:27.770, with its basis: session 1; channel 1, the declared external channel; reference r1 at counter 100,000,000 and 13:45:27.350; distance 0.420 seconds; between two references; external, IRIG-B, IRIG time source locked to external IRIG; UTC by assumption; precision 10 milliseconds; year unknown; no corrections; no own time; default policy.">
   <style>
     text { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; fill: #1f2328; }
     .t { font-size: 15px; font-weight: 600; }
@@ -86,23 +86,25 @@
   <!-- answer -->
   <rect class="res" x="510" y="65" width="470" height="455" rx="8"/>
   <text class="b" x="524" y="87">Answer for a PCM packet, counter 104,200,000</text>
-  <text class="k" x="524" y="118">time</text><text class="b" x="624" y="118">day 187, 13:45:27.770</text>
-  <text class="k" x="524" y="148">session</text><text class="m" x="624" y="148">1</text>
-  <text class="k" x="524" y="178">channel</text><text class="m" x="624" y="178">1 — declared external</text>
-  <text class="k" x="524" y="208">reference</text><text class="m" x="624" y="208">r1: 100,000,000 = 13:45:27.350</text>
-  <text class="k" x="524" y="238">distance</text><text class="m" x="624" y="238">0.420 s (4,200,000 ticks)</text>
-  <text class="k" x="524" y="268">position</text><text class="m" x="624" y="268">between two references</text>
-  <text class="k" x="524" y="298">source</text><text class="m" x="624" y="298">external, IRIG-B;</text>
-  <text class="m" x="624" y="314">ITS locked to external IRIG</text>
-  <text class="k" x="524" y="344">year</text><text class="m" x="624" y="344">unknown: no DMY packet,</text>
-  <text class="m" x="624" y="360">none from the caller, no R-x\RI4</text>
-  <text class="k" x="524" y="390">corrections</text><text class="m" x="624" y="390">none</text>
-  <text class="k" x="524" y="420">own time</text><text class="m" x="624" y="420">none (no secondary header)</text>
-  <text class="k" x="524" y="450">policy</text><text class="m" x="624" y="450">defaults</text>
-  <text class="l" x="524" y="490">The same time from a freewheeling clock an hour past its last</text>
-  <text class="l" x="524" y="504">reference would carry a different basis (contract section 7.6).</text>
+  <text class="k" x="524" y="116">time</text><text class="b" x="624" y="116">day 187, 13:45:27.770</text>
+  <text class="k" x="524" y="142">session</text><text class="m" x="624" y="142">1</text>
+  <text class="k" x="524" y="168">channel</text><text class="m" x="624" y="168">1 — declared external</text>
+  <text class="k" x="524" y="194">reference</text><text class="m" x="624" y="194">r1: 100,000,000 = 13:45:27.350</text>
+  <text class="k" x="524" y="220">distance</text><text class="m" x="624" y="220">0.420 s (4,200,000 ticks)</text>
+  <text class="k" x="524" y="246">position</text><text class="m" x="624" y="246">between two references</text>
+  <text class="k" x="524" y="272">source</text><text class="m" x="624" y="272">external, IRIG-B;</text>
+  <text class="m" x="624" y="287">ITS locked to external IRIG</text>
+  <text class="k" x="524" y="313">scale</text><text class="m" x="624" y="313">UTC, assumed (IRIG; RDG-009)</text>
+  <text class="k" x="524" y="339">precision</text><text class="m" x="624" y="339">10 ms (a Format 1 body)</text>
+  <text class="k" x="524" y="365">year</text><text class="m" x="624" y="365">unknown: no DMY packet,</text>
+  <text class="m" x="624" y="380">none from the caller, no R-x\RI4</text>
+  <text class="k" x="524" y="406">corrections</text><text class="m" x="624" y="406">none</text>
+  <text class="k" x="524" y="432">own time</text><text class="m" x="624" y="432">none (no secondary header)</text>
+  <text class="k" x="524" y="458">policy</text><text class="m" x="624" y="458">defaults</text>
+  <text class="l" x="524" y="494">The same time from a freewheeling clock an hour past its last</text>
+  <text class="l" x="524" y="508">reference would carry a different basis (contract section 7.6).</text>
 
-  <path class="ln" d="M120,208 C300,150 420,204 506,204" marker-end="url(#a)"/>
-  <path class="ln" d="M454,446 L506,446" marker-end="url(#a)"/>
-  <path class="ln" d="M454,130 C480,130 480,144 506,144" marker-end="url(#a)"/>
+  <path class="ln" d="M120,208 C300,150 420,190 506,190" marker-end="url(#a)"/>
+  <path class="ln" d="M454,454 L506,454" marker-end="url(#a)"/>
+  <path class="ln" d="M454,130 C480,130 480,138 506,138" marker-end="url(#a)"/>
 </svg>

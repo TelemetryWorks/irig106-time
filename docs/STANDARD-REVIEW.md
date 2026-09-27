@@ -202,6 +202,52 @@ absolute clock time for all data packet types". RCC 123-16 §5.6 matches
 The handbook is guidance, not the standard; the requirements rest on Chapter
 11 and cite the handbook as support.
 
+### T-16 A leap second cannot be read
+
+*Found 2026-09-27, at the completeness check of step 1.*
+
+**Code:** `src/absolute.rs:199` — `if seconds > 59` returns `OutOfRange`, so
+every time with second 60 is rejected; the prototype's L1-ERR-003 asks for
+it ("seconds > 59").
+
+**Standard:** RCC 200-16, which Chapter 11 cites for IRIG time ("The 10-MHz
+RTC shall be captured … IAW IRIG 200", §11.2.3.2): "The SBS TOD code reads 0
+seconds at 2400 each day excluding leap second days when a second may be
+added or subtracted" (§3.6); "If required, time changes are made on December
+31 and on June 30 at 2400 hours" (Appendix A.2). A UTC time of 23:59:60 on
+those days is valid, and a Format 1 body can carry it (tens of seconds are
+three bits, Figure 11-13).
+
+**Change:** accept second 60 at 23:59:60 on a day that can be 30 June or 31
+December (days 181, 182, 365, 366) in the UTC formats, and report it as a
+leap second; reject it elsewhere. A reading for the register (RDG-010).
+
+### T-17 The time scale of a time packet is ignored
+
+*Found 2026-09-27, at the completeness check of step 1.*
+
+**Code:** the Format 1 time format is decoded (`src/csdw.rs:79`) but used
+nowhere else: references from every format are correlated and returned
+alike, and `LeapSecondTable::offset_for_f1` treats "IRIG-B, GPS, internal
+clock" (`src/network_time.rs:568`) the same.
+
+**Standard:** FMT distinguishes "0x4 = Universal Coordinated Time (UTC) time
+from GPS" from "0x5 = Native GPS Time" (§11.2.3.2 a), and RCC 200-16 says
+"GPS time does not add or subtract leap seconds, and as of this writing, GPS
+time is 16 seconds ahead of UTC" (Appendix A.2, written when TAI − UTC was
+35 s, so TAI − GPS = 19 s). Native GPS time is therefore 18 s ahead of UTC
+since 2017. NTP is UTC and PTP is TAI (§11.2.3.3).
+
+**Effect:** times from a native-GPS time channel are presented as if they
+were UTC, 18 s late; references of different scales could be combined.
+
+**Change:** every reference carries its time scale — UTC, TAI, GPS, or
+unknown (the recorder's own clock, FMT `0x3`) — and conversions go through
+the leap-second table. IRIG-A, B, and G are UTC by assumption (RCC 200-16
+§1: ranges "maintain Coordinated Universal Time (UTC) referenced to the
+United States Naval Observatory (USNO) Master Clock"), labelled as assumed
+and changeable by the policy (RDG-009).
+
 ## Readings to settle
 
 ### T-14 The IRIG time source field has no version of its own
@@ -222,7 +268,7 @@ under 106-15 carries `0000`, which 106-17 defines as "IRIG TCG freewheeling
 declares 106-17 or later (RCCVER `0x0C` or above, Figure 11-34); otherwise
 report it as "not reported", never as "freewheeling". ITS applies "when FMT
 is IRIG-A, B, or G" (§11.2.3.2) in any case. An entry for the reading
-register (ADR-0012).
+register (ADR-0012): RDG-007.
 
 ### T-15 The secondary header checksum: bytes or 16-bit words?
 
@@ -245,7 +291,7 @@ headers and accepts invalid ones.
 
 **Reading (proposed, suspect):** sum bytes, as the wording and the handbook
 do; confirm against real recordings (locally, never in CI) before L2, and
-report which reading a recording's headers satisfy.
+report which reading a recording's headers satisfy. Register entry RDG-008.
 
 ## To confirm on the page image
 

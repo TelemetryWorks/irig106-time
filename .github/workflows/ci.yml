@@ -86,3 +86,13 @@ jobs:
           targets: wasm32-unknown-unknown
       - run: cargo build --target wasm32-unknown-unknown --no-default-features
       - run: cargo build --target wasm32-unknown-unknown --no-default-features --features serde
+
+  trace-matrix:
+    name: Trace matrix up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: python scripts/build-trace-matrix.py --check

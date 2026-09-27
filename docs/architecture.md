@@ -129,8 +129,8 @@ lists — the packet header's data type version and the setup record's RCCVER
 | `format1` | the Format 1 data word (SRC, FMT, leap year, date format, ITS, reserved bits) and bodies: day format, 3 words (6 bytes); day, month, and year, 4 words (8 bytes); decode and encode | §11.2.3.2, Figures 11-12 to 11-14, Table 11-16 | T-6, T-7, T-12 |
 | `format2` | the Format 2 data word (NTF bits 7–4, TS bits 3–0, reserved 31–8) and bodies: NTP seconds and fraction, PTP seconds and nanoseconds, 8 bytes each; decode and encode | §11.2.3.3, Figures 11-15 to 11-17 | T-2, T-3 |
 | `words` | time words from data: Chapter 4 high, low, and microsecond words, binary or BCD weighted; network time words | Chapter 4 §4.7; contract 3.8 | — (new) |
-| `calendar` | absolute time: day of year and time of day to the nanosecond, with an optional year; calendar dates; leap years | Figures 11-13, 11-14 | — |
-| `scale` | time scales and epochs: UTC (NTP, 1900, "includes leap seconds"), TAI (PTP, 1970, "does not include leap seconds"), Unix; the leap-second table with the date it is known to be current to | §11.2.3.3 | — |
+| `calendar` | absolute time: day of year and time of day to the nanosecond, with an optional year; calendar dates; leap years; the leap second 23:59:60 | Figures 11-13, 11-14; RCC 200-16 §3.6, A.2 | T-16 |
+| `scale` | time scales and epochs: UTC (FMT `0x4`, NTP from 1900, "includes leap seconds"), TAI (PTP from 1970, "does not include leap seconds"), GPS (FMT `0x5`, TAI − 19 s), unknown (FMT `0x3`), and IRIG-A, B, G as UTC by assumption; Unix time; conversions between them through the leap-second table, which states the date it is known to be current to | §11.2.3.2 a, §11.2.3.3; RCC 200-16 §1, A.2; RDG-009 | T-17 |
 | `edition` | what exists in which edition: Format 2 from 106-17; Chapter 10 section numbers before 106-17, Chapter 11 after | §11.2.1.1 e | T-4 |
 
 Every reader in this layer takes a byte slice bounded by the caller —
@@ -178,7 +178,7 @@ reference of the chosen channel, and it records the policy.
 |------|-------|
 | **Session** | a run of packets whose counter increases, allowing for late packets (default bound 1100 ms); its counter range; its span in absolute time; its chosen time channel and the rule that chose it; its year and where the year came from |
 | **Time channel** (per session) | the channel ID; what the governing setup record declares for it (or that it is undeclared); its references; its source changes; its gaps and jumps |
-| **Reference** | counter, absolute time, scale (UTC or TAI), source, format, ITS, validity, and the packet it came from; whether it is used, and why not if not |
+| **Reference** | counter, absolute time, time scale (UTC, TAI, GPS, or unknown; assumed or stated), precision (the resolution of its format: 10 ms for Format 1), source, format, ITS, validity, and the packet it came from; whether it is used, and why not if not |
 | **Governing setup record** | per counter range, which time declarations apply (from the caller, after `irig106-tmats` L1-CH10-008) |
 | **Findings** | every finding of the recording, each with its evidence |
 | **Quality** | reference counts, largest and smallest spacing, references per second, drift in parts per million |
@@ -195,6 +195,8 @@ reference of the chosen channel, and it records the policy.
 | **distance** | the counter difference to it, as a duration |
 | **position** | between two references; before the first (extrapolated, by policy); beyond the last |
 | **source** | the reference's source, format, and ITS (external IRIG-B locked; internal freewheeling; PTP valid) |
+| **scale** | the time scale of the answer — UTC, TAI, GPS, or unknown — and whether it is stated by the standard or assumed by the policy |
+| **precision** | the resolution of the reference's format (10 ms for Format 1; 1 ns for PTP), so a time is not read as more precise than its reference |
 | **year** | known or not, and from where: a day-month-year packet, the caller, `R-x\RI4` |
 | **corrections** | drift correction applied or not; leap-second offset applied, and whether the table reaches the date |
 | **own time** | for a packet with a secondary header: its own time, and its difference from the counter-derived time when beyond the policy's tolerance |
@@ -204,7 +206,7 @@ The worked example (contract section 7.3) is an answer: day 187
 13:45:27.770; session 1; time channel 1, the declared external channel;
 reference r1 = 100,000,000 at 13:45:27.350; distance 0.420 s; between two
 references; external, IRIG-B, ITS "locked to external IRIG time signal";
-year unknown; defaults.
+UTC, assumed; precision 10 ms; year unknown; defaults.
 
 ### 5.3 The policy
 
@@ -217,7 +219,10 @@ year packet, caller, `R-x\RI4`); reference gap (more than 1 s plus a
 tolerance); time jump (the format's resolution, 10 ms for Format 1); the
 late-packet bound (1100 ms = the 1000 ms stream commit time plus the 100 ms
 packet generation time of Chapter 10 §10.6.1 b–c); counter wrap (arithmetic,
-fixed).
+fixed); before the first reference (counter time only); secondary header
+against the counter (report beyond the reference's resolution); the time
+scale of IRIG-A, B, G (UTC, assumed) and of the real-time clock (unknown);
+and the severity of each finding (its default, section 8).
 
 ---
 
@@ -289,9 +294,46 @@ ERTC/100" when writing ERTC (contract section 4.11).
 
 Every finding has a stable identifier, a default severity the caller can
 change, and its evidence: the packet (file position when the caller gives
-it), the channel, the counter. Proposed identifiers, one per case of
-contract section 6, are assigned in L2 (`TF-001` onward); identifiers are
-never reused. Nothing panics on any input (L1-ROB).
+it), the channel, the counter. Identifiers are never reused. Nothing panics
+on any input (L1-ERR-001).
+
+**The findings** (proposed identifiers and default severities; L2 fixes
+them). *Error*: the value cannot be trusted and is not used; *warning*: the
+recording breaks a rule of the standard; *information*: worth knowing,
+nothing is wrong.
+
+| ID | Finding | Default | Contract |
+|----|---------|---------|----------|
+| TF-001 | A session has no time packet | warning | 6.1 |
+| TF-002 | A dynamic packet precedes the session's first time packet | warning | 6.2 |
+| TF-003 | A time packet is marked invalid (FMT `0xF` NONE; TS "Time Not Valid") | warning | 6.3 |
+| TF-004 | A time packet is malformed (a digit above 9, a field out of range, a short body) | error | 6.3 |
+| TF-005 | Reserved bits are set (data word, body, secondary header) | warning | 6.3 |
+| TF-006 | A reserved value is used (SRC `0x3`–`0xE`, FMT `0x6`–`0xE`, NTF `0x3`–`0xF`, TS `0x2`–`0xF`, ITS `1000`–`1111`, flags bits 3–2 `11`) | warning | 6.3, 6.6 |
+| TF-007 | The leap-year bit disagrees with the day or the year | warning | 6.3, 6.8 |
+| TF-008 | Time packets on a channel the setup record does not declare TIMEIN | warning | 6.4 |
+| TF-009 | A declared time channel carries no time packets | information | 6.4 |
+| TF-010 | TMATS and the packets differ (`TTF`, `TFMT`, `SHTF`) | warning | 6.4 |
+| TF-011 | A channel's time source differs from `TSRC`, or changes (lock lost or regained) | information | 5.2, 6.4 |
+| TF-012 | A secondary header fails its checksum | error | 6.6 |
+| TF-013 | Channels use different secondary-header time formats | warning | 6.6 |
+| TF-014 | A secondary header's time and the counter's differ beyond the tolerance | warning | 6.6 |
+| TF-015 | Packet flags bit 6 is set without bit 7 | error | 6.6 |
+| TF-016 | A reference gap | warning | 5.4, 6.7 |
+| TF-017 | A time jump | warning | 5.4, 6.7 |
+| TF-018 | A counter reset: a new session | information | 5.4, 6.7 |
+| TF-019 | A packet later than the late-packet bound | warning | 5.4, 6.7 |
+| TF-020 | A session's year is unknown | information | 5.3, 6.8 |
+| TF-021 | A conversion falls after the leap-second table's last known date | warning | 6.8 |
+| TF-022 | A leap second (23:59:60) was read | information | 3.2, 6.8 |
+| TF-023 | A time scale is assumed or unknown | information | 3.2, 6.8 |
+| TF-024 | Packet flags report an RTC sync error (bit 5) | warning | 6.7 |
+| TF-025 | A packet's ERTC and RTC disagree ("RTC = ERTC/100") | warning | 6.6 |
+| TF-026 | A Format 2 time packet in a recording declared before 106-17 | warning | 3.9 |
+| TF-027 | Secondary headers satisfy only the other checksum reading (RDG-008) | information | 6.6 |
+
+Weak time (contract 6.5) is not a finding: every answer's basis carries
+it.
 
 ---
 
@@ -303,8 +345,11 @@ never reused. Nothing panics on any input (L1-ROB).
 | **Features** | `std` (default: `std::error::Error`); `alloc` implied by the recording layer; `serde`; `chrono` (conversions to and from `chrono` types) |
 | **Targets** | any Rust target; CI builds `wasm32-unknown-unknown` with and without `serde`, and a `no_std` target without `std` (ADR-0014) |
 | **Edition and MSRV** | edition 2024, Rust 1.85 (ADR-0003) |
+| **`serde`** | `Serialize` and `Deserialize` for every public value type, answer, finding, policy, and time timeline, so tools can store and exchange them |
+| **`chrono`** | conversions between the crate's absolute times and `chrono`'s date-time types, for times whose year and scale are known |
 | **Unsafe code** | none (`#![forbid(unsafe_code)]`) |
-| **Documentation** | every public item documented (`#![deny(missing_docs)]`), citing the standard |
+| **Documentation** | every public item documented (`#![deny(missing_docs)]`), citing the standard; `cargo doc` in CI |
+| **Performance** | benchmarks for the hot paths — reading a time packet, answering for a counter, building a time timeline — with the budget set after the first measurement (as `irig106-tmats` L1-PERF-001 does); the prototype's measurements (`docs/benchmark_results.md`) are the baseline to beat |
 
 ---
 
@@ -329,10 +374,10 @@ carried over through tests written from the standard (ADR-0016).
 | Prototype module | In the rebuild | Findings |
 |------------------|----------------|----------|
 | `rtc` (from `irig106-types`) | Layer 0, unchanged | — |
-| `absolute` | `calendar`; Chapter 4 binary time to `secondary` and `words` after the page check; day 0 reported, not turned into day 1 | T-10 |
+| `absolute` | `calendar`; Chapter 4 binary time to `secondary` and `words` after the page check; day 0 reported, not turned into day 1; the leap second accepted | T-10, T-16 |
 | `bcd` | `format1` bodies, 6 and 8 bytes; digit and range checks kept | T-12 |
 | `csdw` | `format1` data word, with ITS, NONE, reserved bits, source 3 reserved | T-6, T-7 |
-| `network_time` | `format2` (data word NTF and TS; 8-byte PTP body; from 106-17) and `scale` (leap-second table, with its currency) | T-2, T-3, T-4 |
+| `network_time` | `format2` (data word NTF and TS; 8-byte PTP body; from 106-17) and `scale` (UTC, TAI, GPS, unknown; leap-second table, with its currency) | T-2, T-3, T-4, T-17 |
 | `secondary` | `secondary`; mixed formats reported | T-10 |
 | `intra_packet` | `flags` and `stamp`, bit 6 and bits 3–2 | T-1 |
 | `correlation` | `timeline` and `answer`: the nearest-reference core kept, with sessions, channel choice, policy, basis, findings; late packets bounded at 1100 ms by default (the prototype uses 2 s) | — |
@@ -356,7 +401,14 @@ and the tests verify it; real recordings, used only locally, feed new
 findings back.
 
 Each L1 requirement cites the standard or an ADR; L2 and L3 name their
-parents; each test names the requirements it verifies. The prototype's
+parents; each test names the requirements it verifies with a
+`/// Requirements: L?-XXX-NNN` doc comment above `#[test]`, and each reading
+it pins with `/// Interpretations: RDG-NNN`. `scripts/build-trace-matrix.py`
+(adapted from `irig106-tmats`) generates `docs/TRACE-MATRIX.md` from the
+requirement documents, the reading register (`docs/INTERPRETATIONS.md`), and
+those markers; a CI job fails when the matrix is out of date. A requirement
+verified by Inspection, Analysis, or Demonstration names its artifact on an
+**Evidence** line, or it stays Draft. The prototype's
 requirement identifiers that survive keep their numbers; those that were
 wrong are retired and never reused (L1, section "Prototype requirements").
 
@@ -366,9 +418,10 @@ wrong are retired and never reused (L1, section "Prototype requirements").
 
 1. ~~ADR-0011, 0012, 0013, 0014, 0016, 0017~~ — **accepted** (2026-09-27).
    Still open from ADR-0017: whether to yank 0.1.0 to 0.7.0 from crates.io.
-2. **The finding identifiers**: `TF-001` onward, assigned in L2.
-3. **RTC sync error** (packet flags bit 5, §11.2.1.1 g) as a finding: found
-   while writing this architecture; not yet in the contract document.
+2. **The finding identifiers and default severities** of section 8
+   (TF-001 to TF-027): proposed; L2 fixes them.
+3. ~~RTC sync error as a finding~~ — now in the contract (section 6.7) and
+   TF-024.
 4. **T-10**, the Chapter 4 binary layout: Figure 11-4 as extracted places
    the microsecond word above a reserved half in the first long word, and the
    high-order word above the low-order word in the second; the page image,
@@ -377,3 +430,10 @@ wrong are retired and never reused (L1, section "Prototype requirements").
 5. **The one-pass answer** (section 6): whether `stream` holds packets until
    the next reference by default, or answers at once from the preceding
    reference.
+6. **The reading register** (`docs/INTERPRETATIONS.md`, RDG-001 to RDG-011):
+   every entry awaits review. RDG-003 (`TFMT` I "Internal") is open;
+   RDG-007 (ITS before 106-17, T-14) and RDG-008 (the checksum, T-15,
+   suspect) change what L2 specifies; RDG-009 (time scales, T-17) and
+   RDG-010 (the leap second, T-16) were added at the completeness check.
+7. **Page checks** before L2: Figures 11-4 and 4-4 (T-10), and whether
+   "Default: A" in Table 9-4 belongs to `R-x\TFMT-n` (RDG-002).

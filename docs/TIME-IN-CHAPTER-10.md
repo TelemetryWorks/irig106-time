@@ -281,9 +281,19 @@ differences are wrap-safe (`Rtc::elapsed_ticks`).
 **What the answer carries (decided, ADR-0011):** the absolute time **and its
 basis** — the reference point used (its time channel, counter, and time),
 how far the counter is from it, whether it lies between two references or
-beyond the last, and the time source and format of that reference. A time
-100 ms from a reference and one an hour past the last reference are not
-equally good; today both come back as a bare time.
+beyond the last, the time source and format of that reference, its time
+scale, and its precision. A time 100 ms from a reference and one an hour
+past the last reference are not equally good; today both come back as a
+bare time.
+
+**The precision of a reference.** A Format 1 body resolves 10 ms, and for
+non-IRIG formats the counter is captured "consistent with the resolution
+with the time packet body format (10 milliseconds [ms] as measured by the
+10-MHz RTC)" (§11.2.3.2); for IRIG formats it is captured "IAW IRIG 200".
+Format 2 bodies resolve nanoseconds (PTP) or 2^-32 s (NTP). The answer
+carries the reference's resolution, so that 13:45:27.770 derived from a
+Format 1 reference is known to be good to about 10 ms, not to the
+nanosecond it is written in.
 
 ### 3.2 What does a Format 1 time packet say?
 
@@ -306,6 +316,26 @@ source is lost then the time source shall indicate Internal (0x0)."
 **Today:** `TimeF1Csdw`, `DayFormatTime`, `DmyFormatTime` read and write
 these, with digit and reserved-bit checks — without ITS or FMT `0xF`, and
 with a source value 3 the standard reserves (T-6, T-7).
+
+**The time scale.** FMT says more than the code: `0x4` is "Universal
+Coordinated Time (UTC) time from GPS"; `0x5` is "Native GPS Time", which
+"does not add or subtract leap seconds" and was "16 seconds ahead of UTC"
+when RCC 200-16 was written (Appendix A.2; TAI − UTC was then 35 s, so GPS
+time is TAI − 19 s, 18 s ahead of UTC since 2017); `0x3`, the recorder's
+real-time clock, has no stated scale. For IRIG-A, B, and G the standard
+names no scale, but RCC 200-16 §1 says "All Department of Defense (DoD) test
+ranges … maintain Coordinated Universal Time (UTC) referenced to the United
+States Naval Observatory (USNO) Master Clock": they are read as UTC **by
+assumption**, labelled, and changeable by the policy (5.6; register entry
+RDG-009). The prototype ignores the scale (T-17).
+
+**Leap seconds.** In UTC, 23:59:60 exists: RCC 200-16's time-of-day code
+"reads 0 seconds at 2400 each day excluding leap second days when a second
+may be added or subtracted" (§3.6), and "time changes are made on December
+31 and on June 30 at 2400 hours" (Appendix A.2). A Format 1 body can carry
+second 60 (tens of seconds are three bits, Figure 11-13); the crate reads it
+as a leap second on a day that can be 30 June or 31 December, and reports
+it (RDG-010). The prototype rejects it (T-16).
 
 **The year.** The day-of-year form carries no year. The crate leaves it
 unset (`AbsoluteTime` holds an optional year); where the year comes from
@@ -741,6 +771,11 @@ settings that differ from the defaults).
 | Time jump | the format's resolution (10 ms for Format 1) | any threshold |
 | Late-packet bound | 1100 ms | any bound |
 | Counter wrap | arithmetic | — (fixed by the counter's width) |
+| Before the first reference | counter time only (6.2) | extrapolate back from the first reference (labelled) |
+| Secondary header against the counter | report a difference beyond the resolution of the reference's format (10 ms for Format 1) (6.6) | any tolerance |
+| Time scale of IRIG-A, B, G | UTC, assumed and labelled (3.2; RCC 200-16 §1) | name the scale, or leave it unknown |
+| Time scale of the real-time clock (FMT `0x3`) | unknown | name the scale |
+| Severity of each finding | its documented default (section 6) | any severity per finding |
 
 ---
 
@@ -784,7 +819,7 @@ such.
 |------|--------|
 | Format 1 FMT `0xF` | "NONE (time packet payload invalid)" (§11.2.3.2) |
 | Format 2 time status `0x0` | "Time Not Valid" (§11.2.3.3) |
-| A binary-coded decimal digit above 9, or a field out of range (hours above 23, day above 366) | Figures 11-13 and 11-14; the crate's L1-ERR-002, 003 |
+| A binary-coded decimal digit above 9, or a field out of range (hours above 23, day above 366, second 60 other than 23:59:60 on a leap-second day) | Figures 11-13 and 11-14; RCC 200-16 §3.6; the crate's L1-ERR-002, 003 |
 | Reserved bits set | Format 1 bits 31–16 and 11–10; Format 2 bits 31–8 |
 | Day 366 when the leap-year bit (Format 1 bit 8) says the year is not a leap year | Format 1 data word |
 | A reserved source, format, or network time format | SRC `0x3`–`0xE`, FMT `0x6`–`0xE`, NTF `0x3`–`0xF` |
@@ -824,7 +859,9 @@ freewheeling time is never mistaken for locked time.
 
 Found and reported with the bound that found them (section 5.4): a
 reference gap, a time jump, a counter reset (a new session), a packet later
-than the late-packet bound. A time given across a gap or a jump, or beyond
+than the late-packet bound. A packet whose flags say "RTC sync error has
+occurred" (bit 5, §11.2.1.1 g) is reported too: the counter it carries may
+not be continuous with the others. A time given across a gap or a jump, or beyond
 the last reference, is labelled with the distance to its reference.
 
 ### 6.8 The year and leap seconds
@@ -833,6 +870,11 @@ the last reference, is labelled with the distance to its reference.
   needs one — conversion to a calendar date, to Unix, NTP, or PTP time —
   reports that it cannot.
 - **The leap-year bit disagrees** with the year found: reported.
+- **A leap second** (23:59:60, section 3.2): read and reported, so that a
+  consumer counting seconds is not surprised.
+- **An assumed or unknown time scale** (section 3.2): IRIG time labelled as
+  assumed UTC; real-time-clock time labelled as of unknown scale, and not
+  converted to another scale unless the caller names it.
 - **The leap-second table does not reach the date** of a conversion between
   TAI (PTP) and UTC (NTP, Format 1): the conversion is given with the last
   known offset and labelled as possibly out of date; the caller can extend
@@ -852,8 +894,11 @@ the last reference, is labelled with the distance to its reference.
 | Secondary header and counter disagree | both | — | correlation |
 | Across a gap or jump, or beyond the last reference | yes | the distance | every answer's basis |
 | Counter reset | yes, in the new session | new session | the time timeline |
+| RTC sync error (flags bit 5) | yes | — | the time timeline |
 | No year | without a year | — | the answer |
 | Leap-second table out of date | yes | possibly stale | the conversion |
+| Leap second (23:59:60) | yes | leap second | time packet reading |
+| Assumed or unknown time scale | yes | assumed UTC; unknown scale | every answer's basis |
 
 ---
 
@@ -921,6 +966,8 @@ With the default time policy (section 5.6), the answer carries its basis:
 | Reference | r1, 13:45:27.350; the nearest of the two around the packet (the next is 0.580 s away) |
 | Position | between two references, 0.420 s after the earlier |
 | Source and format | external, IRIG-B, ITS "locked to external IRIG time signal" |
+| Scale | UTC, by assumption: IRIG-B names no scale; RCC 200-16 §1 (3.2; RDG-009) |
+| Precision | 10 ms, the resolution of a Format 1 body (3.1) |
 | Year | unknown: no day-month-year packet, none from the caller, and no `R-x\RI4` in this setup record (5.3) |
 | Policy | defaults |
 
@@ -1016,10 +1063,10 @@ capabilities, and finally the workspace and the CLI sub-crate.
 | Module | Assessment | Findings |
 |--------|------------|----------|
 | `rtc` (from `irig106-types`) | keep | — |
-| `absolute` | keep `AbsoluteTime` and `CalendarTime`; rework Chapter 4 binary time after the page check; stop turning day 0 into day 1 silently | T-10 |
+| `absolute` | keep `AbsoluteTime` and `CalendarTime`; rework Chapter 4 binary time after the page check; stop turning day 0 into day 1 silently; accept the leap second | T-10, T-16 |
 | `bcd` | fix the body lengths; keep the digit and range checks | T-12 |
 | `csdw` | fix: source 3 reserved, FMT `0xF` NONE, the ITS field, reserved-bit checks | T-6, T-7 |
-| `network_time` | rework Format 2: the data word's NTF and TS, the 8-byte PTP body, Format 2 from 106-17; keep the leap-second table and make its currency visible | T-2, T-3, T-4 |
+| `network_time` | rework Format 2: the data word's NTF and TS, the 8-byte PTP body, Format 2 from 106-17; keep the leap-second table and make its currency visible; give every time its scale (UTC, TAI, GPS, unknown) | T-2, T-3, T-4, T-17 |
 | `secondary` | keep; confirm the Chapter 4 layout; report mixed formats across channels | T-10 |
 | `intra_packet` | fix the selecting bits (6, and 3–2) | T-1 |
 | `correlation` | keep the nearest-reference core; add sessions, the channel choice, the policy, and the basis; late packets bounded at 1100 ms by default | — |
@@ -1101,3 +1148,9 @@ Data Length (L1-ERR-005).
   checksum is summed as 16-bit words where the standard's wording and RCC
   123-20's code sum bytes (suspect, to test locally on real recordings);
   and packet flags bit 5, "RTC sync error", as a finding (L1-FND-003).
+- **Found at the completeness check** (2026-09-27): T-16, the prototype
+  rejects the leap second 23:59:60; T-17, it ignores the time scale (native
+  GPS time is not UTC). Sections 3.1, 3.2, 5.6, and 6 now cover the time
+  scale, leap seconds, the precision of a reference, and five policy
+  settings that section 6 relied on without listing. Their readings are
+  register entries (`docs/INTERPRETATIONS.md`, RDG-009, RDG-010), proposed.
