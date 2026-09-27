@@ -89,6 +89,7 @@ irig106-time/
         |-- ecosystem.mermaid
         |-- module_deps.mermaid
         |-- rtc-to-absolute.svg        # Relative to absolute time (TIME-IN-CHAPTER-10.md section 1)
+        |-- time-in-the-pipeline.svg   # Where time sits in Chapter 10 processing (section 2)
         `-- traceability.mermaid
 ```
 

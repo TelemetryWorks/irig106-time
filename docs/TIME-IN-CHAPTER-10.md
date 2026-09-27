@@ -15,7 +15,7 @@
 | Section | Status |
 |---------|--------|
 | 1. What `irig106-time` is for | **draft for review** |
-| 2. Where time sits in Chapter 10 processing | to be written |
+| 2. Where time sits in Chapter 10 processing | **draft for review** |
 | 3. What the crate answers, question by question | to be written |
 | 4. Contracts per consumer | to be written |
 | 5. Time over a recording | to be written |
@@ -161,3 +161,95 @@ reference and which source it came from.
 - **The findings of `docs/STANDARD-REVIEW.md`** (T-1 to T-11), the stale
   citations to Chapter 10 section numbers from before 106-17, and RCC 200's
   absence from the standards archive are planned in section 8.
+
+---
+
+## 2. Where time sits in Chapter 10 processing
+
+![Where time sits in Chapter 10 processing](diagrams/time-in-the-pipeline.svg)
+
+*Two directions.* Reading a recording (top): the packet reader hands
+setup-record fragments to `irig106-tmats`, which gives this crate the time
+attributes as plain data; time packets become reference points; every
+other packet's counter, secondary-header time, and time stamps become
+absolute time for the decoder and the tools. Producing a recording
+(bottom): this crate encodes what a time packet carries, and
+`irig106-write` packs it. Letters name what crosses each boundary (2.3).
+
+### 2.1 Reading a recording
+
+1. **The packet reader walks the file** (A): each header, with its relative
+   time counter and packet flags, the secondary header when flags bit 7 is
+   set (its checksum verified), and the body (Chapter 11 §11.2.1). Today this
+   repository's `ch10time` CLI has its own reader; `irig106-core` takes that
+   over when it exists.
+2. **The setup record says where time is** (B, C). `irig106-tmats` reads it
+   and hands this crate, as plain data, the time channels (`R-x\CDT-n` =
+   TIMEIN) with their packet format, time format, and time source
+   (`R-x\TTF-n`, `R-x\TFMT-n`, `R-x\TSRC-n`), each channel's secondary-header
+   time format (`R-x\SHTF-n`), and the recording-format version the setup
+   record declares (`irig106-tmats` `docs/TMATS-IN-CHAPTER-10.md` sections
+   3.8 and 3.9).
+3. **Time packets become reference points** (D). Each time packet (`0x11`,
+   `0x12`) pairs its header counter with the absolute time in its body; the
+   correlator keeps these per time channel (`TimeCorrelator::add_reference`,
+   `add_reference_f2`). Because "A time data packet shall be the first
+   dynamic data packet at the start of each session" (§11.2.3.2), a reference
+   exists before the first data packet.
+4. **Every other packet's time is resolved** (E, F). A packet's counter
+   becomes absolute time from the references (`correlate`); a packet with a
+   secondary header carries its own time, in the format of packet flags bits
+   3–2; intra-packet time stamps sit inside packet bodies, whose layout
+   depends on the data type, so `irig106-decode` finds them and asks this
+   crate to turn them into absolute time — the counter's, or the
+   secondary-header format's when packet flags bit 6 is set (§11.2.1.1 g,
+   §11.2.1.3 b).
+5. **Tools present time** (G): the time axis, the recording's start, end,
+   and duration, gaps and jumps in time, and how trustworthy it is.
+
+**Which reference?** When a recording carries several time channels, or a
+time source loses and regains lock, more than one set of references
+exists; the caller names a time channel or lets the correlator use the
+nearest reference (`correlate(rtc, channel)`). Sections 3 and 5 define the
+choice.
+
+### 2.2 Producing a recording
+
+A recorder, or a tool writing a recording, knows the times to record; this
+crate encodes the time packet's channel-specific data word and body —
+Format 1 in day-of-year or day-month-year form, Format 2 with NTP or PTP time
+— and `irig106-write` packs them into packets (H). The counter itself comes
+from the recorder's clock, not from this crate.
+
+### 2.3 What crosses each boundary
+
+| | From → to | What crosses |
+|---|-----------|--------------|
+| A | recording → packet reader | the file's bytes |
+| B | packet reader → `irig106-tmats` | setup-record fragments with their provenance |
+| C | `irig106-tmats` → `irig106-time` | the time attributes: time channels with packet format, time format, and time source; each channel's secondary-header time format; the recording-format version declared; which setup record governs which packets |
+| D | packet reader → `irig106-time` | each time packet: channel ID, data type, header counter, and the channel-specific data word and body |
+| E | packet reader or `irig106-decode` → `irig106-time` | a packet's counter and flags, its secondary header, and its intra-packet time stamps (found by the decoder) |
+| F | `irig106-time` → `irig106-decode` | absolute time for a counter or a time stamp, with its basis — which reference, which time channel, which source (section 3) |
+| G | `irig106-time` → the tools | time spans, gaps, jumps, RTC resets, drift, and quality |
+| H | `irig106-time` → `irig106-write` | encoded channel-specific data words and time packet bodies |
+
+Every boundary carries bytes and plain values, never files. Shared types —
+the counter, the time formats and sources, the Chapter 4, IEEE 1588, and
+ERTC time values — come from `irig106-types`.
+
+### 2.4 Which crate depends on which
+
+| Crate | Depends on | Does not depend on |
+|-------|-----------|--------------------|
+| `irig106-time` | `irig106-types` | `irig106-tmats`, `irig106-core`, `irig106-decode` |
+| `irig106-tmats` | `irig106-types` | `irig106-time` (the configuration timeline works in counter values) |
+| `irig106-decode` | `irig106-types`, `irig106-tmats`, and — proposed — `irig106-time` | — |
+
+This crate receives everything it needs as plain data (C, D, E), the same
+arrangement `irig106-tmats` ADR-0030 chose for `irig106-core`, so it stays a
+small leaf library that any tool — or a browser build — can use alone.
+**Proposed, for the owner's decision:** `irig106-decode` depends on
+`irig106-time`, so that it can turn the time stamps and time words it finds
+into absolute time itself; the alternative is that each tool joins them, as
+it joins the packet reader and `irig106-tmats`. Section 8 lists it.

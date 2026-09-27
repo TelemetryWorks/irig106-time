@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500" role="img" aria-label="Where time sits in Chapter 10 processing: a packet reader walks the recording; setup records go to irig106-tmats, which hands irig106-time the time attributes as plain data; time packets become reference points; every other packet's counter, secondary-header time, and intra-packet time stamps are turned into absolute time for irig106-decode and the presentation tools. In the other direction, irig106-time encodes time packet bodies for irig106-write. All crates share types from irig106-types.">
+  <style>
+    text { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; fill: #1f2328; }
+    .t { font-size: 15px; font-weight: 600; }
+    .b { font-weight: 600; }
+    .l { font-size: 11px; fill: #57606a; }
+    .k { font-size: 12px; font-weight: 700; fill: #0969da; }
+    .box { fill: #f6f8fa; stroke: #57606a; stroke-width: 1.2; }
+    .hub { fill: #ddf4ff; stroke: #0969da; stroke-width: 1.8; }
+    .usr { fill: #fff8c5; stroke: #9a6700; stroke-width: 1.2; }
+    .ln { stroke: #57606a; stroke-width: 1.3; fill: none; }
+    .lb { stroke: #0969da; stroke-width: 1.6; fill: none; }
+    .lw { stroke: #9a6700; stroke-width: 1.4; fill: none; }
+    .ah { fill: #57606a; } .ahb { fill: #0969da; } .ahw { fill: #9a6700; }
+    @media (prefers-color-scheme: dark) {
+      text { fill: #e6edf3; } .l { fill: #9198a1; } .k { fill: #4493f8; }
+      .box { fill: #161b22; stroke: #9198a1; } .hub { fill: #0c2d6b; stroke: #4493f8; }
+      .usr { fill: #3b2e00; stroke: #d29922; } .ln { stroke: #9198a1; } .lb { stroke: #4493f8; }
+      .lw { stroke: #d29922; } .ah { fill: #9198a1; } .ahb { fill: #4493f8; } .ahw { fill: #d29922; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ahb" d="M0,0 L10,5 L0,10 z"/></marker>
+    <marker id="w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ahw" d="M0,0 L10,5 L0,10 z"/></marker>
+  </defs>
+
+  <text class="t" x="20" y="30">Where time sits in Chapter 10 processing</text>
+  <text class="l" x="20" y="48">Reading a recording (top) and producing one (bottom). Letters name what crosses each boundary (key at left).</text>
+
+  <rect class="box" x="20" y="84" width="130" height="56" rx="6"/>
+  <text class="b" x="85" y="108" text-anchor="middle">Chapter 10</text>
+  <text class="b" x="85" y="124" text-anchor="middle">recording</text>
+
+  <rect class="box" x="190" y="76" width="200" height="80" rx="6"/>
+  <text class="b" x="290" y="98" text-anchor="middle">Packet reader</text>
+  <text class="l" x="290" y="116" text-anchor="middle">irig106-core (today: the</text>
+  <text class="l" x="290" y="130" text-anchor="middle">ch10time CLI's reader)</text>
+  <text class="l" x="290" y="146" text-anchor="middle">headers, flags, bodies</text>
+
+  <rect class="box" x="470" y="66" width="200" height="50" rx="6"/>
+  <text class="b" x="570" y="88" text-anchor="middle">irig106-tmats</text>
+  <text class="l" x="570" y="105" text-anchor="middle">setup records</text>
+
+  <rect class="hub" x="470" y="150" width="220" height="120" rx="8"/>
+  <text class="b" x="580" y="174" text-anchor="middle">irig106-time</text>
+  <text class="l" x="580" y="194" text-anchor="middle">time packets → reference points</text>
+  <text class="l" x="580" y="210" text-anchor="middle">counter, secondary header,</text>
+  <text class="l" x="580" y="224" text-anchor="middle">intra-packet time → absolute time</text>
+  <text class="l" x="580" y="244" text-anchor="middle">quality, gaps, jumps,</text>
+  <text class="l" x="580" y="258" text-anchor="middle">leap seconds</text>
+
+  <rect class="box" x="790" y="150" width="190" height="56" rx="6"/>
+  <text class="b" x="885" y="174" text-anchor="middle">irig106-decode</text>
+  <text class="l" x="885" y="192" text-anchor="middle">values with their time</text>
+
+  <rect class="box" x="470" y="310" width="510" height="50" rx="6"/>
+  <text class="b" x="725" y="332" text-anchor="middle">irig106-studio · irig106-index · irig106-ch10-reader · irig106-cli</text>
+  <text class="l" x="725" y="349" text-anchor="middle">time axis, seek by time, start, end, duration, gaps</text>
+
+  <path class="ln" d="M150,112 L190,112" marker-end="url(#a)"/>
+  <text class="k" x="164" y="104">A</text>
+  <path class="ln" d="M390,92 L470,92" marker-end="url(#a)"/>
+  <text class="k" x="424" y="84">B</text>
+  <path class="lb" d="M580,116 L580,150" marker-end="url(#b)"/>
+  <text class="k" x="588" y="138">C</text>
+  <path class="ln" d="M390,140 L440,140 L440,190 L470,190" marker-end="url(#a)"/>
+  <text class="k" x="448" y="170">D</text>
+  <path class="ln" d="M390,150 L420,150 L420,236 L470,236" marker-end="url(#a)"/>
+  <text class="k" x="400" y="226">E</text>
+  <path class="lb" d="M690,178 L790,178" marker-end="url(#b)"/>
+  <text class="k" x="735" y="170">F</text>
+  <path class="lb" d="M600,270 L600,310" marker-end="url(#b)"/>
+  <text class="k" x="608" y="296">G</text>
+  <path class="ln" d="M885,206 L885,310" marker-end="url(#a)"/>
+
+  <line x1="20" y1="386" x2="980" y2="386" stroke="#d0d7de"/>
+  <rect class="usr" x="190" y="406" width="200" height="50" rx="6"/>
+  <text class="b" x="290" y="428" text-anchor="middle">Recorder or caller</text>
+  <text class="l" x="290" y="445" text-anchor="middle">times to record</text>
+  <rect class="hub" x="470" y="406" width="220" height="50" rx="8"/>
+  <text class="b" x="580" y="428" text-anchor="middle">irig106-time</text>
+  <text class="l" x="580" y="445" text-anchor="middle">encodes data words and bodies</text>
+  <rect class="box" x="790" y="406" width="190" height="50" rx="6"/>
+  <text class="b" x="885" y="428" text-anchor="middle">irig106-write</text>
+  <text class="l" x="885" y="445" text-anchor="middle">packs time packets</text>
+  <path class="lw" d="M390,431 L470,431" marker-end="url(#w)"/>
+  <path class="lw" d="M690,431 L790,431" marker-end="url(#w)"/>
+  <text class="k" x="734" y="423">H</text>
+
+  <text class="b" x="20" y="186">Key</text>
+  <text class="k" x="20" y="204">A</text><text class="l" x="36" y="204">the recording's bytes</text>
+  <text class="k" x="20" y="222">B</text><text class="l" x="36" y="222">setup-record fragments</text>
+  <text class="k" x="20" y="240">C</text><text class="l" x="36" y="240">time attributes, as plain data</text>
+  <text class="k" x="20" y="258">D</text><text class="l" x="36" y="258">time packets (0x11, 0x12)</text>
+  <text class="k" x="20" y="276">E</text><text class="l" x="36" y="276">every packet's RTC, flags,</text>
+  <text class="l" x="36" y="289">secondary header, time stamps</text>
+  <text class="k" x="20" y="307">F</text><text class="l" x="36" y="307">absolute time, with its basis</text>
+  <text class="k" x="20" y="325">G</text><text class="l" x="36" y="325">spans, gaps, jumps, quality</text>
+  <text class="k" x="20" y="343">H</text><text class="l" x="36" y="343">encoded time packet contents</text>
+  <text class="l" x="20" y="484">All crates share types from irig106-types: the RTC, the time formats and sources, the Chapter 4, IEEE 1588, and ERTC time values.</text>
+</svg>
