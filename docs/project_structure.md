@@ -79,6 +79,7 @@ irig106-time/
     |-- ROADMAP.md                     # Phased release plan
     |-- security.md                    # Threat model, fuzzing guide
     |-- shared_types_for_irig106_types.md
+    |-- STANDARD-REVIEW.md             # The crate checked against IRIG 106-24R1 (T-1..T-11)
     |-- test_index.md                  # All tests documented
     |-- usage.md                       # Integration examples for downstream crates
     |-- why_separate_repo.md           # Why time is its own crate
