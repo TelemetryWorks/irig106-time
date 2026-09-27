@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-09-27
 decision-makers: Joey
 ---
@@ -28,7 +28,9 @@ operating system.
 
 ## Decision Outcome
 
-Proposed option: **`no_std` with `alloc`**. Decoding single values (time
+Accepted by the owner on 2026-09-27: "Accept the proposed ADRs".
+
+Chosen option: **`no_std` with `alloc`**. Decoding single values (time
 packets, secondary headers, time stamps, time words) needs neither `std` nor
 `alloc`; the time timeline and the correlators need `alloc`; `std` adds only
 `std::error::Error` and conveniences. CI builds `wasm32-unknown-unknown`

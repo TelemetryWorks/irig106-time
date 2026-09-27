@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-09-27
 decision-makers: Joey
 ---
@@ -29,7 +29,9 @@ are oracles, not authorities; real data stays local) and ADR-0020.
 
 ## Decision Outcome
 
-Proposed option: **tests from the standard**:
+Accepted by the owner on 2026-09-27: "Accept the proposed ADRs".
+
+Chosen option: **tests from the standard**:
 
 * each finding T-1 to T-12 gets a test that fails on the prototype before
   the fix;

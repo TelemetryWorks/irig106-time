@@ -61,12 +61,12 @@ stamps and time words in data bodies (`irig106-decode`); assemble packets
 | 1 | **Cite the standard.** Every rule traces to a section, figure, or table of 106-24R1; edition differences name both editions. | ADR-0004 |
 | 2 | **A leaf library.** Depends only on `irig106-types`; everything else arrives as plain data. | ADR-0005 |
 | 3 | **No I/O.** Bytes and values in, values out; the same input gives the same answer everywhere. | ADR-0006 |
-| 4 | **An answer, not a time.** Every absolute time carries its basis. | ADR-0011 (proposed) |
+| 4 | **An answer, not a time.** Every absolute time carries its basis. | ADR-0011 |
 | 5 | **A policy, not hidden rules.** Every rule of time over a recording is a setting with a cited default, and every answer records the policy it used. | ADR-0010 |
-| 6 | **Findings, not repairs.** Degraded time is reported with a stable identifier; nothing is silently corrected. | ADR-0013 (proposed) |
-| 7 | **Readings are reviewed.** Where TMATS and the packets name things differently, the reading is a register entry. | ADR-0012 (proposed) |
-| 8 | **Small and portable.** `no_std` with `alloc`; builds for WebAssembly. | ADR-0014 (proposed) |
-| 9 | **Tests from the standard.** Fixtures from the standard's figures; a failing test before each fix. | ADR-0016 (proposed) |
+| 6 | **Findings, not repairs.** Degraded time is reported with a stable identifier; nothing is silently corrected. | ADR-0013 |
+| 7 | **Readings are reviewed.** Where TMATS and the packets name things differently, the reading is a register entry. | ADR-0012 |
+| 8 | **Small and portable.** `no_std` with `alloc`; builds for WebAssembly. | ADR-0014 |
+| 9 | **Tests from the standard.** Fixtures from the standard's figures; a failing test before each fix. | ADR-0016 |
 
 ---
 
@@ -288,7 +288,7 @@ never reused. Nothing panics on any input (L1-ROB).
 |---|---|
 | **Dependencies** | `irig106-types` (required); `serde` and `chrono` (optional features) |
 | **Features** | `std` (default: `std::error::Error`); `alloc` implied by the recording layer; `serde`; `chrono` (conversions to and from `chrono` types) |
-| **Targets** | any Rust target; CI builds `wasm32-unknown-unknown` with and without `serde`, and a `no_std` target without `std` (ADR-0014, proposed) |
+| **Targets** | any Rust target; CI builds `wasm32-unknown-unknown` with and without `serde`, and a `no_std` target without `std` (ADR-0014) |
 | **Edition and MSRV** | edition 2024, Rust 1.85 (ADR-0003) |
 | **Unsafe code** | none (`#![forbid(unsafe_code)]`) |
 | **Documentation** | every public item documented (`#![deny(missing_docs)]`), citing the standard |
@@ -360,9 +360,8 @@ wrong are retired and never reused (L1, section "Prototype requirements").
 
 ## 13. Open points for the review
 
-1. **ADR-0011, 0012, 0013, 0014, 0016, 0017** are proposed: the basis, the
-   reading register, findings, `no_std` with `alloc`, tests from the
-   standard, and the 0.8.0 release (with whether to yank 0.1.0 to 0.7.0).
+1. ~~ADR-0011, 0012, 0013, 0014, 0016, 0017~~ — **accepted** (2026-09-27).
+   Still open from ADR-0017: whether to yank 0.1.0 to 0.7.0 from crates.io.
 2. **The finding identifiers**: `TF-001` onward, assigned in L2.
 3. **RTC sync error** (packet flags bit 5, §11.2.1.1 g) as a finding: found
    while writing this architecture; not yet in the contract document.

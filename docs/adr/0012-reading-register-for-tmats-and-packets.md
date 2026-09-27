@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-09-27
 decision-makers: Joey
 ---
@@ -31,7 +31,9 @@ reviewed and marked for testing against real data.
 
 ## Decision Outcome
 
-Proposed option: **a register**, `docs/INTERPRETATIONS.md` in this
+Accepted by the owner on 2026-09-27: "Accept the proposed ADRs".
+
+Chosen option: **a register**, `docs/INTERPRETATIONS.md` in this
 repository, in `irig106-tmats`'s form: each entry quotes both sources, gives
 the reading, its status (accepted, proposed, suspect, open), and "intensive
 testing and deep analysis required" during development. The first entries

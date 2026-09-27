@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-09-27
 decision-makers: Joey
 ---
@@ -28,7 +28,9 @@ answer").
 
 ## Decision Outcome
 
-Proposed option: **every answer carries its basis**: the session; the time
+Accepted by the owner on 2026-09-27: "Accept the proposed ADRs".
+
+Chosen option: **every answer carries its basis**: the session; the time
 channel and why it was chosen; the reference used (counter and time); the
 distance to it; its position (between two references, before the first, or
 beyond the last); the reference's source, format, and IRIG time source;

@@ -276,7 +276,7 @@ subtracts the counter difference at 100 ns a tick (`src/correlation.rs`);
 `StreamingTimeCorrelator` does the same with bounded memory. Counter
 differences are wrap-safe (`Rtc::elapsed_ticks`).
 
-**What the answer should carry (proposed):** the absolute time **and its
+**What the answer carries (decided, ADR-0011):** the absolute time **and its
 basis** — the reference point used (its time channel, counter, and time),
 how far the counter is from it, whether it lies between two references or
 beyond the last, and the time source and format of that reference. A time
@@ -358,7 +358,7 @@ Chapter 4 layout to confirm (T-10).
 | How dense and regular the references are | the crate's `compute_quality`: reference counts per channel, largest and smallest gap, references per second, drift per channel |
 | Discontinuities | `detect_time_jump`, `detect_rtc_resets`, `drift_ppm` |
 
-**What the answer should carry (proposed):** with every absolute time
+**What the answer carries (decided, ADR-0011):** with every absolute time
 (3.1), the source and format of the reference it came from — so that a
 consumer can tell GPS-locked time from a freewheeling internal clock.
 
@@ -380,7 +380,7 @@ the gap rules.
 TMATS declares time channels and formats; the packets carry their own. The
 two use different vocabularies:
 
-| TMATS (Chapter 9, Table 9-4) | Packets (Chapter 11) | Reading (**proposed**) |
+| TMATS (Chapter 9, Table 9-4) | Packets (Chapter 11) | Reading (**proposed** register entry; ADR-0012) |
 |------------------------------|----------------------|------------------------|
 | `R-x\TTF-n`: 1 "Time data", 2 "Network time" | data type `0x11` (Format 1), `0x12` (Format 2) | 1 ↔ `0x11`, 2 ↔ `0x12` |
 | `R-x\TFMT-n`: A IRIG-A, B IRIG-B, G IRIG-G | Format 1 FMT `0x1`, `0x0`, `0x2` | direct |
@@ -463,7 +463,7 @@ fixes are planned in section 8.
    packet payload invalid)", or a Format 2 packet whose status is "Time Not
    Valid", is not a reference (T-2, T-7).
 6. **Keep the basis.** When passing an absolute time on, keep what it rests
-   on — its reference, time channel, and source (section 3.1, proposed).
+   on — its reference, time channel, and source (section 3.1; ADR-0011).
 7. **Do not assume a year.** The day-of-year form carries none (section
    3.2).
 8. **Take editions from `irig106-types`.** The setup record's version byte and
@@ -1082,14 +1082,16 @@ Data Length (L1-ERR-005).
 - ~~Edition and MSRV alignment~~ — **edition 2024, Rust 1.85** (2026-09-27,
   ADR-0003).
 - ~~RCC 200 into the standards archive~~ — **done** (2026-09-27).
-- **Time with its basis** (sections 3.1, 3.5) — proposed, ADR-0011.
-- **The reading table** of section 3.7, including TMATS "I Internal" and
-  the "Chapter 4 BCD" wording — proposed, as register entries (ADR-0012).
-- **Findings for degraded time** (section 6) — proposed, ADR-0013.
-- **`no_std` with `alloc`** — proposed, ADR-0014.
-- **Tests from the standard** — proposed, ADR-0016.
-- **Releases after the rebuild**: 0.8.0, and whether to yank 0.1.0 to
-  0.7.0 from crates.io — proposed, ADR-0017.
+- ~~Time with its basis~~ — **accepted** (2026-09-27, ADR-0011).
+- ~~A register for the reading table~~ — **accepted** (2026-09-27,
+  ADR-0012); its entries — the rows of section 3.7, TMATS "I Internal", the
+  "Chapter 4 BCD" wording, T-14 — are each reviewed as the register is
+  written.
+- ~~Findings for degraded time~~ — **accepted** (2026-09-27, ADR-0013).
+- ~~`no_std` with `alloc`~~ — **accepted** (2026-09-27, ADR-0014).
+- ~~Tests from the standard~~ — **accepted** (2026-09-27, ADR-0016).
+- ~~Releases after the rebuild: 0.8.0~~ — **accepted** (2026-09-27,
+  ADR-0017). Still open: whether to yank 0.1.0 to 0.7.0 from crates.io.
 - **Found while writing step 1** (`docs/STANDARD-REVIEW.md`): T-13, the
   prototype's handbook citations are to RCC 123-09 §6.6, not 123-20; T-14,
   ITS arrived in 106-17 without a data type version, so the reading of

@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-09-27
 decision-makers: Joey
 ---
@@ -29,11 +29,13 @@ next release 0.8.0 while `Cargo.toml` says 0.7.0.
 
 ## Decision Outcome
 
-Proposed option: **0.8.0 for the rebuilt crate and `irig106-time-cli`
+Accepted by the owner on 2026-09-27: "Accept the proposed ADRs".
+
+Chosen option: **0.8.0 for the rebuilt crate and `irig106-time-cli`
 together** (ADR-0007), its changelog listing each finding and its effect on
 0.7.0 answers, and the minimum Rust version change (ADR-0003). Whether to
 yank the earlier versions, and whether to publish a README notice before
-0.8.0, are left to the owner; yanking stops new projects from choosing them
+0.8.0, remain open: accepting this record did not decide them; yanking stops new projects from choosing them
 and does not break existing lock files.
 
 ### Consequences

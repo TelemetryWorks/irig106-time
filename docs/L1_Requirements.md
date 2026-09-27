@@ -7,7 +7,7 @@
 > standard (`TelemetryWorks/rcc-106-standards`), citing **106-24R1**. It
 > replaces the prototype's L1 (version 0.2.0, 2026-03-27, IRIG 106-17 baseline,
 > kept at the tag `prototype-0`). L2 and L3 are rewritten after the review.
-> Requirements that rest on a proposed ADR stay Draft until it is accepted.
+> Every ADR it rests on is accepted (2026-09-27).
 
 ## Purpose
 
@@ -705,7 +705,7 @@ Handbook, cited as support, never as the rule.
 
 **Statement**: The library SHALL give every absolute time with its basis: the session; the time channel and the rule that chose it; the reference (counter and time); the distance to it; its position (between references, before the first, beyond the last); the reference's source, format, and ITS; the year and its origin; the corrections applied; and the policy.
 
-**Source**: Contract 3.1, 3.5, 7.3; ADR-0011 (proposed — Draft until accepted).
+**Source**: Contract 3.1, 3.5, 7.3; ADR-0011.
 
 **Verification**: T
 
@@ -777,7 +777,7 @@ Handbook, cited as support, never as the rule.
 
 **Statement**: The library SHALL report each problem with time as a finding with a stable identifier, a default severity the caller can change, and its evidence (packet, channel, counter), and SHALL never reuse an identifier.
 
-**Source**: Contract section 6; ADR-0013 (proposed — Draft until accepted).
+**Source**: Contract section 6; ADR-0013.
 
 **Verification**: T
 
@@ -821,7 +821,7 @@ Handbook, cited as support, never as the rule.
 
 **Statement**: The library SHALL compare TMATS values with packet values only through readings recorded in a register, each naming its register entry.
 
-**Source**: Contract 3.7; T-14; ADR-0012 (proposed — Draft until accepted).
+**Source**: Contract 3.7; T-14; ADR-0012.
 
 **Verification**: I (the register and the code's references to it)
 
@@ -897,7 +897,7 @@ Handbook, cited as support, never as the rule.
 
 **Statement**: The library SHALL build without `std`, with `alloc` for the recording layer.
 
-**Source**: ADR-0014 (proposed — Draft until accepted). Prototype identifier kept.
+**Source**: ADR-0014. Prototype identifier kept.
 
 **Verification**: I (CI builds a target without `std`)
 
@@ -1001,7 +1001,7 @@ Handbook, cited as support, never as the rule.
 
 **Statement**: The first rebuilt release SHALL list in its changelog each finding of `docs/STANDARD-REVIEW.md` that changes an answer of 0.7.0.
 
-**Source**: ADR-0017 (proposed — Draft until accepted).
+**Source**: ADR-0017.
 
 **Verification**: I
 
@@ -1013,7 +1013,7 @@ Handbook, cited as support, never as the rule.
 
 **Statement**: The project SHALL have, for each finding of `docs/STANDARD-REVIEW.md` that concerns the code, a test that fails on the prototype and passes on the fix.
 
-**Source**: ADR-0016 (proposed — Draft until accepted).
+**Source**: ADR-0016.
 
 **Verification**: I
 

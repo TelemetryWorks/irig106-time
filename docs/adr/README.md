@@ -9,6 +9,8 @@ one; records are not rewritten.
 **Status:** `accepted` — decided by the project owner; `proposed` — part of
 the architecture proposal (`docs/architecture.md`) awaiting the owner's
 review. The contract these decisions serve is `docs/TIME-IN-CHAPTER-10.md`.
+All seventeen records were accepted by 2026-09-27 (0011 to 0014, 0016, and
+0017 on that day, at the owner's review of step 1).
 
 | ADR | Decision | Status |
 |-----|----------|--------|
@@ -22,13 +24,13 @@ review. The contract these decisions serve is `docs/TIME-IN-CHAPTER-10.md`.
 | [0008](0008-hand-rolled-cli-argument-parsing.md) | Hand-rolled argument parsing for `irig106-time-cli` | accepted |
 | [0009](0009-recording-events-move-to-irig106-decode.md) | Recording events move to `irig106-decode`; this crate keeps their time tags | accepted |
 | [0010](0010-selectable-time-policy.md) | The rules of time over a recording are a selectable policy, recorded with every answer | accepted |
-| [0011](0011-answers-carry-their-basis.md) | Every absolute time carries its basis | proposed |
-| [0012](0012-reading-register-for-tmats-and-packets.md) | Readings between TMATS and the packets are a reviewed register | proposed |
-| [0013](0013-findings-not-repairs.md) | Degraded time is reported as findings with stable identifiers; never repaired silently | proposed |
-| [0014](0014-no-std-with-alloc.md) | `no_std` with `alloc`; `std` a default feature; WebAssembly built in CI | proposed |
+| [0011](0011-answers-carry-their-basis.md) | Every absolute time carries its basis | accepted |
+| [0012](0012-reading-register-for-tmats-and-packets.md) | Readings between TMATS and the packets are a reviewed register | accepted |
+| [0013](0013-findings-not-repairs.md) | Degraded time is reported as findings with stable identifiers; never repaired silently | accepted |
+| [0014](0014-no-std-with-alloc.md) | `no_std` with `alloc`; `std` a default feature; WebAssembly built in CI | accepted |
 | [0015](0015-shared-time-values-in-irig106-types.md) | Shared time values live in `irig106-types` and are fixed there first | accepted |
-| [0016](0016-tests-from-the-standard.md) | Tests from the standard: a failing test per finding; fixtures from its figures; real data local only | proposed |
-| [0017](0017-releases-after-the-rebuild.md) | The rebuilt crate is released as 0.8.0; users of 0.1.0 to 0.7.0 are told what was wrong | proposed |
+| [0016](0016-tests-from-the-standard.md) | Tests from the standard: a failing test per finding; fixtures from its figures; real data local only | accepted |
+| [0017](0017-releases-after-the-rebuild.md) | The rebuilt crate is released as 0.8.0; users of 0.1.0 to 0.7.0 are told what was wrong | accepted |
 
 New records take the next number and use the same front matter
 (`status`, `date`, `decision-makers`).

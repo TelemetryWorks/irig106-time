@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-09-27
 decision-makers: Joey
 ---
@@ -29,7 +29,9 @@ detector needs a threshold from the caller.
 
 ## Decision Outcome
 
-Proposed option: **findings**. Every case of section 6 is a finding with a
+Accepted by the owner on 2026-09-27: "Accept the proposed ADRs".
+
+Chosen option: **findings**. Every case of section 6 is a finding with a
 stable identifier, the evidence (packet, channel, counter), and a default
 severity the caller can change; what the crate does in each case is a
 setting of the policy (ADR-0010). Errors remain for input the crate cannot
