@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" role="img" aria-label="The layers of irig106-time. Layer 0 is irig106-types, the shared values. Layer 1, values without allocation: flags, secondary, stamp, format1, format2, words, calendar, scale, edition. Layer 2, the recording, with alloc: declared, reference, policy, timeline, answer, stream, readings, findings, quality, error. Layer 3 is irig106-time-cli: args, input, commands, report, render, run, and the binary irigtime. Consumers: irig106-cli mounts the CLI library; irig106-decode, irig106-studio, irig106-index, and irig106-ch10-reader use the recording layer; irig106-write uses the Format 1 and Format 2 encoders. Plain data comes in from irig106-tmats and the packet reader.">
+  <style>
+    text { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; fill: #1f2328; }
+    .t { font-size: 15px; font-weight: 600; }
+    .b { font-weight: 600; }
+    .l { font-size: 11px; fill: #57606a; }
+    .c { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 11.5px; }
+    .lay { fill: #f6f8fa; stroke: #57606a; stroke-width: 1.2; }
+    .cli { fill: #ddf4ff; stroke: #0969da; stroke-width: 1.3; }
+    .rec { fill: #dafbe1; stroke: #1a7f37; stroke-width: 1.3; }
+    .val { fill: #fff8c5; stroke: #9a6700; stroke-width: 1.3; }
+    .chip { fill: #ffffff; stroke: #8c959f; stroke-width: 1; }
+    .oth { fill: #f6f8fa; stroke: #8c959f; stroke-width: 1.1; stroke-dasharray: 4 3; }
+    .ln { stroke: #57606a; stroke-width: 1.3; fill: none; }
+    .dl { stroke: #57606a; stroke-width: 1.1; fill: none; stroke-dasharray: 4 3; }
+    .ah { fill: #57606a; }
+    @media (prefers-color-scheme: dark) {
+      text { fill: #e6edf3; } .l { fill: #9198a1; }
+      .lay, .oth { fill: #161b22; stroke: #9198a1; } .chip { fill: #0d1117; stroke: #6e7681; }
+      .cli { fill: #0c2d6b; stroke: #4493f8; } .rec { fill: #0f2e1a; stroke: #3fb950; } .val { fill: #3b2e00; stroke: #d29922; }
+      .ln, .dl { stroke: #9198a1; } .ah { fill: #9198a1; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+  </defs>
+
+  <text class="t" x="20" y="30">The layers of irig106-time</text>
+  <text class="l" x="20" y="48">Each layer uses only the layers below it. Module names are proposals (docs/architecture.md section 4).</text>
+
+  <!-- Layer 3 -->
+  <rect class="cli" x="20" y="70" width="690" height="95" rx="8"/>
+  <text class="b" x="34" y="92">Layer 3 — irig106-time-cli (library and binary, in lockstep)</text>
+  <rect class="chip" x="40" y="105" width="95" height="28" rx="5"/><text class="c" x="87.5" y="123" text-anchor="middle">args</text>
+  <rect class="chip" x="145" y="105" width="95" height="28" rx="5"/><text class="c" x="192.5" y="123" text-anchor="middle">input</text>
+  <rect class="chip" x="250" y="105" width="95" height="28" rx="5"/><text class="c" x="297.5" y="123" text-anchor="middle">commands</text>
+  <rect class="chip" x="355" y="105" width="95" height="28" rx="5"/><text class="c" x="402.5" y="123" text-anchor="middle">report</text>
+  <rect class="chip" x="460" y="105" width="95" height="28" rx="5"/><text class="c" x="507.5" y="123" text-anchor="middle">render</text>
+  <rect class="chip" x="565" y="105" width="95" height="28" rx="5"/><text class="c" x="612.5" y="123" text-anchor="middle">run</text>
+  <text class="l" x="40" y="153">binary irigtime (a thin main); input reads files until irig106-core exists</text>
+
+  <!-- Layer 2 -->
+  <rect class="rec" x="20" y="185" width="690" height="150" rx="8"/>
+  <text class="b" x="34" y="207">Layer 2 — the recording (alloc): the time timeline and answers with their basis</text>
+  <rect class="chip" x="40" y="222" width="118" height="28" rx="5"/><text class="c" x="99" y="240" text-anchor="middle">declared</text>
+  <rect class="chip" x="170" y="222" width="118" height="28" rx="5"/><text class="c" x="229" y="240" text-anchor="middle">reference</text>
+  <rect class="chip" x="300" y="222" width="118" height="28" rx="5"/><text class="c" x="359" y="240" text-anchor="middle">policy</text>
+  <rect class="chip" x="430" y="222" width="118" height="28" rx="5"/><text class="c" x="489" y="240" text-anchor="middle">timeline</text>
+  <rect class="chip" x="560" y="222" width="118" height="28" rx="5"/><text class="c" x="619" y="240" text-anchor="middle">answer</text>
+  <rect class="chip" x="40" y="262" width="118" height="28" rx="5"/><text class="c" x="99" y="280" text-anchor="middle">stream</text>
+  <rect class="chip" x="170" y="262" width="118" height="28" rx="5"/><text class="c" x="229" y="280" text-anchor="middle">readings</text>
+  <rect class="chip" x="300" y="262" width="118" height="28" rx="5"/><text class="c" x="359" y="280" text-anchor="middle">findings</text>
+  <rect class="chip" x="430" y="262" width="118" height="28" rx="5"/><text class="c" x="489" y="280" text-anchor="middle">quality</text>
+  <rect class="chip" x="560" y="262" width="118" height="28" rx="5"/><text class="c" x="619" y="280" text-anchor="middle">error</text>
+  <text class="l" x="40" y="313">sessions, channel choice, references, gaps, jumps, the year, findings — under a selectable policy</text>
+  <text class="l" x="40" y="327">(contract sections 3 to 6; ADR-0010, 0011, 0012, 0013)</text>
+
+  <!-- Layer 1 -->
+  <rect class="val" x="20" y="355" width="690" height="120" rx="8"/>
+  <text class="b" x="34" y="377">Layer 1 — values (no allocation): read and write what the standard defines</text>
+  <rect class="chip" x="40" y="390" width="118" height="28" rx="5"/><text class="c" x="99" y="408" text-anchor="middle">flags</text>
+  <rect class="chip" x="170" y="390" width="118" height="28" rx="5"/><text class="c" x="229" y="408" text-anchor="middle">secondary</text>
+  <rect class="chip" x="300" y="390" width="118" height="28" rx="5"/><text class="c" x="359" y="408" text-anchor="middle">stamp</text>
+  <rect class="chip" x="430" y="390" width="118" height="28" rx="5"/><text class="c" x="489" y="408" text-anchor="middle">format1</text>
+  <rect class="chip" x="560" y="390" width="118" height="28" rx="5"/><text class="c" x="619" y="408" text-anchor="middle">format2</text>
+  <rect class="chip" x="40" y="428" width="118" height="28" rx="5"/><text class="c" x="99" y="446" text-anchor="middle">words</text>
+  <rect class="chip" x="170" y="428" width="118" height="28" rx="5"/><text class="c" x="229" y="446" text-anchor="middle">calendar</text>
+  <rect class="chip" x="300" y="428" width="118" height="28" rx="5"/><text class="c" x="359" y="446" text-anchor="middle">scale</text>
+  <rect class="chip" x="430" y="428" width="118" height="28" rx="5"/><text class="c" x="489" y="446" text-anchor="middle">edition</text>
+  <text class="l" x="560" y="441">Chapter 11 §11.2.1,</text>
+  <text class="l" x="560" y="455">§11.2.3; Chapter 4 §4.7</text>
+
+  <!-- Layer 0 and inputs -->
+  <rect class="lay" x="20" y="495" width="450" height="80" rx="8"/>
+  <text class="b" x="34" y="517">Layer 0 — irig106-types (shared values)</text>
+  <text class="l" x="34" y="537">Rtc (100 ns), Ertc (1 ns), Ch4BinaryTime, Ieee1588Time,</text>
+  <text class="l" x="34" y="551">TimeSource, TimeFormat, unit and epoch newtypes,</text>
+  <text class="l" x="34" y="565">the two edition code lists — fixed there first (ADR-0015)</text>
+
+  <rect class="oth" x="490" y="495" width="220" height="80" rx="8"/>
+  <text class="b" x="504" y="517">Plain data in</text>
+  <text class="l" x="504" y="537">irig106-tmats: time declarations</text>
+  <text class="l" x="504" y="551">packet reader: headers, bodies</text>
+  <text class="l" x="504" y="565">irig106-decode: stamps, words</text>
+  <path class="dl" d="M600,495 L600,475" marker-end="url(#a)"/>
+
+  <!-- consumers -->
+  <text class="b" x="740" y="80">Used by</text>
+  <rect class="oth" x="740" y="95" width="240" height="44" rx="6"/>
+  <text class="b" x="752" y="114">irig106-cli</text>
+  <text class="l" x="752" y="130">mounts run as `irig106 time`</text>
+  <path class="ln" d="M740,117 L712,117" marker-end="url(#a)"/>
+
+  <rect class="oth" x="740" y="185" width="240" height="32" rx="6"/>
+  <text class="l" x="752" y="205"><tspan class="b">irig106-decode</tspan> — answers for stamps, words</text>
+  <rect class="oth" x="740" y="222" width="240" height="32" rx="6"/>
+  <text class="l" x="752" y="242"><tspan class="b">irig106-studio</tspan> — stream; WebAssembly</text>
+  <rect class="oth" x="740" y="259" width="240" height="32" rx="6"/>
+  <text class="l" x="752" y="279"><tspan class="b">irig106-index</tspan> — counter ranges by time</text>
+  <rect class="oth" x="740" y="296" width="240" height="32" rx="6"/>
+  <text class="l" x="752" y="316"><tspan class="b">irig106-ch10-reader</tspan> — spans, findings</text>
+  <path class="ln" d="M740,201 L712,201" marker-end="url(#a)"/>
+  <path class="ln" d="M740,238 L712,238" marker-end="url(#a)"/>
+  <path class="ln" d="M740,275 L712,275" marker-end="url(#a)"/>
+  <path class="ln" d="M740,312 L712,312" marker-end="url(#a)"/>
+
+  <rect class="oth" x="740" y="395" width="240" height="44" rx="6"/>
+  <text class="b" x="752" y="414">irig106-write</text>
+  <text class="l" x="752" y="430">format1 and format2 encoders</text>
+  <path class="ln" d="M740,417 L712,417" marker-end="url(#a)"/>
+</svg>

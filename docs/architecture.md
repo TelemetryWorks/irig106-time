@@ -1,322 +1,376 @@
-# Architecture — irig106-time
+# irig106-time — Architecture
 
-**Document:** ARCHITECTURE.md
-**Crate:** irig106-time v0.1.0
-**Date:** 2026-03-25
+> **Status: proposal for the owner's review** (step 1 of the plan,
+> `docs/TIME-IN-CHAPTER-10.md` section 8.2). Revised on 2026-09-27 against
+> the contract document `docs/TIME-IN-CHAPTER-10.md`; it replaces the
+> prototype's architecture (written for 0.1.0 on 2026-03-25, kept at the tag
+> `prototype-0`). Decisions are in `docs/adr/` (ADR-0001 to ADR-0017); each
+> section names the records it rests on. Rules cite the archived standard
+> (`TelemetryWorks/rcc-106-standards`, 106-24R1 unless stated). Nothing here
+> is code yet: type and module names are proposals, and signatures are left
+> to L2 and L3.
 
----
+## Contents
 
-## 1. Why Time Is Hard in IRIG 106
-
-Time in IRIG 106 Chapter 10 is fundamentally different from everyday timestamps.
-The standard separates *when data was recorded* (the free-running RTC) from *what
-wall-clock time it was* (absolute time from an external source). These two notions
-of time are recorded independently, may drift apart, and must be correlated after
-the fact by software. This architectural decision drives the entire design of
-`irig106-time`.
-
-### The Core Problem
-
-```
-┌──────────────────────┐     ┌──────────────────────┐
-│   Internal RTC       │     │  External Clock       │
-│   (10 MHz counter)   │     │  (IRIG-B / GPS / UTC) │
-│                      │     │                        │
-│   - Free-running     │     │  - Absolute wall time  │
-│   - Monotonic*       │     │  - May jump on lock    │
-│   - No calendar      │     │  - May have multiple   │
-│   - Wraps at 48 bits │     │    sources             │
-└──────────┬───────────┘     └──────────┬─────────────┘
-           │                            │
-           ▼                            ▼
-    ┌──────────────────────────────────────────┐
-    │        Time Data Format 1 Packet         │
-    │     (pairs RTC value with clock time)    │
-    │                                          │
-    │    RTC = 1,000,000                       │
-    │    Absolute = Day 100, 12:30:25.340      │
-    └──────────────────────────────────────────┘
-           │
-           ▼
-    ┌──────────────────────────────────────────┐
-    │         Correlation Engine               │
-    │                                          │
-    │  Data packet has RTC = 1,150,000         │
-    │  Delta = 150,000 ticks × 100 ns = 15 ms │
-    │  → Day 100, 12:30:25.355                 │
-    └──────────────────────────────────────────┘
-```
-
-### Why This Crate Exists Separately
-
-See [WHY_SEPARATE_REPO.md](WHY_SEPARATE_REPO.md) for the full rationale.
+1. What the crate is for
+2. Principles
+3. The crate in the ecosystem
+4. The layers and modules
+5. The data model
+6. How a recording is read
+7. How a recording is produced
+8. Errors and findings
+9. Features, targets, and dependencies
+10. The workspace and the CLI
+11. From the prototype to the rebuild
+12. Traceability and tests
+13. Open points for the review
 
 ---
 
-## 2. Module Architecture
+## 1. What the crate is for
 
-```
-                    ┌──────────────┐
-                    │   lib.rs     │
-                    │  (re-exports)│
-                    └──────┬───────┘
-           ┌───────────────┼───────────────┐
-           │               │               │
-     ┌─────▼─────┐  ┌─────▼──────┐  ┌─────▼────────┐
-     │   error    │  │    rtc     │  │  absolute    │
-     │            │  │            │  │              │
-     │ TimeError  │  │ Rtc (48b)  │  │ AbsoluteTime │
-     │ Result<T>  │  │            │  │ Ch4BinaryTime│
-     │            │  │            │  │ Ieee1588Time │
-     └────────────┘  └────────────┘  │ Ertc (64b)  │
-                                     └──────────────┘
-           │               │               │
-     ┌─────▼─────┐  ┌─────▼──────┐  ┌─────▼────────┐
-     │   csdw    │  │    bcd     │  │  secondary   │
-     │           │  │            │  │              │
-     │ TimeF1Csdw│  │DayFmtTime  │  │ SecHdrTime   │
-     │ TimeSource│  │DmyFmtTime  │  │ checksum val │
-     │ TimeFormat│  │            │  │              │
-     │ DateFormat│  │            │  │              │
-     └───────────┘  └────────────┘  └──────────────┘
-                          │               │
-                    ┌─────▼──────┐  ┌─────▼────────┐
-                    │intra_packet│  │ correlation  │
-                    │            │  │              │
-                    │IntraPacket │  │TimeCorrelator│
-                    │  Time      │  │ ReferencePoint│
-                    │            │  │ TimeJump     │
-                    └────────────┘  └──────────────┘
-```
+Every Chapter 10 packet carries a relative time counter — "a free-running
+10-MHz binary counter represented by 48 bits that are common to all data
+channels" that "shall remain free-running during each session (e.g.,
+recording)" (Chapter 11 §11.2.1.1 i). Absolute time arrives separately: in
+time packets that pair it with a counter value at least once a second
+(§11.2.3.2, §11.2.3.3), in secondary headers and intra-packet time stamps
+(§11.2.1.2, §11.2.1.3 b), and in time words inside data (Chapter 4 §4.7).
+The setup record declares where it is (`R-x\TTF-n`, `R-x\TFMT-n`,
+`R-x\TSRC-n`, `R-x\SHTF-n`).
+
+**`irig106-time` is the one place in the ecosystem where time is understood**
+(contract section 1.2). It reads and writes the standard's time values, and
+from a recording's time packets it builds a **time timeline** that turns any
+counter value, secondary-header time, time stamp, or time word into absolute
+time **with its basis** — which session, which time channel and reference,
+how far away, from which source, with which year, under which policy.
+
+What it does not do (contract section 1.3): open files or walk packets (the
+packet reader, `irig106-core`); read TMATS (`irig106-tmats`); find time
+stamps and time words in data bodies (`irig106-decode`); assemble packets
+(`irig106-write`); present time (the tools).
 
 ---
 
-## 3. Data Flow Through the Crate
+## 2. Principles
 
-### 3.1 Time Packet Processing
-
-```
- Raw Ch10 File
-     │
-     ▼
- ┌────────────────────────┐
- │ Packet Header (24 bytes)│
- │ ┌────────────────────┐  │
- │ │ Sync  │ ChanID     │  │
- │ │ PktLen│ DataLen     │  │
- │ │ Flags │ DataType    │  │   DataType = 0x11?
- │ │ RTC[6]│ Checksum    │──┼──────────────────┐
- │ └────────────────────┘  │                   │
- └────────────────────────┘                   ▼
-                                     ┌─────────────────┐
-                                     │ Parse CSDW (4B)  │
-                                     │ → TimeF1Csdw     │
-                                     └────────┬────────┘
-                                              │
-                               ┌──────────────┴──────────────┐
-                               ▼                              ▼
-                    date_format = DOY              date_format = DMY
-                               │                              │
-                    ┌──────────▼──────────┐       ┌──────────▼──────────┐
-                    │ Parse BCD Day (8B)  │       │ Parse BCD DMY (10B) │
-                    │ → DayFormatTime     │       │ → DmyFormatTime     │
-                    └──────────┬──────────┘       └──────────┬──────────┘
-                               │                              │
-                               └──────────────┬───────────────┘
-                                              ▼
-                                    ┌──────────────────┐
-                                    │   to_absolute()  │
-                                    │ → AbsoluteTime   │
-                                    └────────┬─────────┘
-                                             │
-                                             ▼
-                                  ┌────────────────────┐
-                                  │ correlator         │
-                                  │  .add_reference(   │
-                                  │    channel_id,     │
-                                  │    rtc,            │
-                                  │    absolute_time)  │
-                                  └────────────────────┘
-```
-
-### 3.2 Data Packet Timestamp Resolution
-
-```
- Any Data Packet (1553, PCM, etc.)
-     │
-     ▼
- ┌─────────────────────┐
- │ Extract RTC from     │
- │ packet header[16..22]│
- │ → Rtc::from_le_bytes │
- └──────────┬──────────┘
-            │
-            ▼
- ┌─────────────────────────────┐
- │ correlator.correlate(       │
- │   rtc,                      │
- │   Some(preferred_channel))  │
- │                             │
- │ 1. Find nearest ReferencePoint    │
- │ 2. delta = ref.rtc → target_rtc   │
- │ 3. abs_time = ref.time + delta_ns │
- └──────────┬──────────────────┘
-            │
-            ▼
-     AbsoluteTime
-     Day 100, 12:30:25.355_000_000
-```
+| # | Principle | Record |
+|---|-----------|--------|
+| 1 | **Cite the standard.** Every rule traces to a section, figure, or table of 106-24R1; edition differences name both editions. | ADR-0004 |
+| 2 | **A leaf library.** Depends only on `irig106-types`; everything else arrives as plain data. | ADR-0005 |
+| 3 | **No I/O.** Bytes and values in, values out; the same input gives the same answer everywhere. | ADR-0006 |
+| 4 | **An answer, not a time.** Every absolute time carries its basis. | ADR-0011 (proposed) |
+| 5 | **A policy, not hidden rules.** Every rule of time over a recording is a setting with a cited default, and every answer records the policy it used. | ADR-0010 |
+| 6 | **Findings, not repairs.** Degraded time is reported with a stable identifier; nothing is silently corrected. | ADR-0013 (proposed) |
+| 7 | **Readings are reviewed.** Where TMATS and the packets name things differently, the reading is a register entry. | ADR-0012 (proposed) |
+| 8 | **Small and portable.** `no_std` with `alloc`; builds for WebAssembly. | ADR-0014 (proposed) |
+| 9 | **Tests from the standard.** Fixtures from the standard's figures; a failing test before each fix. | ADR-0016 (proposed) |
 
 ---
 
-## 4. Packet Header Time Fields
+## 3. The crate in the ecosystem
 
-The 24-byte primary header has a 6-byte RTC at bytes [16..22]:
+![Where time sits in Chapter 10 processing](diagrams/time-in-the-pipeline.svg)
 
-```
- Byte offset:  0  1  2  3  4  5  6  7  8  9 10 11
-              ├──────┤──────┤────────────┤────────────┤
-              │ Sync │ChID  │ PktLength  │ DataLength │
-              └──────┴──────┴────────────┴────────────┘
+*Two directions* (contract section 2). Reading: the packet reader gives
+packets; `irig106-tmats` gives the time declarations of each setup record as
+plain data; time packets become references; every other packet's counter,
+secondary-header time, time stamps, and time words become absolute time for
+the decoder and the tools. Producing: the crate encodes time packet data
+words and bodies for `irig106-write`.
 
- Byte offset: 12 13 14 15 16 17 18 19 20 21 22 23
-              ├──┤──┤──┤──┤──────────────────────┤──────┤
-              │DV│Sq│Fl│DT│  RTC (48 bits LE)    │ Chk  │
-              └──┴──┴──┴──┴──────────────────────┴──────┘
-                          ▲
-                 Packet Flags byte:
-                 [1:0] = Checksum type
-                 [2]   = Secondary header present
-                 [3:2] = Time format (if sec hdr)
-                 [6]   = Data overflow
-                 [7]   = RTC sync error
-```
+| Crate | Depends on | Does not depend on |
+|-------|-----------|--------------------|
+| `irig106-time` | `irig106-types` | `irig106-tmats`, `irig106-core`, `irig106-decode` |
+| `irig106-time-cli` | `irig106-time` (`=X.Y.Z`), `irig106-types` | — |
+| `irig106-decode` | `irig106-types`, `irig106-tmats`, `irig106-time` | — |
+| `irig106-cli` | `irig106-time-cli` (and the other CLI libraries) | — |
 
----
-
-## 5. Time Format Wire Layouts
-
-### 5.1 BCD Day-of-Year Format (8 bytes)
-
-```
- Word 0 (bits):  15  14 13 12  11 10  9  8   7  6  5  4   3  2  1  0
-                ┌───┬────────┬────────────┬────────────┬────────────┐
-                │rsv│ TSn    │    Sn      │   Hmn      │    Tmn     │
-                │   │tens sec│ units sec  │hundreds ms │ tens ms    │
-                └───┴────────┴────────────┴────────────┴────────────┘
-
- Word 1:         15 14 13 12  11 10  9  8   7   6  5  4   3  2  1  0
-                ┌──────┬─────┬────────────┬───┬─────────┬────────────┐
-                │ rsv  │THn  │    Hn      │rsv│  TMn    │    Mn      │
-                │      │t.hr │ units hr   │   │tens min │ units min  │
-                └──────┴─────┴────────────┴───┴─────────┴────────────┘
-
- Word 2:         15 14 13 12 11 10  9  8   7  6  5  4   3  2  1  0
-                ┌──────────────────┬──────┬────────────┬────────────┐
-                │     reserved     │ HDn  │   TDn      │    Dn      │
-                │                  │h.day │ tens day   │ units day  │
-                └──────────────────┴──────┴────────────┴────────────┘
-
- Word 3:         (reserved — all zeros)
-```
-
-### 5.2 Intra-Packet Time Stamp Formats (8 bytes each)
-
-```
- 48-bit RTC:    ┌────────────────────────────────────────────┬──────────┐
-                │         RTC (48 bits, little-endian)       │ reserved │
-                │   byte 0   byte 1   byte 2 ... byte 5     │ byte 6-7 │
-                └────────────────────────────────────────────┴──────────┘
-
- IEEE-1588:     ┌────────────────────────┬────────────────────────┐
-                │  Nanoseconds (32-bit)  │    Seconds (32-bit)    │
-                │      little-endian     │     little-endian      │
-                └────────────────────────┴────────────────────────┘
-
- Ch4 Binary:    ┌──────────┬──────────────┬──────────────┬──────────┐
-                │ unused   │ High Order   │ Low Order    │ µseconds │
-                │  2 bytes │   2 bytes    │  2 bytes     │ 2 bytes  │
-                └──────────┴──────────────┴──────────────┴──────────┘
-
- 64-bit ERTC:   ┌────────────────────────────────────────────────────┐
-                │           ERTC (64 bits, little-endian)            │
-                │     byte 0   byte 1   byte 2 ... byte 7           │
-                └────────────────────────────────────────────────────┘
-```
+What crosses each boundary is contract section 2.3 (A to H). Two of those
+boundaries are new types in this crate: the **time declarations** (C), which
+the caller fills from `irig106-tmats`'s plain data, and the **answer** (F),
+which carries its basis.
 
 ---
 
-## 6. Ecosystem Crate Relationships
+## 4. The layers and modules
 
-```
-                    ┌────────────────┐
-                    │  irig106-types │  (foundational types)
-                    │                │
-                    │ Rtc, Ertc      │
-                    │ Ch4BinaryTime  │
-                    │ Ieee1588Time   │
-                    │ TimeSource...  │
-                    └───────┬────────┘
-                            │ depends on
-              ┌─────────────┼──────────────┬──────────────┐
-              │             │              │              │
-    ┌─────────▼───┐  ┌─────▼──────┐ ┌─────▼─────┐ ┌─────▼──────┐
-    │ irig106-core│  │irig106-time│ │irig106-   │ │irig106-    │
-    │             │  │            │ │decode     │ │write       │
-    │ Pkt header  │  │ BCD decode │ │ Payload   │ │ Serializer │
-    │ traversal   │  │ Correlation│ │ semantics │ │            │
-    └─────────────┘  └────────────┘ └───────────┘ └────────────┘
-              │             │              │
-              └─────────────┼──────────────┘
-                            │
-                    ┌───────▼────────┐
-                    │ irig106-ch10-  │
-                    │ reader / cli   │
-                    │                │
-                    │ High-level     │
-                    │ file analysis  │
-                    └────────────────┘
-```
+![The layers of irig106-time](diagrams/time-architecture.svg)
+
+*Three layers.* Values (no allocation) read and write what the standard
+defines, one field at a time; the recording layer (with `alloc`) builds the
+time timeline and answers questions against it; the CLI library and its
+binary sit on top. `irig106-types` holds the shared values underneath.
+
+### 4.1 Layer 0 — `irig106-types` (shared values)
+
+The counter (`Rtc`, 48 bits, 100 ns a tick), the ERTC (64 bits, **1 ns a
+tick**, "RTC = ERTC/100", §11.2.1.1 g; T-5), the Chapter 4 and IEEE 1588
+time values, the time sources and formats (with source 3 reserved, T-6, and
+FMT `0xF` NONE, T-7), the unit and epoch newtypes, and the two edition code
+lists — the packet header's data type version and the setup record's RCCVER
+(T-9). Fixed there first (ADR-0015).
+
+### 4.2 Layer 1 — values (no allocation)
+
+| Module | Holds | Standard | Findings fixed |
+|--------|-------|----------|----------------|
+| `flags` | the packet flags' time bits: secondary header present (bit 7), time stamp source (bit 6), secondary-header time format (bits 3–2), RTC sync error (bit 5) | §11.2.1.1 g | T-1 |
+| `secondary` | the 12-byte secondary header: 8 bytes of time in the format of bits 3–2 (Figures 11-4 to 11-6), 2 reserved bytes, the checksum and its check | §11.2.1.2 | T-10 (layout to confirm) |
+| `stamp` | an 8-byte intra-packet time stamp: the 48-bit counter "plus 16 high-order zero bits", or the 64-bit secondary-header format when bit 6 is set | §11.2.1.3 b | T-1 |
+| `format1` | the Format 1 data word (SRC, FMT, leap year, date format, ITS, reserved bits) and bodies: day format, 3 words (6 bytes); day, month, and year, 4 words (8 bytes); decode and encode | §11.2.3.2, Figures 11-12 to 11-14, Table 11-16 | T-6, T-7, T-12 |
+| `format2` | the Format 2 data word (NTF bits 7–4, TS bits 3–0, reserved 31–8) and bodies: NTP seconds and fraction, PTP seconds and nanoseconds, 8 bytes each; decode and encode | §11.2.3.3, Figures 11-15 to 11-17 | T-2, T-3 |
+| `words` | time words from data: Chapter 4 high, low, and microsecond words, binary or BCD weighted; network time words | Chapter 4 §4.7; contract 3.8 | — (new) |
+| `calendar` | absolute time: day of year and time of day to the nanosecond, with an optional year; calendar dates; leap years | Figures 11-13, 11-14 | — |
+| `scale` | time scales and epochs: UTC (NTP, 1900, "includes leap seconds"), TAI (PTP, 1970, "does not include leap seconds"), Unix; the leap-second table with the date it is known to be current to | §11.2.3.3 | — |
+| `edition` | what exists in which edition: Format 2 from 106-17; Chapter 10 section numbers before 106-17, Chapter 11 after | §11.2.1.1 e | T-4 |
+
+Every reader in this layer takes a byte slice bounded by the caller —
+never more than Data Length (§11.2.1.1 d; T-12) — checks reserved bits
+("All reserved bit fields in packet headers or CSDWs shall be set to zero",
+§11.2.1 f), and reports what it cannot read as an error (section 8).
+
+### 4.3 Layer 2 — the recording (with `alloc`)
+
+| Module | Holds | Contract |
+|--------|-------|----------|
+| `declared` | **time declarations**: for each setup record, the counter range it governs and its time channels (`R-x\TTF-n`, `R-x\TFMT-n`, `R-x\TSRC-n`), each channel's `R-x\SHTF-n`, and the original recording date (`R-x\RI4`) — plain data the caller fills from `irig106-tmats` | 2.3 C, 4.5 |
+| `reference` | a **reference**: one time packet as a point — its session, channel, counter, time, scale, source, format, ITS, validity, and the packet it came from | 3.2, 3.3 |
+| `policy` | the **time policy**: every setting of contract section 5.6, with its cited default | 5.6; ADR-0010 |
+| `timeline` | the **time timeline** and its builder: sessions, time channels and the one chosen per session, references, source changes, gaps, jumps, late packets, the year, the quality measures, and the findings | 5.2 to 5.5 |
+| `answer` | the **answer**: an absolute time with its basis; the lookups — time for a counter, a secondary-header time, a time stamp, or a set of time words; the counter range for a span of absolute time | 3.1, 3.4, 3.8, 5.5 |
+| `stream` | the same rules with bounded memory, answering as packets pass | 4.8 |
+| `readings` | the reading register in code: TMATS letters against packet values, one entry per row of contract 3.7, each naming its register entry | 3.7; ADR-0012 |
+| `findings` | findings: stable identifier, default severity, evidence | 6; ADR-0013 |
+| `quality` | measures of the references: counts, spacing, drift per channel | 3.5 |
+| `error` | errors for input that cannot be read at all | 8 |
+
+### 4.4 Layer 3 — `irig106-time-cli`
+
+A library — `args` (hand-rolled, ADR-0008), `input` (the packet reader until
+`irig106-core` exists), `commands`, `report` (a model independent of the
+output format), `render` (text, CSV, JSON), `run` — and the binary
+`irigtime`; `irig106-cli` mounts `run` as `irig106 time` (ADR-0007). It
+writes the joining loop of section 6 once, for every command.
 
 ---
 
-## 7. Requirements Traceability Chain
+## 5. The data model
+
+![What an answer carries, and where it comes from](diagrams/time-answer.svg)
+
+*The answer and the timeline.* A time timeline holds sessions; each session
+has its time channels, the one chosen and why, and each channel's
+references. An answer is the absolute time with its basis, drawn from one
+reference of the chosen channel, and it records the policy.
+
+### 5.1 The time timeline
+
+| Part | Holds |
+|------|-------|
+| **Session** | a run of packets whose counter increases, allowing for late packets (default bound 1100 ms); its counter range; its span in absolute time; its chosen time channel and the rule that chose it; its year and where the year came from |
+| **Time channel** (per session) | the channel ID; what the governing setup record declares for it (or that it is undeclared); its references; its source changes; its gaps and jumps |
+| **Reference** | counter, absolute time, scale (UTC or TAI), source, format, ITS, validity, and the packet it came from; whether it is used, and why not if not |
+| **Governing setup record** | per counter range, which time declarations apply (from the caller, after `irig106-tmats` L1-CH10-008) |
+| **Findings** | every finding of the recording, each with its evidence |
+| **Quality** | reference counts, largest and smallest spacing, references per second, drift in parts per million |
+| **Policy** | the policy the timeline was built with |
+
+### 5.2 The answer
+
+| Field | Meaning |
+|-------|---------|
+| **time** | the absolute time: day of year and time of day to the nanosecond, with the year when known |
+| **session** | which session the counter lies in |
+| **time channel** | which channel's references were used, and the rule that chose it (the caller, the declared external channel, the most valid references, the lowest ID) |
+| **reference** | the reference used: its counter and time |
+| **distance** | the counter difference to it, as a duration |
+| **position** | between two references; before the first (extrapolated, by policy); beyond the last |
+| **source** | the reference's source, format, and ITS (external IRIG-B locked; internal freewheeling; PTP valid) |
+| **year** | known or not, and from where: a day-month-year packet, the caller, `R-x\RI4` |
+| **corrections** | drift correction applied or not; leap-second offset applied, and whether the table reaches the date |
+| **own time** | for a packet with a secondary header: its own time, and its difference from the counter-derived time when beyond the policy's tolerance |
+| **policy** | the policy used, or the settings that differ from the defaults |
+
+The worked example (contract section 7.3) is an answer: day 187
+13:45:27.770; session 1; time channel 1, the declared external channel;
+reference r1 = 100,000,000 at 13:45:27.350; distance 0.420 s; between two
+references; external, IRIG-B, ITS "locked to external IRIG time signal";
+year unknown; defaults.
+
+### 5.3 The policy
+
+The settings and defaults are contract section 5.6: session boundaries;
+which time channels count (declared TIMEIN); which time counts (valid only);
+choosing the time channel (the caller's, then the declared external, then
+the most valid references, then the lowest ID); the reference within the
+channel (nearest); after a lost lock (keep, labelled); the year (day-month-
+year packet, caller, `R-x\RI4`); reference gap (more than 1 s plus a
+tolerance); time jump (the format's resolution, 10 ms for Format 1); the
+late-packet bound (1100 ms = the 1000 ms stream commit time plus the 100 ms
+packet generation time of Chapter 10 §10.6.1 b–c); counter wrap (arithmetic,
+fixed).
+
+---
+
+## 6. How a recording is read
+
+The caller walks the packets in file order — the joining loop of contract
+section 4.2 — and feeds the builder three kinds of input.
+
+1. **A setup record** (from `irig106-tmats`, as plain data): its time
+   declarations and the counter from which it governs. The declarations
+   decide which time channels count (policy: declared TIMEIN).
+2. **A time packet** (`0x11`, `0x12`, Table 11-4): its channel, data type,
+   counter, data word, and body — bounded by Data Length. Layer 1 reads it;
+   the timeline records a reference, or a finding and no reference (invalid
+   time, an undeclared channel, malformed bytes).
+3. **Every other packet's channel, counter, and flags**: the counter going
+   backwards beyond the late-packet bound starts a new session; a late packet
+   within the bound is noted; flags bit 5 ("RTC sync error has occurred",
+   §11.2.1.1 g) is a finding.
+
+![Which reference governs a packet](diagrams/reference-selection.svg)
+
+*Which reference governs a packet* (contract section 5.2): sessions first,
+declared time channels, valid time, one channel per session, then the
+nearest reference — each rule a setting of the policy.
+
+At the end the builder gives the time timeline: sessions, channel choice,
+year, gaps, jumps, findings. Lookups against it give answers: for a counter
+(any packet), for a secondary-header time (checksum first), for a time stamp
+(bit 6 decides whether it is a counter or the secondary-header format), for
+a set of time words (from `irig106-decode`).
+
+**One pass or two.** The whole-recording timeline sees every reference
+before answering, so "nearest" can look ahead. A caller that must answer as
+it reads (`irig106-decode` streaming, `irig106-studio`) uses `stream`: it
+holds a packet until the next reference of its channel arrives or the
+policy's bound passes, then answers; with the policy "preceding reference
+only", it answers at once. Memory is bounded by the late-packet bound and
+the reference spacing, not by the recording.
+
+---
+
+## 7. How a recording is produced
+
+`format1` and `format2` encode what they decode: the data word and the body,
+byte for byte as Figures 11-12 to 11-17 lay them out, with reserved bits
+zero. `irig106-write` packs them into packets and keeps the rules the crate
+cannot keep for it: a time packet first after the setup record, at least
+once a second, the counter free-running through the session, and "RTC =
+ERTC/100" when writing ERTC (contract section 4.11).
+
+---
+
+## 8. Errors and findings
+
+| | Error | Finding |
+|---|-------|---------|
+| **When** | the input cannot be read at all | the input can be read, and something about time is wrong, missing, weak, or in disagreement |
+| **Examples** | a buffer shorter than the figure's length; a BCD digit above 9 | no time packets in a session; a packet before the first reference; FMT `0xF` NONE; time status "Time Not Valid"; reserved bits set; an undeclared time channel; TMATS and the packets differ; a failed secondary-header checksum; mixed secondary-header formats; a gap, jump, reset, or late packet; no year; the leap-year bit disagrees; a stale leap-second table; RTC sync error |
+| **Effect** | the value is not produced | the answer is given as the policy says, labelled |
+| **Source** | Layer 1 | Layers 1 and 2, gathered in the timeline |
+
+Every finding has a stable identifier, a default severity the caller can
+change, and its evidence: the packet (file position when the caller gives
+it), the channel, the counter. Proposed identifiers, one per case of
+contract section 6, are assigned in L2 (`TF-001` onward); identifiers are
+never reused. Nothing panics on any input (L1-ROB).
+
+---
+
+## 9. Features, targets, and dependencies
+
+| | |
+|---|---|
+| **Dependencies** | `irig106-types` (required); `serde` and `chrono` (optional features) |
+| **Features** | `std` (default: `std::error::Error`); `alloc` implied by the recording layer; `serde`; `chrono` (conversions to and from `chrono` types) |
+| **Targets** | any Rust target; CI builds `wasm32-unknown-unknown` with and without `serde`, and a `no_std` target without `std` (ADR-0014, proposed) |
+| **Edition and MSRV** | edition 2024, Rust 1.85 (ADR-0003) |
+| **Unsafe code** | none (`#![forbid(unsafe_code)]`) |
+| **Documentation** | every public item documented (`#![deny(missing_docs)]`), citing the standard |
+
+---
+
+## 10. The workspace and the CLI
+
+One workspace, two crates, one version (ADR-0007): `irig106-time` and
+`irig106-time-cli`, published together; the CLI pins the library with
+`=X.Y.Z`. The layout follows `irig106-tmats`'s decision on W1 to W3 (a
+virtual workspace with `crates/`), so the repositories look alike. The CLI's
+commands are `summary`, `channels`, `jumps`, `timeline`, `csv`, and
+`correlate`, each presenting what the library answers, with the basis and
+the findings; network time is reported as itself, never as GPS (ROADMAP
+P6-10).
+
+---
+
+## 11. From the prototype to the rebuild
+
+The prototype (`prototype-0`) is not patched (ADR-0001); what it got right is
+carried over through tests written from the standard (ADR-0016).
+
+| Prototype module | In the rebuild | Findings |
+|------------------|----------------|----------|
+| `rtc` (from `irig106-types`) | Layer 0, unchanged | — |
+| `absolute` | `calendar`; Chapter 4 binary time to `secondary` and `words` after the page check; day 0 reported, not turned into day 1 | T-10 |
+| `bcd` | `format1` bodies, 6 and 8 bytes; digit and range checks kept | T-12 |
+| `csdw` | `format1` data word, with ITS, NONE, reserved bits, source 3 reserved | T-6, T-7 |
+| `network_time` | `format2` (data word NTF and TS; 8-byte PTP body; from 106-17) and `scale` (leap-second table, with its currency) | T-2, T-3, T-4 |
+| `secondary` | `secondary`; mixed formats reported | T-10 |
+| `intra_packet` | `flags` and `stamp`, bit 6 and bits 3–2 | T-1 |
+| `correlation` | `timeline` and `answer`: the nearest-reference core kept, with sessions, channel choice, policy, basis, findings; late packets bounded at 1100 ms by default (the prototype uses 2 s) | — |
+| `streaming` | `stream`, same policy and basis | — |
+| `quality` | `quality`, feeding the basis | — |
+| `version` | the mappings move to `irig106-types`; `0x0F` unknown; `edition` keeps what changes for time | T-9 |
+| `packet_standard` | `edition` | — |
+| `recording_event` | leaves the crate, for `irig106-decode` (ADR-0009) | T-8 |
+| `error`, `util`, `chrono_interop` | `error`; `util` as needed; `chrono` feature | — |
+| `irig106-time-cli/src/main.rs` | `irig106-time-cli` library and `irigtime` binary | P6-10 |
+
+---
+
+## 12. Traceability and tests
 
 ```
- IRIG 106-17 Chapter 10          RCC 123-20 Programmer's Handbook
- ──────────────────────          ─────────────────────────────────
- §10.6.1.1 (RTC)                 §5.3, §6.6 (Time Interpretation)
- §10.6.1.4 (Ch4 BWT)             §5.4 (Secondary Header)
- §10.6.1.5 (IEEE-1588)           §5.5.3 (Time Data Format 1)
- §10.6.5.2 (Time F1)             Figures 5-3 through 5-14
-         │                               │
-         ▼                               ▼
- ┌─────────────────────────────────────────────┐
- │  L1 Requirements (37)                       │
- │  "The crate shall..."                       │
- │  Directly mapped to standard sections       │
- └─────────────────────┬───────────────────────┘
-                       │
-                       ▼
- ┌─────────────────────────────────────────────┐
- │  L2 Requirements (78)                       │
- │  "FunctionName shall..."                    │
- │  Testable functional behaviors              │
- └─────────────────────┬───────────────────────┘
-                       │
-                       ▼
- ┌─────────────────────────────────────────────┐
- │  L3 Requirements (65)                       │
- │  Struct layouts, algorithms, constants      │
- │  Maps directly to source files              │
- └─────────────────────┬───────────────────────┘
-                       │
-           ┌───────────┴───────────┐
-           ▼                       ▼
- ┌─────────────────┐     ┌─────────────────┐
- │  Source Code     │     │  Tests (151)    │
- │  9 modules       │     │  126 unit       │
- │  ~2000 lines     │     │  15 integration │
- │                  │     │  10 property    │
- └─────────────────┘     └─────────────────┘
+IRIG 106-24R1 (archived)          docs/TIME-IN-CHAPTER-10.md    docs/adr/
+Chapters 4, 10, 11; RCC 200-16    contract, sections 1-8        ADR-0001 ... 0017
+            \                            |                          /
+             +---------------------------+-------------------------+
+                                         |
+                        docs/L1_Requirements.md   (step 1, rewritten)
+                                         |
+                        docs/L2_Requirements.md   (after the review)
+                                         |
+                        docs/L3_Requirements.md   (after the review)
+                                         |
+                   tests tagged with their requirements; fixtures from
+                   the standard's figures; the worked example byte for byte
 ```
+
+Each L1 requirement cites the standard or an ADR; L2 and L3 name their
+parents; each test names the requirements it verifies. The prototype's
+requirement identifiers that survive keep their numbers; those that were
+wrong are retired and never reused (L1, section "Prototype requirements").
+
+---
+
+## 13. Open points for the review
+
+1. **ADR-0011, 0012, 0013, 0014, 0016, 0017** are proposed: the basis, the
+   reading register, findings, `no_std` with `alloc`, tests from the
+   standard, and the 0.8.0 release (with whether to yank 0.1.0 to 0.7.0).
+2. **The finding identifiers**: `TF-001` onward, assigned in L2.
+3. **RTC sync error** (packet flags bit 5, §11.2.1.1 g) as a finding: found
+   while writing this architecture; not yet in the contract document.
+4. **T-10**, the Chapter 4 binary layout: Figure 11-4 as extracted places
+   the microsecond word above a reserved half in the first long word, and the
+   high-order word above the low-order word in the second; the page image,
+   and Chapter 4 Figure 4-4, still need checking before `secondary` and
+   `words` are specified in L2.
+5. **The one-pass answer** (section 6): whether `stream` holds packets until
+   the next reference by default, or answers at once from the preceding
+   reference.

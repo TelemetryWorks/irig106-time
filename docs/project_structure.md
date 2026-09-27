@@ -77,7 +77,7 @@ irig106-time/
     |-- L1_Requirements.md             # 53 L1 -> IRIG 106 standard (incl. Format 2)
     |-- L2_Requirements.md             # L2 -> functional (incl. Format 2)
     |-- L3_Requirements.md             # L3 -> design specs (incl. Format 2)
-    |-- architecture.md                # Data flow, packet layouts, ASCII diagrams
+    |-- architecture.md                # The rebuild's architecture (proposal, 2026-09-27)
     |-- benchmark_results.md           # Current benchmark snapshot
     |-- cli_commands.md                # CLI command quick reference
     |-- project_structure.md           # This file
@@ -102,6 +102,8 @@ irig106-time/
         |-- time-degraded-cases.svg    # Where time can fail, and what follows (section 6)
         |-- worked-example-time-packet.svg # A Format 1 time packet byte by byte (section 7)
         |-- time-plan.svg              # The plan, documentation first (section 8)
+        |-- time-architecture.svg      # The layers and modules (architecture.md section 4)
+        |-- time-answer.svg            # What an answer carries (architecture.md section 5)
         `-- traceability.mermaid
 ```
 

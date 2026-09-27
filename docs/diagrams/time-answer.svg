@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540" role="img" aria-label="What an answer carries, and where it comes from. A time timeline holds sessions; session 1 has two time channels: channel 1, declared external IRIG-B, chosen, with references r1, r2, r3; channel 2, undeclared, not used under the default policy. Session 2 follows a counter reset. The timeline also holds findings, quality, and the policy. The answer for a PCM packet with counter 104,200,000 is day 187 13:45:27.770, with its basis: session 1; channel 1, the declared external channel; reference r1 at counter 100,000,000 and 13:45:27.350; distance 0.420 seconds; between two references; external, IRIG-B, IRIG time source locked to external IRIG; year unknown; no corrections; no own time; default policy.">
+  <style>
+    text { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; fill: #1f2328; }
+    .t { font-size: 15px; font-weight: 600; }
+    .b { font-weight: 600; }
+    .l { font-size: 11px; fill: #57606a; }
+    .m { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 11.5px; }
+    .k { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 11.5px; fill: #57606a; }
+    .box { fill: #f6f8fa; stroke: #57606a; stroke-width: 1.2; }
+    .ses { fill: #ffffff; stroke: #57606a; stroke-width: 1.1; }
+    .ch { fill: #ddf4ff; stroke: #0969da; stroke-width: 1.2; }
+    .un { fill: #f6f8fa; stroke: #8c959f; stroke-width: 1.1; stroke-dasharray: 4 3; }
+    .res { fill: #dafbe1; stroke: #1a7f37; stroke-width: 1.6; }
+    .pol { fill: #fff8c5; stroke: #9a6700; stroke-width: 1.2; }
+    .ref { fill: #0969da; }
+    .refo { fill: none; stroke: #8c959f; stroke-width: 1.4; }
+    .sel { fill: none; stroke: #1a7f37; stroke-width: 2; }
+    .ax { stroke: #8c959f; stroke-width: 1; }
+    .ln { stroke: #1a7f37; stroke-width: 1.3; fill: none; stroke-dasharray: 5 3; }
+    .ah { fill: #1a7f37; }
+    @media (prefers-color-scheme: dark) {
+      text { fill: #e6edf3; } .l, .k { fill: #9198a1; }
+      .box, .un { fill: #161b22; stroke: #9198a1; } .ses { fill: #0d1117; stroke: #9198a1; }
+      .ch { fill: #0c2d6b; stroke: #4493f8; } .res { fill: #0f2e1a; stroke: #3fb950; } .pol { fill: #3b2e00; stroke: #d29922; }
+      .ref { fill: #4493f8; } .refo { stroke: #6e7681; } .sel { stroke: #3fb950; } .ax { stroke: #6e7681; }
+      .ln { stroke: #3fb950; } .ah { fill: #3fb950; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+  </defs>
+
+  <text class="t" x="20" y="30">What an answer carries, and where it comes from</text>
+  <text class="l" x="20" y="48">The worked example of docs/TIME-IN-CHAPTER-10.md section 7, as the data model of docs/architecture.md section 5 holds it.</text>
+
+  <!-- timeline -->
+  <rect class="box" x="20" y="65" width="450" height="455" rx="8"/>
+  <text class="b" x="34" y="87">Time timeline (one recording)</text>
+
+  <rect class="ses" x="36" y="100" width="418" height="250" rx="6"/>
+  <text class="b" x="48" y="120">Session 1</text>
+  <text class="l" x="120" y="120">counter range, span; year: unknown</text>
+  <text class="l" x="48" y="137">chosen: channel 1 — the declared external channel (5.2 rule 4)</text>
+
+  <rect class="ch" x="52" y="150" width="386" height="95" rx="6"/>
+  <text class="b" x="64" y="169">Time channel 1</text>
+  <text class="l" x="160" y="169">declared: TTF 1, TFMT B, TSRC E</text>
+  <line class="ax" x1="72" y1="208" x2="420" y2="208"/>
+  <circle class="ref" cx="110" cy="208" r="5"/><circle class="sel" cx="110" cy="208" r="10"/>
+  <circle class="ref" cx="250" cy="208" r="5"/>
+  <circle class="ref" cx="390" cy="208" r="5"/>
+  <text class="m" x="110" y="236" text-anchor="middle">r1</text>
+  <text class="m" x="250" y="236" text-anchor="middle">r2</text>
+  <text class="m" x="390" y="236" text-anchor="middle">r3</text>
+  <path d="M152,196 L152,220" stroke="#cf222e" stroke-width="1.5"/>
+  <text class="l" x="160" y="236">PCM packet</text>
+  <text class="l" x="72" y="190">1 s apart</text>
+
+  <rect class="un" x="52" y="255" width="386" height="80" rx="6"/>
+  <text class="b" x="64" y="274">Time channel 2</text>
+  <text class="l" x="160" y="274">undeclared: not used (default policy)</text>
+  <line class="ax" x1="72" y1="305" x2="420" y2="305"/>
+  <circle class="refo" cx="140" cy="305" r="5"/>
+  <circle class="refo" cx="280" cy="305" r="5"/>
+  <circle class="refo" cx="410" cy="305" r="5"/>
+  <text class="l" x="72" y="326">each reported as a finding, with its evidence</text>
+
+  <rect class="ses" x="36" y="360" width="418" height="42" rx="6"/>
+  <text class="b" x="48" y="386">Session 2</text>
+  <text class="l" x="120" y="386">after a counter reset; no reference used across it</text>
+
+  <rect class="ses" x="36" y="415" width="128" height="90" rx="6"/>
+  <text class="b" x="48" y="436">Findings</text>
+  <text class="l" x="48" y="454">stable identifiers,</text>
+  <text class="l" x="48" y="468">severity, evidence</text>
+  <rect class="ses" x="181" y="415" width="128" height="90" rx="6"/>
+  <text class="b" x="193" y="436">Quality</text>
+  <text class="l" x="193" y="454">counts, spacing,</text>
+  <text class="l" x="193" y="468">drift per channel</text>
+  <rect class="pol" x="326" y="415" width="128" height="90" rx="6"/>
+  <text class="b" x="338" y="436">Policy</text>
+  <text class="l" x="338" y="454">every setting with</text>
+  <text class="l" x="338" y="468">its cited default</text>
+  <text class="l" x="338" y="482">(section 5.6)</text>
+
+  <!-- answer -->
+  <rect class="res" x="510" y="65" width="470" height="455" rx="8"/>
+  <text class="b" x="524" y="87">Answer for a PCM packet, counter 104,200,000</text>
+  <text class="k" x="524" y="118">time</text><text class="b" x="624" y="118">day 187, 13:45:27.770</text>
+  <text class="k" x="524" y="148">session</text><text class="m" x="624" y="148">1</text>
+  <text class="k" x="524" y="178">channel</text><text class="m" x="624" y="178">1 — declared external</text>
+  <text class="k" x="524" y="208">reference</text><text class="m" x="624" y="208">r1: 100,000,000 = 13:45:27.350</text>
+  <text class="k" x="524" y="238">distance</text><text class="m" x="624" y="238">0.420 s (4,200,000 ticks)</text>
+  <text class="k" x="524" y="268">position</text><text class="m" x="624" y="268">between two references</text>
+  <text class="k" x="524" y="298">source</text><text class="m" x="624" y="298">external, IRIG-B;</text>
+  <text class="m" x="624" y="314">ITS locked to external IRIG</text>
+  <text class="k" x="524" y="344">year</text><text class="m" x="624" y="344">unknown: no DMY packet,</text>
+  <text class="m" x="624" y="360">none from the caller, no R-x\RI4</text>
+  <text class="k" x="524" y="390">corrections</text><text class="m" x="624" y="390">none</text>
+  <text class="k" x="524" y="420">own time</text><text class="m" x="624" y="420">none (no secondary header)</text>
+  <text class="k" x="524" y="450">policy</text><text class="m" x="624" y="450">defaults</text>
+  <text class="l" x="524" y="490">The same time from a freewheeling clock an hour past its last</text>
+  <text class="l" x="524" y="504">reference would carry a different basis (contract section 7.6).</text>
+
+  <path class="ln" d="M120,208 C300,150 420,204 506,204" marker-end="url(#a)"/>
+  <path class="ln" d="M454,446 L506,446" marker-end="url(#a)"/>
+  <path class="ln" d="M454,130 C480,130 480,144 506,144" marker-end="url(#a)"/>
+</svg>
