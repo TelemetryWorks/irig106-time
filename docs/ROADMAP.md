@@ -172,6 +172,7 @@ integration feed into Phase 7 (P7-01).
 | P6-06a | **WASM build verification** | Medium | — | ✅ Done (v0.7.0) — CI verifies `wasm32-unknown-unknown` build. |
 | P6-06b | **`irig106-studio` WASM integration** | Medium | 1 day | P6-01 |
 | P6-08 | **MSRV policy** | Medium | — | ✅ Done (v0.7.0). MSRV 1.87 → 1.60. Replaced `u16::is_multiple_of` (1.87) with `util::is_leap_year` and `u64::abs_diff` (1.60) with `util::abs_diff_u64`. Constrained by `dep:` namespaced features in `Cargo.toml`. |
+| P6-10 | **`irig106-time-cli` as a published, reusable sub-crate** | High | 2 days | P6-01 | Owner direction 2026-09-26. Library plus a binary named `time` (owner: "ch10time should just me time"), in lockstep with `irig106-time`, mountable by `irig106-cli`. Details below. |
 | P6-09 | **Audit all `unwrap()` usage** | High | 1 day | — | Analyze every `.unwrap()` call in library source (`src/*.rs`). For each: determine if it can actually panic, document the invariant that prevents it (or replace with `?` / `expect` with a message if it can). Goal: zero `unwrap()` calls without a documented safety justification, or replace with propagating error handling. |
 
 #### Detailed Scope Per Item
@@ -233,6 +234,57 @@ they are fundamental concepts shared across the crate ecosystem.
 |------|------|
 | `irig106-decode` | Use `IntraPacketTime` and `IntraPacketTimeFormat` for message-level timestamps in payload decoders (1553, ARINC 429, etc.). |
 | `irig106-time` | Verify `parse_intra_packet_time` works with real decoder output. May need additional `IntraPacketTime` methods for downstream formatting. |
+
+**P6-10 — `irig106-time-cli` as a published, reusable sub-crate**
+
+Owner direction (2026-09-26): "We need a irig106-time-cli sub-crate as well
+like we have on tmats. This will be used in the irig106-cli project in future
+development."
+
+*Today:* `irig106-time-cli/` has its own manifest and is not a workspace
+member; it is `publish = false`; all of it — argument parsing, a packet
+reader (memory-mapped, sync search), the six commands (`summary`,
+`channels`, `jumps`, `timeline`, `csv`, `correlate`), and the output — is one
+996-line `src/main.rs`, so nothing can be reused.
+
+*Target*, following `irig106-tmats` (its ROADMAP, "Workspace layout and a
+reusable CLI library", W1–W3):
+
+- **One workspace, two crates, one version.** `irig106-time` and
+  `irig106-time-cli` in one Cargo workspace, released in lockstep: one
+  version and one tag; the CLI pins the library with `=X.Y.Z`; both
+  published together. The directory layout follows whatever `irig106-tmats`
+  settles in W1 (proposed there: a virtual workspace with `crates/`).
+- **A library and a binary in the CLI crate**, so `cargo install
+  irig106-time-cli` installs the binary and `irig106-cli` depends on the same
+  crate. The binary is renamed from `ch10time` to **`time`** (owner,
+  2026-09-26):
+
+  | Module | Holds |
+  |--------|-------|
+  | `args` | the hand-rolled argument parser (no `clap`) and a public table of the commands and flags, mountable by a host CLI under its own prefix (for example `irig106 time summary`) |
+  | `input` | reading files and walking packets — the only module that touches the file system — until `irig106-core` provides the reader |
+  | `commands` | one function per command, returning a report; no printing |
+  | `report` | typed report models, the source of a versioned JSON schema |
+  | `render` | plain text, CSV, and JSON, written to any `std::io::Write` |
+  | `run` | `run(args, stdout, stderr) -> exit code`, for mounting the whole command set |
+  | `main.rs` | a few lines that call `run` |
+
+- **Rules:** no printing or process exit outside `main.rs`; every command
+  testable without a process; the library API is public and follows semver
+  in lockstep with `irig106-time`.
+- **Fix while moving:** the CLI maps network time onto Format 1's source and
+  format ("PTP → GPS, closest analog"); network time is reported as itself
+  (`docs/STANDARD-REVIEW.md` T-2).
+- **CI:** build, test, clippy, and a publish dry run for both crates.
+- **Name conflict, for the owner to confirm:** `time` is a shell keyword in
+  bash and zsh and a standard program (`/usr/bin/time`) on Linux and macOS.
+  Typed as `time summary FILE` in those shells, the shell's own `time` runs
+  and times a command named `summary`; the binary is reached only by its
+  full path. Inside `irig106-cli` (`irig106 time …`) and on Windows there is
+  no conflict. Options: keep `time`; or name the standalone binary
+  differently (for example `irigtime`) while `irig106-cli` still mounts the
+  commands as `irig106 time`.
 
 **P6-06b — `irig106-studio` WASM integration**
 

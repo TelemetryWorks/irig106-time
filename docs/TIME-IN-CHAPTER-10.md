@@ -17,7 +17,7 @@
 | 1. What `irig106-time` is for | **draft for review** |
 | 2. Where time sits in Chapter 10 processing | **draft for review** |
 | 3. What the crate answers, question by question | **draft for review** |
-| 4. Contracts per consumer | to be written |
+| 4. Contracts per consumer | **draft for review** |
 | 5. Time over a recording | to be written |
 | 6. When time is missing, wrong, or disagrees | to be written |
 | 7. A worked example | to be written |
@@ -432,3 +432,162 @@ moved to Chapter 11. The mapping belongs to `irig106-types`, shared with
 Recording events (T-8) — whose meaning comes from the setup record — are
 left for section 4 to place. Decoding IRIG serial time codes as signals
 (RCC 200) is out of scope: recorders deliver time in packets.
+
+---
+
+## 4. Contracts per consumer
+
+A contract says what a consumer **gives** this crate, what it **gets** back
+(by the questions of section 3), and what it **must not do** itself. The
+contracts describe data, not signatures; where the crate disagrees with the
+standard today, the finding is named (`docs/STANDARD-REVIEW.md`), and the
+fixes are planned in section 8.
+
+### 4.1 Rules for every consumer
+
+1. **Do not compute absolute time yourself.** Hand counters, time packets,
+   and time stamps to this crate: it knows the tick (100 ns), the wrap
+   (2^48 ticks), and the references.
+2. **Read the packet flags as Chapter 11 defines them.** Bit 7: a secondary
+   header is present; bit 6: intra-packet time stamps use the secondary
+   header's time rather than the counter; bits 3–2: the secondary header's
+   time format (§11.2.1.1 g; T-1).
+3. **Find time packets by data type** — Time Data, `0x10`–`0x17`; Format 1
+   is `0x11`, Format 2 is `0x12` (Table 11-4) — and time channels from the
+   setup record, not by channel number.
+4. **Never mix time scales.** NTP time is UTC and "includes leap seconds";
+   PTP time is TAI and "does not include leap seconds" (§11.2.3.3); Format 1
+   says its own scale in FMT. Convert only through this crate, which keeps
+   the leap-second table.
+5. **Respect validity.** A Format 1 packet whose format is `0xF`, "NONE (time
+   packet payload invalid)", or a Format 2 packet whose status is "Time Not
+   Valid", is not a reference (T-2, T-7).
+6. **Keep the basis.** When passing an absolute time on, keep what it rests
+   on — its reference, time channel, and source (section 3.1, proposed).
+7. **Do not assume a year.** The day-of-year form carries none (section
+   3.2).
+8. **Take editions from `irig106-types`.** The setup record's version byte and
+   the packet header's data type version are two different code lists
+   (`irig106-tmats` `docs/TMATS-IN-CHAPTER-10.md` section 3.9).
+
+### 4.2 Time in the joining loop
+
+`irig106-tmats` ADR-0030 has each tool join the packet reader and the TMATS
+library in a short loop (its `docs/diagrams/joining-loop.svg`). Time adds
+two steps to it:
+
+- **a time packet** (`0x11`, `0x12`) from a channel the governing setup
+  record declares as TIMEIN becomes a reference point
+  (`TimeCorrelator::add_reference`, `add_reference_f2`);
+- **every other packet** gets its absolute time from the references
+  (`correlate`), or from its own secondary header — and, through
+  `irig106-decode`, its intra-packet time stamps and time words.
+
+Because a time packet must be "the first dynamic data packet at the start of
+each session" (§11.2.3.2), the loop has a reference before the first data
+packet; section 6 covers recordings where it does not.
+
+### 4.3 `irig106-types` — the shared vocabulary
+
+| | |
+|---|---|
+| **Holds** | the counter (`Rtc`), the ERTC, Chapter 4 binary, and IEEE 1588 time values, the time sources and formats, durations and time-scale newtypes, and the edition mappings |
+| **Must** | count the ERTC at 1 ns (T-5); list time sources as the standard does, with 3 reserved (T-6); include FMT `0xF` NONE (T-7); keep the setup record's version codes and the packet header's data type versions as two mappings (T-9) |
+| **Must not** | hold behaviour beyond what the values need |
+
+### 4.4 `irig106-core` — the packet reader
+
+| | |
+|---|---|
+| **Gives** | for each packet: channel ID, data type, header counter, packet flags, the secondary header when present, and the body — as plain data |
+| **Gets from this crate** | nothing: it depends on neither this crate nor `irig106-tmats` |
+| **Must** | verify the secondary header's checksum before trusting its time (§11.2.1.2 c) |
+
+Until `irig106-core` exists, this repository's CLI reads packets itself
+(ROADMAP P6-10).
+
+### 4.5 `irig106-tmats` — where time is declared
+
+| | |
+|---|---|
+| **Gives** | as plain data: the time channels with `R-x\TTF-n`, `R-x\TFMT-n`, `R-x\TSRC-n`; each channel's `R-x\SHTF-n`; the measurements that are time words (`C-d\DCT` = PTM, NTM, BTM, with `C-d\PTM`, `C-d\NTM`, `C-d\BTM`); the recording-format version declared; which setup record governs which packets (`irig106-tmats` sections 3.8, 3.9, 5) |
+| **Gets** | nothing: it does not depend on this crate |
+
+### 4.6 `irig106-decode` — values with their time
+
+`irig106-decode` depends on this crate (owner decision, section 2.4).
+
+| | |
+|---|---|
+| **Gives** | the intra-packet time stamps and the time words it finds in data, with the packet flags and the TMATS definition of each word |
+| **Gets** | absolute time for a packet, a time stamp, or a set of time words, with its basis (3.1, 3.4, 3.8) |
+| **Must not** | convert counters or time words itself; treat a time stamp as the counter when packet flags bit 6 is set (T-1) |
+
+### 4.7 `irig106-ch10-reader` — structural summary
+
+| | |
+|---|---|
+| **Gets** | the recording's start, end, and duration in absolute time; its time channels with their formats and sources; gaps, jumps, and counter resets; the quality of the correlation (3.5, 3.6) |
+| **Must** | say when there is no time reference, rather than print a time |
+
+### 4.8 `irig106-studio` — the time axis
+
+| | |
+|---|---|
+| **Gets** | absolute time for anything it displays; the streaming correlator for recordings too large to hold whole (`StreamingTimeCorrelator`) |
+| **Can rely on** | a `no_std` crate that builds for WebAssembly, checked in CI (section 1.5) |
+
+### 4.9 `irig106-index` — seeking by time
+
+| | |
+|---|---|
+| **Gets** | the counter range for a span of absolute time, and the time span of each part of a recording, per setup record (section 5) |
+| **Must** | keep the basis of each indexed time, so that an index built on freewheeling time can be told from one built on locked time |
+
+### 4.10 `irig106-cli` — the ecosystem's command line
+
+| | |
+|---|---|
+| **Gets** | the time commands, by mounting `irig106-time-cli`'s library as `irig106 time …` — the whole command set through its `run` entry point, or individual commands and renderers (ROADMAP P6-10) |
+| **Must not** | re-implement a time command |
+
+### 4.11 `irig106-write` — producing recordings
+
+| | |
+|---|---|
+| **Gets** | encoded Format 1 and Format 2 channel-specific data words and bodies |
+| **Must** | put a time packet first after the setup record ("A time data packet shall be the first dynamic data packet at the start of each session. Only static Computer-Generated Data, Format 1 packets may precede the first time data packet", §11.2.3.2); write one at least once a second (§11.2.3.2, §11.2.3.3); keep the counter free-running for the session; when writing ERTC, keep "RTC = ERTC/100" |
+| **Must not** | encode time itself |
+
+### 4.12 The time CLI in this repository
+
+`irig106-time-cli` becomes a published library and binary in lockstep with
+this crate, so that `irig106-cli` can mount it (ROADMAP P6-10). Its binary
+is renamed from `ch10time` to `time` (owner, 2026-09-26; the name clashes
+with the `time` keyword of bash and zsh and with `/usr/bin/time` — section
+4.14). It reads files and walks packets until `irig106-core` exists, writes
+the joining loop of 4.2, and presents what this crate answers: `summary`,
+`channels`, `jumps`, `timeline`, `csv`, `correlate`.
+
+### 4.13 Recording events: where they belong (proposed)
+
+A recording event entry holds an event number, an occurrence count, and
+whether the event happened while recording (Figure 11-38), and its time tag
+is an intra-packet time stamp (§11.2.7.3 g). The event's **meaning** is in
+the setup record: "Event Number … identifies 4096 individual events types
+defined in the corresponding setup record" — `R-x\EV\ID-n`, `R-x\EV\D-n`,
+`R-x\EV\T-n`, and the other `R-x\EV\…` attributes.
+
+**Proposed:** decoding recording event packets moves to `irig106-decode`,
+which owns data-type bodies (`irig106-docs` coverage map), and their
+meaning comes from `irig106-tmats`; this crate keeps what is time — turning
+each entry's time tag into absolute time — and drops its fixed event types
+(T-8). Section 8 lists it.
+
+### 4.14 Open points from this section
+
+- **The binary's name.** `time` clashes with the shell keyword and
+  `/usr/bin/time` on Linux and macOS; typed as a command there, the shell's
+  `time` runs instead. Keep `time`, or give the standalone binary another
+  name while `irig106-cli` still says `irig106 time` (ROADMAP P6-10).
+- **Recording events** (4.13).
