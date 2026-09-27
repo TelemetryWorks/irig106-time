@@ -5,7 +5,9 @@
 > `irig106-docs/src/coverage.md`, puts `irig106-time` next). Every finding
 > quotes the archived standard (`TelemetryWorks/rcc-106-standards`;
 > 106-24R1 unless another edition is named) and names the code it concerns.
-> Nothing in the code has been changed.
+> Nothing in the code has been changed. The owner decided to rebuild the
+> crate (2026-09-27, `docs/adr/0001`); each finding becomes a failing test
+> before the rebuilt code fixes it (`docs/adr/0016`).
 
 ## Confirmed disagreements with the standard
 
@@ -204,11 +206,14 @@ General Time Data Packet, Format 1"; it describes Format 2.
 - **Stale citations.** The crate documentation cites "IRIG 106-17 Chapters
   10/11 and RCC 123-20"; the current edition is 106-24R1.
 - **Version and MSRV.** `Cargo.toml` says 0.7.0 while the changelog and
-  roadmap say 0.8.0; `rust-version` is 1.60 while CI checks 1.78; the other
-  crates use edition 2024 and Rust 1.85.
+  roadmap say 0.8.0 (ADR-0017 proposes 0.8.0 for the rebuild). *Resolved
+  2026-09-27:* `rust-version` was 1.60 while CI checked 1.78; the ecosystem
+  now uses edition 2024 and Rust 1.85 everywhere, and CI checks 1.85
+  (ADR-0003).
 - **Requirements.** L3-CSDW-008 omits `Gps`; L1/L2-API-003 say "zero
   required dependencies" although `irig106-types` is now required; several
   L2 signatures are stale (ROADMAP P7-03).
 - **RCC 200** ("IRIG Serial Time Code Formats"), which Chapter 11 cites for
-  IRIG time formats, is not in the standards archive; this crate will need
-  it.
+  IRIG time formats. *Resolved 2026-09-27:* archived as the release
+  `rcc-200-16` of `TelemetryWorks/rcc-106-standards`, both byte-different
+  copies (TRMC and irig106.org).

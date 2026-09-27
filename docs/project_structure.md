@@ -2,6 +2,10 @@
 
 **Date:** 2026-03-29
 
+> **The code below is the prototype** (tag `prototype-0`). The owner decided
+> on 2026-09-27 to rebuild the crate, documentation first (`docs/adr/0001`,
+> `0002`); this layout changes when the rebuilt code lands.
+
 ---
 
 ## Repository Layout
@@ -69,6 +73,7 @@ irig106-time/
 |       `-- fuzz_ptp.rs
 |
 `-- docs/
+    |-- adr/                           # Architecture decision records (MADR), README index
     |-- L1_Requirements.md             # 53 L1 -> IRIG 106 standard (incl. Format 2)
     |-- L2_Requirements.md             # L2 -> functional (incl. Format 2)
     |-- L3_Requirements.md             # L3 -> design specs (incl. Format 2)
@@ -79,7 +84,7 @@ irig106-time/
     |-- ROADMAP.md                     # Phased release plan
     |-- security.md                    # Threat model, fuzzing guide
     |-- shared_types_for_irig106_types.md
-    |-- STANDARD-REVIEW.md             # The crate checked against IRIG 106-24R1 (T-1..T-11)
+    |-- STANDARD-REVIEW.md             # The crate checked against IRIG 106-24R1 (T-1..T-12)
     |-- TIME-IN-CHAPTER-10.md          # Contract: what time processing gives Chapter 10 consumers
     |-- test_index.md                  # All tests documented
     |-- usage.md                       # Integration examples for downstream crates

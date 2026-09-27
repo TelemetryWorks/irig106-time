@@ -982,18 +982,22 @@ capabilities, and finally the workspace and the CLI sub-crate.
 | Recording event decoding moves to `irig106-decode`, with meaning from `irig106-tmats`; this crate keeps their time tags | section 4.13 |
 | The rules and bounds of section 5 are defaults of a selectable time policy, recorded with every answer | section 5.6 |
 | Document first, then fix | owner, 2026-09-26 |
+| Rebuild the crate rather than refactor it in place; the prototype kept at the tag `prototype-0` | owner, 2026-09-27; ADR-0001 |
+| Edition 2024 and Rust 1.85 across the ecosystem (applied to this crate, its CLI, and `irig106-types`) | owner, 2026-09-27; ADR-0003 |
+| RCC 200 into the standards archive (done: release `rcc-200-16`) | owner, 2026-09-27 |
 
 ### 8.2 The approach
 
 1. **Decide and document.** Write ADRs for the decisions of 8.1 and those
-   still to come (the repository has none); revise `docs/architecture.md`
+   still to come (`docs/adr/`, ADR-0001 to ADR-0017); revise `docs/architecture.md`
    (last written for 0.1.0) against this contract — the time timeline,
    sessions, the policy, answers with their basis; rewrite the L1
    requirements with 106-24R1 citations (they cite Chapter 10 section
    numbers from before 106-17, such as "Ch10 §10.6.1.5"); L2 and L3 follow.
-2. **Owner review**, which also decides whether to refactor the crate in
-   place or rebuild it, as `irig106-tmats` did (its ADR-0001), keeping the
-   current code at a tag either way.
+2. **Owner review** of step 1. (Whether to refactor in place or rebuild was
+   to be decided here; the owner decided on 2026-09-27 to rebuild, as
+   `irig106-tmats` did — ADR-0001 — with the current code at the tag
+   `prototype-0`.)
 3. **Tests first.** A test for each finding, failing until it is fixed; the
    worked example of section 7, byte for byte; fixtures built from Chapter
    11's figures, never from the code's own encoders.
@@ -1045,14 +1049,16 @@ capabilities, and finally the workspace and the CLI sub-crate.
 
 - **Version:** `Cargo.toml` says 0.7.0 where the changelog and roadmap say
   0.8.0; settle it with the restructure.
-- **Edition and MSRV:** this crate uses edition 2021 and declares Rust 1.60
-  while CI checks 1.78; `irig106-tmats` uses edition 2024 and Rust 1.85. For
-  the owner to decide whether the ecosystem aligns.
+- **Edition and MSRV:** this crate used edition 2021 and declared Rust 1.60
+  while CI checked 1.78; `irig106-tmats` uses edition 2024 and Rust 1.85.
+  *Decided 2026-09-27:* the ecosystem aligns on edition 2024 and Rust 1.85
+  (ADR-0003), applied here, to `irig106-time-cli`, and to `irig106-types`.
 - **Documents:** `docs/architecture.md`, `docs/L1_Requirements.md` and its
   siblings, `docs/test_index.md`, `README.md`, and the crate documentation
   (which cites "IRIG 106-17 Chapters 10/11") are brought up to 106-24R1.
-- **The standards archive:** add RCC 200, "IRIG Serial Time Code Formats",
-  which Chapter 11 cites for IRIG time formats; confirm T-10 on the page
+- **The standards archive:** RCC 200, "IRIG Serial Time Code Formats",
+  which Chapter 11 cites for IRIG time formats, is archived (2026-09-27,
+  release `rcc-200-16`); confirm T-10 on the page
   images of Chapter 4 Figure 4-4 and Chapter 11 Figure 11-4.
 
 ### 8.6 Other repositories
@@ -1063,13 +1069,19 @@ capabilities, and finally the workspace and the CLI sub-crate.
 | `irig106-decode` | depends on this crate; decodes recording event packets (meaning from `irig106-tmats`); finds time stamps and time words and asks this crate to convert them |
 | `irig106-tmats` | hands over the time attributes as plain data — already in its contract (`docs/TMATS-IN-CHAPTER-10.md` sections 3.8, 4.6) |
 | `irig106-cli` | mounts `irig106-time-cli` as `irig106 time` |
-| `rcc-106-standards` | RCC 200 |
+| `rcc-106-standards` | RCC 200 (done, 2026-09-27) |
 
 ### 8.7 Decisions left with the owner
 
-- **Refactor in place or rebuild** — decided at the review of step 2.
-- **Time with its basis** (sections 3.1, 3.5) — proposed.
+- ~~Refactor in place or rebuild~~ — **rebuild** (2026-09-27, ADR-0001).
+- ~~Edition and MSRV alignment~~ — **edition 2024, Rust 1.85** (2026-09-27,
+  ADR-0003).
+- ~~RCC 200 into the standards archive~~ — **done** (2026-09-27).
+- **Time with its basis** (sections 3.1, 3.5) — proposed, ADR-0011.
 - **The reading table** of section 3.7, including TMATS "I Internal" and
-  the "Chapter 4 BCD" wording — proposed, as register entries.
-- **Edition and MSRV alignment** across the ecosystem (8.5).
-- **RCC 200** into the standards archive.
+  the "Chapter 4 BCD" wording — proposed, as register entries (ADR-0012).
+- **Findings for degraded time** (section 6) — proposed, ADR-0013.
+- **`no_std` with `alloc`** — proposed, ADR-0014.
+- **Tests from the standard** — proposed, ADR-0016.
+- **Releases after the rebuild**: 0.8.0, and whether to yank 0.1.0 to
+  0.7.0 from crates.io — proposed, ADR-0017.
