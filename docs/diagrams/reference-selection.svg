@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540" role="img" aria-label="Which reference governs a packet: five steps, each with a default the caller can change through the time policy: find the packet's session; keep the time channels the governing setup record declares; keep valid time only; choose one time channel — the caller's, else the declared external one, else the one with the most valid references, else the lowest channel ID; take the nearest reference of that channel. The answer is the absolute time with its basis and the policy used.">
+  <style>
+    text { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; fill: #1f2328; }
+    .t { font-size: 15px; font-weight: 600; }
+    .b { font-weight: 600; }
+    .l { font-size: 11px; fill: #57606a; }
+    .n { font-size: 13px; font-weight: 700; fill: #0969da; }
+    .box { fill: #f6f8fa; stroke: #57606a; stroke-width: 1.2; }
+    .res { fill: #dafbe1; stroke: #1a7f37; stroke-width: 1.6; }
+    .pol { fill: #fff8c5; stroke: #9a6700; stroke-width: 1.3; }
+    .ln { stroke: #57606a; stroke-width: 1.3; fill: none; }
+    .dp { stroke: #9a6700; stroke-width: 1.1; fill: none; stroke-dasharray: 4 3; }
+    .ah { fill: #57606a; } .ahw { fill: #9a6700; }
+    @media (prefers-color-scheme: dark) {
+      text { fill: #e6edf3; } .l { fill: #9198a1; } .n { fill: #4493f8; }
+      .box { fill: #161b22; stroke: #9198a1; } .res { fill: #0f2e1a; stroke: #3fb950; }
+      .pol { fill: #3b2e00; stroke: #d29922; } .ln { stroke: #9198a1; } .dp { stroke: #d29922; }
+      .ah { fill: #9198a1; } .ahw { fill: #d29922; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+    <marker id="w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ahw" d="M0,0 L10,5 L0,10 z"/></marker>
+  </defs>
+
+  <text class="t" x="20" y="30">Which reference governs a packet</text>
+  <text class="l" x="20" y="48">Each step has a default (left) and choices the caller can select through the time policy (right).</text>
+
+  <rect class="box" x="20" y="66" width="560" height="54" rx="6"/>
+  <text class="n" x="34" y="88">1</text><text class="b" x="54" y="88">Find the packet's session</text>
+  <text class="l" x="54" y="106">a counter that goes backwards beyond the late-packet bound starts a new one; no reference crosses it</text>
+
+  <rect class="box" x="20" y="138" width="560" height="54" rx="6"/>
+  <text class="n" x="34" y="160">2</text><text class="b" x="54" y="160">Keep the time channels that count</text>
+  <text class="l" x="54" y="178">those the governing setup record declares TIMEIN (R-x\CDT-n)</text>
+
+  <rect class="box" x="20" y="210" width="560" height="54" rx="6"/>
+  <text class="n" x="34" y="232">3</text><text class="b" x="54" y="232">Keep valid time only</text>
+  <text class="l" x="54" y="250">not Format 1 FMT 0xF "NONE", not Format 2 "Time Not Valid"</text>
+
+  <rect class="box" x="20" y="282" width="560" height="54" rx="6"/>
+  <text class="n" x="34" y="304">4</text><text class="b" x="54" y="304">Choose one time channel for the session</text>
+  <text class="l" x="54" y="322">the caller's → the declared external one (R-x\TSRC-n = E) → most valid references → lowest ID</text>
+
+  <rect class="box" x="20" y="354" width="560" height="54" rx="6"/>
+  <text class="n" x="34" y="376">5</text><text class="b" x="54" y="376">Take the nearest reference of that channel</text>
+  <text class="l" x="54" y="394">its time plus the counter difference at 100 ns a tick</text>
+
+  <rect class="res" x="20" y="430" width="560" height="74" rx="6"/>
+  <text class="b" x="34" y="452">Absolute time, with its basis</text>
+  <text class="l" x="34" y="470">the reference and the distance to it; between two references or beyond the last;</text>
+  <text class="l" x="34" y="484">its time channel, source, and format; the year and where it came from;</text>
+  <text class="l" x="34" y="498">and the policy settings that differ from the defaults</text>
+
+  <path class="ln" d="M300,120 L300,138" marker-end="url(#a)"/>
+  <path class="ln" d="M300,192 L300,210" marker-end="url(#a)"/>
+  <path class="ln" d="M300,264 L300,282" marker-end="url(#a)"/>
+  <path class="ln" d="M300,336 L300,354" marker-end="url(#a)"/>
+  <path class="ln" d="M300,408 L300,430" marker-end="url(#a)"/>
+
+  <rect class="pol" x="640" y="66" width="340" height="438" rx="8"/>
+  <text class="b" x="656" y="90">Time policy — the caller may select</text>
+  <text class="n" x="656" y="118">1</text><text class="l" x="676" y="118">supply boundaries, or one session</text>
+  <text class="n" x="656" y="190">2</text><text class="l" x="676" y="190">also undeclared time channels</text>
+  <text class="l" x="676" y="204">(labelled)</text>
+  <text class="n" x="656" y="262">3</text><text class="l" x="676" y="262">also invalid time (labelled)</text>
+  <text class="n" x="656" y="334">4</text><text class="l" x="676" y="334">a fixed channel, a ranking, or several</text>
+  <text class="l" x="676" y="348">channels mixed (labelled)</text>
+  <text class="n" x="656" y="406">5</text><text class="l" x="676" y="406">the preceding reference only,</text>
+  <text class="l" x="676" y="420">interpolation, or drift correction</text>
+  <text class="l" x="656" y="466">After a lost lock: keep references</text>
+  <text class="l" x="656" y="480">(default, labelled) or stop at the loss</text>
+  <path class="dp" d="M640,114 L580,93" marker-end="url(#w)"/>
+  <path class="dp" d="M640,186 L580,165" marker-end="url(#w)"/>
+  <path class="dp" d="M640,258 L580,237" marker-end="url(#w)"/>
+  <path class="dp" d="M640,330 L580,309" marker-end="url(#w)"/>
+  <path class="dp" d="M640,402 L580,381" marker-end="url(#w)"/>
+</svg>

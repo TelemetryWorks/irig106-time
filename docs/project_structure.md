@@ -91,6 +91,9 @@ irig106-time/
         |-- rtc-to-absolute.svg        # Relative to absolute time (TIME-IN-CHAPTER-10.md section 1)
         |-- time-in-the-pipeline.svg   # Where time sits in Chapter 10 processing (section 2)
         |-- time-over-a-recording.svg  # Time channels, source changes, gaps, jumps, resets (section 5)
+        |-- reference-selection.svg    # Which reference governs a packet; the selectable policy (5.2)
+        |-- year-sources.svg           # Where the year comes from (5.3)
+        |-- time-bounds.svg            # Gaps, jumps, late packets, resets, wraps (5.4)
         `-- traceability.mermaid
 ```
 

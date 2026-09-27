@@ -597,8 +597,10 @@ move as 4.13 says.
 A recording's time is not one clock but several streams of evidence: one
 or more time channels whose sources can change, a counter that runs
 through each session, and packets that arrive a little out of order. This
-section defines how they combine. Rules marked **proposed** wait for the
-owner (section 8).
+section defines how they combine. **The owner accepted the rules and bounds
+of 5.2 to 5.4 as defaults, and asked that each be selectable** (2026-09-27):
+they form a time policy (5.6) that a caller can change, and every answer
+records the policy it used.
 
 ### 5.1 What the standard says
 
@@ -631,7 +633,9 @@ jumps when lock returns; time channel 2 runs on an internal clock
 throughout. A counter reset starts a second session, and no reference is
 used across it.
 
-### 5.2 Which reference governs a packet (proposed)
+### 5.2 Which reference governs a packet (default policy)
+
+![Which reference governs a packet](diagrams/reference-selection.svg)
 
 1. **Sessions first.** A counter that goes backwards between consecutive
    packets in file order — beyond the out-of-order bound of 5.4 — starts a
@@ -667,7 +671,9 @@ used across it.
    valid within the session. Only the list of declared time channels
    (rule 2) follows the governing setup record.
 
-### 5.3 The year (proposed)
+### 5.3 The year (default policy)
+
+![Where the year comes from](diagrams/year-sources.svg)
 
 A day-of-year time packet carries no year (Figure 11-13). The year of an
 absolute time comes, in order, from:
@@ -684,7 +690,9 @@ year bit checks the result: a day 366 in a year the bit marks as not a leap
 year is reported (section 6). A time that crosses midnight on 31 December
 advances the year.
 
-### 5.4 Spans, gaps, jumps, resets, and late packets (proposed)
+### 5.4 Spans, gaps, jumps, resets, and late packets (default policy)
+
+![Gaps, jumps, resets, late packets, and wraps](diagrams/time-bounds.svg)
 
 | Term | Definition | Default bound |
 |------|------------|---------------|
@@ -711,3 +719,23 @@ loop hands it (section 4.2):
 and two lookups: absolute time, with its basis, for a counter value in a
 session; and the counter range of a session that covers a span of absolute
 time (for seeking, `irig106-index`).
+
+### 5.6 The time policy
+
+Every rule of 5.2 to 5.4 is a setting with the default above; a caller
+changes any of them, and every answer records the policy it used (or the
+settings that differ from the defaults).
+
+| Setting | Default | A caller may instead |
+|---------|---------|----------------------|
+| Session boundaries | a counter that goes backwards beyond the late-packet bound | supply boundaries, or treat the recording as one session |
+| Which time channels count | those the governing setup record declares TIMEIN | also accept time packets on undeclared channels (labelled) |
+| Which time counts | valid time only | also accept time marked invalid (labelled) |
+| Choosing the time channel | the caller's choice; else the declared external channel; else the most valid references; else the lowest channel ID | name a fixed channel, give a ranking, or allow references of several channels (labelled) |
+| Reference within the channel | the nearest | the preceding one only, interpolation between neighbours, or drift-corrected |
+| After a lost lock | keep using references, each labelled with its source | stop at the loss of lock |
+| The year | a day-month-year packet, then the caller, then `R-x\RI4` | any order or subset, or a fixed year |
+| Reference gap | more than 1 s, plus a tolerance | any bound |
+| Time jump | the format's resolution (10 ms for Format 1) | any threshold |
+| Late-packet bound | 1100 ms | any bound |
+| Counter wrap | arithmetic | — (fixed by the counter's width) |

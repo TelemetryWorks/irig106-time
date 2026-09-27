@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560" role="img" aria-label="Five events in a recording's time and their default bounds, each selectable: a reference gap is more than one second between valid references; a time jump is absolute time advancing by more than the counter, beyond the format's resolution of 10 milliseconds; a late packet goes back in counter time by no more than 1100 milliseconds; a counter reset goes back by more and starts a new session; a counter wrap after 2 to the 48 ticks is handled by arithmetic.">
+  <style>
+    text { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; fill: #1f2328; }
+    .t { font-size: 15px; font-weight: 600; }
+    .h { font-size: 13px; font-weight: 600; }
+    .l { font-size: 11px; fill: #57606a; }
+    .m { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 11px; }
+    .rt { font-size: 11px; fill: #cf222e; }
+    .pan { fill: none; stroke: #d0d7de; stroke-width: 1; }
+    .ax { stroke: #57606a; stroke-width: 1.3; fill: none; }
+    .ref { fill: #0969da; } .pk { stroke: #57606a; stroke-width: 1.4; }
+    .hl { stroke: #cf222e; stroke-width: 1.6; fill: none; }
+    .ok { stroke: #1a7f37; stroke-width: 1.6; fill: none; }
+    .ah { fill: #57606a; } .ahr { fill: #cf222e; }
+    @media (prefers-color-scheme: dark) {
+      text { fill: #e6edf3; } .l { fill: #9198a1; } .rt { fill: #f85149; }
+      .pan { stroke: #30363d; } .ax, .pk { stroke: #9198a1; } .ref { fill: #4493f8; }
+      .hl { stroke: #f85149; } .ok { stroke: #3fb950; } .ah { fill: #9198a1; } .ahr { fill: #f85149; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+    <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="ahr" d="M0,0 L10,5 L0,10 z"/></marker>
+  </defs>
+
+  <text class="t" x="20" y="30">Gaps, jumps, late packets, resets, and wraps</text>
+  <text class="l" x="20" y="48">Default bounds from section 5.4; every bound is a setting of the time policy (5.6).</text>
+
+  <!-- 1 reference gap -->
+  <rect class="pan" x="20" y="64" width="470" height="140" rx="6"/>
+  <text class="h" x="34" y="86">Reference gap</text>
+  <path class="ax" d="M40,150 L470,150" marker-end="url(#a)"/>
+  <circle class="ref" cx="70" cy="150" r="6"/><circle class="ref" cx="130" cy="150" r="6"/><circle class="ref" cx="190" cy="150" r="6"/><circle class="ref" cx="370" cy="150" r="6"/><circle class="ref" cx="430" cy="150" r="6"/>
+  <text class="m" x="70" y="172" text-anchor="middle">0 s</text><text class="m" x="130" y="172" text-anchor="middle">1 s</text><text class="m" x="190" y="172" text-anchor="middle">2 s</text><text class="m" x="370" y="172" text-anchor="middle">5 s</text>
+  <path class="hl" d="M190,128 L190,120 L370,120 L370,128"/>
+  <text class="rt" x="280" y="114" text-anchor="middle">3 s without a reference</text>
+  <text class="l" x="34" y="194">default: more than 1 s ("minimum frequency of 1 hertz") plus a tolerance</text>
+
+  <!-- 2 time jump -->
+  <rect class="pan" x="510" y="64" width="470" height="140" rx="6"/>
+  <text class="h" x="524" y="86">Time jump</text>
+  <text class="m" x="530" y="112">reference A: counter c     time 14:00:00.000</text>
+  <text class="m" x="530" y="130">reference B: counter c + 1.000 s</text>
+  <text class="m" x="530" y="148">             time 14:00:01.040</text>
+  <text class="rt" x="530" y="170">absolute time ran 40 ms more than the counter</text>
+  <text class="l" x="524" y="194">default: more than the format's resolution (10 ms for Format 1)</text>
+
+  <!-- 3 late packet -->
+  <rect class="pan" x="20" y="220" width="470" height="150" rx="6"/>
+  <text class="h" x="34" y="242">Late packet</text>
+  <text class="l" x="34" y="262">packets in file order, counter in seconds:</text>
+  <text class="m" x="34" y="284">10.20   10.35   10.50   <tspan class="rt">9.80</tspan>   10.62</text>
+  <text class="l" x="34" y="306">9.80 is 0.70 s behind 10.50: within the bound, a late packet —</text>
+  <text class="l" x="34" y="320">placed by its own counter, not a new session</text>
+  <text class="l" x="34" y="352">default: 1100 ms (stream commit 1000 ms + generation 100 ms,</text>
+  <text class="l" x="34" y="364">Chapter 10 §10.6.1)</text>
+
+  <!-- 4 counter reset -->
+  <rect class="pan" x="510" y="220" width="470" height="150" rx="6"/>
+  <text class="h" x="524" y="242">Counter reset</text>
+  <text class="l" x="524" y="262">packets in file order, counter in seconds:</text>
+  <text class="m" x="524" y="284">7200.4   7200.5   <tspan class="rt">3.1</tspan>   3.2   3.3</text>
+  <text class="rt" x="524" y="306">back by 7197 s: more than the bound — a new session</text>
+  <text class="l" x="524" y="320">no reference of session 1 is used in session 2</text>
+  <text class="l" x="524" y="352">default: going back by more than the late-packet bound</text>
+
+  <!-- 5 wrap -->
+  <rect class="pan" x="20" y="386" width="960" height="120" rx="6"/>
+  <text class="h" x="34" y="408">Counter wrap</text>
+  <path class="ax" d="M60,462 L700,462" marker-end="url(#a)"/>
+  <text class="m" x="120" y="452" text-anchor="middle">2^48 − 2</text>
+  <text class="m" x="260" y="452" text-anchor="middle">2^48 − 1</text>
+  <text class="m" x="400" y="452" text-anchor="middle">0</text>
+  <text class="m" x="540" y="452" text-anchor="middle">1</text>
+  <path class="ok" d="M260,472 C310,494 350,494 400,472" marker-end="url(#a)"/>
+  <text class="l" x="330" y="500" text-anchor="middle">one tick later, not a reset</text>
+  <text class="l" x="720" y="440">48 bits at 10 MHz wrap after</text>
+  <text class="l" x="720" y="454">about 325.8 days; differences</text>
+  <text class="l" x="720" y="468">are computed modulo 2^48</text>
+  <text class="l" x="720" y="482">(Rtc::elapsed_ticks)</text>
+
+  <text class="l" x="20" y="540">Illustrative values. Every event found is reported with the bound that found it; the answer records any bound the caller changed.</text>
+</svg>

@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 300" role="img" aria-label="Where the year comes from: by default a day-month-year time packet of the same session, then the caller, then the TMATS date and time the original recording was created, R-x\RI4, labelled; otherwise the year stays unknown. G\OD is not used because it dates the TMATS, not the recording. The leap-year bit of the Format 1 data word checks the result. The order and the sources are selectable, or a fixed year can be given.">
+  <style>
+    text { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; fill: #1f2328; }
+    .t { font-size: 15px; font-weight: 600; }
+    .b { font-weight: 600; }
+    .l { font-size: 11px; fill: #57606a; }
+    .n { font-size: 13px; font-weight: 700; fill: #0969da; }
+    .rt { font-size: 11px; fill: #cf222e; }
+    .box { fill: #f6f8fa; stroke: #57606a; stroke-width: 1.2; }
+    .ok { fill: #ddf4ff; stroke: #0969da; stroke-width: 1.4; }
+    .unk { fill: #fff8c5; stroke: #9a6700; stroke-width: 1.3; }
+    .bad { fill: #ffebe9; stroke: #cf222e; stroke-width: 1.2; stroke-dasharray: 4 3; }
+    .ln { stroke: #57606a; stroke-width: 1.3; fill: none; }
+    .ah { fill: #57606a; }
+    @media (prefers-color-scheme: dark) {
+      text { fill: #e6edf3; } .l { fill: #9198a1; } .n { fill: #4493f8; } .rt { fill: #f85149; }
+      .box { fill: #161b22; stroke: #9198a1; } .ok { fill: #0c2d6b; stroke: #4493f8; }
+      .unk { fill: #3b2e00; stroke: #d29922; } .bad { fill: #3d1214; stroke: #f85149; }
+      .ln { stroke: #9198a1; } .ah { fill: #9198a1; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+  </defs>
+
+  <text class="t" x="20" y="30">Where the year comes from</text>
+  <text class="l" x="20" y="48">A day-of-year time packet (Figure 11-13) carries no year. Default order below; the caller may change the order, drop sources, or give a fixed year.</text>
+
+  <rect class="ok" x="20" y="72" width="200" height="76" rx="6"/>
+  <text class="n" x="32" y="94">1</text><text class="b" x="50" y="94">Day-month-year packet</text>
+  <text class="l" x="32" y="114">a Format 1 packet with</text>
+  <text class="l" x="32" y="128">date format bit 9 = 1, same</text>
+  <text class="l" x="32" y="142">session (Figure 11-14)</text>
+
+  <rect class="ok" x="280" y="72" width="170" height="76" rx="6"/>
+  <text class="n" x="292" y="94">2</text><text class="b" x="310" y="94">The caller</text>
+  <text class="l" x="292" y="114">a year the caller knows</text>
+  <text class="l" x="292" y="128">for this recording</text>
+
+  <rect class="ok" x="510" y="72" width="210" height="76" rx="6"/>
+  <text class="n" x="522" y="94">3</text><text class="b" x="540" y="94">TMATS R-x\RI4</text>
+  <text class="l" x="522" y="114">"Date and time original</text>
+  <text class="l" x="522" y="128">recording was created" —</text>
+  <text class="l" x="522" y="142">labelled as from TMATS</text>
+
+  <rect class="unk" x="780" y="72" width="200" height="76" rx="6"/>
+  <text class="b" x="792" y="94">Unknown</text>
+  <text class="l" x="792" y="114">absolute time without a year;</text>
+  <text class="l" x="792" y="128">anything needing one says so</text>
+
+  <path class="ln" d="M220,110 L280,110" marker-end="url(#a)"/>
+  <path class="ln" d="M450,110 L510,110" marker-end="url(#a)"/>
+  <path class="ln" d="M720,110 L780,110" marker-end="url(#a)"/>
+  <text class="l" x="250" y="102" text-anchor="middle">else</text>
+  <text class="l" x="480" y="102" text-anchor="middle">else</text>
+  <text class="l" x="750" y="102" text-anchor="middle">else</text>
+
+  <rect class="box" x="20" y="176" width="430" height="76" rx="6"/>
+  <text class="b" x="32" y="198">Check with the leap-year bit</text>
+  <text class="l" x="32" y="218">Format 1 data word bit 8: "Indicates if this is a leap year".</text>
+  <text class="l" x="32" y="232">Day 366 in a year the bit says is not a leap year, or a year that</text>
+  <text class="l" x="32" y="246">disagrees with the bit, is reported (section 6).</text>
+
+  <rect class="bad" x="510" y="176" width="210" height="56" rx="6"/>
+  <text class="b" x="522" y="198">Not G\OD</text>
+  <text class="rt" x="522" y="216">"Date of origination of this mission</text>
+  <text class="rt" x="522" y="228">configuration": it dates the TMATS</text>
+
+  <text class="l" x="20" y="282">A time that passes midnight on 31 December advances the year. The answer always says which source the year came from.</text>
+</svg>
