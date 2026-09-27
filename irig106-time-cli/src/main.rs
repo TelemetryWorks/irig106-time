@@ -22,7 +22,7 @@ use std::process;
 
 use irig106_time::bcd::{DayFormatTime, DmyFormatTime};
 use irig106_time::csdw::{DateFormat, TimeF1Csdw};
-use irig106_time::network_time::{parse_time_f2_payload, LeapSecondTable, NetworkTimeProtocol};
+use irig106_time::network_time::{LeapSecondTable, NetworkTimeProtocol, parse_time_f2_payload};
 use irig106_time::*;
 
 // ────────────────────────────────────────────────────────────────────
@@ -494,7 +494,7 @@ fn fmt_comma(n: usize) -> String {
     let bytes = s.as_bytes();
     let mut result = String::new();
     for (i, b) in bytes.iter().enumerate() {
-        if i > 0 && (bytes.len() - i).is_multiple_of(3) {
+        if i > 0 && (bytes.len() - i) % 3 == 0 {
             result.push(',');
         }
         result.push(*b as char);
@@ -877,7 +877,9 @@ fn print_usage() {
     println!("Usage:");
     println!("  ch10time summary   <file.ch10>                    File time summary");
     println!("  ch10time channels  <file.ch10>                    Time channel inventory");
-    println!("  ch10time jumps     <file.ch10> [--threshold-ms N] Time jump detection (default: 1000 ms)");
+    println!(
+        "  ch10time jumps     <file.ch10> [--threshold-ms N] Time jump detection (default: 1000 ms)"
+    );
     println!(
         "  ch10time timeline  <file.ch10> [--limit N]        Per-packet timeline (default: 100)"
     );
