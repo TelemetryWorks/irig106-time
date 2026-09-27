@@ -1140,7 +1140,7 @@ Data Length (L1-ERR-005).
 - ~~`no_std` with `alloc`~~ — **accepted** (2026-09-27, ADR-0014).
 - ~~Tests from the standard~~ — **accepted** (2026-09-27, ADR-0016).
 - ~~Releases after the rebuild: 0.8.0~~ — **accepted** (2026-09-27,
-  ADR-0017). Still open: whether to yank 0.1.0 to 0.7.0 from crates.io.
+  ADR-0017). 0.1.0 to 0.7.0 are not yanked (owner, 2026-09-27).
 - **Found while writing step 1** (`docs/STANDARD-REVIEW.md`): T-13, the
   prototype's handbook citations are to RCC 123-09 §6.6, not 123-20; T-14,
   ITS arrived in 106-17 without a data type version, so the reading of

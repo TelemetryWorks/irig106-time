@@ -417,7 +417,7 @@ wrong are retired and never reused (L1, section "Prototype requirements").
 ## 13. Open points for the review
 
 1. ~~ADR-0011, 0012, 0013, 0014, 0016, 0017~~ — **accepted** (2026-09-27).
-   Still open from ADR-0017: whether to yank 0.1.0 to 0.7.0 from crates.io.
+   0.1.0 to 0.7.0 are not yanked (owner, 2026-09-27).
 2. **The finding identifiers and default severities** of section 8
    (TF-001 to TF-027): proposed; L2 fixes them.
 3. ~~RTC sync error as a finding~~ — now in the contract (section 6.7) and
