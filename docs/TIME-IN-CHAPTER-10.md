@@ -19,7 +19,7 @@
 | 3. What the crate answers, question by question | **draft for review** |
 | 4. Contracts per consumer | **draft for review** |
 | 5. Time over a recording | **draft for review** |
-| 6. When time is missing, wrong, or disagrees | to be written |
+| 6. When time is missing, wrong, or disagrees | **draft for review** |
 | 7. A worked example | to be written |
 | 8. What changes as a result | to be written |
 
@@ -739,3 +739,116 @@ settings that differ from the defaults).
 | Time jump | the format's resolution (10 ms for Format 1) | any threshold |
 | Late-packet bound | 1100 ms | any bound |
 | Counter wrap | arithmetic | — (fixed by the counter's width) |
+
+---
+
+## 6. When time is missing, wrong, or disagrees
+
+Real recordings break the rules. The crate's part is to say exactly what is
+wrong, give what time it can with its basis, and never present weak time as
+good time. Every case is a finding with a stable identifier and a default
+severity the caller can change; every "not used" or "labelled" below is a
+setting of the time policy (section 5.6).
+
+![Where time can fail, and what follows](diagrams/time-degraded-cases.svg)
+
+*Two paths.* A time packet that is undeclared, invalid, or malformed does
+not become a reference by default; one from a weak source does, labelled.
+A packet with no reference in its session gets counter time only; a
+secondary header that fails its checksum is not trusted; a time far from
+its reference, or across a gap or jump, is given and labelled.
+
+### 6.1 No time packets at all
+
+A session must begin with a time packet ("A time data packet shall be the
+first dynamic data packet at the start of each session", Chapter 11
+§11.2.3.2), and "If the time data packet source is None, at least one time
+data packet is required". With none, the session has no absolute time: the
+crate reports it and gives counter time only — elapsed time from the
+session's first packet, at 100 ns a tick. Absolute time from secondary
+headers, where packets carry them, is still given (6.6).
+
+### 6.2 Packets before the first time packet
+
+"Only static Computer-Generated Data, Format 1 packets may precede the first
+time data packet" (§11.2.3.2). A data packet before the first reference has
+none behind it: by default it is reported and gets counter time only; the
+policy may allow extrapolation back from the first reference, labelled as
+such.
+
+### 6.3 Time packets that cannot be references
+
+| Case | Source |
+|------|--------|
+| Format 1 FMT `0xF` | "NONE (time packet payload invalid)" (§11.2.3.2) |
+| Format 2 time status `0x0` | "Time Not Valid" (§11.2.3.3) |
+| A binary-coded decimal digit above 9, or a field out of range (hours above 23, day above 366) | Figures 11-13 and 11-14; the crate's L1-ERR-002, 003 |
+| Reserved bits set | Format 1 bits 31–16 and 11–10; Format 2 bits 31–8 |
+| Day 366 when the leap-year bit (Format 1 bit 8) says the year is not a leap year | Format 1 data word |
+| A reserved source, format, or network time format | SRC `0x3`–`0xE`, FMT `0x6`–`0xE`, NTF `0x3`–`0xF` |
+
+Each is reported with the packet; by default the packet is not a
+reference.
+
+### 6.4 Time channels and TMATS
+
+| Case | Default |
+|------|---------|
+| Time packets on a channel the governing setup record does not declare TIMEIN | reported; not a reference unless the policy accepts it |
+| A declared time channel that carries no time packets | reported |
+| `R-x\TTF-n` (1 time data, 2 network time) differs from the packets' data type (`0x11`, `0x12`) | reported; the packets govern what they contain |
+| `R-x\TFMT-n` differs from the packets' FMT or NTF (the reading of section 3.7) | reported |
+| `R-x\TSRC-n` differs from the packets' SRC | information only: a source that loses lock reports internal (§11.2.3.2) |
+| `R-x\SHTF-n` differs from packet flags bits 3–2 | reported; the packets govern (with the "Chapter 4 BCD" wording noted in section 3.7) |
+
+### 6.5 Weak time
+
+A reference from an internal or freewheeling source (SRC `0x0` or `0x2`;
+ITS "freewheeling"), or from a channel whose source changed from external,
+is used and labelled with its source (section 5.2, rule 6). The quality
+measures (section 3.5) and every answer's basis carry it to the consumer, so
+freewheeling time is never mistaken for locked time.
+
+### 6.6 Secondary headers
+
+| Case | Default |
+|------|---------|
+| The checksum fails ("a 16-bit arithmetic sum of all secondary header bytes excluding the secondary header checksum word", §11.2.1.2 c) | the header's time is not trusted; the packet's time comes from its counter; reported |
+| Channels use different secondary-header time formats ("all channels that have a secondary header must use the same time source in bits 2-3", §11.2.1.2 a) | reported; each packet read in its own format |
+| Format `11` in bits 3–2 ("Reserved") | reported; the time is not read |
+| The header's time and the time derived from the counter disagree beyond the policy's tolerance | reported; both kept, the header's time as the packet's own |
+
+### 6.7 Gaps, jumps, resets, and late packets
+
+Found and reported with the bound that found them (section 5.4): a
+reference gap, a time jump, a counter reset (a new session), a packet later
+than the late-packet bound. A time given across a gap or a jump, or beyond
+the last reference, is labelled with the distance to its reference.
+
+### 6.8 The year and leap seconds
+
+- **No year** (section 5.3): absolute time without a year; anything that
+  needs one — conversion to a calendar date, to Unix, NTP, or PTP time —
+  reports that it cannot.
+- **The leap-year bit disagrees** with the year found: reported.
+- **The leap-second table does not reach the date** of a conversion between
+  TAI (PTP) and UTC (NTP, Format 1): the conversion is given with the last
+  known offset and labelled as possibly out of date; the caller can extend
+  the table (`LeapSecondTable::add`).
+
+### 6.9 Summary
+
+| Case | Time given? | Label | Reported by |
+|------|-------------|-------|-------------|
+| No time packets | counter time only | — | the time timeline |
+| Before the first time packet | counter time only (extrapolation by policy) | extrapolated | the time timeline |
+| Invalid or malformed time packet | not a reference | — | time packet reading |
+| Undeclared time channel | not a reference (by policy) | undeclared | the time timeline |
+| TMATS and packets differ | yes | — | the time timeline |
+| Weak source | yes | its source | every answer's basis |
+| Secondary header checksum fails | counter time | — | secondary header reading |
+| Secondary header and counter disagree | both | — | correlation |
+| Across a gap or jump, or beyond the last reference | yes | the distance | every answer's basis |
+| Counter reset | yes, in the new session | new session | the time timeline |
+| No year | without a year | — | the answer |
+| Leap-second table out of date | yes | possibly stale | the conversion |

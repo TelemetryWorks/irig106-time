@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540" role="img" aria-label="Where time can fail and what follows: a time packet on an undeclared channel, or with invalid time, a malformed body, or reserved bits set, is reported and does not become a reference by default; one from a freewheeling or internal source becomes a reference labelled as such. A packet with no reference in its session gets no absolute time, only counter time; a secondary header whose checksum fails is not trusted; a time far from any reference, or across a gap or jump, is labelled; a secondary-header time that disagrees with the counter-derived time is reported.">
+  <style>
+    text { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; fill: #1f2328; }
+    .t { font-size: 15px; font-weight: 600; }
+    .h { font-size: 13px; font-weight: 600; }
+    .b { font-weight: 600; }
+    .l { font-size: 11px; fill: #57606a; }
+    .box { fill: #f6f8fa; stroke: #57606a; stroke-width: 1.2; }
+    .ok { fill: #ddf4ff; stroke: #0969da; stroke-width: 1.6; }
+    .bad { fill: #ffebe9; stroke: #cf222e; stroke-width: 1.3; }
+    .warn { fill: #fff8c5; stroke: #9a6700; stroke-width: 1.3; }
+    .ln { stroke: #57606a; stroke-width: 1.3; fill: none; }
+    .fl { stroke: #57606a; stroke-width: 1.1; fill: none; stroke-dasharray: 4 3; }
+    .ah { fill: #57606a; }
+    @media (prefers-color-scheme: dark) {
+      text { fill: #e6edf3; } .l { fill: #9198a1; }
+      .box { fill: #161b22; stroke: #9198a1; } .ok { fill: #0c2d6b; stroke: #4493f8; }
+      .bad { fill: #3d1214; stroke: #f85149; } .warn { fill: #3b2e00; stroke: #d29922; }
+      .ln, .fl { stroke: #9198a1; } .ah { fill: #9198a1; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+  </defs>
+
+  <text class="t" x="20" y="30">Where time can fail, and what follows</text>
+  <text class="h" x="20" y="60">A time packet on its way to becoming a reference</text>
+
+  <rect class="box" x="20"  y="74" width="140" height="50" rx="6"/><text class="b" x="90"  y="96" text-anchor="middle">Time packet</text><text class="l" x="90" y="113" text-anchor="middle">0x11 or 0x12</text>
+  <rect class="box" x="195" y="74" width="150" height="50" rx="6"/><text class="b" x="270" y="96" text-anchor="middle">Declared?</text><text class="l" x="270" y="113" text-anchor="middle">TIMEIN in TMATS</text>
+  <rect class="box" x="380" y="74" width="150" height="50" rx="6"/><text class="b" x="455" y="96" text-anchor="middle">Valid?</text><text class="l" x="455" y="113" text-anchor="middle">data word and body</text>
+  <rect class="box" x="565" y="74" width="150" height="50" rx="6"/><text class="b" x="640" y="96" text-anchor="middle">Source?</text><text class="l" x="640" y="113" text-anchor="middle">SRC, ITS, TS</text>
+  <rect class="ok"  x="750" y="74" width="230" height="50" rx="25"/><text class="b" x="865" y="96" text-anchor="middle">Reference</text><text class="l" x="865" y="113" text-anchor="middle">with its source and format</text>
+  <path class="ln" d="M160,99 L195,99" marker-end="url(#a)"/>
+  <path class="ln" d="M345,99 L380,99" marker-end="url(#a)"/>
+  <path class="ln" d="M530,99 L565,99" marker-end="url(#a)"/>
+  <path class="ln" d="M715,99 L750,99" marker-end="url(#a)"/>
+
+  <rect class="warn" x="195" y="150" width="150" height="92" rx="6"/>
+  <text class="b" x="205" y="169">Undeclared</text>
+  <text class="l" x="205" y="186">reported; not a reference</text>
+  <text class="l" x="205" y="200">unless the policy</text>
+  <text class="l" x="205" y="214">accepts it (labelled)</text>
+  <rect class="bad" x="380" y="150" width="150" height="92" rx="6"/>
+  <text class="b" x="390" y="169">Not valid</text>
+  <text class="l" x="390" y="186">FMT NONE, "Time Not</text>
+  <text class="l" x="390" y="200">Valid", bad BCD digits,</text>
+  <text class="l" x="390" y="214">reserved bits, day 366</text>
+  <text class="l" x="390" y="228">in a non-leap year</text>
+  <rect class="warn" x="565" y="150" width="150" height="92" rx="6"/>
+  <text class="b" x="575" y="169">Weak source</text>
+  <text class="l" x="575" y="186">internal, freewheeling,</text>
+  <text class="l" x="575" y="200">lock lost: a reference,</text>
+  <text class="l" x="575" y="214">labelled with its source</text>
+  <path class="fl" d="M270,124 L270,150"/>
+  <path class="fl" d="M455,124 L455,150"/>
+  <path class="fl" d="M640,124 L640,150"/>
+
+  <line x1="20" y1="266" x2="980" y2="266" stroke="#d0d7de"/>
+  <text class="h" x="20" y="292">A packet on its way to absolute time</text>
+
+  <rect class="box" x="20"  y="306" width="140" height="50" rx="6"/><text class="b" x="90"  y="328" text-anchor="middle">Any packet</text><text class="l" x="90" y="345" text-anchor="middle">counter, flags</text>
+  <rect class="box" x="195" y="306" width="150" height="50" rx="6"/><text class="b" x="270" y="328" text-anchor="middle">A reference?</text><text class="l" x="270" y="345" text-anchor="middle">in its session</text>
+  <rect class="box" x="380" y="306" width="150" height="50" rx="6"/><text class="b" x="455" y="328" text-anchor="middle">Own time?</text><text class="l" x="455" y="345" text-anchor="middle">secondary header</text>
+  <rect class="box" x="565" y="306" width="150" height="50" rx="6"/><text class="b" x="640" y="328" text-anchor="middle">How far?</text><text class="l" x="640" y="345" text-anchor="middle">distance, gaps, jumps</text>
+  <rect class="ok"  x="750" y="306" width="230" height="50" rx="6"/><text class="b" x="865" y="328" text-anchor="middle">Absolute time</text><text class="l" x="865" y="345" text-anchor="middle">with its basis and policy</text>
+  <path class="ln" d="M160,331 L195,331" marker-end="url(#a)"/>
+  <path class="ln" d="M345,331 L380,331" marker-end="url(#a)"/>
+  <path class="ln" d="M530,331 L565,331" marker-end="url(#a)"/>
+  <path class="ln" d="M715,331 L750,331" marker-end="url(#a)"/>
+
+  <rect class="bad" x="195" y="382" width="150" height="104" rx="6"/>
+  <text class="b" x="205" y="401">No reference</text>
+  <text class="l" x="205" y="418">no time packets, or before</text>
+  <text class="l" x="205" y="432">the first one: counter time</text>
+  <text class="l" x="205" y="446">only; reported (the policy</text>
+  <text class="l" x="205" y="460">may extrapolate, labelled)</text>
+  <rect class="bad" x="380" y="382" width="150" height="50" rx="6"/>
+  <text class="b" x="390" y="401">Checksum fails</text>
+  <text class="l" x="390" y="418">not trusted; counter used</text>
+  <rect class="warn" x="380" y="438" width="150" height="48" rx="6"/>
+  <text class="b" x="390" y="456">Disagrees</text>
+  <text class="l" x="390" y="474">with counter time: both kept</text>
+  <rect class="warn" x="565" y="382" width="150" height="104" rx="6"/>
+  <text class="b" x="575" y="401">Far or across</text>
+  <text class="l" x="575" y="418">beyond the last reference,</text>
+  <text class="l" x="575" y="432">in a gap, or across a</text>
+  <text class="l" x="575" y="446">jump: the time is given,</text>
+  <text class="l" x="575" y="460">labelled</text>
+  <path class="fl" d="M270,356 L270,382"/>
+  <path class="fl" d="M455,356 L455,382"/>
+  <path class="fl" d="M640,356 L640,382"/>
+
+  <text class="l" x="760" y="404">Red: no time from this path.</text>
+  <text class="l" x="760" y="420">Amber: time given, and labelled.</text>
+  <text class="l" x="760" y="436">Every case is a finding; its</text>
+  <text class="l" x="760" y="450">severity is the caller's.</text>
+  <text class="l" x="20" y="522">Defaults shown; each "not used" or "labelled" follows a setting of the time policy (section 5.6).</text>
+</svg>

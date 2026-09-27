@@ -94,6 +94,7 @@ irig106-time/
         |-- reference-selection.svg    # Which reference governs a packet; the selectable policy (5.2)
         |-- year-sources.svg           # Where the year comes from (5.3)
         |-- time-bounds.svg            # Gaps, jumps, late packets, resets, wraps (5.4)
+        |-- time-degraded-cases.svg    # Where time can fail, and what follows (section 6)
         `-- traceability.mermaid
 ```
 
