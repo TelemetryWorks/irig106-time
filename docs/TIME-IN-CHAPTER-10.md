@@ -21,7 +21,7 @@
 | 5. Time over a recording | **draft for review** |
 | 6. When time is missing, wrong, or disagrees | **draft for review** |
 | 7. A worked example | **draft for review** |
-| 8. What changes as a result | to be written |
+| 8. What changes as a result | **draft for review** |
 
 ---
 
@@ -956,3 +956,120 @@ packet flags bit 6 were also set.
 
 This example becomes a test of the crate: the exact bytes above, decoded
 and correlated, with the basis of 7.3 (section 8).
+
+---
+
+## 8. What changes as a result
+
+The owner expects that much of the existing code needs fixing and that the
+architecture may not be ideal (2026-09-27). This section gathers what the
+document decided, assesses the crate module by module, and sets the order
+of work — documentation first, as for `irig106-tmats`.
+
+![The plan for irig106-time, documentation first](diagrams/time-plan.svg)
+
+*The plan.* Decisions, architecture, and requirements first, then the
+owner's review — which also decides whether to refactor in place or rebuild
+— then tests for every finding, the shared types, the modules, the new
+capabilities, and finally the workspace and the CLI sub-crate.
+
+### 8.1 Already decided while writing
+
+| Decision | Where |
+|----------|-------|
+| `irig106-decode` depends on `irig106-time` | section 2.4 |
+| The CLI sub-crate is `irig106-time-cli`, its built binary `irigtime`, and `irig106-cli` mounts it as the `time` subcommand (`irig106 time …`) | section 4.12; ROADMAP P6-10 |
+| Recording event decoding moves to `irig106-decode`, with meaning from `irig106-tmats`; this crate keeps their time tags | section 4.13 |
+| The rules and bounds of section 5 are defaults of a selectable time policy, recorded with every answer | section 5.6 |
+| Document first, then fix | owner, 2026-09-26 |
+
+### 8.2 The approach
+
+1. **Decide and document.** Write ADRs for the decisions of 8.1 and those
+   still to come (the repository has none); revise `docs/architecture.md`
+   (last written for 0.1.0) against this contract — the time timeline,
+   sessions, the policy, answers with their basis; rewrite the L1
+   requirements with 106-24R1 citations (they cite Chapter 10 section
+   numbers from before 106-17, such as "Ch10 §10.6.1.5"); L2 and L3 follow.
+2. **Owner review**, which also decides whether to refactor the crate in
+   place or rebuild it, as `irig106-tmats` did (its ADR-0001), keeping the
+   current code at a tag either way.
+3. **Tests first.** A test for each finding, failing until it is fixed; the
+   worked example of section 7, byte for byte; fixtures built from Chapter
+   11's figures, never from the code's own encoders.
+4. **The shared vocabulary.** Fix `irig106-types`, then publish it — which
+   also removes the path dependency that makes CI fail after commit
+   `a755a5c`.
+5. **The modules**, as 8.3 assesses them.
+6. **The new capabilities** of 8.5.
+7. **Restructure**: one workspace in lockstep; `irig106-time-cli` as a
+   library and the `irigtime` binary (ROADMAP P6-10).
+
+### 8.3 The crate, module by module
+
+| Module | Assessment | Findings |
+|--------|------------|----------|
+| `rtc` (from `irig106-types`) | keep | — |
+| `absolute` | keep `AbsoluteTime` and `CalendarTime`; rework Chapter 4 binary time after the page check; stop turning day 0 into day 1 silently | T-10 |
+| `bcd` | fix the body lengths; keep the digit and range checks | T-12 |
+| `csdw` | fix: source 3 reserved, FMT `0xF` NONE, the ITS field, reserved-bit checks | T-6, T-7 |
+| `network_time` | rework Format 2: the data word's NTF and TS, the 8-byte PTP body, Format 2 from 106-17; keep the leap-second table and make its currency visible | T-2, T-3, T-4 |
+| `secondary` | keep; confirm the Chapter 4 layout; report mixed formats across channels | T-10 |
+| `intra_packet` | fix the selecting bits (6, and 3–2) | T-1 |
+| `correlation` | keep the nearest-reference core; add sessions, the channel choice, the policy, and the basis; late packets bounded at 1100 ms by default | — |
+| `streaming` | the same policy and basis, with bounded memory | — |
+| `quality` | keep; feed the basis | — |
+| `version` | move the mapping to `irig106-types`, two lists; `0x0F` unknown | T-9 |
+| `packet_standard` | keep: the Chapter 10 to Chapter 11 move at 106-17 is confirmed ("References to RCC 106-04 through RCC 106-15 refer to Chapter 10, while RCC 106-17 onward refer to Chapter 11", Chapter 11 §11.2.1.1 e) | — |
+| `recording_event` | move out (8.1) | T-8 |
+| `error`, `util`, `chrono_interop` | keep | — |
+| `irig106-time-cli` | restructure into library and binary; report network time as itself, not as GPS | P6-10 |
+| ERTC (in `irig106-types`) | fix: 1 ns a tick | T-5 |
+
+### 8.4 New requirements (to write in step 1)
+
+- **Time with its basis**: every absolute time carries its reference, the
+  distance to it, its position (between references or beyond), time
+  channel, source, format, year source, and policy (sections 3.1, 3.5).
+- **The time timeline** and its two lookups (section 5.5).
+- **The time policy**, every setting with its default (section 5.6).
+- **Reading TMATS against the packets** (section 3.7), with each reading an
+  entry in a reviewed register, as in `irig106-tmats`.
+- **Time words from data**: Chapter 4 high, low, and microsecond words,
+  binary or BCD weighted, and network time words (section 3.8).
+- **The degraded cases** of section 6, each a finding with a stable
+  identifier.
+- **Never read past Data Length** (T-12).
+
+### 8.5 Repository matters
+
+- **Version:** `Cargo.toml` says 0.7.0 where the changelog and roadmap say
+  0.8.0; settle it with the restructure.
+- **Edition and MSRV:** this crate uses edition 2021 and declares Rust 1.60
+  while CI checks 1.78; `irig106-tmats` uses edition 2024 and Rust 1.85. For
+  the owner to decide whether the ecosystem aligns.
+- **Documents:** `docs/architecture.md`, `docs/L1_Requirements.md` and its
+  siblings, `docs/test_index.md`, `README.md`, and the crate documentation
+  (which cites "IRIG 106-17 Chapters 10/11") are brought up to 106-24R1.
+- **The standards archive:** add RCC 200, "IRIG Serial Time Code Formats",
+  which Chapter 11 cites for IRIG time formats; confirm T-10 on the page
+  images of Chapter 4 Figure 4-4 and Chapter 11 Figure 11-4.
+
+### 8.6 Other repositories
+
+| Repository | Change |
+|------------|--------|
+| `irig106-types` | ERTC at 1 ns (T-5); time source 3 reserved and FMT NONE (T-6, T-7); the setup record's version codes and the packet header's data type versions as two mappings (T-9) |
+| `irig106-decode` | depends on this crate; decodes recording event packets (meaning from `irig106-tmats`); finds time stamps and time words and asks this crate to convert them |
+| `irig106-tmats` | hands over the time attributes as plain data — already in its contract (`docs/TMATS-IN-CHAPTER-10.md` sections 3.8, 4.6) |
+| `irig106-cli` | mounts `irig106-time-cli` as `irig106 time` |
+| `rcc-106-standards` | RCC 200 |
+
+### 8.7 Decisions left with the owner
+
+- **Refactor in place or rebuild** — decided at the review of step 2.
+- **Time with its basis** (sections 3.1, 3.5) — proposed.
+- **The reading table** of section 3.7, including TMATS "I Internal" and
+  the "Chapter 4 BCD" wording — proposed, as register entries.
+- **Edition and MSRV alignment** across the ecosystem (8.5).
+- **RCC 200** into the standards archive.

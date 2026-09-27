@@ -96,6 +96,7 @@ irig106-time/
         |-- time-bounds.svg            # Gaps, jumps, late packets, resets, wraps (5.4)
         |-- time-degraded-cases.svg    # Where time can fail, and what follows (section 6)
         |-- worked-example-time-packet.svg # A Format 1 time packet byte by byte (section 7)
+        |-- time-plan.svg              # The plan, documentation first (section 8)
         `-- traceability.mermaid
 ```
 
