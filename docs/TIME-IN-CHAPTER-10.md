@@ -18,7 +18,7 @@
 | 2. Where time sits in Chapter 10 processing | **draft for review** |
 | 3. What the crate answers, question by question | **draft for review** |
 | 4. Contracts per consumer | **draft for review** |
-| 5. Time over a recording | to be written |
+| 5. Time over a recording | **draft for review** |
 | 6. When time is missing, wrong, or disagrees | to be written |
 | 7. A worked example | to be written |
 | 8. What changes as a result | to be written |
@@ -562,14 +562,14 @@ Until `irig106-core` exists, this repository's CLI reads packets itself
 ### 4.12 The time CLI in this repository
 
 `irig106-time-cli` becomes a published library and binary in lockstep with
-this crate, so that `irig106-cli` can mount it (ROADMAP P6-10). Its binary
-is renamed from `ch10time` to `time` (owner, 2026-09-26; the name clashes
-with the `time` keyword of bash and zsh and with `/usr/bin/time` — section
-4.14). It reads files and walks packets until `irig106-core` exists, writes
+this crate, so that `irig106-cli` can mount it (ROADMAP P6-10). Its
+standalone binary is renamed from `ch10time` to `irigtime`, and
+`irig106-cli` mounts its commands as `irig106 time` (owner, 2026-09-26; a
+standalone `time` would clash with the shell keyword and `/usr/bin/time`). It reads files and walks packets until `irig106-core` exists, writes
 the joining loop of 4.2, and presents what this crate answers: `summary`,
 `channels`, `jumps`, `timeline`, `csv`, `correlate`.
 
-### 4.13 Recording events: where they belong (proposed)
+### 4.13 Recording events: where they belong (decided)
 
 A recording event entry holds an event number, an occurrence count, and
 whether the event happened while recording (Figure 11-38), and its time tag
@@ -578,16 +578,136 @@ the setup record: "Event Number … identifies 4096 individual events types
 defined in the corresponding setup record" — `R-x\EV\ID-n`, `R-x\EV\D-n`,
 `R-x\EV\T-n`, and the other `R-x\EV\…` attributes.
 
-**Proposed:** decoding recording event packets moves to `irig106-decode`,
-which owns data-type bodies (`irig106-docs` coverage map), and their
-meaning comes from `irig106-tmats`; this crate keeps what is time — turning
-each entry's time tag into absolute time — and drops its fixed event types
-(T-8). Section 8 lists it.
+**Decided (owner, 2026-09-26):** decoding recording event packets moves to
+`irig106-decode`, which owns data-type bodies (`irig106-docs` coverage map),
+and their meaning comes from `irig106-tmats`; this crate keeps what is time
+— turning each entry's time tag into absolute time — and drops its fixed
+event types (T-8). Section 8 plans the move.
 
 ### 4.14 Open points from this section
 
-- **The binary's name.** `time` clashes with the shell keyword and
-  `/usr/bin/time` on Linux and macOS; typed as a command there, the shell's
-  `time` runs instead. Keep `time`, or give the standalone binary another
-  name while `irig106-cli` still says `irig106 time` (ROADMAP P6-10).
-- **Recording events** (4.13).
+Both points raised here are decided (owner, 2026-09-26): the standalone
+binary is `irigtime`, mounted as `irig106 time` (4.12), and recording events
+move as 4.13 says.
+
+---
+
+## 5. Time over a recording
+
+A recording's time is not one clock but several streams of evidence: one
+or more time channels whose sources can change, a counter that runs
+through each session, and packets that arrive a little out of order. This
+section defines how they combine. Rules marked **proposed** wait for the
+owner (section 8).
+
+### 5.1 What the standard says
+
+- **The counter runs through a session.** It "shall remain free-running
+  during each session (e.g., recording)" (Chapter 11 §11.2.1.1 i).
+- **Time packets come first and at least once a second.** "Time is treated
+  like another data channel. If a time source other than None is used …,
+  the time packet shall be generated at a minimum frequency of 1 hertz"
+  (Chapter 10 §10.6.2); "A time data packet shall be the first dynamic data
+  packet at the start of each session" (Chapter 11 §11.2.3.2).
+- **Sources change.** "If the time source is external (0x1) and lock on the
+  external source is lost then the time source shall indicate Internal
+  (0x0). Once lock on the external time source is regained, time source
+  shall once again indicate external (0x1)" (§11.2.3.2).
+- **Packets arrive late, but not very late.** Apart from computer-generated
+  packets, "all other packet generation times shall be equal to or less than
+  100 milliseconds (ms) as measured by the 10-megahertz (MHz) relative time
+  counter (RTC)", and "all other packets shall have a stream commit time
+  equal to or less than 1000 ms as measured by the 10-MHz RTC contained in
+  the packet header" (Chapter 10 §10.6.1 b–c).
+- **Secondary headers share one format.** "All channels that have a
+  secondary header must use the same time source in bits 2-3 of the packet
+  flags" (Chapter 11 §11.2.1.2 a).
+
+![Time over a recording](diagrams/time-over-a-recording.svg)
+
+*Time over a recording.* Time channel 1, declared external, loses lock (its
+packets report an internal source), falls silent for three seconds, and
+jumps when lock returns; time channel 2 runs on an internal clock
+throughout. A counter reset starts a second session, and no reference is
+used across it.
+
+### 5.2 Which reference governs a packet (proposed)
+
+1. **Sessions first.** A counter that goes backwards between consecutive
+   packets in file order — beyond the out-of-order bound of 5.4 — starts a
+   new session. References are never used across a session boundary: the
+   counter values on either side are unrelated.
+2. **Only declared time channels give references.** A time packet counts
+   when the setup record that governs it (`irig106-tmats` L1-CH10-008)
+   declares its channel TIMEIN; a time packet on an undeclared channel is
+   reported and used only if the caller says so (section 6).
+3. **Only valid time gives references.** Format 1 with FMT `0xF` ("NONE (time
+   packet payload invalid)") and Format 2 with status "Time Not Valid" are
+   reported, never used (§11.2.3.2, §11.2.3.3).
+4. **One time channel per session, chosen and stated.** The caller may name
+   it. Otherwise the crate chooses, in order: the channel the setup record
+   declares with an external source (`R-x\TSRC-n` = E); then the channel
+   with the most valid references; then the lowest channel ID — and every
+   answer names the channel used. References of different channels are not
+   mixed: two clocks can disagree by more than the precision either
+   offers.
+5. **Within the channel, the nearest reference**, as the crate does today
+   (`correlate`), with the answer carrying its basis (section 3.1): the
+   reference, the distance to it in counter time, whether it lies between
+   two references or beyond the last, and the reference's source and
+   format. Correcting for drift between references (`drift_ppm`) is
+   offered on request, and the answer says when it was applied.
+6. **A source change is not a break.** When a channel's packets report
+   "internal" after "external", its references remain in use, each carrying
+   the source it reported; the change itself is reported. When lock
+   returns, the jump between the internal and external time is reported
+   (5.4), and references after it carry the external source.
+7. **A setup-record change is not a break either.** The counter runs on
+   through a configuration change; references before and after it stay
+   valid within the session. Only the list of declared time channels
+   (rule 2) follows the governing setup record.
+
+### 5.3 The year (proposed)
+
+A day-of-year time packet carries no year (Figure 11-13). The year of an
+absolute time comes, in order, from:
+
+1. a day-month-year time packet of the same session (Figure 11-14);
+2. the caller;
+3. the setup record's "Date and time original recording was created"
+   (`R-x\RI4`, allowed "when R\TC1 is not "N""), labelled as coming from
+   TMATS — not the configuration's origination date (`G\OD`), which dates
+   the TMATS, not the recording;
+
+and otherwise stays unknown, as `AbsoluteTime` allows. The Format 1 leap-
+year bit checks the result: a day 366 in a year the bit marks as not a leap
+year is reported (section 6). A time that crosses midnight on 31 December
+advances the year.
+
+### 5.4 Spans, gaps, jumps, resets, and late packets (proposed)
+
+| Term | Definition | Default bound |
+|------|------------|---------------|
+| **Session** | a run of packets whose counter increases, allowing for late packets | — |
+| **Span** | a session's first and last packet in absolute time, through its chosen time channel; per setup record, the part of the span each governs | — |
+| **Reference gap** | two consecutive valid references of the chosen channel further apart in counter time than the standard's rate implies | more than 1 s ("minimum frequency of 1 hertz"), plus a tolerance the caller can set |
+| **Time jump** | between consecutive references, absolute time and counter time advance by different amounts | a threshold the caller sets (today required by `detect_time_jump`); proposed default: the resolution of the time format (10 ms for Format 1 bodies) |
+| **Counter reset** | the counter goes backwards by more than the late-packet bound | 5.2 rule 1 |
+| **Late packet** | a packet whose counter is earlier than one already seen, within the bound | 1100 ms: the stream commit time (1000 ms) plus the packet generation time (100 ms) of Chapter 10 §10.6.1; today the crate uses 2 s (`DEFAULT_OOO_WINDOW`) |
+| **Counter wrap** | 2^48 ticks, about 325.8 days | treated as arithmetic, not as a reset |
+
+### 5.5 What the crate returns
+
+A **time timeline** for a recording, built from the references the joining
+loop hands it (section 4.2):
+
+- its sessions, each with its span, its chosen time channel and why it was
+  chosen, and the time channels it saw;
+- for each time channel, its references with their source, format, and
+  validity, and the source changes, gaps, and jumps between them;
+- the year of each session and where it came from (5.3);
+- the quality measures of `compute_quality`;
+
+and two lookups: absolute time, with its basis, for a counter value in a
+session; and the counter range of a session that covers a span of absolute
+time (for seeking, `irig106-index`).

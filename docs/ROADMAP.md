@@ -172,7 +172,7 @@ integration feed into Phase 7 (P7-01).
 | P6-06a | **WASM build verification** | Medium | — | ✅ Done (v0.7.0) — CI verifies `wasm32-unknown-unknown` build. |
 | P6-06b | **`irig106-studio` WASM integration** | Medium | 1 day | P6-01 |
 | P6-08 | **MSRV policy** | Medium | — | ✅ Done (v0.7.0). MSRV 1.87 → 1.60. Replaced `u16::is_multiple_of` (1.87) with `util::is_leap_year` and `u64::abs_diff` (1.60) with `util::abs_diff_u64`. Constrained by `dep:` namespaced features in `Cargo.toml`. |
-| P6-10 | **`irig106-time-cli` as a published, reusable sub-crate** | High | 2 days | P6-01 | Owner direction 2026-09-26. Library plus a binary named `time` (owner: "ch10time should just me time"), in lockstep with `irig106-time`, mountable by `irig106-cli`. Details below. |
+| P6-10 | **`irig106-time-cli` as a published, reusable sub-crate** | High | 2 days | P6-01 | Owner direction 2026-09-26. Library plus a binary named `irigtime`, mounted in `irig106-cli` as `irig106 time` (owner, 2026-09-26), in lockstep with `irig106-time`, mountable by `irig106-cli`. Details below. |
 | P6-09 | **Audit all `unwrap()` usage** | High | 1 day | — | Analyze every `.unwrap()` call in library source (`src/*.rs`). For each: determine if it can actually panic, document the invariant that prevents it (or replace with `?` / `expect` with a message if it can). Goal: zero `unwrap()` calls without a documented safety justification, or replace with propagating error handling. |
 
 #### Detailed Scope Per Item
@@ -257,8 +257,11 @@ reusable CLI library", W1–W3):
   settles in W1 (proposed there: a virtual workspace with `crates/`).
 - **A library and a binary in the CLI crate**, so `cargo install
   irig106-time-cli` installs the binary and `irig106-cli` depends on the same
-  crate. The binary is renamed from `ch10time` to **`time`** (owner,
-  2026-09-26):
+  crate. The standalone binary is renamed from `ch10time` to **`irigtime`**,
+  and `irig106-cli` mounts the commands as `irig106 time` (owner, 2026-09-26:
+  first "ch10time should just me time", then, after the clash below, "give
+  the standalone binary a distinct name (for example irigtime) while
+  irig106-cli still mounts it as irig106 time"):
 
   | Module | Holds |
   |--------|-------|
@@ -277,14 +280,13 @@ reusable CLI library", W1–W3):
   format ("PTP → GPS, closest analog"); network time is reported as itself
   (`docs/STANDARD-REVIEW.md` T-2).
 - **CI:** build, test, clippy, and a publish dry run for both crates.
-- **Name conflict, for the owner to confirm:** `time` is a shell keyword in
+- **Why not `time`** (resolved): `time` is a shell keyword in
   bash and zsh and a standard program (`/usr/bin/time`) on Linux and macOS.
   Typed as `time summary FILE` in those shells, the shell's own `time` runs
   and times a command named `summary`; the binary is reached only by its
   full path. Inside `irig106-cli` (`irig106 time …`) and on Windows there is
-  no conflict. Options: keep `time`; or name the standalone binary
-  differently (for example `irigtime`) while `irig106-cli` still mounts the
-  commands as `irig106 time`.
+  no conflict — hence `irigtime` standalone and `irig106 time` inside
+  `irig106-cli`.
 
 **P6-06b — `irig106-studio` WASM integration**
 
