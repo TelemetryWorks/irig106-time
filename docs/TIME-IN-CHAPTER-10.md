@@ -1032,6 +1032,11 @@ capabilities, and finally the workspace and the CLI sub-crate.
 
 ### 8.4 New requirements (to write in step 1)
 
+*Written 2026-09-27* in `docs/L1_Requirements.md`: the basis (L1-ANS), the
+time timeline (L1-COR-005 to 013), the policy (L1-POL), the reading
+register (L1-RDG), time words (L1-WORD), the degraded cases (L1-FND), and
+Data Length (L1-ERR-005).
+
 - **Time with its basis**: every absolute time carries its reference, the
   distance to it, its position (between references or beyond), time
   channel, source, format, year source, and policy (sections 3.1, 3.5).
@@ -1085,3 +1090,10 @@ capabilities, and finally the workspace and the CLI sub-crate.
 - **Tests from the standard** — proposed, ADR-0016.
 - **Releases after the rebuild**: 0.8.0, and whether to yank 0.1.0 to
   0.7.0 from crates.io — proposed, ADR-0017.
+- **Found while writing step 1** (`docs/STANDARD-REVIEW.md`): T-13, the
+  prototype's handbook citations are to RCC 123-09 §6.6, not 123-20; T-14,
+  ITS arrived in 106-17 without a data type version, so the reading of
+  `0000` depends on the declared edition; T-15, the secondary header
+  checksum is summed as 16-bit words where the standard's wording and RCC
+  123-20's code sum bytes (suspect, to test locally on real recordings);
+  and packet flags bit 5, "RTC sync error", as a finding (L1-FND-003).

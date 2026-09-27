@@ -1,5 +1,11 @@
 # L2 Requirements — irig106-time
 
+> **Prototype document** (tag `prototype-0`). It traces to the prototype's
+> L1, which was rewritten on 2026-09-27 for the rebuild (`docs/adr/0001`);
+> ten of its L1 identifiers are retired (`docs/L1_Requirements.md`, section
+> "Prototype requirements"). This document is rewritten after the owner's
+> review of step 1.
+
 **Document:** L2_Requirements.md
 **Crate:** irig106-time
 **Version:** 0.2.0

@@ -74,9 +74,9 @@ irig106-time/
 |
 `-- docs/
     |-- adr/                           # Architecture decision records (MADR), README index
-    |-- L1_Requirements.md             # 53 L1 -> IRIG 106 standard (incl. Format 2)
-    |-- L2_Requirements.md             # L2 -> functional (incl. Format 2)
-    |-- L3_Requirements.md             # L3 -> design specs (incl. Format 2)
+    |-- L1_Requirements.md             # L1 for the rebuild, citing 106-24R1 (draft, 2026-09-27)
+    |-- L2_Requirements.md             # Prototype L2 (rewritten after the review)
+    |-- L3_Requirements.md             # Prototype L3 (rewritten after the review)
     |-- architecture.md                # The rebuild's architecture (proposal, 2026-09-27)
     |-- benchmark_results.md           # Current benchmark snapshot
     |-- cli_commands.md                # CLI command quick reference

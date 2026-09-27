@@ -172,6 +172,81 @@ the data word (4) and the body (6).
 **Change:** read 6 bytes for the day format and 8 for day, month, and year,
 and never read past Data Length.
 
+### T-13 The correlation requirements quote the wrong handbook edition
+
+*Found 2026-09-27, while rewriting L1.*
+
+**Docs:** `docs/L1_Requirements.md` (prototype) L1-COR-001 to 004 cite "RCC
+123-20 §6.6" and quote "It is better to use the clock and relative time
+values from a time packet that occurs near the current data packet", "there
+may be separate time channels for time derived from IRIG B, GPS, and an
+internal battery backed up clock", and "there is a jump in input clock time
+during a recording, such as when GPS locks for the first time".
+
+**Handbook:** RCC 123-20 has no §6.6; its "Time Interpretation" is §5.6
+(page 5-44), and it keeps only "When multiple time channels are available,
+it is incumbent on the programmer or data analyst to determine and select
+the best source of time for a particular data set" and the worked
+correlation example. The quoted sentences are in **RCC 123-09 §6.6** (March
+2009, page 6-36): "It is better to use the clock and relative time values
+from a time packet that occurs near the current data packet as the data file
+is decoded since there is some drift in the RTC during a recording session.
+It also may be the case that there is a jump in input clock time during a
+recording, such as when GPS locks for the first time, or when an IRIG time
+source is reprogrammed" — and "It is usually most correct to select one time
+channel only and to use this channel exclusively to correlate RTC time to
+absolute clock time for all data packet types". RCC 123-16 §5.6 matches
+123-20.
+
+**Change:** cite 123-09 §6.6 for those sentences (done in the rewritten L1).
+The handbook is guidance, not the standard; the requirements rest on Chapter
+11 and cite the handbook as support.
+
+## Readings to settle
+
+### T-14 The IRIG time source field has no version of its own
+
+*Found 2026-09-27, while rewriting L1.*
+
+**Standard:** the Format 1 data word's "IRIG Time Source (ITS). Bits 15-12"
+appears in Chapter 11 of 106-17 and every later edition; 106-05, 106-07,
+106-13, and 106-15 (Chapter 10) say "Reserved. Bits 31-12 are reserved".
+Yet Table 11-4 gives Time Data, Format 1 the "Current Data Type Version"
+`0x06` (106-13) in both 106-17 and 106-24R1: the packet header cannot say
+whether bits 15-12 carry ITS. Because "All reserved bit fields in packet
+headers or CSDWs shall be set to zero (0x0)" (§11.2.1 f), a recording made
+under 106-15 carries `0000`, which 106-17 defines as "IRIG TCG freewheeling
+(no or loss of time source)".
+
+**Reading (proposed):** take ITS as defined only when the setup record
+declares 106-17 or later (RCCVER `0x0C` or above, Figure 11-34); otherwise
+report it as "not reported", never as "freewheeling". ITS applies "when FMT
+is IRIG-A, B, or G" (§11.2.3.2) in any case. An entry for the reading
+register (ADR-0012).
+
+### T-15 The secondary header checksum: bytes or 16-bit words?
+
+*Found 2026-09-27, while rewriting L1.*
+
+**Code:** `src/secondary.rs:28-45`, `validate_secondary_checksum` — "the
+16-bit sum of the first 5 little-endian u16 words (bytes [0..10])".
+
+**Standard:** "a 16-bit arithmetic sum of all secondary header bytes
+excluding the secondary header checksum word" (§11.2.1.2 c; the same words
+in 106-05, 106-07, 106-13, 106-15, and 106-17). The packet header's checksum
+is worded differently: "a 16-bit arithmetic sum of all 16-bit words in the
+header" (§11.2.1.1 j). **Handbook:** RCC 123-20 Appendix A-2
+(`irig106ch10.c`, `uCalcSecHeaderChecksum`) adds the ten bytes one at a
+time into a 16-bit sum — with the comment "MAKE THIS 16 BIT UNSIGNEDS LIKE
+ABOVE", so its author was unsure too.
+
+**Effect:** if the standard means bytes, the crate rejects valid secondary
+headers and accepts invalid ones.
+
+**Reading (proposed, suspect):** sum bytes, as the wording and the handbook
+do; confirm against real recordings (locally, never in CI) before L2, and
+report which reading a recording's headers satisfy.
+
 ## To confirm on the page image
 
 ### T-10 Chapter 4 binary time

@@ -1,5 +1,11 @@
 # Test Documentation Index — irig106-time
 
+> **Prototype document** (tag `prototype-0`). It traces to the prototype's
+> L1, which was rewritten on 2026-09-27 for the rebuild (`docs/adr/0001`);
+> ten of its L1 identifiers are retired (`docs/L1_Requirements.md`, section
+> "Prototype requirements"). The tests are rewritten from the standard
+> (`docs/adr/0016`).
+
 **Document:** TEST_INDEX.md
 **Crate:** irig106-time v0.7.0
 **Default `cargo test`:** 269 tests (184 unit, 68 integration, 17 property)
