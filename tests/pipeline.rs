@@ -342,7 +342,7 @@ fn no_std_types_are_copy() {
 /// Full NTP pipeline: parse F2 payload → to_absolute → correlate.
 #[test]
 fn full_ntp_pipeline() {
-    use irig106_time::network_time::{parse_time_f2_payload, NetworkTime};
+    use irig106_time::network_time::{NetworkTime, parse_time_f2_payload};
 
     // Build an NTP payload: CSDW(protocol=NTP) + NTP time data
     // 2025-01-01 00:00:00 UTC → NTP seconds = 3,944,678,400
@@ -386,7 +386,7 @@ fn full_ntp_pipeline() {
 /// Full PTP pipeline: parse F2 payload → apply leap seconds → correlate.
 #[test]
 fn full_ptp_pipeline() {
-    use irig106_time::network_time::{parse_time_f2_payload, LeapSecondTable, NetworkTime};
+    use irig106_time::network_time::{LeapSecondTable, NetworkTime, parse_time_f2_payload};
 
     // Build a PTP payload: CSDW(protocol=PTP) + PTP time data
     // 2025-01-01 00:00:00 UTC → Unix = 1,735,689,600 → TAI = 1,735,689,637 (offset=37)
@@ -673,7 +673,7 @@ fn year_overflow_guard_no_panic() {
 
 #[test]
 fn version_detection_from_tmats_csdw() {
-    use irig106_time::version::{detect_version, Irig106Version};
+    use irig106_time::version::{Irig106Version, detect_version};
 
     assert_eq!(detect_version(0x00000000), Irig106Version::Pre07);
     assert_eq!(detect_version(0x00000007), Irig106Version::V07);

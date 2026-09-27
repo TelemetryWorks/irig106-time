@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ⚠️ BREAKING CHANGES
 
+- **Edition 2024 and MSRV 1.85** (was edition 2021 and 1.60), the same across the IRIG 106 ecosystem (owner, 2026-09-27; `docs/adr/0003`). CI checks 1.85; formatting follows the 2024 style edition.
+
 - **Shared types moved to `irig106-types`** (P6-01) — `Rtc`, `Ertc`, `Ch4BinaryTime`, `Ieee1588Time`, `TimeSource`, `TimeFormat`, `DateFormat`, and `SecHdrTimeFormat` are now defined in the new [`irig106-types`](https://github.com/TelemetryWorks/irig106-types) crate and re-exported from their existing `irig106_time` paths, so imports keep working.
 
   **Migration guide:**

@@ -297,11 +297,7 @@ impl TimeCorrelator {
     ) -> &'a ReferencePoint {
         let da = a.rtc.elapsed_ticks(target).min(target.elapsed_ticks(a.rtc));
         let db = b.rtc.elapsed_ticks(target).min(target.elapsed_ticks(b.rtc));
-        if da <= db {
-            a
-        } else {
-            b
-        }
+        if da <= db { a } else { b }
     }
 
     /// Detect time jumps on a specific channel.

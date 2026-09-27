@@ -1,8 +1,8 @@
 [package]
 name = "irig106-time"
 version = "0.7.0"
-edition = "2021"
-rust-version = "1.60"
+edition = "2024"
+rust-version = "1.85"
 description = "Precision time interpretation and format conversion for IRIG 106 telemetry data."
 repository = "https://github.com/TelemetryWorks/irig106-time"
 license = "Apache-2.0"

@@ -91,11 +91,7 @@ pub(crate) fn is_leap_year(year: u16) -> bool {
 #[allow(clippy::manual_abs_diff)]
 #[inline]
 pub(crate) fn abs_diff_u64(a: u64, b: u64) -> u64 {
-    if a >= b {
-        a - b
-    } else {
-        b - a
-    }
+    if a >= b { a - b } else { b - a }
 }
 
 /// Returns the number of days in a given month (1-indexed), accounting for

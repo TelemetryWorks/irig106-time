@@ -24,9 +24,9 @@ use std::time::{Duration, Instant};
 
 use irig106_time::bcd::{DayFormatTime, DmyFormatTime};
 use irig106_time::csdw::TimeF1Csdw;
-use irig106_time::intra_packet::{parse_intra_packet_time, IntraPacketTimeFormat};
+use irig106_time::intra_packet::{IntraPacketTimeFormat, parse_intra_packet_time};
 use irig106_time::secondary::{
-    parse_secondary_header, validate_secondary_checksum, SecHdrTimeFormat,
+    SecHdrTimeFormat, parse_secondary_header, validate_secondary_checksum,
 };
 use irig106_time::*;
 

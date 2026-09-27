@@ -13,7 +13,7 @@
 //! cargo bench --bench correlation_bench
 //! ```
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use irig106_time::*;
 
 fn build_correlator(n_refs: usize, n_channels: u16) -> TimeCorrelator {

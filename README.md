@@ -28,7 +28,7 @@ IRIG 106 Chapter 10 separates *when data was recorded* (a free-running 10 MHz co
 - **`chrono`** — Optional `From` conversions between `AbsoluteTime` and `chrono::NaiveDateTime`
 - **`#![no_std]`** — Works on embedded, WASM, and standard targets
 - **Zero required dependencies** — Only `core` and `alloc` (serde, chrono are optional)
-- **MSRV 1.60** — Library compiles on Rust 1.60+ (`dep:` feature syntax). Dev tooling (benchmarks, fuzz, proptest) requires latest stable. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+- **Edition 2024, MSRV 1.85** — the same across the IRIG 106 ecosystem (docs/adr/0003). Dev tooling (benchmarks, fuzz, proptest) requires latest stable. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 - **Zero `unsafe`** — Safe Rust throughout
 
 ## Quick Start

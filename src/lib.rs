@@ -39,8 +39,8 @@
 //!
 //! ## Minimum Supported Rust Version (MSRV)
 //!
-//! This crate requires **Rust 1.60** or later. The MSRV is constrained by
-//! `dep:` namespaced features in `Cargo.toml` (stabilized in Rust 1.60).
+//! This crate requires **Rust 1.85** or later: it uses edition 2024, as
+//! every crate of the IRIG 106 ecosystem does (`docs/adr/0003`).
 //! Crate-internal helpers avoid newer APIs to prevent accidental MSRV creep:
 //!
 //! | Replaced API | Stabilized In | Replacement |
@@ -112,16 +112,16 @@ pub use csdw::{DateFormat, TimeF1Csdw, TimeFormat, TimeSource};
 pub use error::{Result, TimeError};
 pub use intra_packet::{IntraPacketTime, IntraPacketTimeFormat};
 pub use network_time::{
-    LeapSecondEntry, LeapSecondTable, NetworkTime, NetworkTimeProtocol, NtpTime, PtpTime,
-    TimeF2Csdw, DEFAULT_TAI_UTC_OFFSET, NTP_UNIX_EPOCH_OFFSET,
+    DEFAULT_TAI_UTC_OFFSET, LeapSecondEntry, LeapSecondTable, NTP_UNIX_EPOCH_OFFSET, NetworkTime,
+    NetworkTimeProtocol, NtpTime, PtpTime, TimeF2Csdw,
 };
 pub use packet_standard::PacketStandard;
-pub use quality::{compute_quality, TimeQuality};
+pub use quality::{TimeQuality, compute_quality};
 pub use recording_event::{RecordingEvent, RecordingEventType};
 pub use rtc::Rtc;
 pub use secondary::{SecHdrTimeFormat, SecondaryHeaderTime};
 pub use streaming::{StreamingRef, StreamingTimeCorrelator};
-pub use version::{detect_version, Irig106Version};
+pub use version::{Irig106Version, detect_version};
 
 /// Unit and epoch newtypes from [`irig106_types`], re-exported for convenience.
 pub use irig106_types::{NanosDuration, TaiSeconds, TaiUtcOffset, UnixSeconds};
