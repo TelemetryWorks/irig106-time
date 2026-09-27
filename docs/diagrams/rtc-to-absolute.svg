@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 440" role="img" aria-label="From a packet's relative time to absolute time: every packet header carries the 48-bit, 10 MHz relative time counter common to all channels; time packets, at least once a second, pair a counter value with absolute time; a data packet's counter value is turned into absolute time from the nearest time packet: absolute time of the reference plus the counter difference times 100 nanoseconds. A packet may instead carry absolute time in its secondary header. TMATS says which channel carries time and in what format.">
+  <style>
+    text { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; fill: #1f2328; }
+    .t { font-size: 15px; font-weight: 600; }
+    .b { font-weight: 600; }
+    .m { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 11.5px; }
+    .l { font-size: 11px; fill: #57606a; }
+    .box { fill: #f6f8fa; stroke: #57606a; stroke-width: 1.2; }
+    .tp { fill: #ddf4ff; stroke: #0969da; stroke-width: 1.6; }
+    .usr { fill: #fff8c5; stroke: #9a6700; stroke-width: 1.2; }
+    .res { fill: #dafbe1; stroke: #1a7f37; stroke-width: 1.4; }
+    .ax { stroke: #57606a; stroke-width: 1.6; fill: none; }
+    .dl { stroke: #57606a; stroke-width: 1.1; fill: none; stroke-dasharray: 4 3; }
+    .ln { stroke: #57606a; stroke-width: 1.2; fill: none; }
+    .ah { fill: #57606a; }
+    @media (prefers-color-scheme: dark) {
+      text { fill: #e6edf3; } .l { fill: #9198a1; }
+      .box { fill: #161b22; stroke: #9198a1; } .tp { fill: #0c2d6b; stroke: #4493f8; }
+      .usr { fill: #3b2e00; stroke: #d29922; } .res { fill: #0f2e1a; stroke: #3fb950; }
+      .ax, .dl, .ln { stroke: #9198a1; } .ah { fill: #9198a1; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+  </defs>
+
+  <text class="t" x="20" y="30">From a packet's relative time to absolute time</text>
+  <text class="l" x="20" y="48">Chapter 11 (106-24R1): the relative time counter (RTC) is "a free-running 10-MHz binary counter represented by 48 bits that are common to all data channels".</text>
+
+  <rect class="usr" x="20" y="64" width="330" height="44" rx="6"/>
+  <text class="b" x="32" y="83">TMATS (irig106-tmats)</text>
+  <text class="l" x="32" y="99">which channel carries time, its format and source</text>
+
+  <!-- time packets -->
+  <rect class="tp" x="120" y="128" width="200" height="62" rx="6"/>
+  <text class="b" x="220" y="148" text-anchor="middle">Time packet (0x11)</text>
+  <text class="m" x="220" y="165" text-anchor="middle">RTC r1</text>
+  <text class="m" x="220" y="181" text-anchor="middle">day 187 14:00:00.000</text>
+  <rect class="tp" x="660" y="128" width="200" height="62" rx="6"/>
+  <text class="b" x="760" y="148" text-anchor="middle">Time packet (0x11)</text>
+  <text class="m" x="760" y="165" text-anchor="middle">RTC r1 + 10,000,000</text>
+  <text class="m" x="760" y="181" text-anchor="middle">day 187 14:00:01.000</text>
+  <text class="l" x="490" y="146" text-anchor="middle">at least once a second</text>
+  <path class="ln" d="M330,152 L650,152" marker-end="url(#a)"/>
+
+  <!-- axis -->
+  <path class="ax" d="M40,230 L960,230" marker-end="url(#a)"/>
+  <text class="l" x="880" y="220">RTC (ticks)</text>
+  <path class="dl" d="M220,190 L220,230"/>
+  <path class="dl" d="M760,190 L760,230"/>
+  <path class="dl" d="M430,230 L430,262"/>
+
+  <!-- data packet -->
+  <rect class="box" x="330" y="262" width="200" height="50" rx="6"/>
+  <text class="b" x="430" y="283" text-anchor="middle">PCM packet (0x09)</text>
+  <text class="m" x="430" y="300" text-anchor="middle">RTC r1 + 4,200,000</text>
+
+  <rect class="res" x="330" y="336" width="400" height="56" rx="6"/>
+  <text class="m" x="342" y="358">absolute = time(r1) + (r − r1) × 100 ns</text>
+  <text class="m" x="342" y="378">         = day 187 14:00:00.420</text>
+  <path class="ln" d="M430,312 L430,336" marker-end="url(#a)"/>
+
+  <rect class="box" x="760" y="262" width="220" height="130" rx="6"/>
+  <text class="b" x="772" y="283">Or the packet's own time</text>
+  <text class="l" x="772" y="302">a secondary header (packet flags</text>
+  <text class="l" x="772" y="316">bit 7) in Chapter 4 binary,</text>
+  <text class="l" x="772" y="330">IEEE 1588, or ERTC format</text>
+  <text class="l" x="772" y="350">intra-packet time stamps: the</text>
+  <text class="l" x="772" y="364">RTC, or the secondary-header</text>
+  <text class="l" x="772" y="378">format when flags bit 6 is set</text>
+
+  <text class="l" x="20" y="414">10 MHz: 100 ns per tick. 48 bits wrap after 2^48 ticks, about 325.8 days. Network time packets (0x12) pair the RTC with NTP or PTP time the same way.</text>
+</svg>

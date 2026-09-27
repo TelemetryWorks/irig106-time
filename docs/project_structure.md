@@ -80,6 +80,7 @@ irig106-time/
     |-- security.md                    # Threat model, fuzzing guide
     |-- shared_types_for_irig106_types.md
     |-- STANDARD-REVIEW.md             # The crate checked against IRIG 106-24R1 (T-1..T-11)
+    |-- TIME-IN-CHAPTER-10.md          # Contract: what time processing gives Chapter 10 consumers
     |-- test_index.md                  # All tests documented
     |-- usage.md                       # Integration examples for downstream crates
     |-- why_separate_repo.md           # Why time is its own crate
@@ -87,6 +88,7 @@ irig106-time/
         |-- correlation_flow.mermaid
         |-- ecosystem.mermaid
         |-- module_deps.mermaid
+        |-- rtc-to-absolute.svg        # Relative to absolute time (TIME-IN-CHAPTER-10.md section 1)
         `-- traceability.mermaid
 ```
 
