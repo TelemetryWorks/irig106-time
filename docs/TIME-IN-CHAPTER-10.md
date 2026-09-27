@@ -240,6 +240,8 @@ ERTC time values — come from `irig106-types`.
 
 ### 2.4 Which crate depends on which
 
+![Which crate depends on which, as decided](diagrams/time-dependencies.svg)
+
 | Crate | Depends on | Does not depend on |
 |-------|-----------|--------------------|
 | `irig106-time` | `irig106-types` | `irig106-tmats`, `irig106-core`, `irig106-decode` |

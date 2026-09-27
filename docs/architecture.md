@@ -88,6 +88,12 @@ words and bodies for `irig106-write`.
 | `irig106-decode` | `irig106-types`, `irig106-tmats`, `irig106-time` | — |
 | `irig106-cli` | `irig106-time-cli` (and the other CLI libraries) | — |
 
+![Which crate depends on which, as decided](diagrams/time-dependencies.svg)
+
+*Decided dependencies only.* An arrow points to a crate depended on; the
+tools on the right use this crate, and their other dependencies are not yet
+decided. The legend lists the dependencies decided against.
+
 What crosses each boundary is contract section 2.3 (A to H). Two of those
 boundaries are new types in this crate: the **time declarations** (C), which
 the caller fills from `irig106-tmats`'s plain data, and the **answer** (F),
@@ -217,6 +223,13 @@ fixed).
 
 ## 6. How a recording is read
 
+![Reading a recording, step by step](diagrams/time-reading-flow.svg)
+
+*The worked example, as a sequence.* While reading, the caller hands this
+crate the time declarations, each time packet, and every other packet's
+channel, counter, and flags; at the end it receives the time timeline, and
+any consumer asks it for answers.
+
 The caller walks the packets in file order — the joining loop of contract
 section 4.2 — and feeds the builder three kinds of input.
 
@@ -335,21 +348,12 @@ carried over through tests written from the standard (ADR-0016).
 
 ## 12. Traceability and tests
 
-```
-IRIG 106-24R1 (archived)          docs/TIME-IN-CHAPTER-10.md    docs/adr/
-Chapters 4, 10, 11; RCC 200-16    contract, sections 1-8        ADR-0001 ... 0017
-            \                            |                          /
-             +---------------------------+-------------------------+
-                                         |
-                        docs/L1_Requirements.md   (step 1, rewritten)
-                                         |
-                        docs/L2_Requirements.md   (after the review)
-                                         |
-                        docs/L3_Requirements.md   (after the review)
-                                         |
-                   tests tagged with their requirements; fixtures from
-                   the standard's figures; the worked example byte for byte
-```
+![Traceability for the rebuild](diagrams/time-traceability.svg)
+
+*Four sources, one chain.* The standard, the contract, the decisions, and
+the findings feed L1; L2 and L3 follow the review; the code implements L3
+and the tests verify it; real recordings, used only locally, feed new
+findings back.
 
 Each L1 requirement cites the standard or an ADR; L2 and L3 name their
 parents; each test names the requirements it verifies. The prototype's

@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560" role="img" aria-label="Traceability for the rebuild. Four sources feed the L1 requirements: the archived standard (IRIG 106-24R1 Chapters 4, 9, 10, and 11, earlier editions for differences, RCC 123 and RCC 200), the contract document, the ADRs, and the findings of the standard review. L1 decomposes into L2, then L3, after the owner's review. L3 is implemented by the rebuilt code and verified by tests tagged with their requirements, built from the standard's figures, with a failing test per finding and the worked example byte for byte. Real recordings, used only locally, feed new findings back to the review. Retired requirement identifiers are never reused.">
+  <style>
+    text { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; fill: #1f2328; }
+    .t { font-size: 15px; font-weight: 600; }
+    .b { font-weight: 600; }
+    .l { font-size: 11px; fill: #57606a; }
+    .src { fill: #fff8c5; stroke: #9a6700; stroke-width: 1.2; }
+    .req { fill: #ddf4ff; stroke: #0969da; stroke-width: 1.3; }
+    .imp { fill: #dafbe1; stroke: #1a7f37; stroke-width: 1.3; }
+    .oth { fill: #f6f8fa; stroke: #8c959f; stroke-width: 1.1; stroke-dasharray: 4 3; }
+    .ln { stroke: #57606a; stroke-width: 1.3; fill: none; }
+    .fb { stroke: #9a6700; stroke-width: 1.2; fill: none; stroke-dasharray: 5 3; }
+    .ah { fill: #57606a; } .ahf { fill: #9a6700; }
+    @media (prefers-color-scheme: dark) {
+      text { fill: #e6edf3; } .l { fill: #9198a1; }
+      .src { fill: #3b2e00; stroke: #d29922; } .req { fill: #0c2d6b; stroke: #4493f8; } .imp { fill: #0f2e1a; stroke: #3fb950; }
+      .oth { fill: #161b22; stroke: #9198a1; } .ln { stroke: #9198a1; } .fb { stroke: #d29922; }
+      .ah { fill: #9198a1; } .ahf { fill: #d29922; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+    <marker id="f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ahf" d="M0,0 L10,5 L0,10 z"/></marker>
+  </defs>
+
+  <text class="t" x="20" y="30">Traceability for the rebuild</text>
+  <text class="l" x="20" y="48">Every requirement cites its source; every test names the requirements it verifies (docs/architecture.md section 12; ADR-0004, ADR-0016).</text>
+
+  <!-- sources -->
+  <rect class="src" x="20" y="68" width="230" height="92" rx="7"/>
+  <text class="b" x="32" y="88">The archived standard</text>
+  <text class="l" x="32" y="106">IRIG 106-24R1: Chapters 4, 9, 10, 11</text>
+  <text class="l" x="32" y="120">earlier editions, for differences</text>
+  <text class="l" x="32" y="134">RCC 123 (support), RCC 200</text>
+  <text class="l" x="32" y="148">rcc-106-standards releases</text>
+
+  <rect class="src" x="266" y="68" width="230" height="92" rx="7"/>
+  <text class="b" x="278" y="88">The contract</text>
+  <text class="l" x="278" y="106">docs/TIME-IN-CHAPTER-10.md</text>
+  <text class="l" x="278" y="120">what time gives each consumer,</text>
+  <text class="l" x="278" y="134">the policy, the degraded cases,</text>
+  <text class="l" x="278" y="148">the worked example</text>
+
+  <rect class="src" x="512" y="68" width="230" height="92" rx="7"/>
+  <text class="b" x="524" y="88">The decisions</text>
+  <text class="l" x="524" y="106">docs/adr/ (MADR records)</text>
+  <text class="l" x="524" y="120">the owner's words quoted,</text>
+  <text class="l" x="524" y="134">superseded, never rewritten</text>
+
+  <rect class="src" x="758" y="68" width="222" height="92" rx="7"/>
+  <text class="b" x="770" y="88">The findings</text>
+  <text class="l" x="770" y="106">docs/STANDARD-REVIEW.md, T-n</text>
+  <text class="l" x="770" y="120">disagreements with the standard,</text>
+  <text class="l" x="770" y="134">readings to settle, pages to check</text>
+
+  <!-- requirements -->
+  <rect class="req" x="250" y="200" width="500" height="56" rx="7"/>
+  <text class="b" x="500" y="222" text-anchor="middle">L1 — what the product SHALL do</text>
+  <text class="l" x="500" y="241" text-anchor="middle">docs/L1_Requirements.md: statement, source, verification method</text>
+
+  <rect class="req" x="250" y="286" width="500" height="44" rx="7"/>
+  <text class="b" x="500" y="306" text-anchor="middle">L2 — design decisions</text>
+  <text class="l" x="500" y="321" text-anchor="middle">after the owner's review of step 1</text>
+
+  <rect class="req" x="250" y="360" width="500" height="44" rx="7"/>
+  <text class="b" x="500" y="380" text-anchor="middle">L3 — implementation obligations</text>
+  <text class="l" x="500" y="395" text-anchor="middle">module by module</text>
+
+  <!-- implementation -->
+  <rect class="imp" x="250" y="440" width="240" height="96" rx="7"/>
+  <text class="b" x="262" y="460">The rebuilt code</text>
+  <text class="l" x="262" y="478">library and irig106-time-cli</text>
+  <text class="l" x="262" y="492">each public item cites the</text>
+  <text class="l" x="262" y="506">standard in its documentation</text>
+
+  <rect class="imp" x="510" y="440" width="240" height="96" rx="7"/>
+  <text class="b" x="522" y="460">The tests</text>
+  <text class="l" x="522" y="478">tagged with their requirements</text>
+  <text class="l" x="522" y="492">fixtures from the standard's figures</text>
+  <text class="l" x="522" y="506">a failing test per finding first</text>
+  <text class="l" x="522" y="520">the worked example, byte for byte</text>
+
+  <rect class="oth" x="790" y="440" width="190" height="96" rx="7"/>
+  <text class="b" x="802" y="460">Real recordings</text>
+  <text class="l" x="802" y="478">used only locally,</text>
+  <text class="l" x="802" y="492">never committed, never in CI</text>
+  <text class="l" x="802" y="506">(for example T-15)</text>
+
+  <rect class="oth" x="20" y="286" width="200" height="118" rx="7"/>
+  <text class="b" x="32" y="306">Identifiers</text>
+  <text class="l" x="32" y="324">permanent; a retired</text>
+  <text class="l" x="32" y="338">identifier is never reused.</text>
+  <text class="l" x="32" y="356">The prototype's L1 is mapped</text>
+  <text class="l" x="32" y="370">in L1's "Prototype</text>
+  <text class="l" x="32" y="384">requirements" section.</text>
+
+  <!-- edges -->
+  <path class="ln" d="M135,160 L330,198" marker-end="url(#a)"/>
+  <path class="ln" d="M381,160 L430,198" marker-end="url(#a)"/>
+  <path class="ln" d="M627,160 L570,198" marker-end="url(#a)"/>
+  <path class="ln" d="M869,160 L670,198" marker-end="url(#a)"/>
+  <path class="ln" d="M500,256 L500,284" marker-end="url(#a)"/>
+  <path class="ln" d="M500,330 L500,358" marker-end="url(#a)"/>
+  <path class="ln" d="M420,404 L370,438" marker-end="url(#a)"/>
+  <path class="ln" d="M580,404 L630,438" marker-end="url(#a)"/>
+  <path class="fb" d="M885,440 L885,162" marker-end="url(#f)"/>
+  <text class="l" x="893" y="300">new findings</text>
+</svg>

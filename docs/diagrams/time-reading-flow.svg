@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 830" role="img" aria-label="Reading a recording, step by step, with the worked example. While reading in file order: the packet reader gives the caller the setup record packet; the caller hands its fragments to irig106-tmats, which returns the time declarations as plain data; the caller gives them to irig106-time, governing from counter r0. The reader gives a Format 1 time packet on channel 1 at counter r1 = 100,000,000; the caller hands it to irig106-time, whose values layer reads external, IRIG-B, ITS locked, day 187 13:45:27.350, and records a reference, or a finding if it is invalid or undeclared. The reader gives a PCM packet on channel 3 at counter 104,200,000; the caller hands its channel, counter, and flags to irig106-time, which tracks sessions, late packets, and RTC sync errors. At the end of the recording the caller finishes the builder and receives the time timeline. A consumer asks for the time of counter 104,200,000 and receives day 187 13:45:27.770 with its basis.">
+  <style>
+    text { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; fill: #1f2328; }
+    .t { font-size: 15px; font-weight: 600; }
+    .b { font-weight: 600; }
+    .l { font-size: 11px; fill: #57606a; }
+    .hd { fill: #f6f8fa; stroke: #57606a; stroke-width: 1.2; }
+    .me { fill: #dafbe1; stroke: #1a7f37; stroke-width: 1.4; }
+    .nt { fill: #fff8c5; stroke: #9a6700; stroke-width: 1.1; }
+    .life { stroke: #8c959f; stroke-width: 1; stroke-dasharray: 3 4; }
+    .ln { stroke: #57606a; stroke-width: 1.3; fill: none; }
+    .rt { stroke: #57606a; stroke-width: 1.2; fill: none; stroke-dasharray: 5 3; }
+    .ph { stroke: #0969da; stroke-width: 1; stroke-dasharray: 6 4; }
+    .pht { font-size: 11px; font-weight: 600; fill: #0969da; }
+    .ah { fill: #57606a; }
+    @media (prefers-color-scheme: dark) {
+      text { fill: #e6edf3; } .l { fill: #9198a1; }
+      .hd { fill: #161b22; stroke: #9198a1; } .me { fill: #0f2e1a; stroke: #3fb950; } .nt { fill: #3b2e00; stroke: #d29922; }
+      .life { stroke: #6e7681; } .ln, .rt { stroke: #9198a1; } .ah { fill: #9198a1; }
+      .ph { stroke: #4493f8; } .pht { fill: #4493f8; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+  </defs>
+
+  <text class="t" x="20" y="30">Reading a recording, step by step</text>
+  <text class="l" x="20" y="48">The worked example of docs/TIME-IN-CHAPTER-10.md section 7. Solid arrows hand data over; dashed arrows return it. No signatures: those are for L2.</text>
+
+  <!-- lane heads -->
+  <rect class="hd" x="20" y="62" width="140" height="40" rx="6"/><text class="b" x="90" y="87" text-anchor="middle">Packet reader</text>
+  <rect class="hd" x="190" y="62" width="140" height="40" rx="6"/><text class="b" x="260" y="87" text-anchor="middle">irig106-tmats</text>
+  <rect class="hd" x="350" y="62" width="160" height="40" rx="6"/><text class="b" x="430" y="82" text-anchor="middle">Caller</text><text class="l" x="430" y="96" text-anchor="middle">the joining loop</text>
+  <rect class="me" x="560" y="62" width="160" height="40" rx="6"/><text class="b" x="640" y="87" text-anchor="middle">irig106-time</text>
+  <rect class="hd" x="800" y="62" width="160" height="40" rx="6"/><text class="b" x="880" y="82" text-anchor="middle">Consumer</text><text class="l" x="880" y="96" text-anchor="middle">decode, tools</text>
+
+  <line class="life" x1="90" y1="102" x2="90" y2="780"/>
+  <line class="life" x1="260" y1="102" x2="260" y2="780"/>
+  <line class="life" x1="430" y1="102" x2="430" y2="780"/>
+  <line class="life" x1="640" y1="102" x2="640" y2="780"/>
+  <line class="life" x1="880" y1="102" x2="880" y2="780"/>
+
+  <line class="ph" x1="20" y1="120" x2="980" y2="120"/>
+  <text class="pht" x="980" y="134" text-anchor="end">1. While reading, in file order</text>
+
+  <!-- setup record -->
+  <text class="l" x="260" y="154" text-anchor="middle">setup record packet (0x01)</text>
+  <path class="ln" d="M90,160 L428,160" marker-end="url(#a)"/>
+  <text class="l" x="345" y="190" text-anchor="middle">its fragments</text>
+  <path class="ln" d="M430,196 L262,196" marker-end="url(#a)"/>
+  <text class="l" x="345" y="222" text-anchor="middle">time declarations, plain data:</text>
+  <text class="l" x="345" y="235" text-anchor="middle">TTF 1, TFMT B, TSRC E; SHTF; RI4</text>
+  <path class="rt" d="M260,242 L428,242" marker-end="url(#a)"/>
+  <text class="l" x="535" y="270" text-anchor="middle">declarations, governing from r0</text>
+  <path class="ln" d="M430,276 L638,276" marker-end="url(#a)"/>
+
+  <!-- time packet -->
+  <text class="l" x="260" y="306" text-anchor="middle">time packet 0x11: ch 1, r1 = 100,000,000,</text>
+  <text class="l" x="260" y="319" text-anchor="middle">data word and body within Data Length (10)</text>
+  <path class="ln" d="M90,326 L428,326" marker-end="url(#a)"/>
+  <text class="l" x="535" y="356" text-anchor="middle">the time packet</text>
+  <path class="ln" d="M430,362 L638,362" marker-end="url(#a)"/>
+  <rect class="nt" x="650" y="342" width="220" height="62" rx="5"/>
+  <text class="l" x="660" y="360">values layer: external, IRIG-B,</text>
+  <text class="l" x="660" y="374">ITS locked; day 187 13:45:27.350</text>
+  <text class="l" x="660" y="388">→ a reference on channel 1</text>
+  <text class="l" x="660" y="401">(invalid or undeclared → a finding)</text>
+
+  <!-- data packet -->
+  <text class="l" x="260" y="438" text-anchor="middle">PCM packet: ch 3, r = 104,200,000, flags</text>
+  <path class="ln" d="M90,444 L428,444" marker-end="url(#a)"/>
+  <text class="l" x="535" y="474" text-anchor="middle">channel, counter, flags</text>
+  <path class="ln" d="M430,480 L638,480" marker-end="url(#a)"/>
+  <rect class="nt" x="650" y="462" width="220" height="48" rx="5"/>
+  <text class="l" x="660" y="480">sessions, late packets (1100 ms),</text>
+  <text class="l" x="660" y="495">RTC sync error (flags bit 5)</text>
+  <text class="l" x="260" y="530" text-anchor="middle">… every packet, to the end of the file …</text>
+
+  <line class="ph" x1="20" y1="552" x2="980" y2="552"/>
+  <text class="pht" x="980" y="566" text-anchor="end">2. At the end, and for lookups</text>
+
+  <text class="l" x="535" y="590" text-anchor="middle">finish</text>
+  <path class="ln" d="M430,596 L638,596" marker-end="url(#a)"/>
+  <text class="l" x="535" y="622" text-anchor="middle">time timeline: sessions, channel 1</text>
+  <text class="l" x="535" y="635" text-anchor="middle">chosen, references, findings</text>
+  <path class="rt" d="M640,642 L432,642" marker-end="url(#a)"/>
+
+  <text class="l" x="760" y="678" text-anchor="middle">time for r = 104,200,000</text>
+  <path class="ln" d="M880,684 L642,684" marker-end="url(#a)"/>
+  <text class="b" x="760" y="718" text-anchor="middle">day 187, 13:45:27.770</text>
+  <text class="l" x="760" y="731" text-anchor="middle">with its basis</text>
+  <path class="rt" d="M640,738 L878,738" marker-end="url(#a)"/>
+
+  <text class="l" x="20" y="806">Basis: session 1 · channel 1, the declared external channel · reference r1 at 13:45:27.350 · 0.420 s after it · between two references ·</text>
+  <text class="l" x="20" y="820">external, IRIG-B, ITS locked to external IRIG · year unknown · default policy. A caller that must answer while reading uses the streaming form.</text>
+</svg>

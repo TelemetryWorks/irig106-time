@@ -90,9 +90,6 @@ irig106-time/
     |-- usage.md                       # Integration examples for downstream crates
     |-- why_separate_repo.md           # Why time is its own crate
     `-- diagrams/
-        |-- correlation_flow.mermaid
-        |-- ecosystem.mermaid
-        |-- module_deps.mermaid
         |-- rtc-to-absolute.svg        # Relative to absolute time (TIME-IN-CHAPTER-10.md section 1)
         |-- time-in-the-pipeline.svg   # Where time sits in Chapter 10 processing (section 2)
         |-- time-over-a-recording.svg  # Time channels, source changes, gaps, jumps, resets (section 5)
@@ -104,7 +101,9 @@ irig106-time/
         |-- time-plan.svg              # The plan, documentation first (section 8)
         |-- time-architecture.svg      # The layers and modules (architecture.md section 4)
         |-- time-answer.svg            # What an answer carries (architecture.md section 5)
-        `-- traceability.mermaid
+        |-- time-dependencies.svg      # Decided dependencies (contract 2.4; architecture.md section 3)
+        |-- time-reading-flow.svg      # Reading a recording, step by step (architecture.md section 6)
+        `-- time-traceability.svg      # Sources to L1, L2, L3, code, and tests (architecture.md section 12)
 ```
 
 ## Companion: irig106-time-cli

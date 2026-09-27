@@ -39,8 +39,16 @@ Applied here on 2026-09-27: `irig106-time`, `irig106-time-cli`, and
 `irig106-types` moved to edition 2024 and `rust-version = "1.85"`; their CI
 MSRV jobs check 1.85; rustfmt applied the 2024 style edition; the CLI's one
 use of `is_multiple_of` (stable from 1.87) was replaced. All tests pass on
-1.85 and on stable. The crates already on edition 2024 declare
-`rust-version = "1.85"` at their next change.
+1.85 and on stable. On the owner's instruction later the same day,
+`irig106-core`, `irig106-decode`, `irig106-write`, `irig106-index`,
+`irig106-cli`, and `irig106-ch10-reader` — already on edition 2024 — declare
+`rust-version = "1.85"`, each checked with `cargo +1.85`.
+
+**Exception: `irig106-studio`** (edition 2021) is not changed: its locked
+dependencies `darling` 0.23, `serde_with` 3.18, and `time` 0.3.47 require
+Rust 1.88, so it cannot build on 1.85. Its refactor decides whether it uses
+older dependencies or declares a higher floor for the application; the
+libraries it uses stay at 1.85 either way.
 
 ### Consequences
 
