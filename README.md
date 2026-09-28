@@ -1,5 +1,16 @@
 # irig106-time
 
+> **Status: prototype — do not rely on its answers for compliance or
+> analysis.** The code in this repository (published as 0.1.0 to 0.7.0) is
+> the prototype, kept at the git tag `prototype-0`. A check against IRIG
+> 106-24R1 found seventeen disagreements, among them ERTC times 100 times too
+> large, intra-packet time formats selected from the wrong flag bit, Format 2
+> data words and PTP bodies misread, time packet bodies read past their
+> length, leap seconds rejected, and native GPS time reported as UTC
+> (`docs/STANDARD-REVIEW.md`, T-1 to T-17). The crate is being rebuilt
+> documentation first and will be released as 0.8.0 (`docs/ROADMAP.md`,
+> "Where we left off"); the features below describe the prototype.
+
 Nanosecond-precision time handling for IRIG 106 Chapter 10 telemetry data.
 
 This crate decodes the complex time system embedded in IRIG 106 recordings — the 48-bit Relative Time Counter, BCD-encoded absolute time messages, four intra-packet timestamp formats, secondary header time, and the correlation engine that ties them all together.

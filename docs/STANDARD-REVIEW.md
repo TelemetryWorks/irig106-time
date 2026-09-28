@@ -142,13 +142,16 @@ whether recording events belong in this crate at all.
 106-23.
 
 **Standard** (§11.2.7.2, Figure 11-34): "0x0E = RCC 106-22"; "0x0F through
-0xFF = Reserved". `0x0E` therefore means "106-22 or later"; there is no code
-for 106-20, 106-23, or 106-24. (Recorded earlier as `irig106-tmats` ROADMAP
+0xFF = Reserved". `0x0E` reads as the table states, "RCC 106-22"; 106-23,
+106-24, and 106-24R1 assign no newer code, so their recordings carry it too
+(a labelled note, not a guarantee about later editions — `irig106-tmats`
+ADR-0032). 106-20 likewise keeps `0x0D` ("RCC 106-19"). (Recorded earlier as `irig106-tmats` ROADMAP
 X1; the packet header's data type version is a different list, where
 `0x0A` is 106-22.)
 
-**Change:** `0x0F` and above are unknown; `0x0E` reads as "106-22 or later"
-(with the shared mapping in `irig106-types`).
+**Change:** `0x0F` and above are unknown; `0x0E` reads as "RCC 106-22" with
+the note "unchanged through 106-24R1" (with the shared mapping in
+`irig106-types`).
 
 ### T-12 Time packet bodies are read as longer than the standard defines
 

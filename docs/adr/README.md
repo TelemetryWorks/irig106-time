@@ -17,7 +17,7 @@ All seventeen records were accepted by 2026-09-27 (0011 to 0014, 0016, and
 | [0001](0001-rebuild-rather-than-patch-the-prototype.md) | Rebuild the crate rather than patch the prototype; the prototype kept at `prototype-0` | accepted |
 | [0002](0002-documentation-first.md) | Documentation first: contract, decisions, architecture, requirements, tests, code | accepted |
 | [0003](0003-edition-2024-and-msrv-1-85.md) | Edition 2024 and Rust 1.85 across the ecosystem | accepted |
-| [0004](0004-baseline-and-editions.md) | Baseline 106-24R1; every rule cites the archived standard; edition differences named | accepted |
+| [0004](0004-baseline-and-editions.md) | Baseline 106-24R1; every rule cites the archived standard; edition differences named | accepted; RCCVER wording refined by `irig106-tmats` ADR-0032 |
 | [0005](0005-leaf-library-depending-only-on-irig106-types.md) | A leaf library: depends only on `irig106-types`; `irig106-decode` depends on it | accepted |
 | [0006](0006-library-performs-no-io.md) | The library performs no I/O | accepted |
 | [0007](0007-lockstep-workspace-and-irig106-time-cli.md) | One workspace in lockstep: the library and `irig106-time-cli`, binary `irigtime`, mounted as `irig106 time` | accepted |

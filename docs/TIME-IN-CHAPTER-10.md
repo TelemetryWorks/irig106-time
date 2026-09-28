@@ -453,8 +453,9 @@ and network time words in data are not yet covered.
 ### 3.9 Which edition?
 
 The setup record's version byte says what the recorded data comply with
-(`irig106-tmats` ADR-0028): `0x0E` is "106-22 or later", `0x0F` and above
-are reserved (T-9). What changes with the edition for time: Format 2
+(`irig106-tmats` ADR-0028): `0x0E` is "RCC 106-22" — noted as unchanged
+through 106-24R1, an observation rather than a guarantee (`irig106-tmats`
+ADR-0032) — and `0x0F` and above are reserved (T-9). What changes with the edition for time: Format 2
 exists from 106-17 (T-4); the packet layouts of Chapter 10 before 106-17
 moved to Chapter 11. The mapping belongs to `irig106-types`, shared with
 `irig106-tmats`.

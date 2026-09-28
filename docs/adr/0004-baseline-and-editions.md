@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: accepted; RCCVER wording refined by irig106-tmats ADR-0032
 date: 2026-09-27
 decision-makers: Joey
 ---
