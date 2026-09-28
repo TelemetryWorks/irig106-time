@@ -66,6 +66,28 @@ first option is the recommendation):
    to be fixed first, ADR-0015) / leave CI red until the rebuild reaches
    `irig106-types`.
 
+**Planned work, not started (owner, 2026-09-27: "make a plan for this work,
+I dont want to do it now"): switch on GitHub private vulnerability
+reporting.**
+
+- *Why:* the organisation's security policy (`TelemetryWorks/.github`
+  `SECURITY.md`, live since 2026-09-27) tells people to report through
+  **Security → Advisories → Report a vulnerability**, but that button only
+  appears where private vulnerability reporting is on — and it is off in
+  every repository (checked 2026-09-27). Until it is on, a reporter has no
+  private channel.
+- *Decide first:* which repositories — all of them (recommended), or only
+  the `irig106-*` ones; and whether new public repositories get it
+  automatically (recommended).
+- *Do:* either once for the organisation (GitHub → organisation Settings →
+  Code security → Private vulnerability reporting → Enable all, and tick
+  "Automatically enable for new public repositories"), or per repository
+  with `gh api -X PUT repos/TelemetryWorks/<repo>/private-vulnerability-reporting`.
+- *Check:* `gh api repos/TelemetryWorks/<repo>/private-vulnerability-reporting --jq .enabled`
+  prints `true` for each; the Security tab shows "Report a vulnerability".
+- *Also:* make sure the owner's GitHub notifications include security
+  advisories, so a report is not missed.
+
 **Next work, after the answers:**
 
 1. Check three things on the page images: Figures 11-4 and 4-4 (T-10), and
