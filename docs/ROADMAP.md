@@ -26,7 +26,8 @@
 - Edition 2024 and Rust 1.85 applied here, in `irig106-types`, and in the
   other crates (except `irig106-studio`, which needs Rust 1.88).
 
-**Nothing is pushed.** Local commits wait in `irig106-time`,
+**Pushed:** `irig106-time` (2026-09-27, through `063778f`; the tag
+`prototype-0` is local only). **Not pushed:** local commits wait in
 `irig106-types`, `irig106-docs`, `irig106-core`, `irig106-decode`,
 `irig106-write`, `irig106-index`, `irig106-cli`, `irig106-ch10-reader`,
 and `irig106-studio` (never push studio without the owner's word).
