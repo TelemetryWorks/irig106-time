@@ -55,11 +55,8 @@ first option is the recommendation):
    let real recordings decide? **Yes** / pick one now.
 6. ~~Before 0.8.0, add a README note that 0.7.0 has known errors?~~ Done
    (2026-09-27, with the team review's recommendation for both READMEs).
-7. A setup record whose version code is `0x0D` says "RCC 106-19", but
-   recorders built to 106-20 write the same code. When TMATS does not say
-   its edition, should we check such a file with 106-20's rules (the newer
-   one, as we already do for `0x0E`)? **Yes** / keep 106-19.
-   *(`irig106-tmats` ADR-0032)*
+7. ~~Check `0x0D` files against 106-20's rules?~~ Yes (owner, 2026-09-27;
+   `irig106-tmats` ADR-0032).
 
 **Next work, after the answers:**
 
