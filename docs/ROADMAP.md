@@ -30,8 +30,9 @@
 `irig106-types`, `irig106-docs`, `irig106-core`, `irig106-decode`,
 `irig106-write`, `irig106-index`, `irig106-cli`, `irig106-ch10-reader`,
 and `irig106-studio` (never push studio without the owner's word).
-`irig106-tmats` and `rcc-106-standards` are pushed and up to date. Push
-only on the owner's word.
+`irig106-tmats` has two unpushed commits (the team's spec alignment review
+and the changes made for it, 2026-09-27); `rcc-106-standards` is pushed and
+up to date. Push only on the owner's word.
 
 **Questions for the owner, to answer when resuming** (each a choice; the
 first option is the recommendation):
@@ -52,8 +53,13 @@ first option is the recommendation):
    tests before it is coded? **Yes** / go through them one by one.
 5. For the secondary-header checksum (RDG-008), keep checking both ways and
    let real recordings decide? **Yes** / pick one now.
-6. Before 0.8.0, add a short note to the README that 0.7.0 has known errors
-   (listed in `docs/STANDARD-REVIEW.md`)? **Yes** / no.
+6. ~~Before 0.8.0, add a README note that 0.7.0 has known errors?~~ Done
+   (2026-09-27, with the team review's recommendation for both READMEs).
+7. A setup record whose version code is `0x0D` says "RCC 106-19", but
+   recorders built to 106-20 write the same code. When TMATS does not say
+   its edition, should we check such a file with 106-20's rules (the newer
+   one, as we already do for `0x0E`)? **Yes** / keep 106-19.
+   *(`irig106-tmats` ADR-0032)*
 
 **Next work, after the answers:**
 
