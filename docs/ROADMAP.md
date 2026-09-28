@@ -57,6 +57,14 @@ first option is the recommendation):
    (2026-09-27, with the team review's recommendation for both READMEs).
 7. ~~Check `0x0D` files against 106-20's rules?~~ Yes (owner, 2026-09-27;
    `irig106-tmats` ADR-0032).
+8. **GitHub CI is red** since this repository was pushed (2026-09-27): every
+   cargo job fails because `Cargo.toml` depends on `path = "../irig106-types"`,
+   which CI does not check out (Format and Trace matrix pass). How should we
+   make it green? **Push `irig106-types` and depend on it from GitHub** (a git
+   dependency; small and reversible) / publish `irig106-types` 0.1.0 to
+   crates.io now (planned, but its known errors T-5, T-6, T-7, T-9 are meant
+   to be fixed first, ADR-0015) / leave CI red until the rebuild reaches
+   `irig106-types`.
 
 **Next work, after the answers:**
 
