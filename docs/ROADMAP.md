@@ -30,9 +30,8 @@
 `irig106-types`, `irig106-docs`, `irig106-core`, `irig106-decode`,
 `irig106-write`, `irig106-index`, `irig106-cli`, `irig106-ch10-reader`,
 and `irig106-studio` (never push studio without the owner's word).
-`irig106-tmats` has two unpushed commits (the team's spec alignment review
-and the changes made for it, 2026-09-27); `rcc-106-standards` is pushed and
-up to date. Push only on the owner's word.
+`irig106-tmats` and `rcc-106-standards` are pushed and up to date (tmats
+pushed 2026-09-27 at `b37eb80`). Push only on the owner's word.
 
 **Questions for the owner, to answer when resuming** (each a choice; the
 first option is the recommendation):
