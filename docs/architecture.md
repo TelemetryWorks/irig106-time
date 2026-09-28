@@ -348,6 +348,9 @@ it.
 | **`serde`** | `Serialize` and `Deserialize` for every public value type, answer, finding, policy, and time timeline, so tools can store and exchange them |
 | **`chrono`** | conversions between the crate's absolute times and `chrono`'s date-time types, for times whose year and scale are known |
 | **Unsafe code** | none (`#![forbid(unsafe_code)]`) |
+| **Lints** | Clippy's `unwrap_used`, `expect_used`, `panic`, `todo`, `unimplemented`, `unreachable`, `dbg_macro`, `print_stdout`, `print_stderr` denied in library code (L1-API-012) |
+| **Dependencies** | `deny.toml`, checked by `cargo deny` in CI (L1-REL-005) |
+| **Platforms** | tests on Windows, Linux, and macOS in CI (L1-REL-004) |
 | **Documentation** | every public item documented (`#![deny(missing_docs)]`), citing the standard; `cargo doc` in CI |
 | **Performance** | benchmarks for the hot paths — reading a time packet, answering for a counter, building a time timeline — with the budget set after the first measurement (as `irig106-tmats` L1-PERF-001 does); the prototype's measurements (`docs/benchmark_results.md`) are the baseline to beat |
 

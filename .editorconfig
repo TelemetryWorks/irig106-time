@@ -1,0 +1,18 @@
+# Editor settings for every file in this repository.
+# Adapted from the retired irig106-rust repository (2025-11-09).
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true
+
+# Two trailing spaces are a Markdown line break; keep them.
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{yml,yaml}]
+indent_size = 2

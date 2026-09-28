@@ -1,0 +1,44 @@
+# cargo-deny policy for the IRIG 106 crates (TelemetryWorks).
+#
+# Adapted from the retired irig106-rust repository's deny.toml (2025-11-11)
+# to the current cargo-deny schema. Run with `cargo deny check`; CI runs it
+# on every push.
+
+[graph]
+all-features = true
+
+# Known vulnerabilities are always errors. Unmaintained and yanked crates
+# are errors too: a telemetry decoder should not rest on abandoned code.
+[advisories]
+unmaintained = "all"
+yanked = "deny"
+ignore = []
+
+# Permissive licences only; anything else must be added here on purpose.
+[licenses]
+allow = [
+    "Apache-2.0",
+    "MIT",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+]
+confidence-threshold = 0.93
+
+[bans]
+# Duplicate versions are reported, not fatal: dev-dependencies such as
+# criterion bring their own.
+multiple-versions = "warn"
+# No `*` versions; path dependencies inside a workspace are allowed.
+wildcards = "deny"
+allow-wildcard-paths = true
+highlight = "simplest-path"
+
+# crates.io only; any other registry or git source must be added on purpose.
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

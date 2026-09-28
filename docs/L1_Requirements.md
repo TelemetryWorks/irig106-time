@@ -1029,6 +1029,16 @@ Handbook, cited as support, never as the rule.
 **Source**: Architecture section 9; L1-TAI-006.
 
 **Verification Method**: Test (T)
+
+### L1-API-012
+
+**Statement**: The library's code outside tests SHALL NOT call `unwrap` or `expect`, invoke `panic!`, `todo!`, `unimplemented!`, `unreachable!`, or `dbg!`, or print, and the build SHALL fail if it does.
+
+**Source**: L1-ERR-001 (no panics on any input); ADR-0006 (no I/O). Clippy's lints `unwrap_used`, `expect_used`, `panic`, `todo`, `unimplemented`, `unreachable`, `dbg_macro`, `print_stdout`, `print_stderr` enforce it; they replace the text-pattern semgrep rules of the retired `irig106-rust` repository (its `semgrep-rust.yml`, its draft L1 specification, `CODE_ANALYSIS.md`, and `notes/SLSA1.md`; kept in `irig106-tmats` `docs/research/2026-09-26-irig106-rust/`). As `irig106-tmats` L1-ROB-002. From the first rebuilt code (the prototype has unaudited `unwrap` calls, ROADMAP P6-09).
+
+**Verification Method**: Inspection (I)
+
+**Planned evidence**: a `[lints.clippy]` table in the workspace `Cargo.toml` setting those lints to `deny`, allowed in `#[cfg(test)]` code and the CLI's `main.rs`, checked by the `clippy` job.
 ---
 
 ## L1-PERF: Performance
@@ -1037,7 +1047,7 @@ Handbook, cited as support, never as the rule.
 
 **Statement**: The project SHALL measure, with benchmarks run in CI, the time to read a time packet, to answer for a counter, and to build a time timeline for a synthesized recording, and SHALL set a budget for each after the first measurement of the rebuilt code.
 
-**Source**: As `irig106-tmats` L1-PERF-001: a budget set after measuring rather than guessed. The prototype's measurements (`docs/benchmark_results.md`) are the baseline.
+**Source**: As `irig106-tmats` L1-PERF-001: a budget set after measuring rather than guessed. The prototype's measurements (`docs/benchmark_results.md`) are the baseline; the draft ecosystem L1 of the retired `irig106-rust` asked for "minimum 100 Mbps sustained" (REQ-L1-102), and the first measurement is compared with that figure.
 
 **Verification Method**: Inspection (I)
 
@@ -1140,6 +1150,36 @@ Handbook, cited as support, never as the rule.
 
 **Planned evidence**: the 0.8.0 changelog, reviewed against `docs/STANDARD-REVIEW.md` at release.
 
+
+### L1-REL-004
+
+**Statement**: The library and the CLI SHALL build and pass their tests on Windows, Linux, and macOS.
+
+**Source**: As `irig106-tmats` L1-REL-004; the draft ecosystem L1 (REQ-L1-103, the retired `irig106-rust` repository (its `semgrep-rust.yml`, its draft L1 specification, `CODE_ANALYSIS.md`, and `notes/SLSA1.md`; kept in `irig106-tmats` `docs/research/2026-09-26-irig106-rust/`)).
+
+**Verification Method**: Inspection (I)
+
+**Evidence**: `.github/workflows/ci.yml` job `test` (matrix `ubuntu-latest`, `windows-latest`, `macos-latest`)
+
+### L1-REL-005
+
+**Statement**: The project SHALL admit only dependencies that pass its dependency policy: no known vulnerability, no unmaintained or yanked crate, permissive licences only, and crates.io as the only source; each exception SHALL be listed with its reason.
+
+**Source**: `deny.toml`, adapted from the retired `irig106-rust` repository (its `semgrep-rust.yml`, its draft L1 specification, `CODE_ANALYSIS.md`, and `notes/SLSA1.md`; kept in `irig106-tmats` `docs/research/2026-09-26-irig106-rust/`); as `irig106-tmats` L1-REL-005. Its first run found `crossbeam-epoch` below 0.9.20 (RUSTSEC-2026-0204, through `criterion`), fixed by updating the lock file.
+
+**Verification Method**: Inspection (I)
+
+**Evidence**: `.github/workflows/ci.yml` job `deny` (`EmbarkStudios/cargo-deny-action`, policy `deny.toml`)
+
+### L1-REL-006
+
+**Statement**: Each release of `irigtime` binaries SHALL publish a software bill of materials and a build-provenance attestation that a user can verify.
+
+**Source**: As `irig106-tmats` L1-REL-006 and its `docs/RELEASING.md` step 7.
+
+**Verification Method**: Inspection (I)
+
+**Planned evidence**: the release workflow, when this repository gets one.
 ---
 
 ## L1-TST: Verification
@@ -1191,6 +1231,16 @@ Handbook, cited as support, never as the rule.
 **Verification Method**: Inspection (I)
 
 **Evidence**: `.github/workflows/ci.yml` job `trace-matrix` (`python scripts/build-trace-matrix.py --check`)
+
+### L1-TST-006
+
+**Statement**: The project's tests SHALL cover at least 80% of the library's lines, measured in CI.
+
+**Source**: As `irig106-tmats` L1-ROB-003; the draft ecosystem L1 ("minimum 80% code coverage", REQ-L1-111, the retired `irig106-rust` repository (its `semgrep-rust.yml`, its draft L1 specification, `CODE_ANALYSIS.md`, and `notes/SLSA1.md`; kept in `irig106-tmats` `docs/research/2026-09-26-irig106-rust/`)).
+
+**Verification Method**: Inspection (I)
+
+**Planned evidence**: a CI job running `cargo llvm-cov` with `--fail-under-lines 80`.
 ---
 
 ## Non-requirements
