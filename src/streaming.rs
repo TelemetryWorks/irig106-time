@@ -1,6 +1,6 @@
 //! Streaming RTC-to-absolute-time correlator for live data.
 //!
-//! Unlike [`TimeCorrelator`](crate::correlation::TimeCorrelator) which is
+//! Unlike [`TimeCorrelator`] which is
 //! designed for post-processing complete files, `StreamingTimeCorrelator`
 //! handles live UDP streams where packets arrive in near-real-time,
 //! potentially out of order, and the reference set must be bounded in memory.
