@@ -124,7 +124,7 @@ lists — the packet header's data type version and the setup record's RCCVER
 | Module | Holds | Standard | Findings fixed |
 |--------|-------|----------|----------------|
 | `flags` | the packet flags' time bits: secondary header present (bit 7), time stamp source (bit 6), secondary-header time format (bits 3–2), RTC sync error (bit 5) | §11.2.1.1 g | T-1 |
-| `secondary` | the 12-byte secondary header: 8 bytes of time in the format of bits 3–2 (Figures 11-4 to 11-6), 2 reserved bytes, the checksum and its check | §11.2.1.2 | T-10 (layout to confirm) |
+| `secondary` | the 12-byte secondary header: 8 bytes of time in the format of bits 3–2 (Figures 11-4 to 11-6), 2 reserved bytes, the checksum and its check | §11.2.1.2 | T-10 (layout visually checked, 2026-11-12) |
 | `stamp` | an 8-byte intra-packet time stamp: the 48-bit counter "plus 16 high-order zero bits", or the 64-bit secondary-header format when bit 6 is set | §11.2.1.3 b | T-1 |
 | `format1` | the Format 1 data word (SRC, FMT, leap year, date format, ITS, reserved bits) and bodies: day format, 3 words (6 bytes); day, month, and year, 4 words (8 bytes); decode and encode | §11.2.3.2, Figures 11-12 to 11-14, Table 11-16 | T-6, T-7, T-12 |
 | `format2` | the Format 2 data word (NTF bits 7–4, TS bits 3–0, reserved 31–8) and bodies: NTP seconds and fraction, PTP seconds and nanoseconds, 8 bytes each; decode and encode | §11.2.3.3, Figures 11-15 to 11-17 | T-2, T-3 |
@@ -379,7 +379,7 @@ carried over through tests written from the standard (ADR-0016).
 | Prototype module | In the rebuild | Findings |
 |------------------|----------------|----------|
 | `rtc` (from `irig106-types`) | Layer 0, unchanged | — |
-| `absolute` | `calendar`; Chapter 4 binary time to `secondary` and `words` after the page check; day 0 reported, not turned into day 1; the leap second accepted | T-10, T-16 |
+| `absolute` | `calendar`; Chapter 4 binary time to `secondary` and `words` after the recorded page check; day 0 reported, not turned into day 1; the leap second accepted | T-10, T-16 |
 | `bcd` | `format1` bodies, 6 and 8 bytes; digit and range checks kept | T-12 |
 | `csdw` | `format1` data word, with ITS, NONE, reserved bits, source 3 reserved | T-6, T-7 |
 | `network_time` | `format2` (data word NTF and TS; 8-byte PTP body; from 106-17) and `scale` (UTC, TAI, GPS, unknown; leap-second table, with its currency) | T-2, T-3, T-4, T-17 |
@@ -427,21 +427,25 @@ wrong are retired and never reused (L1, section "Prototype requirements").
    (TF-001 to TF-027)~~ — **accepted** (owner, 2026-11-11).
 3. ~~RTC sync error as a finding~~ — now in the contract (section 6.7) and
    TF-024.
-4. **T-10**, the Chapter 4 binary layout: Figure 11-4 as extracted places
-   the microsecond word above a reserved half in the first long word, and the
-   high-order word above the low-order word in the second; the page image,
-   and Chapter 4 Figure 4-4, still need checking before `secondary` and
-   `words` are specified in L2.
+4. ~~**T-10**, the Chapter 4 binary layout~~ — page images checked
+   2026-11-12: Figure 11-4 (printed 11-10 / PDF 18) and Figure 4-4
+   (printed 4-10 / PDF 14). See `STANDARD-REVIEW.md` T-10. Calendar origin
+   and reconstruction of the truncated BCD day remain explicit context,
+   not facts supplied by those figures.
 5. ~~The one-pass answer (section 6)~~ — **both, a policy setting** (owner,
    2026-11-11): `standard` answers at once from the preceding reference;
    `interpolate` holds until the next reference and corrects for drift,
    bounded by the 1 Hz time-packet rate; see `docs/ROADMAP.md` question 2.
-   The default is fixed in L2.
+   The default is proposed in L2 for owner decision (Q-DEFAULT).
 6. **The reading register** (`docs/INTERPRETATIONS.md`, RDG-001 to RDG-011):
    design accepted by the owner (2026-11-11), two-person review pending.
    RDG-003 (`TFMT` I "Internal") is accepted as an inference;
    RDG-007 (ITS before 106-17, T-14) and RDG-008 (the checksum, T-15,
    suspect) change what L2 specifies; RDG-009 (time scales, T-17) and
    RDG-010 (the leap second, T-16) were added at the completeness check.
-7. **Page checks** before L2: Figures 11-4 and 4-4 (T-10), and whether
-   "Default: A" in Table 9-4 belongs to `R-x\TFMT-n` (RDG-002).
+7. ~~**Page checks** before L2~~ — completed visually, 2026-11-12:
+   Figures 11-4 and 4-4 confirm the word layout and weights (T-10);
+   Table 9-4, printed 9-72 / PDF 78, places "Default: A" within
+   `R-x\TFMT-n` (RDG-002). The accepted missing-value rule and all Design
+   and Review fields are unchanged. These checks do not complete the
+   register's all-edition analysis or human review.

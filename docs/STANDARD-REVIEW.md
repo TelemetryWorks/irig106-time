@@ -305,16 +305,54 @@ high and low words as tens of milliseconds and the bits above as the day of
 year; `irig106-types` `Ch4BinaryTime::from_secondary_bytes` reads the 8
 bytes as unused, high, low, microseconds. (Already open as GAP-03.)
 
-**Standard:** Chapter 4 §4.7 — "The microsecond time word shall have a
-resolution of 1 microsecond … the maximum value of the counter is 9999";
-"The low order time word shall have a resolution of 10 milliseconds";
-"The high order time word shall have a resolution of 655.36 seconds when
-binary weighted" — which reads as one count of 10 ms across both words
-(17 bits of 10 ms reach only about 21.8 minutes). Chapter 11 Figure 11-4
-places "Micro-Seconds Word" and "Reserved" in the first long word and
-"High Order Time Word" and "Low Order Time Word" in the second. Figure 4-4,
-which shows the bit layout, is an image; both need checking on the page
-before the code changes.
+**Page check, 2026-11-12 (visual inspection, not an implementation check):**
+The archive's `scripts/fetch.py --edition 106-24R1 --chapter 4 --chapter 9
+--chapter 10 --chapter 11` verified size and SHA-256. Pages were rendered
+with `pdftoppm -f N -l N -scale-to 1800 -png -singlefile INPUT OUTPUT` and
+inspected visually; text extraction was used only to locate pages and
+transcribe prose. PDF page numbers below are one-based.
+
+- **Chapter 11 Figure 11-4, printed page 11-10, PDF page 18**
+  (`chapter11.pdf`, SHA-256
+  `0f63792dcac39f6010df371ee0afc46a396017918f4155cba9ebab6c2d6d263e`):
+  the column labels are "msb", "31", "16", "15", "0", "lsb".
+  The first row has "Micro-Seconds Word" in bits 31–16 and "Reserved"
+  in bits 15–0; the second has "High Order Time Word" in bits 31–16
+  and "Low Order Time Word" in bits 15–0. With Chapter 11's little-endian
+  ordering (§11.2.1), the eight time bytes are **reserved [0..2),
+  microseconds [2..4), low [4..6), high [6..8)**. The two reserved time
+  bytes are distinct from secondary-header reserved bytes [8..10).
+- **Chapter 4 Figure 4-4, printed page 4-10, PDF page 14**
+  (`chapter4.pdf`, SHA-256
+  `4225f8008cce2e99d02ca4da94aeefd1605442cd3acf7ac50b93d2e1c612d72b`):
+  positions run 1 to 16, left to right, with the least significant position
+  at 16. The binary high-word LSB is labelled "655.36 SEC", the low-word
+  LSB "0.01 SEC", and the microsecond LSB "1 MICROSECOND". The BCD row
+  separately shows "1 DAY", "10 HR", "1 HR", "10 MIN", "1 MIN";
+  its low word shows "10 SEC", "1 SEC", "0.1 SEC", "0.01 SEC".
+  The microsecond word's two leading positions are zero.
+- **Chapter 4 §4.7, printed page 4-11, PDF page 15** confirms:
+  "The high order time word shall have a resolution of 655.36 seconds
+  when binary weighted"; "Thus the maximum value of the counter is
+  9999 (decimal)." For BCD: "the days field shall contain the three
+  least significant bits of the BCD Julian date."
+
+**Outcome:** binary duration is
+`(((u64(high) << 16) | u64(low)) * 10_000_000) + u64(microseconds) * 1_000`
+nanoseconds, with microseconds in 0..=9999. There is **no binary day field**
+to split out at bit 17. A hand-derived distinguishing fixture is
+`00 00 0f 27 34 12 01 00`: high=1, low=0x1234, microseconds=9999,
+701.969999 seconds. The prototype's secondary-byte word order and its
+17-bit split both disagree with the checked figures.
+
+**Remaining ambiguity:** neither figure establishes a binary calendar
+origin; the three BCD day bits do not identify a complete day of year.
+L2/L3 must retain partial time or require explicit caller context before
+assigning a calendar day, never invent one. This page check is not the
+register's required all-edition analysis or two-person human review.
+
+Sources: [Chapter 11](https://github.com/TelemetryWorks/rcc-106-standards/releases/download/106-24R1/chapter11.pdf),
+[Chapter 4](https://github.com/TelemetryWorks/rcc-106-standards/releases/download/106-24R1/chapter4.pdf).
 
 ### T-11 A caption error in the standard
 

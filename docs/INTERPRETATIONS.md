@@ -72,10 +72,26 @@ reads both.
 **Title**: `R-x\TFMT-n` letters A, B, G, N, U, X name Format 1 FMT values
 
 **Sources**:
-- Table 9-4, `R-x\TFMT-n`: "Indicate the format for the time. For additional information, see RCC 200-16. y is an optional last digit"; "A IRIG-A 1xy", "B IRIG-B 1xy", "G IRIG-G 1xy", "I Internal", "N Native GPS time", "U UTC time from GPS", "X None"; "Default: A" (as extracted; to confirm on the page that the default belongs to `TFMT`).
+- Table 9-4, `R-x\TFMT-n`: "Indicate the format for the time. For additional information, see RCC 200-16. y is an optional last digit"; "A IRIG-A 1xy", "B IRIG-B 1xy", "G IRIG-G 1xy", "I Internal", "N Native GPS time", "U UTC time from GPS", "X None"; "Default: A" (visually confirmed in the `TFMT` row, printed page 9-72, PDF page 78).
 - §11.2.3.2 a, FMT (bits 7–4): "0x0 = IRIG-B", "0x1 = IRIG-A", "0x2 = IRIG-G", "0x3 = Real-Time Clock", "0x4 = Universal Coordinated Time (UTC) time from GPS", "0x5 = Native GPS Time", "0xF = NONE (time packet payload invalid)".
 
-**Behaviour**: A ↔ `0x1`, B ↔ `0x0`, G ↔ `0x2`, N ↔ `0x5`, U ↔ `0x4`, X ↔ `0xF`. A difference is reported. A missing `TFMT` on a TIMEIN channel is reported as missing, not silently read as IRIG-A; whether "Default: A" applies is settled on the page image.
+**Behaviour**: A ↔ `0x1`, B ↔ `0x0`, G ↔ `0x2`, N ↔ `0x5`, U ↔ `0x4`, X ↔ `0xF`. A difference is reported. A missing `TFMT` on a TIMEIN channel is reported as missing, not silently read as IRIG-A; the table's default is recorded as a declared default, separately from an explicit value. Applying it as an effective comparison value would need a separately approved policy; this check does not change the accepted missing-value behaviour.
+
+**Page check (2026-11-12)**: visually inspected a `pdftoppm` rendering of
+106-24R1 `Chapter9.pdf`, printed page **9-72**, one-based PDF page **78**,
+Table 9-4. "Default: A" is inside the TIME FORMAT / `R-x\TFMT-n` row,
+above the horizontal rule that starts TIME SOURCE / `R-x\TSRC-n`.
+The row says "Allowed when: R\CDT is “TIMEIN”" and "Range: Enumeration";
+its definition reads "Indicate the format for the time. For additional
+information, see RCC 200-16." (footnote marker omitted). Thus the default
+belongs to TFMT, not TSRC or the preceding TTF row. The figure does not
+justify silently replacing the absent declaration in this library.
+The archive fetcher verified SHA-256
+`dfc5ebfb3e6f02f58389126863d43a45d89c7e2d0533a1c690d9537531c740cb`.
+Reproduce with `pdftoppm -f 78 -l 78 -scale-to 2000 -png -singlefile
+Chapter9.pdf table9-4`. [Archived Chapter 9](https://github.com/TelemetryWorks/rcc-106-standards/releases/download/106-24R1/Chapter9.pdf).
+This resolves the page-placement question only; all-edition analysis,
+edge-case tests, and two-person review remain outstanding.
 
 **Reason**: The names match one for one. Applying the default silently would hide a non-conforming setup record.
 
