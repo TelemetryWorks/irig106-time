@@ -363,7 +363,7 @@ report which reading a recording's headers satisfy. Register entry RDG-008.
 
 ### T-10 Chapter 4 binary time
 
-**Code / GAP-03 (current prerequisite, not fixed here):** the prototype
+**Code / GAP-03 (shared fix merged; time adoption pending):** the prototype
 `src/absolute.rs` splits the combined high/low value at bit 17 into a day
 and a time count. Separately, **irig106-types c59e004 remains wrong**:
 `src/binary_time.rs` `Ch4BinaryTime::from_secondary_bytes` reads
@@ -372,10 +372,11 @@ delegates to it. Figure 11-4 instead requires
 `[reserved(2), usec(2), low(2), high(2)]`. That shared parser **must not be
 used as-is** by the rebuild. Accepted ADR-0015 requires correcting the
 shared implementation in **irig106-types first**, with independent byte
-fixtures, before time adopts the corrected revision. The coordinator has
-assigned that fix; this documentation PR neither implements it nor claims
-GAP-03 closed. Fixing ERTC/SRC/ITS/version values in c59e004 did not fix
-this Chapter 4 byte-order defect.
+fixtures, before time adopts the corrected revision. The shared fix is now merged in irig106-types **48f1834** (types PR #4):
+reserved/usec/low/high parsing and the full 32-bit binary count. This
+closes the shared-parser prerequisite, not time's remaining calendar-origin
+or prototype interpretation work. Fixing ERTC/SRC/ITS/version values in
+c59e004 alone had not fixed the Chapter 4 defect.
 
 **Page check, 2026-11-12 (visual inspection, not an implementation check):**
 The archive's `scripts/fetch.py --edition 106-24R1 --chapter 4 --chapter 9
@@ -424,6 +425,16 @@ binary interpretation permits bit 15 = 1, while BCD retains the drawn
 fixed zero. This is a documented discrepancy/reading for review, not a
 claim that the figure itself settles the conflict.
 
+**Earlier figures (page images checked):** 106-04 Figure 4-3, printed
+4-9 / full-PDF 64, and 106-05 Figure 4-3, printed 4-9 / PDF 11, draw
+**two zeros on the low word and none on the microsecond word**. From
+106-07 the figures match the 106-24R1 placement (one low-word zero, two
+microsecond zeros): 106-07/09/11 Figure 4-3, printed 4-9 / PDF 11;
+106-13/15 Figure 4-3, printed 4-9 / PDF 13; 106-17 Figure 4-4, printed
+4-10 / PDF 14. The unchanged §4.7 resolutions support retaining the
+full-binary-count reading; the earlier drawings are additional evidence
+of diagram inconsistency, not permission to clear binary count bits.
+
 Under that DERIVED reading, binary duration is
 `(((u64(high) << 16) | u64(low)) * 10_000_000) + u64(microseconds) * 1_000`
 nanoseconds, with microseconds in 0..=9999. There is **no binary day field**
@@ -435,7 +446,8 @@ to split out at bit 17. A hand-derived distinguishing fixture is
 cannot distinguish a parser that wrongly clears/rejects the binary top
 bit. Both secondary and intra-packet shared parsers must be checked.
 The prototype's 17-bit split and c59e004's word order remain separate
-GAP-03 defects; neither is fixed in this PR.
+GAP-03 defects; the shared word-order/count fix is merged at 48f1834,
+while adoption in time and its context-dependent calendar path are separate work.
 
 **Wording caveat:** §11.2.1.1 g says "The two lsbs of the 64-bit
 packet secondary header time and IPTS shall be zero-filled." The phrase
