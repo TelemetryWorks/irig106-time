@@ -447,8 +447,7 @@ fn fmt_time_source(src: &TimeSource) -> &'static str {
     match src {
         TimeSource::Internal => "Internal",
         TimeSource::External => "External",
-        TimeSource::InternalRtc => "Internal RTC",
-        TimeSource::Gps => "GPS",
+        TimeSource::InternalFromRmm => "Internal from RMM",
         TimeSource::None => "None",
         TimeSource::Reserved(_) => "Reserved",
     }
@@ -462,6 +461,7 @@ fn fmt_time_format(fmt: &TimeFormat) -> &'static str {
         TimeFormat::Rtc => "RTC",
         TimeFormat::Utc => "UTC",
         TimeFormat::Gps => "GPS",
+        TimeFormat::None => "None",
         TimeFormat::Reserved(_) => "Reserved",
     }
 }

@@ -51,8 +51,8 @@ These are executed checks, not inferred results. Commands correspond to
 | `cargo clippy --all-targets --all-features -- -D warnings` | PASS |
 | `cargo fmt --all -- --check` | PASS |
 | `cargo doc --no-deps --all-features` | PASS |
-| `cargo build --manifest-path irig106-time-cli/Cargo.toml` | FAIL (CLI compatibility; exit 101) |
-| `cargo clippy --manifest-path irig106-time-cli/Cargo.toml --all-targets -- -D warnings` | FAIL (CLI compatibility; exit 101) |
+| `cargo build --manifest-path irig106-time-cli/Cargo.toml` | PASS |
+| `cargo clippy --manifest-path irig106-time-cli/Cargo.toml --all-targets -- -D warnings` | PASS |
 | `cargo build --target wasm32-unknown-unknown --no-default-features` | PASS |
 | `cargo build --target wasm32-unknown-unknown --no-default-features --features serde` | PASS |
 | `python3 scripts/build-trace-matrix.py --check` | PASS |
@@ -63,23 +63,25 @@ Library tests with all features: 176 unit, 67 pipeline, 17 property,
 feature runs also pass. MSRV, Clippy, docs, WASM, cargo-deny and trace checks pass.
 No benchmarks or sustained fuzz campaigns were run for this bounded slice.
 
-## CLI scope blocker
+## Approved CLI compatibility adoption
 
-The requested dependency upgrade removes TimeSource::InternalRtc/Gps and adds
-TimeFormat::None. The **untouched** CLI still names the removed source variants
-and has an exhaustive format match without None. Both its build and Clippy fail
-with E0599 (two variants) and E0004 (one missing arm). These are not test failures
-in the rebuilt library. The three compatibility edits needed are:
+At the earlier draft head 47974d0, CLI build and Clippy failed with two E0599
+errors (removed InternalRtc/Gps source variants) and E0004 (missing FMT None).
+The owner then explicitly authorized only the three compatibility edits and
+CLI lockfile regeneration. Those edits are now applied:
 
-1. Rename the source2 match to InternalFromRmm (label Internal from RMM).
-2. Remove the source Gps arm; source3 is already handled by Reserved.
-3. Add a TimeFormat::None match arm. Native GPS FMT remains Gps.
+| Location | Exact source change | User-visible difference versus the old types/CLI |
+|----------|---------------------|-------------------------------------------------|
+| src/main.rs line 450 | `TimeSource::InternalRtc => "Internal RTC"` replaced by `TimeSource::InternalFromRmm => "Internal from RMM"` | Source 2 displays Internal from RMM instead of Internal RTC |
+| old src/main.rs line 451 | Removed `TimeSource::Gps => "GPS"` | Source 3 now uses the existing Reserved arm and displays Reserved instead of GPS |
+| new src/main.rs line 464 | Added `TimeFormat::None => "None"` | Modern FMT 0xF displays None instead of Reserved; native GPS FMT 5 still displays GPS |
 
-The user's explicit no-CLI-change instruction prevents applying these edits.
-No CLI source or lockfile change is committed: the local CLI checks' generated
-lockfile was restored after recording their errors. The separate CLI lockfile
-must be regenerated with an authorized CLI adoption. No skip or weakening of CI
-is introduced. This PR remains draft pending that scope decision.
+The paths above are relative to irig106-time-cli. Its Cargo.lock gained only
+the source identity for irig106-types at 48f1834; package versions did not change.
+No other CLI source/behaviour was changed. The full sixteen-command local
+CI equivalent was rerun after adoption with CARGO_BUILD_JOBS=2: **all pass**,
+including CLI build and Clippy. The table above reports those latest results;
+the earlier failures are retained here as history, not current blockers.
 
 ## Traceability and limitations
 
