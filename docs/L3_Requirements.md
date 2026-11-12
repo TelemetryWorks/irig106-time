@@ -54,7 +54,7 @@ returns **1 ns per tick**; `TimeSource::Gps` is removed in favour of
 `Irig106Version::from_setup_record` and `from_data_type_version`.
 These are documentation targets, not changes to the dependency or Rust code.
 
-**Chapter 4 exception:** Do not use c59e004 Ch4BinaryTime::from_secondary_bytes or its delegating from_intra_packet_bytes as-is: they swap high/usec relative to Figure 11-4. Per accepted ADR-0015 the shared parser must be fixed in irig106-types first, then adopted at a corrected revision; no local duplicate parser or dependency change is authorized by this documentation draft.
+**Chapter 4 exception:** Do not use c59e004 Ch4BinaryTime::from_secondary_bytes or its delegating from_intra_packet_bytes as-is: they swap high/usec relative to Figure 11-4. Per accepted ADR-0015 the shared fix is merged in irig106-types 48f1834 (types PR #4): reserved/usec/low/high layout and full binary count. Adopt that corrected revision in the separate code slice; this documentation change does not update dependencies.
 
 
 **Edition qualification applies throughout this document:** modern SRC,
@@ -129,7 +129,7 @@ legacy differences qualify their L2/L3 decomposition without rewriting L1.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Eight-byte layout: [0..2) zero, [2..4) microseconds, [4..6) low, [6..8) high, each word little-endian. Compute ns = ((high * 65536 + low) * 10000000) + microseconds * 1000 in u64; require microseconds <=9999. Permit binary low bit 15 under the DERIVED arithmetic reading in T-10 despite the zero drawn in Figure 4-4/4-5; do not describe it as an unambiguous figure transcription. Do not split a day field from the binary count. Calendar resolution requires caller context (Q-CH4).
 
-**Shared implementation prerequisite**: Do not use c59e004 Ch4BinaryTime::from_secondary_bytes or its delegating from_intra_packet_bytes as-is: they swap high/usec relative to Figure 11-4. Per accepted ADR-0015 the shared parser must be fixed in irig106-types first, then adopted at a corrected revision; no local duplicate parser or dependency change is authorized by this documentation draft.
+**Shared implementation prerequisite**: Do not use c59e004 Ch4BinaryTime::from_secondary_bytes or its delegating from_intra_packet_bytes as-is: they swap high/usec relative to Figure 11-4. Per accepted ADR-0015 the shared fix is merged in irig106-types 48f1834 (types PR #4): reserved/usec/low/high layout and full binary count. Adopt that corrected revision in the separate code slice; this documentation change does not update dependencies.
 
 **Source**: "00 = Chapter 4 binary weighted 48-bit time format. The two lsbs of the 64-bit packet secondary header time and IPTS shall be zero-filled" (§11.2.1.1 g); Figure 11-4; Chapter 4 §4.7. The word layout is to be confirmed on the page images of Figures 11-4 and 4-4 before L2 (T-10) (confirmed 2026-11-12, T-10). Prototype identifier kept.
 
@@ -589,11 +589,19 @@ legacy differences qualify their L2/L3 decomposition without rewriting L1.
 
 **L1 ancestor**: L1-WORD-001
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: For binary use T-10's explicitly DERIVED full 32-bit high/low count and microseconds as L3-ABS-102. For BCD Figure 4-4 high word: day fragment bits 15..13, tens-hour 12..11, hour 10..7, tens-minute 6..4, minute 3..0; low word: bit 15=0, tens-second 14..12, second 11..8, tenths 7..4, hundredths 3..0. Microseconds are binary 0..9999 in both. The shared-row fixed zero in Figures 4-4/4-5 conflicts with full binary counting; derive the binary exception from 655.36 s = 2^16 × 0.01 s and retain the zero for BCD. Validate digit/ranges and require explicit context to resolve the three-bit day fragment (Q-CH4).
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: For binary use T-10's explicitly DERIVED full 32-bit high/low count and microseconds as L3-ABS-102. For BCD Figure 4-4 high word: day fragment bits 15..13, tens-hour 12..11, hour 10..7, tens-minute 6..4, minute 3..0; low word: bit 15=0, tens-second 14..12, second 11..8, tenths 7..4, hundredths 3..0. Microseconds are binary 0..9999 in both. The shared-row fixed zero in Figures 4-4/4-5 conflicts with full binary counting; derive the binary exception from 655.36 s = 2^16 × 0.01 s and retain the zero for BCD. Validate digit/ranges and require explicit context and an owner decision on the edition-dependent day wording (Q-CH4). The BCD bit-field interpretation here is a 106-24R1 proposal, not a resolution of the older characters wording.
 
 **Source**: "High and low order time words shall be binary or binary coded decimal (BCD) weighted, and microsecond words shall be binary weighted"; resolutions of 1 µs (to 9999), 10 ms, and 655.36 s binary or one minute BCD; "For BCD, the days field shall contain the three least significant bits of the BCD Julian date" (Chapter 4 §4.7); `C-d\PTM`, `C-d\BTM` (Chapter 9); contract 3.8. Layout to be confirmed with T-10 (confirmed 2026-11-12, T-10).
 
 **Planned verification**: One fixture per binary and BCD weighting, each bit group distinguished, decimal digit>9, day fragment collisions, 9999/10000 microseconds, and absent origin/day context returning partial time. Independent top-bit fixture: `00 00 00 00 00 80 00 00` -> low=0x8000, high=usec=0 -> 327.68 s (327680000000 ns); accept under the DERIVED binary reading of T-10, and retain BCD bit 15=0. The low=0x1234 fixture alone cannot reject the opposing reading.
+
+**Edition wording (page images checked, §4.7):** 106-04 through
+106-15 say "three least significant characters of the BCD Julian date";
+106-17+ say "three least significant bits of the BCD Julian date".
+Checked prose: 106-04 printed 4-8 / full-PDF 63; 106-05/07/09/11 printed
+4-8 / PDF 10; 106-13/15 printed 4-10 / PDF 14; 106-17 printed 4-11 /
+PDF 15; 106-24R1 printed 4-11 / PDF 15. Do not silently normalize
+characters to bits or implement calendar reconstruction pending Q-CH4.
 
 **L3-WORD-102** · Parent: L2-WORD-102 · Verification: T
 
