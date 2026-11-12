@@ -109,7 +109,7 @@ fn t9_setup_fifteen_is_unknown() {
 #[test]
 fn t10_secondary_ch4_has_usec_low_high_words() {
     // Figure 11-4: reserved/usec/low/high. 0x270f+0x1234+1=0x3944.
-    // This slice retains the prototype word-sum checksum; RDG-008 is deferred.
+    // TODO(RDG-008): update these word-sum fixture checksums when byte-sum lands.
     let bytes = [0, 0, 0x0f, 0x27, 0x34, 0x12, 1, 0, 0, 0, 0x44, 0x39];
     let SecondaryHeaderTime::Ch4(t) =
         parse_secondary_header(&bytes, SecHdrTimeFormat::Ch4).unwrap()
@@ -145,7 +145,21 @@ fn t10_secondary_ch4_has_usec_low_high_words() {
     let mut reserved = bytes;
     reserved[0] = 1;
     reserved[10] = 0x45;
-    assert!(parse_secondary_header(&reserved, SecHdrTimeFormat::Ch4).is_err());
+    let SecondaryHeaderTime::Ch4(t) =
+        parse_secondary_header(&reserved, SecHdrTimeFormat::Ch4).unwrap()
+    else {
+        panic!("wrong reserved-word dispatch")
+    };
+    assert_eq!(
+        (t.high_order, t.low_order, t.microseconds),
+        (1, 0x1234, 9999)
+    );
+    let stamp = irig106_time::intra_packet::parse_intra_packet_time(
+        &reserved[..8],
+        IntraPacketTimeFormat::Ch4Binary,
+    )
+    .unwrap();
+    assert_eq!(stamp, irig106_time::intra_packet::IntraPacketTime::Ch4(t));
     let too_many_usec = [0, 0, 0x10, 0x27, 0, 0, 0, 0, 0, 0, 0x10, 0x27];
     assert!(parse_secondary_header(&too_many_usec, SecHdrTimeFormat::Ch4).is_err());
 }
@@ -184,4 +198,21 @@ fn t1_all_flag_combinations_are_checked() {
         assert_eq!(format!("{fmt:?}"), expected, "flags {flags:#04x}");
         assert_eq!(parse_intra_packet_time(&[0; 8], fmt).is_err(), invalid);
     }
+}
+
+/// Requirements: L1-SEC-001, L2-SEC-101, L3-SEC-101
+#[test]
+fn t10_intra_ch4_reserved_word_keeps_value() {
+    use irig106_time::intra_packet::{IntraPacketTime, parse_intra_packet_time};
+    // Figure 11-4 reserved/usec/low/high; reserved is a TF-005 warning.
+    let bytes = [1, 0, 0x0f, 0x27, 0x34, 0x12, 1, 0];
+    let IntraPacketTime::Ch4(t) =
+        parse_intra_packet_time(&bytes, IntraPacketTimeFormat::Ch4Binary).unwrap()
+    else {
+        panic!("wrong dispatch")
+    };
+    assert_eq!(
+        (t.high_order, t.low_order, t.microseconds),
+        (1, 0x1234, 9999)
+    );
 }

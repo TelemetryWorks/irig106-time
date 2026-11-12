@@ -55,15 +55,15 @@ fn parse_rtc48_known() {
     }
 }
 
-/// Requirements: L1-IPT-006
+/// Requirements: L1-RTC-002, L2-RTC-102, L3-RTC-102
 #[test]
-fn parse_rtc48_reserved_rejected() {
+fn parse_rtc48_reserved_ignored() {
     // Same RTC value but with non-zero reserved bytes [6..8]
     let buf: [u8; 8] = [0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB];
-    assert!(matches!(
-        parse_intra_packet_time(&buf, IntraPacketTimeFormat::Rtc48),
-        Err(TimeError::ReservedBitSet { .. })
-    ));
+    assert_eq!(
+        parse_intra_packet_time(&buf, IntraPacketTimeFormat::Rtc48).unwrap(),
+        IntraPacketTime::Rtc(Rtc::from_raw(1))
+    );
 }
 
 /// Requirements: L1-IPT-006

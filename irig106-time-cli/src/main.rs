@@ -996,3 +996,7 @@ fn main() {
 }
 
 use std::io::Write;
+
+#[cfg(test)]
+#[path = "main_tests.rs"]
+mod main_tests;
