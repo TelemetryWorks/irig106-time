@@ -106,6 +106,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   `offset_at_*` now return `TaiUtcOffset` so they compose directly with `to_utc_seconds` / `to_absolute`; use `.get()` for the raw `i32`.
 
+- **Slice 2 Format 2 wire correction** (T-2/T-3) — NTF is bits 7–4, TS is
+  bits 3–0, reserved bits are 31–8. `time_protocol()` still returns broad
+  NTP/PTP for compatibility; use `time_format()` to distinguish NTPv3,
+  IEEE 1588-2002 and IEEE 1588-2008. `time_status()` preserves invalid and
+  reserved statuses. `parse_time_f2_payload()` now rejects TS other than 1
+  (`InvalidTimeStatus`) and reserved NTF; use `decode_time_f2(payload,
+  data_length)` to retain raw invalid-status readings separately. Reserved
+  bits remain independent warnings, not reasons to discard values.
+  `PtpTime.seconds` changes **u64 -> u32**, and its wire parser/encoder changes
+  **10 -> 8 bytes** (`[u8; 8]` output), seconds at [0..4), nanos at [4..8).
+  Update struct literals, buffers, property generators and manually packed
+  fixtures; remove 48-bit packing and never consume filler as PTP data.
+
+- **NTP conversions explicitly unresolved** (Q-NTP) — `to_unix_seconds()`
+  changes `Option<u64> -> Result<u64>` and `to_nanos_since_ntp_epoch()` changes
+  `u64 -> Result<u64>`. These and `to_absolute()` return
+  `TimeError::NeedsContext` until era/UTC/leap semantics are reviewed.
+  No implicit era zero or present-era guess remains. Handle this refusal;
+  use `raw_fixed_point_nanos()` for a modular numeric view with no inferred
+  era. NTP reference admission through the unchanged correlator now propagates
+  the refusal. CLI source is unchanged, but NTP packets can therefore report
+  an error instead of a fabricated absolute reference; invalid TS is also
+  rejected through the corrected parser.
+
+- **Secondary checksums follow the byte reading** (RDG-008, still suspect) —
+  `validate_secondary_checksum()` and `parse_secondary_header()` now require
+  the sum of bytes [0..10), not five words. Word-only matches no longer admit
+  trusted own time. `inspect_secondary_checksum()` exposes stored, byte and
+  word sums and both validity flags, including word-only (TF-027/TF-012),
+  without discarding evidence. Migrate fixtures/checksum generators; do not
+  switch readings silently to keep a word-only recording accepted.
+
+- **Scale-qualified wire readings and leap seconds** (T-16/T-17) — new
+  `format1::decode_time_f1` and `network_time::decode_time_f2` take explicit
+  Data Length and retain scale/provenance. Native GPS stays GPS; IRIG's default
+  UTC assignment is labelled policy; RTC is unknown unless caller-assumed.
+  `CalendarReading` preserves eligible UTC 23:59:60, including known-year
+  checks. Its legacy projection refuses leap labels and non-UTC scales rather
+  than normalizing/relabeling them. Legacy body-only BCD/calendar APIs remain
+  unqualified and strict; migrate to the new reading APIs for leap/scale support.
+  `TimeScaleTagged` reports Unknown for unqualified calendar/counter values;
+  NTP and PTP have the standard-stated UTC/TAI labels. No correlation/stream
+  scale integration or leap arithmetic is claimed in this slice.
+
+- **Recording events deprecated, retained** (T-8, ADR-0009) —
+  `RecordingEvent` and `RecordingEventType` now carry deprecation warnings.
+  Their fixed event meanings are unsupported by §11.2.7.3; body decoding
+  belongs in `irig106-decode`, with setup definitions from `irig106-tmats`.
+  No replacement availability is claimed and no public API is removed here.
+
 ### Added
 
 - `Ch4BinaryTimeExt` trait (see above).

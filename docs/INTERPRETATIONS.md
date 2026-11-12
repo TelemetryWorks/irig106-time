@@ -237,9 +237,9 @@ edge-case tests, and two-person review remain outstanding.
 
 **Design**: suspect · **Review**: pending · **Origin**: T-15
 
-**Test**: not yet written
+**Test**: tests/slice2_wire.rs::rdg008_byte_only_checksum_is_valid, rdg008_word_only_checksum_is_not_trusted; tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither
 
-**Development**: intensive testing and deep analysis required · **Analysis**: not yet written
+**Development**: intensive testing and deep analysis required · **Analysis**: [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-008)
 
 ---
 
@@ -261,9 +261,9 @@ edge-case tests, and two-person review remain outstanding.
 
 **Design**: accepted · **Review**: pending · **Origin**: T-17; contract 3.2
 
-**Test**: not yet written
+**Test**: tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value, t17_all_fmt_scales_and_policy_provenance
 
-**Development**: intensive testing and deep analysis required · **Analysis**: not yet written
+**Development**: intensive testing and deep analysis required · **Analysis**: [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-009)
 
 ### RDG-010
 
@@ -280,9 +280,9 @@ edge-case tests, and two-person review remain outstanding.
 
 **Design**: accepted · **Review**: pending · **Origin**: T-16; contract 3.2
 
-**Test**: not yet written
+**Test**: tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates, t16_calendar_known_year_and_wrong_time_boundaries
 
-**Development**: intensive testing and deep analysis required · **Analysis**: not yet written
+**Development**: intensive testing and deep analysis required · **Analysis**: [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-010)
 
 ### RDG-011
 

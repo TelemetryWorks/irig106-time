@@ -60,12 +60,8 @@ fn encode_ieee1588_secondary(seconds: u32, nanoseconds: u32) -> [u8; 12] {
     buf[0..4].copy_from_slice(&nanoseconds.to_le_bytes());
     buf[4..8].copy_from_slice(&seconds.to_le_bytes());
     // bytes [8..10] reserved = 0
-    let mut sum: u32 = 0;
-    for i in 0..5 {
-        let w = u16::from_le_bytes([buf[i * 2], buf[i * 2 + 1]]);
-        sum = sum.wrapping_add(w as u32);
-    }
-    buf[10..12].copy_from_slice(&((sum & 0xFFFF) as u16).to_le_bytes());
+    let sum: u16 = buf[..10].iter().map(|b| *b as u16).sum();
+    buf[10..12].copy_from_slice(&sum.to_le_bytes());
     buf
 }
 
@@ -340,7 +336,8 @@ fn no_std_types_are_copy() {
 // Format 2 (Network Time) Integration Tests
 // ═══════════════════════════════════════════════════════════════════
 
-/// Full NTP pipeline: parse F2 payload → to_absolute → correlate.
+/// Raw NTP parsing succeeds; unresolved conversion prevents reference admission.
+/// Requirements: L2-NTP-104, L3-NTP-104
 #[test]
 fn full_ntp_pipeline() {
     use irig106_time::network_time::{NetworkTime, parse_time_f2_payload};
@@ -349,7 +346,7 @@ fn full_ntp_pipeline() {
     // 2025-01-01 00:00:00 UTC → NTP seconds = 3,944,678,400
     let ntp_seconds: u32 = 3_944_678_400;
     let mut payload = [0u8; 12];
-    payload[0..4].copy_from_slice(&0x0000_0000u32.to_le_bytes()); // CSDW: NTP
+    payload[0..4].copy_from_slice(&0x0000_0001u32.to_le_bytes()); // CSDW: valid NTP
     payload[4..8].copy_from_slice(&ntp_seconds.to_le_bytes());
     // fraction = 0
 
@@ -361,40 +358,36 @@ fn full_ntp_pipeline() {
         _ => panic!("expected NTP"),
     };
 
-    // Convert to AbsoluteTime
-    let abs = ntp.to_absolute().unwrap();
-    assert_eq!(abs.year(), Some(2025));
-    assert_eq!(abs.day_of_year(), 1);
-    assert_eq!(abs.hours(), 0);
-    assert_eq!(abs.minutes(), 0);
-    assert_eq!(abs.seconds(), 0);
-
-    // Feed into correlator
+    // Raw parsing succeeds; the unresolved era/leap mapping blocks admission.
+    assert!(matches!(
+        ntp.to_absolute(),
+        Err(TimeError::NeedsContext { .. })
+    ));
     let mut correlator = TimeCorrelator::new();
-    correlator.add_reference(5, Rtc::from_raw(10_000_000), abs);
-
-    // Resolve a data packet 500ms later
-    let target = Rtc::from_raw(15_000_000);
-    let resolved = correlator.correlate(target, Some(5)).unwrap();
-    assert_eq!(resolved.year(), Some(2025));
-    assert_eq!(resolved.day_of_year(), 1);
-    assert_eq!(resolved.hours(), 0);
-    assert_eq!(resolved.minutes(), 0);
-    assert_eq!(resolved.seconds(), 0);
-    assert_eq!(resolved.nanoseconds(), 500_000_000); // 500ms
+    assert!(matches!(
+        correlator.add_reference_f2(
+            5,
+            Rtc::from_raw(10_000_000),
+            &NetworkTime::Ntp(ntp),
+            &LeapSecondTable::builtin()
+        ),
+        Err(TimeError::NeedsContext { .. })
+    ));
+    assert_eq!(correlator.len(), 0);
 }
 
 /// Full PTP pipeline: parse F2 payload → apply leap seconds → correlate.
+/// Requirements: L2-PTP-105, L3-PTP-105
 #[test]
 fn full_ptp_pipeline() {
     use irig106_time::network_time::{LeapSecondTable, NetworkTime, parse_time_f2_payload};
 
     // Build a PTP payload: CSDW(protocol=PTP) + PTP time data
     // 2025-01-01 00:00:00 UTC → Unix = 1,735,689,600 → TAI = 1,735,689,637 (offset=37)
-    let tai_seconds: u64 = 1_735_689_637;
-    let mut payload = [0u8; 14];
-    payload[0..4].copy_from_slice(&0x0000_0001u32.to_le_bytes()); // CSDW: PTP
-    payload[4..10].copy_from_slice(&tai_seconds.to_le_bytes()[0..6]);
+    let tai_seconds: u32 = 1_735_689_637;
+    let mut payload = [0u8; 12];
+    payload[0..4].copy_from_slice(&0x0000_0011u32.to_le_bytes()); // CSDW: valid PTP2002
+    payload[4..8].copy_from_slice(&tai_seconds.to_le_bytes());
     // nanoseconds = 0
 
     let (csdw, time) = parse_time_f2_payload(&payload).unwrap();
@@ -466,6 +459,7 @@ fn mixed_f1_f2_correlation() {
 }
 
 /// NTP fractional seconds provide sub-millisecond precision.
+/// Requirements: L2-NTP-103, L3-NTP-103
 #[test]
 fn ntp_sub_millisecond_precision() {
     use irig106_time::network_time::NtpTime;
@@ -475,16 +469,14 @@ fn ntp_sub_millisecond_precision() {
         seconds: 3_944_678_400,
         fraction: 1 << 31,
     };
-    let abs = ntp.to_absolute().unwrap();
-    assert!(abs.nanoseconds() >= 499_999_999 && abs.nanoseconds() <= 500_000_001);
+    assert_eq!(ntp.fraction_as_nanos(), 500_000_000);
 
     // fraction = 2^30 = quarter second → ~250,000,000 ns
     let ntp2 = NtpTime {
         seconds: 3_944_678_400,
         fraction: 1 << 30,
     };
-    let abs2 = ntp2.to_absolute().unwrap();
-    assert!(abs2.nanoseconds() >= 249_999_999 && abs2.nanoseconds() <= 250_000_001);
+    assert_eq!(ntp2.fraction_as_nanos(), 250_000_000);
 }
 
 /// Leap second table correctly differentiates historical offsets.
@@ -858,12 +850,13 @@ fn ntp_to_le_bytes_round_trip() {
     assert_eq!(ntp.to_le_bytes(), original);
 }
 
+/// Requirements: L2-PTP-105, L3-PTP-105
 #[test]
 fn ptp_to_le_bytes_round_trip() {
     use irig106_time::network_time::PtpTime;
-    let mut original = [0u8; 10];
-    original[0..6].copy_from_slice(&100_000u64.to_le_bytes()[0..6]);
-    original[6..10].copy_from_slice(&500_000_000u32.to_le_bytes());
+    let mut original = [0u8; 8];
+    original[0..4].copy_from_slice(&100_000u32.to_le_bytes());
+    original[4..8].copy_from_slice(&500_000_000u32.to_le_bytes());
     let ptp = PtpTime::from_le_bytes(&original).unwrap();
     assert_eq!(ptp.to_le_bytes(), original);
 }
@@ -1170,6 +1163,7 @@ fn is_near_leap_second_boundary() {
 
 // ── GAP-08: Recording events ────────────────────────────────────────
 
+#[allow(deprecated)] // Compatibility test only; fixed meanings remain deprecated (ADR-0009).
 #[test]
 fn recording_event_pipeline() {
     use irig106_time::recording_event::{RecordingEvent, RecordingEventType};

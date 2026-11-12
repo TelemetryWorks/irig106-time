@@ -108,9 +108,9 @@ fn t9_setup_fifteen_is_unknown() {
 /// Requirements: L1-ABS-002, L2-ABS-102, L3-ABS-102, L1-SEC-001
 #[test]
 fn t10_secondary_ch4_has_usec_low_high_words() {
-    // Figure 11-4: reserved/usec/low/high. 0x270f+0x1234+1=0x3944.
-    // TODO(RDG-008): update these word-sum fixture checksums when byte-sum lands.
-    let bytes = [0, 0, 0x0f, 0x27, 0x34, 0x12, 1, 0, 0, 0, 0x44, 0x39];
+    // Figure 11-4: reserved/usec/low/high. RDG-008 byte sum:
+    // 0x0f+0x27+0x34+0x12+1 = 0x7d; word sum would be 0x3944.
+    let bytes = [0, 0, 0x0f, 0x27, 0x34, 0x12, 1, 0, 0, 0, 0x7d, 0];
     let SecondaryHeaderTime::Ch4(t) =
         parse_secondary_header(&bytes, SecHdrTimeFormat::Ch4).unwrap()
     else {
@@ -121,7 +121,7 @@ fn t10_secondary_ch4_has_usec_low_high_words() {
         (1, 0x1234, 9999)
     );
     // Top binary low-word bit is retained (DERIVED reading, §4.7).
-    let top = [0, 0, 0, 0, 0, 0x80, 0, 0, 0, 0, 0, 0x80];
+    let top = [0, 0, 0, 0, 0, 0x80, 0, 0, 0, 0, 0x80, 0];
     let SecondaryHeaderTime::Ch4(t) = parse_secondary_header(&top, SecHdrTimeFormat::Ch4).unwrap()
     else {
         panic!("wrong dispatch")
@@ -144,7 +144,7 @@ fn t10_secondary_ch4_has_usec_low_high_words() {
     }
     let mut reserved = bytes;
     reserved[0] = 1;
-    reserved[10] = 0x45;
+    reserved[10] = 0x7e;
     let SecondaryHeaderTime::Ch4(t) =
         parse_secondary_header(&reserved, SecHdrTimeFormat::Ch4).unwrap()
     else {
@@ -160,7 +160,7 @@ fn t10_secondary_ch4_has_usec_low_high_words() {
     )
     .unwrap();
     assert_eq!(stamp, irig106_time::intra_packet::IntraPacketTime::Ch4(t));
-    let too_many_usec = [0, 0, 0x10, 0x27, 0, 0, 0, 0, 0, 0, 0x10, 0x27];
+    let too_many_usec = [0, 0, 0x10, 0x27, 0, 0, 0, 0, 0, 0, 0x37, 0];
     assert!(parse_secondary_header(&too_many_usec, SecHdrTimeFormat::Ch4).is_err());
 }
 
@@ -252,9 +252,8 @@ fn ch4_reserved_words_report_independent_warnings_and_keep_time() {
     use irig106_time::TimeError;
     use irig106_time::intra_packet::{IntraPacketTime, parse_intra_packet_time};
     use irig106_time::secondary::{validate_ch4_reserved, validate_secondary_reserved};
-    // TODO(RDG-008): replace these word-sum checksums when byte-sum lands.
-    // Base: usec 9999 + low 0x8000 + high 1 = 0xa710.
-    let mut bytes = [0, 0, 0x0f, 0x27, 0, 0x80, 1, 0, 0, 0, 0x10, 0xa7];
+    // RDG-008 byte sum: 0x0f+0x27+0x80+1 = 0xb7 (word alternative 0xa710).
+    let mut bytes = [0, 0, 0x0f, 0x27, 0, 0x80, 1, 0, 0, 0, 0xb7, 0];
     assert_eq!(validate_ch4_reserved(&bytes), Ok(()));
     assert_eq!(validate_secondary_reserved(&bytes), Ok(()));
     for bit in 0..16 {
@@ -263,7 +262,8 @@ fn ch4_reserved_words_report_independent_warnings_and_keep_time() {
             bytes[0..2].fill(0);
             bytes[8..10].fill(0);
             bytes[offset..offset + 2].copy_from_slice(&reserved.to_le_bytes());
-            bytes[10..12].copy_from_slice(&0xa710u16.wrapping_add(reserved).to_le_bytes());
+            bytes[10..12]
+                .copy_from_slice(&(0xb7u16 + (reserved & 255) + (reserved >> 8)).to_le_bytes());
             let SecondaryHeaderTime::Ch4(t) =
                 parse_secondary_header(&bytes, SecHdrTimeFormat::Ch4).unwrap()
             else {
@@ -284,7 +284,7 @@ fn ch4_reserved_words_report_independent_warnings_and_keep_time() {
     // Both findings remain independently observable without suppressing time.
     bytes[0..2].copy_from_slice(&1u16.to_le_bytes());
     bytes[8..10].copy_from_slice(&2u16.to_le_bytes());
-    bytes[10..12].copy_from_slice(&0xa713u16.to_le_bytes());
+    bytes[10..12].copy_from_slice(&0xbau16.to_le_bytes());
     assert!(parse_secondary_header(&bytes, SecHdrTimeFormat::Ch4).is_ok());
     assert_eq!(
         validate_ch4_reserved(&bytes),
@@ -315,7 +315,7 @@ fn ch4_reserved_words_report_independent_warnings_and_keep_time() {
 fn ch4_invalid_microseconds_still_reject_both_paths() {
     use irig106_time::TimeError;
     use irig106_time::intra_packet::parse_intra_packet_time;
-    // TODO(RDG-008): replace the word-sum checksum when byte-sum lands.
+    // RDG-008: 0x10+0x27+reserved = 0x37+reserved, byte reading.
     for reserved in [0, 1] {
         let bytes = [
             reserved,
@@ -328,8 +328,8 @@ fn ch4_invalid_microseconds_still_reject_both_paths() {
             0,
             0,
             0,
-            0x10 + reserved,
-            0x27,
+            0x37 + reserved,
+            0,
         ];
         let expected = Err(TimeError::OutOfRange {
             field: "ch4_microseconds",

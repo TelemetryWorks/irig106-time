@@ -84,7 +84,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1-SEC-001 | L2-SEC-101 | `tests/rebuild_wire.rs::ch4_reserved_words_report_independent_warnings_and_keep_time`<br>`tests/rebuild_wire.rs::t10_intra_ch4_reserved_word_keeps_value`<br>`tests/rebuild_wire.rs::t10_secondary_ch4_has_usec_low_high_words` | Implemented |
 | L1-SEC-002 | L2-SEC-102 | _(none)_ | Draft |
 | L1-SEC-003 | L2-SEC-103 | _(none)_ | Draft |
-| L1-SEC-004 | L2-SEC-104 | _(none)_ | Draft |
+| L1-SEC-004 | L2-SEC-104 | `tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither`<br>`tests/slice2_wire.rs::rdg008_byte_only_checksum_is_valid`<br>`tests/slice2_wire.rs::rdg008_word_only_checksum_is_not_trusted` | Implemented |
 | L1-SEC-005 | L2-SEC-105 | `tests/rebuild_wire.rs::ch4_reserved_words_report_independent_warnings_and_keep_time` | Implemented |
 | L1-SEC-006 | L2-SEC-106 | _(none)_ | Draft |
 
@@ -95,7 +95,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L2-SEC-101 | L3-SEC-101 | `tests/rebuild_wire.rs::ch4_reserved_words_report_independent_warnings_and_keep_time`<br>`tests/rebuild_wire.rs::t10_intra_ch4_reserved_word_keeps_value` | Implemented |
 | L2-SEC-102 | L3-SEC-102 | _(TBD)_ | Draft |
 | L2-SEC-103 | L3-SEC-103 | _(TBD)_ | Draft |
-| L2-SEC-104 | L3-SEC-104 | _(TBD)_ | Draft |
+| L2-SEC-104 | L3-SEC-104 | `tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither`<br>`tests/slice2_wire.rs::rdg008_byte_only_checksum_is_valid`<br>`tests/slice2_wire.rs::rdg008_word_only_checksum_is_not_trusted` | Implemented |
 | L2-SEC-105 | L3-SEC-105 | `tests/rebuild_wire.rs::ch4_reserved_words_report_independent_warnings_and_keep_time` | Implemented |
 | L2-SEC-106 | L3-SEC-106 | _(TBD)_ | Draft |
 
@@ -152,18 +152,18 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
 | L1-F2CSDW-001 | L2-F2CSDW-101 | _(none)_ | Draft |
-| L1-F2CSDW-004 | L2-F2CSDW-104 | _(none)_ | Draft |
-| L1-F2CSDW-005 | L2-F2CSDW-105 | _(none)_ | Draft |
-| L1-F2CSDW-006 | L2-F2CSDW-106 | _(none)_ | Draft |
+| L1-F2CSDW-004 | L2-F2CSDW-104 | `tests/slice2_readings.rs::t2_each_ntf_and_status_remain_independent`<br>`tests/slice2_wire.rs::t2_ntf_is_high_nibble_not_valid_status`<br>`tests/slice2_wire.rs::t2_reserved_ntf_does_not_become_ptp_from_ts` | Implemented |
+| L1-F2CSDW-005 | L2-F2CSDW-105 | `tests/slice2_readings.rs::t2_each_ntf_and_status_remain_independent` | Implemented |
+| L1-F2CSDW-006 | L2-F2CSDW-106 | `tests/slice2_wire.rs::t2_defined_ntf_bits_are_not_reserved` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
 | L2-F2CSDW-101 | L3-F2CSDW-101 | _(TBD)_ | Draft |
-| L2-F2CSDW-104 | L3-F2CSDW-104 | _(TBD)_ | Draft |
-| L2-F2CSDW-105 | L3-F2CSDW-105 | _(TBD)_ | Draft |
-| L2-F2CSDW-106 | L3-F2CSDW-106 | _(TBD)_ | Draft |
+| L2-F2CSDW-104 | L3-F2CSDW-104 | `src/network_time_tests.rs::f2_csdw_ptp`<br>`src/network_time_tests.rs::f2_csdw_reserved`<br>`tests/slice2_readings.rs::t2_each_ntf_and_status_remain_independent`<br>`tests/slice2_wire.rs::t2_ntf_is_high_nibble_not_valid_status`<br>`tests/slice2_wire.rs::t2_reserved_ntf_does_not_become_ptp_from_ts` | Implemented |
+| L2-F2CSDW-105 | L3-F2CSDW-105 | `src/network_time_tests.rs::parse_f2_ntp_payload`<br>`tests/slice2_readings.rs::t2_each_ntf_and_status_remain_independent` | Implemented |
+| L2-F2CSDW-106 | L3-F2CSDW-106 | `src/network_time_tests.rs::f2_csdw_reserved_bits_dirty`<br>`tests/slice2_wire.rs::t2_defined_ntf_bits_are_not_reserved` | Implemented |
 
 ### L1-NTP: Format 2 NTP time
 
@@ -173,8 +173,8 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L1-NTP-001 | L2-NTP-101 | _(none)_ | Draft |
 | L1-NTP-002 | L2-NTP-102 | _(none)_ | Draft |
-| L1-NTP-003 | L2-NTP-103 | _(none)_ | Draft |
-| L1-NTP-004 | L2-NTP-104 | _(none)_ | Draft |
+| L1-NTP-003 | L2-NTP-103 | _(none)_ | Implemented |
+| L1-NTP-004 | L2-NTP-104 | `tests/slice2_wire.rs::q_ntp_absolute_conversion_requires_context`<br>`tests/slice2_wire.rs::q_ntp_unix_conversion_requires_context` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
@@ -182,8 +182,8 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L2-NTP-101 | L3-NTP-101 | _(TBD)_ | Draft |
 | L2-NTP-102 | L3-NTP-102 | _(TBD)_ | Draft |
-| L2-NTP-103 | L3-NTP-103 | _(TBD)_ | Draft |
-| L2-NTP-104 | L3-NTP-104 | _(TBD)_ | Draft |
+| L2-NTP-103 | L3-NTP-103 | `tests/pipeline.rs::ntp_sub_millisecond_precision` | Implemented |
+| L2-NTP-104 | L3-NTP-104 | `src/network_time_tests.rs::ntp_before_unix_epoch`<br>`src/network_time_tests.rs::ntp_to_absolute`<br>`src/network_time_tests.rs::ntp_to_unix_seconds`<br>`tests/pipeline.rs::full_ntp_pipeline`<br>`tests/slice2_wire.rs::q_ntp_absolute_conversion_requires_context`<br>`tests/slice2_wire.rs::q_ntp_unix_conversion_requires_context` | Implemented |
 
 ### L1-PTP: Format 2 PTP time
 
@@ -192,18 +192,18 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
 | L1-PTP-002 | L2-PTP-102 | _(none)_ | Draft |
-| L1-PTP-003 | L2-PTP-103 | _(none)_ | Draft |
+| L1-PTP-003 | L2-PTP-103 | `tests/slice2_readings.rs::f2_data_length_bounds_and_nanosecond_boundaries` | Implemented |
 | L1-PTP-004 | L2-PTP-104 | _(none)_ | Draft |
-| L1-PTP-005 | L2-PTP-105 | _(none)_ | Draft |
+| L1-PTP-005 | L2-PTP-105 | `tests/slice2_wire.rs::t3_ptp_has_two_u32_words`<br>`tests/slice2_wire.rs::t3_ptp_never_reads_following_filler` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
 | L2-PTP-102 | L3-PTP-102 | _(TBD)_ | Draft |
-| L2-PTP-103 | L3-PTP-103 | _(TBD)_ | Draft |
+| L2-PTP-103 | L3-PTP-103 | `src/network_time_tests.rs::ptp_nanos_overflow`<br>`tests/slice2_readings.rs::f2_data_length_bounds_and_nanosecond_boundaries` | Implemented |
 | L2-PTP-104 | L3-PTP-104 | _(TBD)_ | Draft |
-| L2-PTP-105 | L3-PTP-105 | _(TBD)_ | Draft |
+| L2-PTP-105 | L3-PTP-105 | `src/network_time_tests.rs::parse_f2_ptp_payload`<br>`src/network_time_tests.rs::ptp_buffer_too_short`<br>`src/network_time_tests.rs::ptp_from_le_bytes`<br>`tests/pipeline.rs::full_ptp_pipeline`<br>`tests/pipeline.rs::ptp_to_le_bytes_round_trip`<br>`tests/slice2_wire.rs::t3_ptp_has_two_u32_words`<br>`tests/slice2_wire.rs::t3_ptp_never_reads_following_filler` | Implemented |
 
 ### L1-F2COR: Format 2 references
 
@@ -231,9 +231,9 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1-TAI-002 | L2-TAI-102 | _(none)_ | Draft |
 | L1-TAI-003 | L2-TAI-103 | _(none)_ | Draft |
 | L1-TAI-004 | L2-TAI-104 | _(none)_ | Draft |
-| L1-TAI-005 | L2-TAI-105 | _(none)_ | Draft |
-| L1-TAI-006 | L2-TAI-106 | _(none)_ | Draft |
-| L1-TAI-007 | L2-TAI-107 | _(none)_ | Draft |
+| L1-TAI-005 | L2-TAI-105 | `tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance`<br>`tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value` | Implemented |
+| L1-TAI-006 | L2-TAI-106 | `tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance` | Implemented |
+| L1-TAI-007 | L2-TAI-107 | `tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
@@ -243,9 +243,9 @@ This matrix is the single source of truth for live status; the requirement docum
 | L2-TAI-102 | L3-TAI-102 | _(TBD)_ | Draft |
 | L2-TAI-103 | L3-TAI-103 | _(TBD)_ | Draft |
 | L2-TAI-104 | L3-TAI-104 | _(TBD)_ | Draft |
-| L2-TAI-105 | L3-TAI-105 | _(TBD)_ | Draft |
-| L2-TAI-106 | L3-TAI-106 | _(TBD)_ | Draft |
-| L2-TAI-107 | L3-TAI-107 | _(TBD)_ | Draft |
+| L2-TAI-105 | L3-TAI-105 | `tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance`<br>`tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value` | Implemented |
+| L2-TAI-106 | L3-TAI-106 | `tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance` | Implemented |
+| L2-TAI-107 | L3-TAI-107 | `tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates` | Implemented |
 
 ### L1-WORD: Time words inside data
 
@@ -287,7 +287,7 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-EDN-001 | L2-EDN-101 | `src/version_tests.rs::format_two_requires_known_declared_release`<br>`tests/pipeline.rs::version_feature_queries` | Partially Implemented |
+| L1-EDN-001 | L2-EDN-101 | `src/version_tests.rs::format_two_requires_known_declared_release`<br>`tests/pipeline.rs::version_feature_queries`<br>`tests/slice2_readings.rs::t4_explicit_availability_never_infers_unknown_edition` | Implemented |
 | L1-EDN-002 | L2-EDN-102, L2-EDN-201 | `src/packet_standard_tests.rs::display_formatting`<br>`src/packet_standard_tests.rs::is_ch10_and_is_ch11`<br>`src/packet_standard_tests.rs::pre17_is_ch10`<br>`src/packet_standard_tests.rs::unknown_has_unknown_provenance`<br>`src/packet_standard_tests.rs::v17_and_later_is_ch11`<br>`src/version_tests.rs::separate_version_codes_from_standard`<br>`tests/pipeline.rs::packet_standard_from_version`<br>`tests/pipeline.rs::version_code_domains_stay_distinct`<br>`tests/pipeline.rs::version_detection_from_tmats_csdw`<br>`tests/rebuild_layout.rs::t9_separate_shared_code_lists`<br>`tests/rebuild_wire.rs::t9_setup_fifteen_is_unknown` | Partially Implemented |
 | L1-EDN-003 | L2-EDN-103 | _(none)_ | Draft |
 
@@ -295,7 +295,7 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L2-EDN-101 | L3-EDN-101 | _(TBD)_ | Draft |
+| L2-EDN-101 | L3-EDN-101 | `tests/slice2_readings.rs::t4_explicit_availability_never_infers_unknown_edition` | Implemented |
 | L2-EDN-102 | L3-EDN-102 | `src/version_tests.rs::separate_version_codes_from_standard`<br>`tests/rebuild_layout.rs::t9_separate_shared_code_lists`<br>`tests/rebuild_wire.rs::t9_setup_fifteen_is_unknown` | Implemented |
 | L2-EDN-103 | L3-EDN-103 | _(TBD)_ | Draft |
 | L2-EDN-201 | L3-EDN-201 | _(TBD)_ | Draft |
@@ -473,8 +473,8 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1-ERR-001 | L2-ERR-101 | _(none)_ | Draft |
 | L1-ERR-002 | L2-ERR-102 | _(none)_ | Draft |
 | L1-ERR-003 | L2-ERR-103 | _(none)_ | Draft |
-| L1-ERR-004 | L2-ERR-104 | _(none)_ | Draft |
-| L1-ERR-005 | L2-ERR-105 | `tests/rebuild_wire.rs::t12_calendar_body_is_eight_bytes`<br>`tests/rebuild_wire.rs::t12_day_body_is_six_bytes` | Partially Implemented |
+| L1-ERR-004 | L2-ERR-104 | `tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither` | Implemented |
+| L1-ERR-005 | L2-ERR-105 | `tests/rebuild_wire.rs::t12_calendar_body_is_eight_bytes`<br>`tests/rebuild_wire.rs::t12_day_body_is_six_bytes`<br>`tests/slice2_readings.rs::f2_data_length_bounds_and_nanosecond_boundaries`<br>`tests/slice2_wire.rs::t3_ptp_never_reads_following_filler` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
@@ -483,8 +483,8 @@ This matrix is the single source of truth for live status; the requirement docum
 | L2-ERR-101 | L3-ERR-101 | _(TBD)_ | Draft |
 | L2-ERR-102 | L3-ERR-102 | _(TBD)_ | Draft |
 | L2-ERR-103 | L3-ERR-103 | _(TBD)_ | Draft |
-| L2-ERR-104 | L3-ERR-104 | _(TBD)_ | Draft |
-| L2-ERR-105 | L3-ERR-105 | _(TBD)_ | Draft |
+| L2-ERR-104 | L3-ERR-104 | `tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither` | Implemented |
+| L2-ERR-105 | L3-ERR-105 | `tests/slice2_readings.rs::f2_data_length_bounds_and_nanosecond_boundaries`<br>`tests/slice2_wire.rs::t3_ptp_never_reads_following_filler` | Implemented |
 
 ### L1-API: Library form and portability
 
@@ -620,17 +620,17 @@ This matrix is the single source of truth for live status; the requirement docum
 | RTC | 4 | 4 | 4 | 1 | 1 | 1 | 1 |
 | ABS | 4 | 4 | 4 | 2 | 2 | 2 | 2 |
 | IPT | 3 | 3 | 3 | 3 | 3 | 3 | 3 |
-| SEC | 6 | 6 | 6 | 2 | 2 | 2 | 2 |
+| SEC | 6 | 6 | 6 | 3 | 3 | 3 | 3 |
 | CSDW | 7 | 7 | 7 | 4 | 4 | 4 | 4 |
 | BCD | 4 | 4 | 4 | 2 | 2 | 2 | 2 |
-| F2CSDW | 4 | 4 | 4 | 0 | 0 | 0 | 0 |
-| NTP | 4 | 4 | 4 | 0 | 0 | 0 | 0 |
-| PTP | 4 | 4 | 4 | 0 | 0 | 0 | 0 |
+| F2CSDW | 4 | 4 | 4 | 3 | 3 | 3 | 3 |
+| NTP | 4 | 4 | 4 | 2 | 2 | 2 | 2 |
+| PTP | 4 | 4 | 4 | 2 | 2 | 2 | 2 |
 | F2COR | 2 | 2 | 2 | 0 | 0 | 0 | 0 |
-| TAI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
+| TAI | 7 | 7 | 7 | 3 | 3 | 3 | 3 |
 | WORD | 2 | 2 | 2 | 0 | 0 | 0 | 0 |
 | ENC | 3 | 3 | 3 | 0 | 0 | 0 | 0 |
-| EDN | 3 | 4 | 4 | 1 | 1 | 1 | 1 |
+| EDN | 3 | 4 | 4 | 2 | 2 | 2 | 2 |
 | DECL | 2 | 2 | 2 | 0 | 0 | 0 | 0 |
 | COR | 13 | 13 | 13 | 0 | 0 | 0 | 0 |
 | ANS | 5 | 5 | 5 | 0 | 0 | 0 | 0 |
@@ -638,19 +638,19 @@ This matrix is the single source of truth for live status; the requirement docum
 | FND | 5 | 5 | 5 | 0 | 0 | 0 | 0 |
 | RDG | 2 | 13 | 13 | 0 | 0 | 0 | 0 |
 | STRM | 1 | 7 | 7 | 0 | 0 | 0 | 0 |
-| ERR | 5 | 5 | 5 | 0 | 0 | 0 | 0 |
+| ERR | 5 | 5 | 5 | 2 | 2 | 2 | 2 |
 | API | 11 | 11 | 11 | 0 | 0 | 0 | 0 |
 | PERF | 1 | 1 | 1 | 0 | 0 | 0 | 0 |
 | CLI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
 | REL | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
 | TST | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
-| **Total** | **124** | **143** | **143** | **15** | **15** | **15** | **15** |
+| **Total** | **124** | **143** | **143** | **29** | **29** | **29** | **29** |
 
 The countable requirement set is every L2 and L3 requirement plus the 0 L1 *leaf* requirement(s) (L1s with no L2 decomposition yet). Composite L1s are verified through their children.
 
-**Tested by at least one test marker**: 30 of 286 (10.5%).
+**Tested by at least one test marker**: 58 of 286 (20.3%).
 
-**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 30 of 286 (10.5%).
+**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 58 of 286 (20.3%).
 
 ### Orphan check
 
@@ -670,13 +670,13 @@ Every entry of `docs/INTERPRETATIONS.md` with its written analysis and the tests
 | RDG-005 | `R-x\TSRC-n` letters name Format 1 SRC values; a difference is information | accepted | not yet written | _(none)_ |
 | RDG-006 | `R-x\SHTF-n` 0 "Chapter 4 BCD" names packet flags `00`, "Chapter 4 binary weighted" | accepted | not yet written | _(none)_ |
 | RDG-007 | ITS (Format 1 bits 15–12) is read only for recordings declared 106-17 or later | accepted | not yet written | `tests/rebuild_layout.rs::t7_its_requires_explicit_applicable_layout` |
-| RDG-008 | The secondary header checksum sums bytes, not 16-bit words | suspect | not yet written | _(none)_ |
-| RDG-009 | The time scale of each time format; IRIG time is UTC by assumption | accepted | not yet written | _(none)_ |
-| RDG-010 | Second 60 is a leap second on a day that can be 30 June or 31 December | accepted | not yet written | _(none)_ |
+| RDG-008 | The secondary header checksum sums bytes, not 16-bit words | suspect | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-008) | `tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither`<br>`tests/slice2_wire.rs::rdg008_byte_only_checksum_is_valid`<br>`tests/slice2_wire.rs::rdg008_word_only_checksum_is_not_trusted` |
+| RDG-009 | The time scale of each time format; IRIG time is UTC by assumption | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-009) | `tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance`<br>`tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value` |
+| RDG-010 | Second 60 is a leap second on a day that can be 30 June or 31 December | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-010) | `tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates` |
 | RDG-011 | "The first dynamic data packet" is checked per session | accepted | not yet written | _(none)_ |
 
-* Entries without a written analysis: **11** of 11
-* Entries without a test: **10** of 11
+* Entries without a written analysis: **8** of 11
+* Entries without a test: **7** of 11
 * Entries missing the development mark: **0**
 
 ### Marker reference check

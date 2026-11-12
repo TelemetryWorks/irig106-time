@@ -247,9 +247,9 @@ fn main() {
     }));
 
     // PTP
-    let mut ptp_buf = [0u8; 10];
-    ptp_buf[0..6].copy_from_slice(&1_735_689_637u64.to_le_bytes()[0..6]);
-    ptp_buf[6..10].copy_from_slice(&500_000_000u32.to_le_bytes());
+    let mut ptp_buf = [0u8; 8];
+    ptp_buf[0..4].copy_from_slice(&1_735_689_637u32.to_le_bytes());
+    ptp_buf[4..8].copy_from_slice(&500_000_000u32.to_le_bytes());
     r.push(bench("ptp_from_le_bytes", || {
         let _ = black_box(irig106_time::network_time::PtpTime::from_le_bytes(
             black_box(&ptp_buf),

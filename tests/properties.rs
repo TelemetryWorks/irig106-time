@@ -157,8 +157,8 @@ proptest! {
 
     #[test]
     fn ptp_nanos_since_epoch_monotonic(
-        s1 in 0u64..1_000_000_000,
-        s2 in 0u64..1_000_000_000,
+        s1 in 0u32..1_000_000_000,
+        s2 in 0u32..1_000_000_000,
     ) {
         let (lo, hi) = if s1 <= s2 { (s1, s2) } else { (s2, s1) };
         let t1 = irig106_time::network_time::PtpTime { seconds: lo, nanoseconds: 0 };
@@ -196,7 +196,7 @@ proptest! {
 
     #[test]
     fn ptp_encode_round_trip(
-        seconds in 0u64..=0x0000_FFFF_FFFF_FFFFu64,
+        seconds: u32,
         nanoseconds in 0u32..1_000_000_000u32,
     ) {
         let ptp = irig106_time::network_time::PtpTime { seconds, nanoseconds };

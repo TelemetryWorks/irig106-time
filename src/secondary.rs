@@ -25,31 +25,66 @@ pub enum SecondaryHeaderTime {
     Ertc(Ertc),
 }
 
-/// Validate the 16-bit secondary header checksum.
-///
-/// The checksum is the 16-bit sum of the first 5 little-endian u16 words
-/// (bytes [0..10]), compared against the u16 at bytes [10..12].
-///
-/// Partial L3-SEC-104: prototype word sum only; byte-sum rebuild is deferred
-/// under RDG-008. This function does not yet meet the full requirement.
-pub fn validate_secondary_checksum(buf: &[u8]) -> Result<()> {
+/// Both checksum readings and the recorded checksum (RDG-008, suspect).
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SecondaryChecksum {
+    /// Recorded little-endian checksum.
+    pub stored: u16,
+    /// Sum of the ten bytes, per §11.2.1.2c and RCC 123-20 B-31.
+    pub byte_sum: u16,
+    /// Alternative sum of five little-endian words, modulo 65536.
+    pub word_sum: u16,
+}
+impl SecondaryChecksum {
+    /// Whether the standard-wording byte reading matches.
+    pub fn byte_valid(&self) -> bool {
+        self.stored == self.byte_sum
+    }
+    /// Whether the alternative word reading matches.
+    pub fn word_valid(&self) -> bool {
+        self.stored == self.word_sum
+    }
+    /// Only the alternative reading matches: TF-027 plus TF-012.
+    pub fn word_only(&self) -> bool {
+        self.word_valid() && !self.byte_valid()
+    }
+}
+
+/// Inspect both readings without discarding either result or rejecting raw bytes.
+/// Exactly bytes [0..10) are summed; [10..12) stores the checksum.
+/// **Traces:** L3-SEC-104 ← L2-SEC-104 ← L1-SEC-004
+/// **Traces:** L3-ERR-104 ← L2-ERR-104 ← L1-ERR-004
+pub fn inspect_secondary_checksum(buf: &[u8]) -> Result<SecondaryChecksum> {
     if buf.len() < 12 {
         return Err(TimeError::BufferTooShort {
             expected: 12,
             actual: buf.len(),
         });
     }
-    let mut sum: u32 = 0;
-    for i in 0..5 {
-        let word = u16::from_le_bytes([buf[i * 2], buf[i * 2 + 1]]);
-        sum = sum.wrapping_add(word as u32);
-    }
-    let computed = (sum & 0xFFFF) as u16;
-    let stored = u16::from_le_bytes([buf[10], buf[11]]);
-    if computed != stored {
-        Err(TimeError::ChecksumMismatch { stored, computed })
-    } else {
+    let byte_sum = buf[..10].iter().map(|b| *b as u16).sum();
+    let word_sum = buf[..10].chunks_exact(2).fold(0u16, |sum, word| {
+        sum.wrapping_add(u16::from_le_bytes([word[0], word[1]]))
+    });
+    Ok(SecondaryChecksum {
+        stored: u16::from_le_bytes([buf[10], buf[11]]),
+        byte_sum,
+        word_sum,
+    })
+}
+
+/// Require the byte reading for trusted own time. Word-only validity remains
+/// observable through [`inspect_secondary_checksum`], never silently selected.
+/// **Traces:** L3-SEC-104 ← L2-SEC-104
+pub fn validate_secondary_checksum(buf: &[u8]) -> Result<()> {
+    let reading = inspect_secondary_checksum(buf)?;
+    if reading.byte_valid() {
         Ok(())
+    } else {
+        Err(TimeError::ChecksumMismatch {
+            stored: reading.stored,
+            computed: reading.byte_sum,
+        })
     }
 }
 
