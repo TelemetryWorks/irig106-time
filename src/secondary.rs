@@ -68,6 +68,7 @@ pub fn parse_secondary_header(buf: &[u8], fmt: SecHdrTimeFormat) -> Result<Secon
 
     match fmt {
         SecHdrTimeFormat::Ch4 => {
+            validate_ch4_time(&buf[0..8])?;
             let ch4 = Ch4BinaryTime::from_secondary_bytes(&buf[0..8])?;
             Ok(SecondaryHeaderTime::Ch4(ch4))
         }
@@ -90,3 +91,28 @@ pub fn parse_secondary_header(buf: &[u8], fmt: SecHdrTimeFormat) -> Result<Secon
 #[cfg(test)]
 #[path = "secondary_tests.rs"]
 mod secondary_tests;
+
+// Figure 11-4 / Chapter 4 §4.7. Shared readers preserve raw bits; the time
+// boundary validates reserved bytes and usec without assigning a calendar epoch.
+pub(crate) fn validate_ch4_time(buf: &[u8]) -> Result<()> {
+    if buf.len() < 8 {
+        return Err(TimeError::BufferTooShort {
+            expected: 8,
+            actual: buf.len(),
+        });
+    }
+    if buf[0] != 0 || buf[1] != 0 {
+        return Err(TimeError::ReservedBitSet {
+            position: "Chapter 4 reserved word",
+        });
+    }
+    let usec = u16::from_le_bytes([buf[2], buf[3]]);
+    if usec > 9999 {
+        return Err(TimeError::OutOfRange {
+            field: "ch4_microseconds",
+            value: usec as u32,
+            max: 9999,
+        });
+    }
+    Ok(())
+}

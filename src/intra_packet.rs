@@ -7,9 +7,9 @@
 //!
 //! | Requirement | Description |
 //! |-------------|-------------|
-//! | L3-IPT-001  | `IntraPacketTime` enum |
-//! | L3-IPT-002  | `parse_intra_packet_time` dispatcher |
-//! | L3-IPT-003  | `IntraPacketTimeFormat` enum |
+//! | L3-IPT-106  | `IntraPacketTime` enum |
+//! | L3-IPT-106  | `parse_intra_packet_time` dispatcher |
+//! | L3-IPT-105  | `IntraPacketTimeFormat` enum |
 
 use crate::absolute::{Ch4BinaryTime, Ertc, Ieee1588Time};
 use crate::error::{Result, TimeError};
@@ -17,7 +17,7 @@ use crate::rtc::Rtc;
 
 /// Discriminant for intra-packet time stamp format.
 ///
-/// **Traces:** L3-IPT-003
+/// **Traces:** L3-IPT-105
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IntraPacketTimeFormat {
@@ -29,31 +29,35 @@ pub enum IntraPacketTimeFormat {
     Ieee1588,
     /// 64-bit Extended RTC.
     Ertc64,
+    /// Invalid flag combination, preserving the byte for diagnostics.
+    InvalidFlags(u8),
 }
 
 impl IntraPacketTimeFormat {
-    /// Derive the intra-packet time format from Packet Flag bits.
-    ///
-    /// - If bit 2 (secondary header present) is clear, the format is always RTC.
-    /// - If bit 2 is set, bits \[3:2\] select the format:
-    ///   0 = Ch4, 1 = IEEE-1588, 2 = ERTC.
+    /// Decode §11.2.1.1 g: bit 7 is secondary presence, bit 6 selects
+    /// the stamp source, and bits 3–2 select the secondary format.
+    /// L1-IPT-007 strictness is retained: reserved format 11 is invalid
+    /// even for RTC-derived stamps, pending owner question Q-FLAGS.
     pub fn from_packet_flags(flags: u8) -> Self {
-        let has_secondary = (flags & 0x04) != 0;
-        if !has_secondary {
-            return IntraPacketTimeFormat::Rtc48;
+        let format = (flags >> 2) & 3;
+        if format == 3 || flags & 0x40 != 0 && flags & 0x80 == 0 {
+            return Self::InvalidFlags(flags);
         }
-        match (flags >> 2) & 0x03 {
-            0 => IntraPacketTimeFormat::Ch4Binary,
-            1 => IntraPacketTimeFormat::Ieee1588,
-            2 => IntraPacketTimeFormat::Ertc64,
-            _ => IntraPacketTimeFormat::Rtc48, // fallback
+        if flags & 0x40 == 0 {
+            return Self::Rtc48;
+        }
+        match format {
+            0 => Self::Ch4Binary,
+            1 => Self::Ieee1588,
+            2 => Self::Ertc64,
+            _ => Self::InvalidFlags(flags),
         }
     }
 }
 
 /// Parsed intra-packet time stamp.
 ///
-/// **Traces:** L3-IPT-001 ← L2-IPT-005
+/// **Traces:** L3-IPT-106 ← L2-IPT-106
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IntraPacketTime {
@@ -69,7 +73,7 @@ pub enum IntraPacketTime {
 
 /// Parse an 8-byte intra-packet time stamp buffer.
 ///
-/// **Traces:** L3-IPT-002 ← L2-IPT-001..L2-IPT-004
+/// **Traces:** L3-IPT-106 ← L2-IPT-106, L2-IPT-107
 pub fn parse_intra_packet_time(buf: &[u8], fmt: IntraPacketTimeFormat) -> Result<IntraPacketTime> {
     if buf.len() < 8 {
         return Err(TimeError::BufferTooShort {
@@ -79,12 +83,19 @@ pub fn parse_intra_packet_time(buf: &[u8], fmt: IntraPacketTimeFormat) -> Result
     }
 
     match fmt {
+        IntraPacketTimeFormat::InvalidFlags(flags) => Err(TimeError::InvalidPacketFlags { flags }),
         IntraPacketTimeFormat::Rtc48 => {
-            // Bytes [0..6] = 48-bit RTC, bytes [6..8] = reserved (unused)
+            // §11.2.1.3 b: 48-bit RTC plus 16 high-order zero bits.
+            if buf[6] != 0 || buf[7] != 0 {
+                return Err(TimeError::ReservedBitSet {
+                    position: "RTC stamp padding",
+                });
+            }
             let rtc = Rtc::from_le_bytes([buf[0], buf[1], buf[2], buf[3], buf[4], buf[5]]);
             Ok(IntraPacketTime::Rtc(rtc))
         }
         IntraPacketTimeFormat::Ch4Binary => {
+            crate::secondary::validate_ch4_time(buf)?;
             let ch4 = Ch4BinaryTime::from_intra_packet_bytes(buf)?;
             Ok(IntraPacketTime::Ch4(ch4))
         }

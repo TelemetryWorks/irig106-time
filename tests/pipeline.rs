@@ -75,11 +75,12 @@ fn encode_ieee1588_secondary(seconds: u32, nanoseconds: u32) -> [u8; 12] {
 
 /// Parse a CSDW, decode a DOY BCD time message, and correlate an RTC to
 /// the decoded absolute time.
+/// Requirements: L1-CSDW-002
 #[test]
 fn full_day_format_pipeline() {
     // Step 1: Parse CSDW — GPS source, IRIG-B format, non-leap, DOY
     let csdw = TimeF1Csdw::from_raw(0x0003); // Source=GPS, Format=IrigB
-    assert_eq!(csdw.time_source(), TimeSource::Gps);
+    assert_eq!(csdw.time_source(), TimeSource::Reserved(3));
     assert_eq!(csdw.time_format(), TimeFormat::IrigB);
     assert_eq!(csdw.date_format(), DateFormat::DayOfYear);
     assert!(!csdw.is_leap_year());
@@ -671,68 +672,51 @@ fn year_overflow_guard_no_panic() {
 
 // ── Version detection ────────────────────────────────────────────────
 
+/// Requirements: L1-EDN-002
 #[test]
 fn version_detection_from_tmats_csdw() {
     use irig106_time::version::{Irig106Version, detect_version};
 
-    assert_eq!(detect_version(0x00000000), Irig106Version::Pre07);
+    assert_eq!(detect_version(0x00000000), Irig106Version::Unknown(0));
     assert_eq!(detect_version(0x00000007), Irig106Version::V07);
     assert_eq!(detect_version(0x0000000E), Irig106Version::V22);
-    assert_eq!(detect_version(0x0000000F), Irig106Version::V23);
+    assert_eq!(detect_version(0x0000000F), Irig106Version::Unknown(15));
     // Upper bits should be ignored
     assert_eq!(detect_version(0xFFFFFF0C), Irig106Version::V17);
 }
 
+/// Requirements: L1-EDN-002
 #[test]
-fn version_ordering_is_chronological() {
-    use irig106_time::version::Irig106Version;
-
-    assert!(Irig106Version::Pre07 < Irig106Version::V07);
-    assert!(Irig106Version::V07 < Irig106Version::V17);
-    assert!(Irig106Version::V17 < Irig106Version::V22);
+fn version_code_domains_stay_distinct() {
+    use irig106_time::version::{Irig106Version, detect_data_type_version, detect_version};
+    assert_eq!(detect_version(10), Irig106Version::V13);
+    assert_eq!(detect_data_type_version(10), Irig106Version::V22);
 }
 
+/// Requirements: L1-EDN-001
 #[test]
 fn version_feature_queries() {
-    use irig106_time::version::Irig106Version;
-
-    assert!(Irig106Version::Pre07.is_pre_ordering_guarantee());
-    assert!(!Irig106Version::V07.is_pre_ordering_guarantee());
-
-    assert!(!Irig106Version::V17.supports_format_2());
-    assert!(Irig106Version::V22.supports_format_2());
-
-    assert!(!Irig106Version::Pre07.has_gps_time_source());
-    assert!(Irig106Version::V07.has_gps_time_source());
+    use irig106_time::version::{Irig106Version, supports_format_2};
+    assert!(supports_format_2(&Irig106Version::V17));
+    assert!(!supports_format_2(&Irig106Version::Unknown(0)));
 }
 
-// ── Version-aware CSDW ──────────────────────────────────────────────
-
+/// Requirements: L1-CSDW-002
 #[test]
-fn csdw_time_source_versioned_pre07_ambiguous() {
-    use irig106_time::version::Irig106Version;
-
-    // Value 3 in pre-07 is ambiguous (04="None", 05="GPS")
-    let csdw = TimeF1Csdw::from_raw(0x03); // time_source bits = 3
-    let ts = csdw.time_source_versioned(&Irig106Version::Pre07);
-    assert_eq!(ts, TimeSource::Reserved(3));
-}
-
-#[test]
-fn csdw_time_source_versioned_v07_gps() {
-    use irig106_time::version::Irig106Version;
-
-    // Value 3 in 07+ is definitively GPS
-    let csdw = TimeF1Csdw::from_raw(0x03);
-    let ts = csdw.time_source_versioned(&Irig106Version::V07);
-    assert_eq!(ts, TimeSource::Gps);
-}
-
-#[test]
-fn csdw_time_source_unversioned_still_works() {
-    // The non-versioned method should always return GPS for value 3
-    let csdw = TimeF1Csdw::from_raw(0x03);
-    assert_eq!(csdw.time_source(), TimeSource::Gps);
+fn csdw_explicit_legacy_layout() {
+    use irig106_time::csdw::{TimeF1Layout, TimeF1Source};
+    let csdw = TimeF1Csdw::from_raw(3);
+    assert_eq!(
+        csdw.time_source_for_layout(TimeF1Layout::Legacy04),
+        TimeF1Source::ExternalTime {
+            present: true,
+            reserved_bits: 2
+        }
+    );
+    assert_eq!(
+        csdw.time_source_for_layout(TimeF1Layout::Source05),
+        TimeF1Source::Source(TimeSource::Reserved(3))
+    );
 }
 
 // ── OOO window ──────────────────────────────────────────────────────
@@ -1062,13 +1046,14 @@ fn sub_nanos_no_year_info_wraps_gracefully() {
 
 // ── P5-01: PacketStandard ───────────────────────────────────────────
 
+/// Requirements: L1-EDN-002
 #[test]
 fn packet_standard_from_version() {
     use irig106_time::packet_standard::PacketStandard;
     use irig106_time::version::Irig106Version;
 
     assert_eq!(
-        PacketStandard::from_version(&Irig106Version::Pre07),
+        PacketStandard::from_version(&Irig106Version::V04),
         PacketStandard::Ch10
     );
     assert_eq!(

@@ -2,10 +2,11 @@ use super::*;
 use crate::version::Irig106Version;
 use alloc::format;
 
+/// Requirements: L1-EDN-002
 #[test]
 fn pre17_is_ch10() {
     assert_eq!(
-        PacketStandard::from_version(&Irig106Version::Pre07),
+        PacketStandard::from_version(&Irig106Version::V04),
         PacketStandard::Ch10
     );
     assert_eq!(
@@ -22,6 +23,7 @@ fn pre17_is_ch10() {
     );
 }
 
+/// Requirements: L1-EDN-002
 #[test]
 fn v17_and_later_is_ch11() {
     assert_eq!(
@@ -37,19 +39,21 @@ fn v17_and_later_is_ch11() {
         PacketStandard::Ch11
     );
     assert_eq!(
-        PacketStandard::from_version(&Irig106Version::V23),
+        PacketStandard::from_version(&Irig106Version::V22),
         PacketStandard::Ch11
     );
 }
 
+/// Requirements: L1-EDN-002
 #[test]
-fn unknown_defaults_to_ch11() {
+fn unknown_has_unknown_provenance() {
     assert_eq!(
         PacketStandard::from_version(&Irig106Version::Unknown(0xFF)),
-        PacketStandard::Ch11
+        PacketStandard::Unknown
     );
 }
 
+/// Requirements: L1-EDN-002
 #[test]
 fn is_ch10_and_is_ch11() {
     assert!(PacketStandard::Ch10.is_ch10());
@@ -58,6 +62,7 @@ fn is_ch10_and_is_ch11() {
     assert!(!PacketStandard::Ch11.is_ch10());
 }
 
+/// Requirements: L1-EDN-002
 #[test]
 fn display_formatting() {
     assert_eq!(format!("{}", PacketStandard::Ch10), "Chapter 10");

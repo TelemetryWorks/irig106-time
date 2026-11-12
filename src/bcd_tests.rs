@@ -10,12 +10,12 @@
 //! | `day_fmt_invalid_bcd_digit` | Nibble > 9 is rejected | L3-BCD-001 |
 //! | `day_fmt_reserved_bit_set` | Reserved bit non-zero rejected | L3-BCD-002 |
 //! | `day_fmt_day_zero_rejected` | Day=0 rejected | L3-BCD-006 |
-//! | `day_fmt_buffer_too_short` | <8 bytes rejected | L3-BCD-003 |
+//! | `day_fmt_buffer_too_short` | <6 bytes rejected | L3-BCD-003 |
 //! | `day_fmt_to_absolute` | Conversion to AbsoluteTime | L3-BCD-007 |
 //! | `dmy_fmt_decode_known` | Known DMY time decodes correctly | L3-BCD-004 |
 //! | `dmy_fmt_to_absolute_with_date` | Conversion to CalendarTime includes year/month/day | L3-BCD-007 |
 //! | `dmy_fmt_invalid_month_zero` | Month=0 rejected | L3-BCD-006 |
-//! | `dmy_fmt_buffer_too_short` | <10 bytes rejected | L3-BCD-004 |
+//! | `dmy_fmt_buffer_too_short` | <8 bytes rejected | L3-BCD-004 |
 //! | `millisecond_resolution_10ms` | MS field has 10ms granularity | L3-BCD-005 |
 
 use super::*;
@@ -30,19 +30,12 @@ use super::*;
 /// Word 2: Dn=0, TDn=0, HDn=1, rsv=0
 ///   = 0b000000_01_0000_0000 = 0x0100
 /// Word 3: 0x0000
-fn day100_123025_340_bytes() -> [u8; 8] {
-    let w0: u16 = 0x2534;
-    let w1: u16 = 0x1230;
-    let w2: u16 = 0x0100;
-    let w3: u16 = 0x0000;
-    let mut buf = [0u8; 8];
-    buf[0..2].copy_from_slice(&w0.to_le_bytes());
-    buf[2..4].copy_from_slice(&w1.to_le_bytes());
-    buf[4..6].copy_from_slice(&w2.to_le_bytes());
-    buf[6..8].copy_from_slice(&w3.to_le_bytes());
-    buf
+fn day100_123025_340_bytes() -> [u8; 6] {
+    // Figure 11-13, independently computed words 0x2534, 0x1230, 0x0100.
+    [0x34, 0x25, 0x30, 0x12, 0, 1]
 }
 
+/// Requirements: L1-BCD-005, L1-BCD-006
 #[test]
 fn day_fmt_decode_known() {
     let buf = day100_123025_340_bytes();
@@ -54,6 +47,7 @@ fn day_fmt_decode_known() {
     assert_eq!(t.milliseconds(), 340);
 }
 
+/// Requirements: L1-BCD-005, L1-BCD-006
 #[test]
 fn day_fmt_midnight_day1() {
     // Day 001, 00:00:00.000
@@ -70,6 +64,7 @@ fn day_fmt_midnight_day1() {
     assert_eq!(t.milliseconds(), 0);
 }
 
+/// Requirements: L1-BCD-005, L1-BCD-006
 #[test]
 fn day_fmt_max_day() {
     // Day 366, 23:59:59.990
@@ -91,6 +86,7 @@ fn day_fmt_max_day() {
     assert_eq!(t.milliseconds(), 990);
 }
 
+/// Requirements: L1-BCD-005, L1-BCD-006
 #[test]
 fn day_fmt_invalid_bcd_digit() {
     // Set Tmn nibble to 0xA (invalid BCD)
@@ -105,6 +101,7 @@ fn day_fmt_invalid_bcd_digit() {
     }
 }
 
+/// Requirements: L1-BCD-005, L1-BCD-006
 #[test]
 fn day_fmt_reserved_bit_set() {
     // Set word 0 bit 15 (reserved)
@@ -119,6 +116,7 @@ fn day_fmt_reserved_bit_set() {
     }
 }
 
+/// Requirements: L1-BCD-005, L1-BCD-006
 #[test]
 fn day_fmt_day_zero_rejected() {
     // All zeros → day_of_year=0 → OutOfRange
@@ -131,20 +129,19 @@ fn day_fmt_day_zero_rejected() {
     }
 }
 
+/// Requirements: L1-BCD-005, L1-BCD-006
 #[test]
 fn day_fmt_buffer_too_short() {
-    let buf = [0u8; 6];
-    let result = DayFormatTime::from_le_bytes(&buf);
-    assert!(result.is_err());
-    match result.unwrap_err() {
-        TimeError::BufferTooShort {
-            expected: 8,
-            actual: 6,
-        } => {}
-        other => panic!("expected BufferTooShort, got {other:?}"),
-    }
+    assert!(matches!(
+        DayFormatTime::from_le_bytes(&[0; 5]),
+        Err(TimeError::BufferTooShort {
+            expected: 6,
+            actual: 5
+        })
+    ));
 }
 
+/// Requirements: L1-BCD-005, L1-BCD-006
 #[test]
 fn day_fmt_to_absolute() {
     let buf = day100_123025_340_bytes();
@@ -157,6 +154,7 @@ fn day_fmt_to_absolute() {
     assert_eq!(abs.nanoseconds(), 340_000_000);
 }
 
+/// Requirements: L1-BCD-005, L1-BCD-006
 #[test]
 fn dmy_fmt_decode_known() {
     // March 15, 2025, 08:45:30.120
@@ -183,6 +181,7 @@ fn dmy_fmt_decode_known() {
     assert_eq!(t.milliseconds(), 120);
 }
 
+/// Requirements: L1-BCD-005, L1-BCD-006
 #[test]
 fn dmy_fmt_to_absolute_with_date() {
     let w0: u16 = 0x3012;
@@ -203,6 +202,7 @@ fn dmy_fmt_to_absolute_with_date() {
     assert_eq!(ct.day_of_year(), 74);
 }
 
+/// Requirements: L1-BCD-005, L1-BCD-006
 #[test]
 fn dmy_fmt_invalid_month_zero() {
     // Month = 0 via BCD = On=0, TOn=0
@@ -215,12 +215,14 @@ fn dmy_fmt_invalid_month_zero() {
     assert!(result.is_err());
 }
 
+/// Requirements: L1-BCD-005, L1-BCD-006
 #[test]
 fn dmy_fmt_buffer_too_short() {
-    let buf = [0u8; 8];
+    let buf = [0u8; 7];
     assert!(DmyFormatTime::from_le_bytes(&buf).is_err());
 }
 
+/// Requirements: L1-BCD-005, L1-BCD-006
 #[test]
 fn millisecond_resolution_10ms() {
     // Tmn=5 (tens of ms), Hmn=2 (hundreds of ms) → 250 ms

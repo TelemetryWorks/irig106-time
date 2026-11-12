@@ -1,8 +1,8 @@
 //! IRIG 106 packet standard provenance.
 //!
 //! IRIG 106-17 split Chapter 10 into two chapters: Chapter 10 retains recorder
-//! operations, while Chapter 11 defines the recorder packet formats. The wire
-//! format for time fields is **identical** across both chapters — this module
+//! operations, while Chapter 11 defines the recorder packet formats. Individual
+//! field layouts still depend on the caller-declared edition; this module
 //! provides metadata to track which chapter a packet originated from.
 //!
 //! # Why This Matters
@@ -22,15 +22,15 @@
 /// Identifies whether a packet follows the Chapter 10 or Chapter 11 format.
 ///
 /// In IRIG 106-17 and later, packet format definitions moved to Chapter 11.
-/// The wire format for time-related fields (RTC, CSDW, BCD, secondary headers)
-/// is identical in both chapters. This enum tracks provenance, not format
-/// differences.
+/// This enum tracks the chapter named by a caller-declared release, not
+/// the per-field wire layout or an automatically inferred recording edition.
 ///
 /// # Determining the Standard
 ///
 /// The packet standard can be inferred from the IRIG 106 version:
-/// - Pre-17 files (versions 0 through 0x0B): Chapter 10
-/// - 106-17 and later (versions 0x0C+): Chapter 11
+/// - Known releases before 106-17: Chapter 10
+/// - Known releases from 106-17: Chapter 11
+/// - Unknown codes: Unknown; no modern capability is inferred
 ///
 /// Use [`from_version`](PacketStandard::from_version) to derive this
 /// automatically from an [`Irig106Version`](crate::version::Irig106Version).
@@ -41,6 +41,8 @@ pub enum PacketStandard {
     Ch10,
     /// Packet format defined by IRIG 106 Chapter 11 (106-17 and later).
     Ch11,
+    /// Version code does not establish packet provenance.
+    Unknown,
 }
 
 impl PacketStandard {
@@ -55,7 +57,7 @@ impl PacketStandard {
     /// use irig106_time::packet_standard::PacketStandard;
     /// use irig106_time::version::Irig106Version;
     ///
-    /// assert_eq!(PacketStandard::from_version(&Irig106Version::Pre07), PacketStandard::Ch10);
+    /// assert_eq!(PacketStandard::from_version(&Irig106Version::V04), PacketStandard::Ch10);
     /// assert_eq!(PacketStandard::from_version(&Irig106Version::V07), PacketStandard::Ch10);
     /// assert_eq!(PacketStandard::from_version(&Irig106Version::V17), PacketStandard::Ch11);
     /// assert_eq!(PacketStandard::from_version(&Irig106Version::V22), PacketStandard::Ch11);
@@ -63,17 +65,15 @@ impl PacketStandard {
     pub fn from_version(version: &crate::version::Irig106Version) -> Self {
         use crate::version::Irig106Version;
         match version {
-            Irig106Version::Pre07
+            Irig106Version::V04
+            | Irig106Version::V05
             | Irig106Version::V07
             | Irig106Version::V09
             | Irig106Version::V11
             | Irig106Version::V13
             | Irig106Version::V15 => PacketStandard::Ch10,
-            Irig106Version::V17
-            | Irig106Version::V19
-            | Irig106Version::V22
-            | Irig106Version::V23 => PacketStandard::Ch11,
-            Irig106Version::Unknown(_) => PacketStandard::Ch11, // assume modern
+            Irig106Version::V17 | Irig106Version::V19 | Irig106Version::V22 => PacketStandard::Ch11,
+            Irig106Version::Unknown(_) => PacketStandard::Unknown,
         }
     }
 
@@ -95,6 +95,7 @@ impl core::fmt::Display for PacketStandard {
         match self {
             PacketStandard::Ch10 => write!(f, "Chapter 10"),
             PacketStandard::Ch11 => write!(f, "Chapter 11"),
+            PacketStandard::Unknown => write!(f, "Unknown"),
         }
     }
 }

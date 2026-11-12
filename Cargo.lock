@@ -337,7 +337,7 @@ dependencies = [
 [[package]]
 name = "irig106-types"
 version = "0.1.0"
-source = "git+https://github.com/TelemetryWorks/irig106-types?rev=e513af4e85614dbe08115d39403a8e5a9b7fb0dc#e513af4e85614dbe08115d39403a8e5a9b7fb0dc"
+source = "git+https://github.com/TelemetryWorks/irig106-types?rev=48f1834d3fe7b0d706eb33230c6ff777dbff7a99#48f1834d3fe7b0d706eb33230c6ff777dbff7a99"
 dependencies = [
  "serde",
 ]
