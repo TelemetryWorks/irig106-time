@@ -15,7 +15,8 @@ With the prototype library and original e513af4 dependency, executed:
 The first commit changes only the two test files. All fixtures are independent
 bytes/constants from the standard, not produced by the implementation encoder.
 Additional boundary assertions were added to the same regression cases with the
-fix; the originally committed assertions and expectations are unchanged.
+fix. The later reviewer correction below replaces the erroneous reserved-word
+rejection assertion; the other original value expectations remain unchanged.
 
 | Finding | Before, executed against main | After |
 |---------|-------------------------------|-------|
@@ -27,8 +28,8 @@ fix; the originally committed assertions and expectations are unchanged.
 | T-10 (shared adoption) | Figure11-4 fields decoded (9999,4660,1) rather than (1,4660,9999) | reserved/usec/low/high; top binary low bit retained; short/reserved/usec cases checked |
 | T-12 | six-byte day body rejected (expected8); eight-byte DMY rejected (expected10) | Exact6/8-byte reads/encoding; all truncations and nonzero following filler checked |
 
-After fixes, `cargo test --test rebuild_wire --test rebuild_layout` passes
-**11 + 5 tests**. The old unit/integration assertions encoding incorrect GPS,
+After the initial fixes, `cargo test --test rebuild_wire --test rebuild_layout`
+passed **11 + 5 tests**. The current reviewer-corrected suite passes **15 + 5**. The old unit/integration assertions encoding incorrect GPS,
 V23, Pre07 and BCD-length assumptions were corrected. The local version table
 is deleted; version types/mappings come from irig106-types 48f1834. Caller
 layout selection is a separate required argument, not derived from a header
@@ -51,6 +52,8 @@ These are executed checks, not inferred results. Commands correspond to
 | `cargo clippy --all-targets --all-features -- -D warnings` | PASS |
 | `cargo fmt --all -- --check` | PASS |
 | `cargo doc --no-deps --all-features` | PASS |
+| `cargo test --manifest-path irig106-time-cli/Cargo.toml` | PASS |
+| `cargo fmt --manifest-path irig106-time-cli/Cargo.toml -- --check` | PASS |
 | `cargo build --manifest-path irig106-time-cli/Cargo.toml` | PASS |
 | `cargo clippy --manifest-path irig106-time-cli/Cargo.toml --all-targets -- -D warnings` | PASS |
 | `cargo build --target wasm32-unknown-unknown --no-default-features` | PASS |
@@ -59,7 +62,7 @@ These are executed checks, not inferred results. Commands correspond to
 | `cargo deny check` | PASS |
 
 Library tests with all features: 176 unit, 67 pipeline, 17 property,
-16 new regression tests, and 10 doctests passed. No-default, serde and chrono
+20 rebuild regression tests, and 10 doctests passed. Both CLI tests pass. No-default, serde and chrono
 feature runs also pass. MSRV, Clippy, docs, WASM, cargo-deny and trace checks pass.
 No benchmarks or sustained fuzz campaigns were run for this bounded slice.
 
@@ -78,15 +81,52 @@ CLI lockfile regeneration. Those edits are now applied:
 
 The paths above are relative to irig106-time-cli. Its Cargo.lock gained only
 the source identity for irig106-types at 48f1834; package versions did not change.
-No other CLI source/behaviour was changed. The full sixteen-command local
-CI equivalent was rerun after adoption with CARGO_BUILD_JOBS=2: **all pass**,
-including CLI build and Clippy. The table above reports those latest results;
-the earlier failures are retained here as history, not current blockers.
+At that compatibility commit, no other CLI behaviour changed. The later
+reviewer-authorized T-12 length fix is recorded below. All **18** commands in
+the current table pass after the review fixes with CARGO_BUILD_JOBS=2,
+including the additional CLI tests and CLI format check. The earlier failures
+are retained here as history, not current blockers.
+
+## Reviewer corrections after b1fb219
+
+Tests-only commit `5067b94` reproduces five failures before the corrections:
+`parse_rtc48_reserved_ignored`, the secondary Chapter 4 fixture, the new
+intra-packet reserved-word fixture, and both CLI consumer tests. The library
+failures are `ReservedBitSet`; the CLI reports DOY/DMY buffer-too-short.
+These are executed assertion failures, not inferred outcomes.
+
+RTC stamps now decode only bytes [0..6) even with nonzero [6..8). Chapter 4
+secondary and intra-packet readers likewise retain values when their internal
+reserved word is set. The independent `validate_rtc48_reserved`,
+`validate_ch4_reserved` and `validate_secondary_reserved` APIs report TF-005
+warnings without discarding the parse result. The two Chapter 4 reserved fields
+have separate positions and can both be reported. Tests walk every reserved bit,
+check truncated validator inputs, and confirm unchanged time values.
+Microseconds 10000 still produce `OutOfRange` on both paths, with or without a
+reserved-word warning (TF-004). No severity policy or owner question is changed.
+
+CLI `src/main.rs:256` changes `bcd_start + 8` to `bcd_start + 6` for DOY;
+line 275 changes `bcd_start + 10` to `bcd_start + 8` for calendar BCD. Tests pass
+exact consumer buffers (no filler) and every truncated body directly through
+`process_time_packet`. Previously these exact bodies produced a buffer-too-short
+error and no reference/channel; now they yield one reference/channel with the
+specified time. Output formatting and exit policy are unchanged. This does not
+claim to validate packet framing or implement a wider CLI Data Length policy.
+
+All 33 added/changed `Traces` tags in the PR were checked against current L2/L3
+IDs and their L1 parents, with no duplicates or bad chains. This includes the
+DayFormatTime conversion tag, which incorrectly referenced calendar BCD. The
+secondary checksum documentation explicitly identifies its deferred RDG-008
+limitation instead of claiming the byte-sum requirement is complete. Fixture
+comments mark the word-sum checksums for replacement when RDG-008 lands.
+`Ch4BinaryTimeExt::to_absolute` has a linked Q-CH4 warning about its incorrect
+17-bit split; the conversion itself remains deferred. CHANGELOG Unreleased
+records migration notes for the public version/CSDW/flag/BCD/type changes.
 
 ## Traceability and limitations
 
-Generated marker coverage increases from **0/286** to **24/286 (8.4%)**:
-12 L2 and12 L3 entries now have tests. There are zero orphan parents or unknown
+Generated marker coverage increases from **0/286** to **30/286 (10.5%)**:
+15 L2 and15 L3 entries now have tests. There are zero orphan parents or unknown
 markers. This counts linked tests, not complete semantic implementation or line
 coverage. In particular ABS-102 calendar reconstruction is not delivered by
 its raw-byte fixtures. RDG-007 is tested only for an explicitly declared layout;
@@ -96,7 +136,8 @@ No Design or Review field has changed.
 Deferred: network_time (T-2/T-3 and its existing epoch/leap behaviour),
 correlation and reference admission, streaming and all Q-DEFAULT/Q-STREAM-*
 policies, calendar-origin/BCD-day reconstruction (Q-CH4), NTP conversion choices
-(Q-NTP), Q-FLAGS relaxation, CLI commands/outputs/exit policy (Q-CLI-EXIT),
+(Q-NTP), Q-FLAGS relaxation, CLI commands/exit policy (Q-CLI-EXIT) beyond the authorized compatibility and
+BCD length fixes,
 automatic edition/G\106 policy (Q-EDITION), TMATS defaults/comparisons
 (Q-TFMT-DEFAULT), and the wider timeline/findings/release/workspace rebuild.
 The prototype Chapter 4 to_absolute/calendar path is unchanged; use raw fields

@@ -216,3 +216,137 @@ fn t10_intra_ch4_reserved_word_keeps_value() {
         (1, 0x1234, 9999)
     );
 }
+
+/// Requirements: L1-RTC-002, L2-RTC-102, L3-RTC-102
+#[test]
+fn rtc_padding_warning_is_separate_from_decoding() {
+    use irig106_time::intra_packet::{
+        IntraPacketTime, parse_intra_packet_time, validate_rtc48_reserved,
+    };
+    use irig106_time::{Rtc, TimeError};
+    let mut bytes = [1, 2, 3, 4, 5, 6, 0, 0];
+    assert_eq!(validate_rtc48_reserved(&bytes), Ok(()));
+    for bit in 0..16 {
+        bytes[6..8].copy_from_slice(&(1u16 << bit).to_le_bytes());
+        assert_eq!(
+            parse_intra_packet_time(&bytes, IntraPacketTimeFormat::Rtc48).unwrap(),
+            IntraPacketTime::Rtc(Rtc::from_raw(0x0605_0403_0201))
+        );
+        assert_eq!(
+            validate_rtc48_reserved(&bytes),
+            Err(TimeError::ReservedBitSet {
+                position: "RTC stamp padding",
+            })
+        );
+    }
+    for n in 0..8 {
+        assert!(
+            matches!(validate_rtc48_reserved(&bytes[..n]), Err(TimeError::BufferTooShort { expected: 8, actual }) if actual == n)
+        );
+    }
+}
+
+/// Requirements: L1-SEC-001, L1-SEC-005, L2-SEC-101, L3-SEC-101, L2-SEC-105, L3-SEC-105
+#[test]
+fn ch4_reserved_words_report_independent_warnings_and_keep_time() {
+    use irig106_time::TimeError;
+    use irig106_time::intra_packet::{IntraPacketTime, parse_intra_packet_time};
+    use irig106_time::secondary::{validate_ch4_reserved, validate_secondary_reserved};
+    // TODO(RDG-008): replace these word-sum checksums when byte-sum lands.
+    // Base: usec 9999 + low 0x8000 + high 1 = 0xa710.
+    let mut bytes = [0, 0, 0x0f, 0x27, 0, 0x80, 1, 0, 0, 0, 0x10, 0xa7];
+    assert_eq!(validate_ch4_reserved(&bytes), Ok(()));
+    assert_eq!(validate_secondary_reserved(&bytes), Ok(()));
+    for bit in 0..16 {
+        let reserved = 1u16 << bit;
+        for offset in [0, 8] {
+            bytes[0..2].fill(0);
+            bytes[8..10].fill(0);
+            bytes[offset..offset + 2].copy_from_slice(&reserved.to_le_bytes());
+            bytes[10..12].copy_from_slice(&0xa710u16.wrapping_add(reserved).to_le_bytes());
+            let SecondaryHeaderTime::Ch4(t) =
+                parse_secondary_header(&bytes, SecHdrTimeFormat::Ch4).unwrap()
+            else {
+                panic!("wrong dispatch")
+            };
+            assert_eq!(
+                (t.high_order, t.low_order, t.microseconds),
+                (1, 0x8000, 9999)
+            );
+            assert_eq!(
+                parse_intra_packet_time(&bytes[..8], IntraPacketTimeFormat::Ch4Binary).unwrap(),
+                IntraPacketTime::Ch4(t)
+            );
+            assert_eq!(validate_ch4_reserved(&bytes).is_err(), offset == 0);
+            assert_eq!(validate_secondary_reserved(&bytes).is_err(), offset == 8);
+        }
+    }
+    // Both findings remain independently observable without suppressing time.
+    bytes[0..2].copy_from_slice(&1u16.to_le_bytes());
+    bytes[8..10].copy_from_slice(&2u16.to_le_bytes());
+    bytes[10..12].copy_from_slice(&0xa713u16.to_le_bytes());
+    assert!(parse_secondary_header(&bytes, SecHdrTimeFormat::Ch4).is_ok());
+    assert_eq!(
+        validate_ch4_reserved(&bytes),
+        Err(TimeError::ReservedBitSet {
+            position: "Chapter 4 reserved word"
+        })
+    );
+    assert_eq!(
+        validate_secondary_reserved(&bytes),
+        Err(TimeError::ReservedBitSet {
+            position: "secondary header reserved word"
+        })
+    );
+    for n in 0..8 {
+        assert!(
+            matches!(validate_ch4_reserved(&bytes[..n]), Err(TimeError::BufferTooShort { expected: 8, actual }) if actual == n)
+        );
+    }
+    for n in 0..12 {
+        assert!(
+            matches!(validate_secondary_reserved(&bytes[..n]), Err(TimeError::BufferTooShort { expected: 12, actual }) if actual == n)
+        );
+    }
+}
+
+/// Requirements: L1-ABS-002, L2-ABS-102, L3-ABS-102
+#[test]
+fn ch4_invalid_microseconds_still_reject_both_paths() {
+    use irig106_time::TimeError;
+    use irig106_time::intra_packet::parse_intra_packet_time;
+    // TODO(RDG-008): replace the word-sum checksum when byte-sum lands.
+    for reserved in [0, 1] {
+        let bytes = [
+            reserved,
+            0,
+            0x10,
+            0x27,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0x10 + reserved,
+            0x27,
+        ];
+        let expected = Err(TimeError::OutOfRange {
+            field: "ch4_microseconds",
+            value: 10000,
+            max: 9999,
+        });
+        assert_eq!(
+            parse_secondary_header(&bytes, SecHdrTimeFormat::Ch4),
+            expected
+        );
+        assert_eq!(
+            parse_intra_packet_time(&bytes[..8], IntraPacketTimeFormat::Ch4Binary),
+            Err(TimeError::OutOfRange {
+                field: "ch4_microseconds",
+                value: 10000,
+                max: 9999
+            })
+        );
+    }
+}

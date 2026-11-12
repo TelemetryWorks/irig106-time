@@ -73,7 +73,12 @@ pub enum IntraPacketTime {
 
 /// Parse an 8-byte intra-packet time stamp buffer.
 ///
-/// **Traces:** L3-IPT-106 ← L2-IPT-106, L2-IPT-107
+/// Reserved padding/words do not suppress the value (TF-005). Call
+/// [`validate_rtc48_reserved`] or [`crate::secondary::validate_ch4_reserved`]
+/// separately to report them. Invalid Chapter 4 microseconds remain an error.
+///
+/// **Traces:** L3-IPT-106 ← L2-IPT-106
+/// **Traces:** L3-IPT-107 ← L2-IPT-107
 pub fn parse_intra_packet_time(buf: &[u8], fmt: IntraPacketTimeFormat) -> Result<IntraPacketTime> {
     if buf.len() < 8 {
         return Err(TimeError::BufferTooShort {
@@ -85,17 +90,12 @@ pub fn parse_intra_packet_time(buf: &[u8], fmt: IntraPacketTimeFormat) -> Result
     match fmt {
         IntraPacketTimeFormat::InvalidFlags(flags) => Err(TimeError::InvalidPacketFlags { flags }),
         IntraPacketTimeFormat::Rtc48 => {
-            // §11.2.1.3 b: 48-bit RTC plus 16 high-order zero bits.
-            if buf[6] != 0 || buf[7] != 0 {
-                return Err(TimeError::ReservedBitSet {
-                    position: "RTC stamp padding",
-                });
-            }
+            // §11.2.1.3 b: padding is reported separately (TF-005 warning).
             let rtc = Rtc::from_le_bytes([buf[0], buf[1], buf[2], buf[3], buf[4], buf[5]]);
             Ok(IntraPacketTime::Rtc(rtc))
         }
         IntraPacketTimeFormat::Ch4Binary => {
-            crate::secondary::validate_ch4_time(buf)?;
+            crate::secondary::validate_ch4_microseconds(buf)?;
             let ch4 = Ch4BinaryTime::from_intra_packet_bytes(buf)?;
             Ok(IntraPacketTime::Ch4(ch4))
         }
@@ -113,3 +113,24 @@ pub fn parse_intra_packet_time(buf: &[u8], fmt: IntraPacketTimeFormat) -> Result
 #[cfg(test)]
 #[path = "intra_packet_tests.rs"]
 mod intra_packet_tests;
+
+/// Check the two reserved padding bytes of an eight-byte RTC stamp.
+///
+/// A `ReservedBitSet` result is a separate TF-005 warning: the value returned
+/// by [`parse_intra_packet_time`] remains usable. Padding is never counter data.
+///
+/// **Traces:** L3-RTC-102 ← L2-RTC-102 ← L1-RTC-002
+pub fn validate_rtc48_reserved(buf: &[u8]) -> Result<()> {
+    if buf.len() < 8 {
+        return Err(TimeError::BufferTooShort {
+            expected: 8,
+            actual: buf.len(),
+        });
+    }
+    if buf[6] != 0 || buf[7] != 0 {
+        return Err(TimeError::ReservedBitSet {
+            position: "RTC stamp padding",
+        });
+    }
+    Ok(())
+}

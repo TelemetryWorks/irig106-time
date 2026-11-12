@@ -41,7 +41,8 @@ pub enum TimeF1Source {
 
 /// Parsed Time Data Format 1 (0x11) Channel-Specific Data Word.
 ///
-/// **Traces:** L3-CSDW-101 ← L2-CSDW-101, L2-CSDW-102 ← L1-CSDW-001
+/// **Traces:** L3-CSDW-101 ← L2-CSDW-101 ← L1-CSDW-001
+/// **Traces:** L3-CSDW-102 ← L2-CSDW-102 ← L1-CSDW-002
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TimeF1Csdw(u32);
@@ -82,7 +83,7 @@ impl TimeF1Csdw {
     /// Modern (106-05+) SRC, bits \[3:0\] (§11.2.3.2 a).
     /// For legacy packets use time_source_for_layout with an explicit declaration.
     ///
-    /// **Traces:** L3-CSDW-102 ← L2-CSDW-101
+    /// **Traces:** L3-CSDW-102 ← L2-CSDW-102
     #[inline]
     pub fn time_source(self) -> TimeSource {
         TimeSource::from_raw((self.0 & 0x0F) as u8)
@@ -91,7 +92,7 @@ impl TimeF1Csdw {
     /// Modern (106-05+) FMT, bits \[7:4\] (§11.2.3.2 a).
     /// For legacy packets use time_format_for_layout.
     ///
-    /// **Traces:** L3-CSDW-103 ← L2-CSDW-102
+    /// **Traces:** L3-CSDW-103 ← L2-CSDW-103
     #[inline]
     pub fn time_format(self) -> TimeFormat {
         TimeFormat::from_raw(((self.0 >> 4) & 0x0F) as u8)

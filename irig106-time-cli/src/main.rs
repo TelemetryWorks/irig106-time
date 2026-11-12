@@ -253,7 +253,7 @@ impl Ch10TimeScanner {
         let bcd_start = data_start + 4;
         let abs_time = match csdw.date_format() {
             DateFormat::DayOfYear => {
-                if bcd_start + 8 > pkt_buf.len() {
+                if bcd_start + 6 > pkt_buf.len() {
                     self.errors.push(format!(
                         "Time packet ch={}: buffer too short for DOY BCD",
                         hdr.channel_id
@@ -272,7 +272,7 @@ impl Ch10TimeScanner {
                 }
             }
             DateFormat::DayMonthYear => {
-                if bcd_start + 10 > pkt_buf.len() {
+                if bcd_start + 8 > pkt_buf.len() {
                     self.errors.push(format!(
                         "Time packet ch={}: buffer too short for DMY BCD",
                         hdr.channel_id

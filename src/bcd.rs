@@ -7,7 +7,7 @@
 //!
 //! | Requirement | Description |
 //! |-------------|-------------|
-//! | L3-BCD-104..007 | BCD helpers, DayFormatTime, DmyFormatTime |
+//! | L3-BCD-103..106 | BCD helpers, DayFormatTime, DmyFormatTime |
 
 use crate::absolute::AbsoluteTime;
 use crate::error::{Result, TimeError};
@@ -26,7 +26,7 @@ const BCD_LUT: [u8; 16] = [
 
 /// Extract a 4-bit BCD nibble from a u16 word and validate it via lookup table.
 ///
-/// **Traces:** L3-BCD-104 ← L2-BCD-105, L2-BCD-105, P4-03
+/// **Traces:** L3-BCD-104 ← L2-BCD-104 ← L1-BCD-004; P4-03
 #[inline]
 fn extract_bcd_digit(word: u16, bit_offset: u8, position: &'static str) -> Result<u8> {
     let nibble = ((word >> bit_offset) & 0x0F) as usize;
@@ -42,7 +42,7 @@ fn extract_bcd_digit(word: u16, bit_offset: u8, position: &'static str) -> Resul
 
 /// Verify that specific bits in a word are zero.
 ///
-/// **Traces:** L3-BCD-103 ← L2-BCD-105
+/// **Traces:** L3-BCD-103 ← L2-BCD-103 ← L1-BCD-003
 #[inline]
 fn check_reserved(word: u16, mask: u16, position: &'static str) -> Result<()> {
     if word & mask != 0 {
@@ -67,7 +67,7 @@ fn check_reserved(word: u16, mask: u16, position: &'static str) -> Result<()> {
 /// [`DayFormatTime::from_le_bytes`] to parse from wire format, or
 /// [`DayFormatTime::new`] for programmatic construction with validation.
 ///
-/// **Traces:** L3-BCD-105 ← L2-BCD-105, L2-BCD-105 ← L1-BCD-005
+/// **Traces:** L3-BCD-105 ← L2-BCD-105 ← L1-BCD-005
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DayFormatTime {
     /// Milliseconds (0–990, resolution 10 ms).
@@ -214,7 +214,7 @@ impl DayFormatTime {
     /// Word 1: `[3:0]=Mn [6:4]=TMn [7]=rsv [11:8]=Hn [13:12]=THn [15:14]=rsv`
     /// Word 2: `[3:0]=Dn [7:4]=TDn [9:8]=HDn [15:10]=rsv`
     ///
-    /// **Traces:** L3-BCD-105, L3-BCD-105, L3-BCD-105
+    /// **Traces:** L3-BCD-103, L3-BCD-104, L3-BCD-105
     pub fn from_le_bytes(buf: &[u8]) -> Result<Self> {
         if buf.len() < 6 {
             return Err(TimeError::BufferTooShort {
@@ -313,7 +313,7 @@ impl DayFormatTime {
 
     /// Convert to `AbsoluteTime`.
     ///
-    /// **Traces:** L3-BCD-106 ← L2-BCD-106
+    /// **Traces:** L3-BCD-105 ← L2-BCD-105
     pub fn to_absolute(&self) -> AbsoluteTime {
         // Safe to unwrap: values were validated in from_le_bytes
         AbsoluteTime::new(
@@ -379,7 +379,7 @@ impl DayFormatTime {
 /// [`DmyFormatTime::from_le_bytes`] to parse from wire format, or
 /// [`DmyFormatTime::new`] for programmatic construction with validation.
 ///
-/// **Traces:** L3-BCD-106 ← L2-BCD-105, L2-BCD-105 ← L1-BCD-006
+/// **Traces:** L3-BCD-106 ← L2-BCD-106 ← L1-BCD-006
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DmyFormatTime {
     /// Milliseconds (0–990, resolution 10 ms).
@@ -576,7 +576,7 @@ impl DmyFormatTime {
     /// Word 2: `[3:0]=Dn [7:4]=TDn [11:8]=On [12]=TOn [15:13]=rsv`
     /// Word 3: `[3:0]=Yn [7:4]=TYn [11:8]=HYn [13:12]=OYn [15:14]=rsv`
     ///
-    /// **Traces:** L3-BCD-106, L3-BCD-105, L3-BCD-105
+    /// **Traces:** L3-BCD-103, L3-BCD-104, L3-BCD-106
     pub fn from_le_bytes(buf: &[u8]) -> Result<Self> {
         if buf.len() < 8 {
             return Err(TimeError::BufferTooShort {
@@ -648,7 +648,7 @@ impl DmyFormatTime {
         let oyn = ((w3 >> 12) & 0x03) as u8;
         let year = (oyn as u16) * 1000 + (hyn as u16) * 100 + (tyn as u16) * 10 + (yn as u16);
 
-        // Validate ranges (L3-BCD-105)
+        // Validate ranges (L3-BCD-106)
         if seconds > 59 {
             return Err(TimeError::OutOfRange {
                 field: "seconds",

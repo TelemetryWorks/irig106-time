@@ -24,7 +24,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
 | L1-RTC-001 | L2-RTC-101 | _(none)_ | Draft |
-| L1-RTC-002 | L2-RTC-102 | _(none)_ | Draft |
+| L1-RTC-002 | L2-RTC-102 | `src/intra_packet_tests.rs::parse_rtc48_reserved_ignored`<br>`tests/rebuild_wire.rs::rtc_padding_warning_is_separate_from_decoding` | Implemented |
 | L1-RTC-003 | L2-RTC-103 | _(none)_ | Draft |
 | L1-RTC-004 | L2-RTC-104 | _(none)_ | Draft |
 
@@ -33,7 +33,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
 | L2-RTC-101 | L3-RTC-101 | _(TBD)_ | Draft |
-| L2-RTC-102 | L3-RTC-102 | _(TBD)_ | Draft |
+| L2-RTC-102 | L3-RTC-102 | `src/intra_packet_tests.rs::parse_rtc48_reserved_ignored`<br>`tests/rebuild_wire.rs::rtc_padding_warning_is_separate_from_decoding` | Implemented |
 | L2-RTC-103 | L3-RTC-103 | _(TBD)_ | Draft |
 | L2-RTC-104 | L3-RTC-104 | _(TBD)_ | Draft |
 
@@ -44,7 +44,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
 | L1-ABS-001 | L2-ABS-101 | _(none)_ | Draft |
-| L1-ABS-002 | L2-ABS-102 | `tests/rebuild_wire.rs::t10_secondary_ch4_has_usec_low_high_words` | Implemented |
+| L1-ABS-002 | L2-ABS-102 | `tests/rebuild_wire.rs::ch4_invalid_microseconds_still_reject_both_paths`<br>`tests/rebuild_wire.rs::t10_secondary_ch4_has_usec_low_high_words` | Implemented |
 | L1-ABS-003 | L2-ABS-103 | _(none)_ | Draft |
 | L1-ABS-004 | L2-ABS-104 | `tests/rebuild_wire.rs::t5_shared_ertc_tick_is_one_nanosecond` | Implemented |
 
@@ -53,7 +53,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
 | L2-ABS-101 | L3-ABS-101 | _(TBD)_ | Draft |
-| L2-ABS-102 | L3-ABS-102 | `tests/rebuild_wire.rs::t10_secondary_ch4_has_usec_low_high_words` | Implemented |
+| L2-ABS-102 | L3-ABS-102 | `tests/rebuild_wire.rs::ch4_invalid_microseconds_still_reject_both_paths`<br>`tests/rebuild_wire.rs::t10_secondary_ch4_has_usec_low_high_words` | Implemented |
 | L2-ABS-103 | L3-ABS-103 | _(TBD)_ | Draft |
 | L2-ABS-104 | L3-ABS-104 | `tests/rebuild_wire.rs::t5_shared_ertc_tick_is_one_nanosecond` | Implemented |
 
@@ -64,7 +64,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
 | L1-IPT-005 | L2-IPT-105 | `tests/rebuild_wire.rs::t1_all_flag_combinations_are_checked`<br>`tests/rebuild_wire.rs::t1_secondary_ch4_selected_by_bit_six` | Implemented |
-| L1-IPT-006 | L2-IPT-106 | `src/intra_packet_tests.rs::format_ch4_binary`<br>`src/intra_packet_tests.rs::format_no_secondary_is_rtc`<br>`src/intra_packet_tests.rs::intra_packet_time_is_enum`<br>`src/intra_packet_tests.rs::parse_buffer_too_short`<br>`src/intra_packet_tests.rs::parse_ertc64_known`<br>`src/intra_packet_tests.rs::parse_ieee1588_known`<br>`src/intra_packet_tests.rs::parse_rtc48_known`<br>`src/intra_packet_tests.rs::parse_rtc48_reserved_rejected`<br>`tests/rebuild_wire.rs::t1_all_flag_combinations_are_checked`<br>`tests/rebuild_wire.rs::t1_bit_two_alone_does_not_select_secondary` | Implemented |
+| L1-IPT-006 | L2-IPT-106 | `src/intra_packet_tests.rs::format_ch4_binary`<br>`src/intra_packet_tests.rs::format_no_secondary_is_rtc`<br>`src/intra_packet_tests.rs::intra_packet_time_is_enum`<br>`src/intra_packet_tests.rs::parse_buffer_too_short`<br>`src/intra_packet_tests.rs::parse_ertc64_known`<br>`src/intra_packet_tests.rs::parse_ieee1588_known`<br>`src/intra_packet_tests.rs::parse_rtc48_known`<br>`tests/rebuild_wire.rs::t1_all_flag_combinations_are_checked`<br>`tests/rebuild_wire.rs::t1_bit_two_alone_does_not_select_secondary` | Implemented |
 | L1-IPT-007 | L2-IPT-107 | `tests/rebuild_wire.rs::t1_all_flag_combinations_are_checked` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
@@ -81,22 +81,22 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-SEC-001 | L2-SEC-101 | `tests/rebuild_wire.rs::t10_secondary_ch4_has_usec_low_high_words` | Partially Implemented |
+| L1-SEC-001 | L2-SEC-101 | `tests/rebuild_wire.rs::ch4_reserved_words_report_independent_warnings_and_keep_time`<br>`tests/rebuild_wire.rs::t10_intra_ch4_reserved_word_keeps_value`<br>`tests/rebuild_wire.rs::t10_secondary_ch4_has_usec_low_high_words` | Implemented |
 | L1-SEC-002 | L2-SEC-102 | _(none)_ | Draft |
 | L1-SEC-003 | L2-SEC-103 | _(none)_ | Draft |
 | L1-SEC-004 | L2-SEC-104 | _(none)_ | Draft |
-| L1-SEC-005 | L2-SEC-105 | _(none)_ | Draft |
+| L1-SEC-005 | L2-SEC-105 | `tests/rebuild_wire.rs::ch4_reserved_words_report_independent_warnings_and_keep_time` | Implemented |
 | L1-SEC-006 | L2-SEC-106 | _(none)_ | Draft |
 
 **L2 -> L3 -> Verification Artifacts**
 
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L2-SEC-101 | L3-SEC-101 | _(TBD)_ | Draft |
+| L2-SEC-101 | L3-SEC-101 | `tests/rebuild_wire.rs::ch4_reserved_words_report_independent_warnings_and_keep_time`<br>`tests/rebuild_wire.rs::t10_intra_ch4_reserved_word_keeps_value` | Implemented |
 | L2-SEC-102 | L3-SEC-102 | _(TBD)_ | Draft |
 | L2-SEC-103 | L3-SEC-103 | _(TBD)_ | Draft |
 | L2-SEC-104 | L3-SEC-104 | _(TBD)_ | Draft |
-| L2-SEC-105 | L3-SEC-105 | _(TBD)_ | Draft |
+| L2-SEC-105 | L3-SEC-105 | `tests/rebuild_wire.rs::ch4_reserved_words_report_independent_warnings_and_keep_time` | Implemented |
 | L2-SEC-106 | L3-SEC-106 | _(TBD)_ | Draft |
 
 ### L1-CSDW: Format 1 channel-specific data word
@@ -133,8 +133,8 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L1-BCD-003 | L2-BCD-103 | _(none)_ | Draft |
 | L1-BCD-004 | L2-BCD-104 | _(none)_ | Draft |
-| L1-BCD-005 | L2-BCD-105 | `src/bcd_tests.rs::day_fmt_buffer_too_short`<br>`src/bcd_tests.rs::day_fmt_day_zero_rejected`<br>`src/bcd_tests.rs::day_fmt_decode_known`<br>`src/bcd_tests.rs::day_fmt_invalid_bcd_digit`<br>`src/bcd_tests.rs::day_fmt_max_day`<br>`src/bcd_tests.rs::day_fmt_midnight_day1`<br>`src/bcd_tests.rs::day_fmt_reserved_bit_set`<br>`src/bcd_tests.rs::day_fmt_to_absolute`<br>`src/bcd_tests.rs::dmy_fmt_buffer_too_short`<br>`src/bcd_tests.rs::dmy_fmt_decode_known`<br>`src/bcd_tests.rs::dmy_fmt_invalid_month_zero`<br>`src/bcd_tests.rs::dmy_fmt_to_absolute_with_date`<br>`src/bcd_tests.rs::millisecond_resolution_10ms`<br>`tests/rebuild_wire.rs::t12_day_body_is_six_bytes` | Implemented |
-| L1-BCD-006 | L2-BCD-106 | `src/bcd_tests.rs::day_fmt_buffer_too_short`<br>`src/bcd_tests.rs::day_fmt_day_zero_rejected`<br>`src/bcd_tests.rs::day_fmt_decode_known`<br>`src/bcd_tests.rs::day_fmt_invalid_bcd_digit`<br>`src/bcd_tests.rs::day_fmt_max_day`<br>`src/bcd_tests.rs::day_fmt_midnight_day1`<br>`src/bcd_tests.rs::day_fmt_reserved_bit_set`<br>`src/bcd_tests.rs::day_fmt_to_absolute`<br>`src/bcd_tests.rs::dmy_fmt_buffer_too_short`<br>`src/bcd_tests.rs::dmy_fmt_decode_known`<br>`src/bcd_tests.rs::dmy_fmt_invalid_month_zero`<br>`src/bcd_tests.rs::dmy_fmt_to_absolute_with_date`<br>`src/bcd_tests.rs::millisecond_resolution_10ms`<br>`tests/rebuild_wire.rs::t12_calendar_body_is_eight_bytes` | Implemented |
+| L1-BCD-005 | L2-BCD-105 | `irig106-time-cli/src/main_tests.rs::t12_cli_accepts_six_byte_day_body_at_end`<br>`src/bcd_tests.rs::day_fmt_buffer_too_short`<br>`src/bcd_tests.rs::day_fmt_day_zero_rejected`<br>`src/bcd_tests.rs::day_fmt_decode_known`<br>`src/bcd_tests.rs::day_fmt_invalid_bcd_digit`<br>`src/bcd_tests.rs::day_fmt_max_day`<br>`src/bcd_tests.rs::day_fmt_midnight_day1`<br>`src/bcd_tests.rs::day_fmt_reserved_bit_set`<br>`src/bcd_tests.rs::day_fmt_to_absolute`<br>`src/bcd_tests.rs::dmy_fmt_buffer_too_short`<br>`src/bcd_tests.rs::dmy_fmt_decode_known`<br>`src/bcd_tests.rs::dmy_fmt_invalid_month_zero`<br>`src/bcd_tests.rs::dmy_fmt_to_absolute_with_date`<br>`src/bcd_tests.rs::millisecond_resolution_10ms`<br>`tests/rebuild_wire.rs::t12_day_body_is_six_bytes` | Implemented |
+| L1-BCD-006 | L2-BCD-106 | `irig106-time-cli/src/main_tests.rs::t12_cli_accepts_eight_byte_calendar_body_at_end`<br>`src/bcd_tests.rs::day_fmt_buffer_too_short`<br>`src/bcd_tests.rs::day_fmt_day_zero_rejected`<br>`src/bcd_tests.rs::day_fmt_decode_known`<br>`src/bcd_tests.rs::day_fmt_invalid_bcd_digit`<br>`src/bcd_tests.rs::day_fmt_max_day`<br>`src/bcd_tests.rs::day_fmt_midnight_day1`<br>`src/bcd_tests.rs::day_fmt_reserved_bit_set`<br>`src/bcd_tests.rs::day_fmt_to_absolute`<br>`src/bcd_tests.rs::dmy_fmt_buffer_too_short`<br>`src/bcd_tests.rs::dmy_fmt_decode_known`<br>`src/bcd_tests.rs::dmy_fmt_invalid_month_zero`<br>`src/bcd_tests.rs::dmy_fmt_to_absolute_with_date`<br>`src/bcd_tests.rs::millisecond_resolution_10ms`<br>`tests/rebuild_wire.rs::t12_calendar_body_is_eight_bytes` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
@@ -142,8 +142,8 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L2-BCD-103 | L3-BCD-103 | _(TBD)_ | Draft |
 | L2-BCD-104 | L3-BCD-104 | _(TBD)_ | Draft |
-| L2-BCD-105 | L3-BCD-105 | `tests/rebuild_wire.rs::t12_day_body_is_six_bytes` | Implemented |
-| L2-BCD-106 | L3-BCD-106 | `tests/rebuild_wire.rs::t12_calendar_body_is_eight_bytes` | Implemented |
+| L2-BCD-105 | L3-BCD-105 | `irig106-time-cli/src/main_tests.rs::t12_cli_accepts_six_byte_day_body_at_end`<br>`tests/rebuild_wire.rs::t12_day_body_is_six_bytes` | Implemented |
+| L2-BCD-106 | L3-BCD-106 | `irig106-time-cli/src/main_tests.rs::t12_cli_accepts_eight_byte_calendar_body_at_end`<br>`tests/rebuild_wire.rs::t12_calendar_body_is_eight_bytes` | Implemented |
 
 ### L1-F2CSDW: Format 2 channel-specific data word
 
@@ -617,10 +617,10 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | Category | L1 | L2 | L3 | L2 tested | L3 tested | L2 verified | L3 verified |
 |----------|----|----|----|-----------|-----------|-------------|-------------|
-| RTC | 4 | 4 | 4 | 0 | 0 | 0 | 0 |
+| RTC | 4 | 4 | 4 | 1 | 1 | 1 | 1 |
 | ABS | 4 | 4 | 4 | 2 | 2 | 2 | 2 |
 | IPT | 3 | 3 | 3 | 3 | 3 | 3 | 3 |
-| SEC | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
+| SEC | 6 | 6 | 6 | 2 | 2 | 2 | 2 |
 | CSDW | 7 | 7 | 7 | 4 | 4 | 4 | 4 |
 | BCD | 4 | 4 | 4 | 2 | 2 | 2 | 2 |
 | F2CSDW | 4 | 4 | 4 | 0 | 0 | 0 | 0 |
@@ -644,13 +644,13 @@ This matrix is the single source of truth for live status; the requirement docum
 | CLI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
 | REL | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
 | TST | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
-| **Total** | **124** | **143** | **143** | **12** | **12** | **12** | **12** |
+| **Total** | **124** | **143** | **143** | **15** | **15** | **15** | **15** |
 
 The countable requirement set is every L2 and L3 requirement plus the 0 L1 *leaf* requirement(s) (L1s with no L2 decomposition yet). Composite L1s are verified through their children.
 
-**Tested by at least one test marker**: 24 of 286 (8.4%).
+**Tested by at least one test marker**: 30 of 286 (10.5%).
 
-**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 24 of 286 (8.4%).
+**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 30 of 286 (10.5%).
 
 ### Orphan check
 
