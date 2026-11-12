@@ -1,20 +1,21 @@
 //! Time Data Format 2 (0x12) — Network Time (NTP / PTP).
 //!
 //! Introduced in IRIG 106-17 (CR93). Provides network-protocol time from
-//! NTP (RFC 5905) or PTP (IEEE 1588) sources as an alternative to the
+//! NTP version 3 (RFC 1305) or PTP (IEEE 1588) sources as an alternative to the
 //! BCD-encoded Format 1 time packets.
 //!
 //! # Requirement Traceability
 //!
 //! | Requirement | Description |
 //! |-------------|-------------|
-//! | L1-F2CSDW-001..003 | Format 2 CSDW parsing |
-//! | L1-NTP-001..004 | NTP time message decoding |
-//! | L1-PTP-001..004 | PTP time message decoding |
+//! | L3-F2CSDW-101, L3-F2CSDW-104..106 | Format 2 CSDW parsing |
+//! | L3-NTP-101..104 | NTP time message decoding |
+//! | L3-PTP-102..105 | PTP time message decoding |
 //! | L1-TAI-001..003 | Leap second offset handling |
 
 use crate::absolute::AbsoluteTime;
 use crate::error::{Result, TimeError};
+use crate::scale::{ScaleEvidence, Scaled, TimeScale, TimeScaleTagged};
 use irig106_types::{TaiSeconds, TaiUtcOffset, UnixSeconds};
 
 // ── Constants ────────────────────────────────────────────────────────
@@ -34,11 +35,11 @@ pub const DEFAULT_TAI_UTC_OFFSET: TaiUtcOffset = TaiUtcOffset::new(37);
 
 /// Network time protocol discriminant from the Format 2 CSDW.
 ///
-/// **Traces:** L1-F2CSDW-002
+/// **Traces:** L3-F2CSDW-104
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NetworkTimeProtocol {
-    /// Network Time Protocol (RFC 5905). Epoch: 1900-01-01 UTC.
+    /// Network Time Protocol version 3 (RFC 1305). UTC, 1900 epoch; era unresolved.
     Ntp,
     /// Precision Time Protocol (IEEE 1588). Epoch: 1970-01-01 TAI.
     Ptp,
@@ -46,9 +47,37 @@ pub enum NetworkTimeProtocol {
     Reserved(u8),
 }
 
+/// Exact NTF discriminant (106-24R1 Figure 11-15, printed 11-27).
+/// **Traces:** L3-F2CSDW-104 ← L2-F2CSDW-104
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum NetworkTimeFormat {
+    /// NTP version 3.
+    NtpV3,
+    /// IEEE 1588-2002.
+    Ptp2002,
+    /// IEEE 1588-2008.
+    Ptp2008,
+    /// Reserved raw NTF nibble.
+    Reserved(u8),
+}
+
+/// Recorded network time status, independent of format and reserved bits.
+/// **Traces:** L3-F2CSDW-105 ← L2-F2CSDW-105
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TimeStatus {
+    /// TS zero: time not valid.
+    NotValid,
+    /// TS one: time valid.
+    Valid,
+    /// Reserved raw TS nibble.
+    Reserved(u8),
+}
+
 /// Parsed Time Data Format 2 (0x12) Channel-Specific Data Word.
 ///
-/// **Traces:** L1-F2CSDW-001
+/// **Traces:** L3-F2CSDW-101
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TimeF2Csdw(u32);
@@ -80,25 +109,49 @@ impl TimeF2Csdw {
         self.0.to_le_bytes()
     }
 
-    /// Time protocol (bits \[3:0\]).
-    ///
-    /// **Traces:** L1-F2CSDW-002
-    #[inline]
+    /// Broad protocol from NTF bits 7–4. Use [`Self::time_format`] for PTP revision.
+    /// **Traces:** L3-F2CSDW-104 ← L2-F2CSDW-104
     pub fn time_protocol(self) -> NetworkTimeProtocol {
-        match self.0 & 0x0F {
-            0 => NetworkTimeProtocol::Ntp,
-            1 => NetworkTimeProtocol::Ptp,
-            other => NetworkTimeProtocol::Reserved(other as u8),
+        match self.time_format() {
+            NetworkTimeFormat::NtpV3 => NetworkTimeProtocol::Ntp,
+            NetworkTimeFormat::Ptp2002 | NetworkTimeFormat::Ptp2008 => NetworkTimeProtocol::Ptp,
+            NetworkTimeFormat::Reserved(v) => NetworkTimeProtocol::Reserved(v),
         }
     }
 
-    /// Check that reserved bits \[31:4\] are zero.
-    ///
-    /// **Traces:** L1-F2CSDW-003
+    /// NTF bits 7–4 (Figure 11-15).
+    /// **Traces:** L3-F2CSDW-104 ← L2-F2CSDW-104
+    pub fn time_format(self) -> NetworkTimeFormat {
+        match (self.0 >> 4) & 15 {
+            0 => NetworkTimeFormat::NtpV3,
+            1 => NetworkTimeFormat::Ptp2002,
+            2 => NetworkTimeFormat::Ptp2008,
+            v => NetworkTimeFormat::Reserved(v as u8),
+        }
+    }
+
+    /// TS bits 3–0, preserved even when invalid or reserved.
+    /// **Traces:** L3-F2CSDW-105 ← L2-F2CSDW-105
+    pub fn time_status(self) -> TimeStatus {
+        match self.0 & 15 {
+            0 => TimeStatus::NotValid,
+            1 => TimeStatus::Valid,
+            v => TimeStatus::Reserved(v as u8),
+        }
+    }
+
+    /// Raw reserved bits 31–8 for TF-005 reporting.
+    /// **Traces:** L3-F2CSDW-106 ← L2-F2CSDW-106
+    pub fn reserved_bits(self) -> u32 {
+        self.0 & 0xffff_ff00
+    }
+
+    /// Separate TF-005 warning; it does not discard the raw reading.
+    /// **Traces:** L3-F2CSDW-106 ← L2-F2CSDW-106
     pub fn validate_reserved(&self) -> Result<()> {
-        if self.0 & 0xFFFF_FFF0 != 0 {
+        if self.reserved_bits() != 0 {
             Err(TimeError::ReservedBitSet {
-                position: "f2_csdw bits[31:4]",
+                position: "f2_csdw bits[31:8]",
             })
         } else {
             Ok(())
@@ -114,11 +167,11 @@ impl TimeF2Csdw {
 /// The 64-bit NTP timestamp consists of 32-bit seconds and 32-bit fractional
 /// seconds (each fractional unit = 2⁻³² seconds ≈ 233 picoseconds).
 ///
-/// **Traces:** L1-NTP-001, L1-NTP-002
+/// **Traces:** L3-NTP-101, L3-NTP-102
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct NtpTime {
-    /// Seconds since 1900-01-01 00:00:00 UTC.
+    /// Raw 32-bit UTC-labelled seconds relative to 1900; era is unresolved.
     pub seconds: u32,
     /// Fractional seconds in units of 2⁻³² seconds.
     pub fraction: u32,
@@ -129,7 +182,7 @@ impl NtpTime {
     ///
     /// Layout: `[seconds(4 LE), fraction(4 LE)]`
     ///
-    /// **Traces:** L1-NTP-001
+    /// **Traces:** L3-NTP-101
     #[inline]
     pub fn from_le_bytes(buf: &[u8]) -> Result<Self> {
         if buf.len() < 8 {
@@ -148,45 +201,42 @@ impl NtpTime {
     ///
     /// Formula: `(fraction as u64 * 1_000_000_000) >> 32`
     ///
-    /// **Traces:** L1-NTP-003
+    /// **Traces:** L3-NTP-103
     #[inline]
     pub fn fraction_as_nanos(&self) -> u32 {
         // (fraction * 10^9) / 2^32, using u64 to avoid overflow
         ((self.fraction as u64 * 1_000_000_000) >> 32) as u32
     }
 
-    /// Total nanoseconds since the NTP epoch (1900-01-01 UTC).
-    pub fn to_nanos_since_ntp_epoch(&self) -> u64 {
-        (self.seconds as u64) * 1_000_000_000 + (self.fraction_as_nanos() as u64)
+    /// Nanoseconds represented by the raw modular seconds/fraction words.
+    /// No NTP era or UTC/Unix leap mapping is inferred.
+    pub fn raw_fixed_point_nanos(&self) -> u64 {
+        self.seconds as u64 * 1_000_000_000 + self.fraction_as_nanos() as u64
     }
 
-    /// Convert to Unix seconds (epoch 1970-01-01 UTC).
-    ///
-    /// Returns `None` if the NTP time is before the Unix epoch.
-    ///
-    /// **Traces:** L1-NTP-004
-    pub fn to_unix_seconds(&self) -> Option<u64> {
-        (self.seconds as u64).checked_sub(NTP_UNIX_EPOCH_OFFSET)
+    /// Absolute NTP-epoch conversion is unresolved pending Q-NTP.
+    /// Use [`Self::raw_fixed_point_nanos`] for an explicitly modular view.
+    /// **Traces:** L3-NTP-102 ← L2-NTP-102
+    pub fn to_nanos_since_ntp_epoch(&self) -> Result<u64> {
+        Err(TimeError::NeedsContext {
+            context: "Q-NTP: era and UTC/leap mapping",
+        })
     }
 
-    /// Convert to `AbsoluteTime` (day-of-year format).
-    ///
-    /// Uses the Unix epoch conversion internally. Returns the time as
-    /// day-of-year within the current year.
+    /// No era or leap mapping is assumed; returns NeedsContext pending Q-NTP.
+    /// **Traces:** L3-NTP-104 ← L2-NTP-104
+    pub fn to_unix_seconds(&self) -> Result<u64> {
+        Err(TimeError::NeedsContext {
+            context: "Q-NTP: era and UTC/leap mapping",
+        })
+    }
+
+    /// No calendar conversion is implemented pending Q-NTP.
+    /// **Traces:** L3-NTP-104 ← L2-NTP-104
     pub fn to_absolute(&self) -> Result<AbsoluteTime> {
-        let unix_secs = self.to_unix_seconds().ok_or(TimeError::OutOfRange {
-            field: "ntp_seconds",
-            value: self.seconds,
-            max: u32::MAX,
-        })?;
-
-        let nanos = self.fraction_as_nanos();
-
-        // Convert Unix seconds to year/day-of-year/time-of-day
-        let (year, doy, hour, minute, second) = unix_seconds_to_ymd(unix_secs);
-
-        let abs = AbsoluteTime::new(doy, hour, minute, second, nanos)?.with_year(Some(year))?;
-        Ok(abs)
+        Err(TimeError::NeedsContext {
+            context: "Q-NTP: era and UTC/leap mapping",
+        })
     }
 
     /// Encode as 8 little-endian bytes: 4B seconds + 4B fraction.
@@ -211,32 +261,32 @@ impl NtpTime {
 /// of January 1, 1970 00:00:00 TAI. TAI does not include leap seconds,
 /// so PTP time differs from UTC by the accumulated leap-second offset.
 ///
-/// **Traces:** L1-PTP-001, L1-PTP-002
+/// **Traces:** L3-PTP-105, L3-PTP-102
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PtpTime {
-    /// Seconds since 1970-01-01 00:00:00 TAI (48 bits).
-    pub seconds: u64,
+    /// Seconds since 1970-01-01 00:00:00 TAI (32 bits).
+    pub seconds: u32,
     /// Nanoseconds within the current second (0–999,999,999).
     pub nanoseconds: u32,
 }
 
 impl PtpTime {
-    /// Parse from a 10-byte little-endian buffer.
+    /// Parse from an 8-byte little-endian buffer.
     ///
-    /// Layout: `[seconds(6 LE), nanoseconds(4 LE)]`
+    /// Layout: `[seconds(4 LE), nanoseconds(4 LE)]` (Figure 11-17).
     ///
-    /// **Traces:** L1-PTP-001
+    /// **Traces:** L3-PTP-105
     #[inline]
     pub fn from_le_bytes(buf: &[u8]) -> Result<Self> {
-        if buf.len() < 10 {
+        if buf.len() < 8 {
             return Err(TimeError::BufferTooShort {
-                expected: 10,
+                expected: 8,
                 actual: buf.len(),
             });
         }
-        let seconds = u64::from_le_bytes([buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], 0, 0]);
-        let nanoseconds = u32::from_le_bytes([buf[6], buf[7], buf[8], buf[9]]);
+        let seconds = u32::from_le_bytes([buf[0], buf[1], buf[2], buf[3]]);
+        let nanoseconds = u32::from_le_bytes([buf[4], buf[5], buf[6], buf[7]]);
 
         if nanoseconds >= 1_000_000_000 {
             return Err(TimeError::OutOfRange {
@@ -268,7 +318,7 @@ impl PtpTime {
     /// The seconds field as a [`TaiSeconds`] value.
     #[inline]
     pub fn tai_seconds(&self) -> TaiSeconds {
-        TaiSeconds::new(self.seconds)
+        TaiSeconds::new(self.seconds as u64)
     }
 
     /// Convert to `AbsoluteTime` using the given TAI-UTC offset.
@@ -284,17 +334,16 @@ impl PtpTime {
         Ok(abs)
     }
 
-    /// Encode as 10 little-endian bytes: 6B seconds (48-bit) + 4B nanoseconds.
+    /// Encode as 8 little-endian bytes: 4B seconds + 4B nanoseconds.
     ///
     /// This is the inverse of `from_le_bytes`.
     ///
     /// **Traces:** GAP-11
     #[inline]
-    pub fn to_le_bytes(&self) -> [u8; 10] {
-        let mut buf = [0u8; 10];
-        let sec_bytes = self.seconds.to_le_bytes();
-        buf[0..6].copy_from_slice(&sec_bytes[0..6]);
-        buf[6..10].copy_from_slice(&self.nanoseconds.to_le_bytes());
+    pub fn to_le_bytes(&self) -> [u8; 8] {
+        let mut buf = [0u8; 8];
+        buf[0..4].copy_from_slice(&self.seconds.to_le_bytes());
+        buf[4..8].copy_from_slice(&self.nanoseconds.to_le_bytes());
         buf
     }
 }
@@ -311,42 +360,96 @@ pub enum NetworkTime {
     Ptp(PtpTime),
 }
 
-/// Parse a Format 2 time packet payload.
-///
-/// `payload` starts after the packet header (and secondary header if present).
-/// The first 4 bytes are the CSDW; the remainder is the time data.
-///
-/// **Traces:** L1-F2CSDW-001, L1-NTP-001, L1-PTP-001
-pub fn parse_time_f2_payload(payload: &[u8]) -> Result<(TimeF2Csdw, NetworkTime)> {
-    if payload.len() < 4 {
-        return Err(TimeError::BufferTooShort {
-            expected: 4,
+/// Raw Format 2 reading; invalid status remains recorded, never promoted.
+/// **Traces:** L3-F2CSDW-105 ← L2-F2CSDW-105
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Format2Reading {
+    /// Raw data word and independent NTF/TS/reserved evidence.
+    pub csdw: TimeF2Csdw,
+    /// Decoded body and stated scale; None for reserved NTF.
+    pub time: Option<Scaled<NetworkTime>>,
+    /// Number of bytes consumed, excluding filler/checksum.
+    pub consumed: usize,
+}
+impl Format2Reading {
+    /// Recorded TS=1 and a supported body; no reference-admission policy implied.
+    pub fn is_usable(&self) -> bool {
+        self.time.is_some() && self.csdw.time_status() == TimeStatus::Valid
+    }
+}
+
+/// Decode within caller-supplied Data Length, excluding trailer filler/checksum.
+/// Exactly twelve bytes are consumed; all reserved/status evidence remains visible.
+/// **Traces:** L3-F2CSDW-101 ← L2-F2CSDW-101
+/// **Traces:** L3-ERR-105 ← L2-ERR-105
+pub fn decode_time_f2(payload: &[u8], data_length: usize) -> Result<Format2Reading> {
+    let bounded = payload
+        .get(..data_length)
+        .ok_or(TimeError::BufferTooShort {
+            expected: data_length,
             actual: payload.len(),
+        })?;
+    if bounded.len() < 12 {
+        return Err(TimeError::BufferTooShort {
+            expected: 12,
+            actual: bounded.len(),
         });
     }
+    let csdw = TimeF2Csdw::from_le_bytes([bounded[0], bounded[1], bounded[2], bounded[3]]);
+    let body = &bounded[4..12];
+    let time = match csdw.time_protocol() {
+        NetworkTimeProtocol::Ntp => Some(NetworkTime::Ntp(NtpTime::from_le_bytes(body)?)),
+        NetworkTimeProtocol::Ptp => Some(NetworkTime::Ptp(PtpTime::from_le_bytes(body)?)),
+        NetworkTimeProtocol::Reserved(_) => None,
+    }
+    .map(|value| Scaled {
+        scale: value.scale(),
+        value,
+    });
+    Ok(Format2Reading {
+        csdw,
+        time,
+        consumed: 12,
+    })
+}
 
-    let csdw = TimeF2Csdw::from_le_bytes([payload[0], payload[1], payload[2], payload[3]]);
-    let time_data = &payload[4..];
+/// Legacy tuple parser for a slice already bounded to Data Length.
+/// Rejects invalid/reserved TS and reserved NTF. Use [`decode_time_f2`] to
+/// preserve invalid raw readings separately from admission.
+/// **Traces:** L3-F2CSDW-105 ← L2-F2CSDW-105
+pub fn parse_time_f2_payload(payload: &[u8]) -> Result<(TimeF2Csdw, NetworkTime)> {
+    let reading = decode_time_f2(payload, payload.len())?;
+    if reading.csdw.time_status() != TimeStatus::Valid {
+        return Err(TimeError::InvalidTimeStatus {
+            status: (reading.csdw.as_raw() & 15) as u8,
+        });
+    }
+    let time = reading.time.ok_or(TimeError::OutOfRange {
+        field: "network_time_format",
+        value: (reading.csdw.as_raw() >> 4) & 15,
+        max: 2,
+    })?;
+    Ok((reading.csdw, time.value))
+}
 
-    let network_time = match csdw.time_protocol() {
-        NetworkTimeProtocol::Ntp => {
-            let ntp = NtpTime::from_le_bytes(time_data)?;
-            NetworkTime::Ntp(ntp)
+impl TimeScaleTagged for NtpTime {
+    fn scale(&self) -> ScaleEvidence {
+        ScaleEvidence::standard(TimeScale::Utc)
+    }
+}
+impl TimeScaleTagged for PtpTime {
+    fn scale(&self) -> ScaleEvidence {
+        ScaleEvidence::standard(TimeScale::Tai)
+    }
+}
+impl TimeScaleTagged for NetworkTime {
+    fn scale(&self) -> ScaleEvidence {
+        match self {
+            Self::Ntp(t) => t.scale(),
+            Self::Ptp(t) => t.scale(),
         }
-        NetworkTimeProtocol::Ptp => {
-            let ptp = PtpTime::from_le_bytes(time_data)?;
-            NetworkTime::Ptp(ptp)
-        }
-        NetworkTimeProtocol::Reserved(v) => {
-            return Err(TimeError::OutOfRange {
-                field: "network_time_protocol",
-                value: v as u32,
-                max: 1,
-            });
-        }
-    };
-
-    Ok((csdw, network_time))
+    }
 }
 
 // ── Leap Second Table ────────────────────────────────────────────────

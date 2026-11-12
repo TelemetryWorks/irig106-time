@@ -42,6 +42,8 @@ fn t3_ptp_has_two_u32_words() {
         (0x01020304, 500_000_000)
     );
     assert_eq!(&t.to_le_bytes()[..], &bytes);
+    let maximum = PtpTime::from_le_bytes(&[255, 255, 255, 255, 0, 0, 0, 0]).unwrap();
+    assert_eq!(u64::from(maximum.seconds), u32::MAX as u64);
 }
 
 /// Requirements: L1-PTP-005, L2-PTP-105, L3-PTP-105, L1-ERR-005, L2-ERR-105, L3-ERR-105
@@ -68,6 +70,8 @@ fn q_ntp_absolute_conversion_requires_context() {
         fraction: 0x80000000,
     };
     assert!(format!("{:?}", t.to_absolute()).contains("NeedsContext"));
+    assert!(format!("{:?}", t.to_nanos_since_ntp_epoch()).contains("NeedsContext"));
+    assert_eq!(t.raw_fixed_point_nanos(), 2_208_989_800_500_000_000);
 }
 
 /// Requirements: L1-NTP-004, L2-NTP-104, L3-NTP-104

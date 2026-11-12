@@ -3,6 +3,10 @@
 //! Decodes the Day-of-Year (DOY) and Day-Month-Year (DMY) format time messages
 //! found in Time Data Format 1 (0x11) packets following the CSDW.
 //!
+//! These legacy body-only values have unspecified scale and reject second 60.
+//! Use [`crate::format1::decode_time_f1`] with explicit layout/scale policy for
+//! labelled, leap-preserving readings; do not infer UTC from a bare BCD value.
+//!
 //! # Requirement Traceability
 //!
 //! | Requirement | Description |

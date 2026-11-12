@@ -37,15 +37,17 @@ fn f2_csdw_ntp() {
     assert_eq!(csdw.time_protocol(), NetworkTimeProtocol::Ntp);
 }
 
+/// Requirements: L2-F2CSDW-104, L3-F2CSDW-104
 #[test]
 fn f2_csdw_ptp() {
-    let csdw = TimeF2Csdw::from_raw(0x0000_0001);
+    let csdw = TimeF2Csdw::from_raw(0x0000_0011);
     assert_eq!(csdw.time_protocol(), NetworkTimeProtocol::Ptp);
 }
 
+/// Requirements: L2-F2CSDW-104, L3-F2CSDW-104
 #[test]
 fn f2_csdw_reserved() {
-    let csdw = TimeF2Csdw::from_raw(0x0000_0005);
+    let csdw = TimeF2Csdw::from_raw(0x0000_0051);
     assert_eq!(csdw.time_protocol(), NetworkTimeProtocol::Reserved(5));
 }
 
@@ -55,9 +57,10 @@ fn f2_csdw_reserved_bits_clean() {
     assert!(csdw.validate_reserved().is_ok());
 }
 
+/// Requirements: L2-F2CSDW-106, L3-F2CSDW-106
 #[test]
 fn f2_csdw_reserved_bits_dirty() {
-    let csdw = TimeF2Csdw::from_raw(0x0000_0010); // Bit 4 set (reserved)
+    let csdw = TimeF2Csdw::from_raw(0x0000_0101); // Bit 8 set (reserved)
     assert!(csdw.validate_reserved().is_err());
 }
 
@@ -88,6 +91,7 @@ fn ntp_fraction_to_nanos() {
     );
 }
 
+/// Requirements: L2-NTP-104, L3-NTP-104
 #[test]
 fn ntp_to_unix_seconds() {
     // NTP seconds for Unix epoch: 2_208_988_800
@@ -95,18 +99,26 @@ fn ntp_to_unix_seconds() {
         seconds: NTP_UNIX_EPOCH_OFFSET as u32 + 1000,
         fraction: 0,
     };
-    assert_eq!(ntp.to_unix_seconds(), Some(1000));
+    assert!(matches!(
+        ntp.to_unix_seconds(),
+        Err(TimeError::NeedsContext { .. })
+    ));
 }
 
+/// Requirements: L2-NTP-104, L3-NTP-104
 #[test]
 fn ntp_before_unix_epoch() {
     let ntp = NtpTime {
         seconds: 100, // Well before 1970
         fraction: 0,
     };
-    assert_eq!(ntp.to_unix_seconds(), None);
+    assert!(matches!(
+        ntp.to_unix_seconds(),
+        Err(TimeError::NeedsContext { .. })
+    ));
 }
 
+/// Requirements: L2-NTP-104, L3-NTP-104
 #[test]
 fn ntp_to_absolute() {
     // 2025-01-01 00:00:00 UTC
@@ -116,12 +128,10 @@ fn ntp_to_absolute() {
         seconds: 3_944_678_400,
         fraction: 0,
     };
-    let abs = ntp.to_absolute().unwrap();
-    assert_eq!(abs.year(), Some(2025));
-    assert_eq!(abs.day_of_year(), 1);
-    assert_eq!(abs.hours(), 0);
-    assert_eq!(abs.minutes(), 0);
-    assert_eq!(abs.seconds(), 0);
+    assert!(matches!(
+        ntp.to_absolute(),
+        Err(TimeError::NeedsContext { .. })
+    ));
 }
 
 #[test]
@@ -132,21 +142,23 @@ fn ntp_buffer_too_short() {
 
 // ── PTP Time ─────────────────────────────────────────────────────────
 
+/// Requirements: L2-PTP-105, L3-PTP-105
 #[test]
 fn ptp_from_le_bytes() {
     // 1000 seconds, 500_000_000 nanoseconds
-    let mut buf = [0u8; 10];
-    buf[0..6].copy_from_slice(&1000u64.to_le_bytes()[0..6]);
-    buf[6..10].copy_from_slice(&500_000_000u32.to_le_bytes());
+    let mut buf = [0u8; 8];
+    buf[0..4].copy_from_slice(&1000u32.to_le_bytes());
+    buf[4..8].copy_from_slice(&500_000_000u32.to_le_bytes());
     let ptp = PtpTime::from_le_bytes(&buf).unwrap();
     assert_eq!(ptp.seconds, 1000);
     assert_eq!(ptp.nanoseconds, 500_000_000);
 }
 
+/// Requirements: L2-PTP-103, L3-PTP-103
 #[test]
 fn ptp_nanos_overflow() {
-    let mut buf = [0u8; 10];
-    buf[6..10].copy_from_slice(&1_000_000_000u32.to_le_bytes());
+    let mut buf = [0u8; 8];
+    buf[4..8].copy_from_slice(&1_000_000_000u32.to_le_bytes());
     assert!(PtpTime::from_le_bytes(&buf).is_err());
 }
 
@@ -176,19 +188,21 @@ fn ptp_to_absolute() {
     assert_eq!(abs.hours(), 0);
 }
 
+/// Requirements: L2-PTP-105, L3-PTP-105
 #[test]
 fn ptp_buffer_too_short() {
-    let buf = [0u8; 8];
+    let buf = [0u8; 7];
     assert!(PtpTime::from_le_bytes(&buf).is_err());
 }
 
 // ── Full payload parse ───────────────────────────────────────────────
 
+/// Requirements: L2-F2CSDW-105, L3-F2CSDW-105
 #[test]
 fn parse_f2_ntp_payload() {
     let mut payload = [0u8; 12]; // 4 CSDW + 8 NTP
     // CSDW: protocol = NTP (0)
-    payload[0..4].copy_from_slice(&0x0000_0000u32.to_le_bytes());
+    payload[0..4].copy_from_slice(&0x0000_0001u32.to_le_bytes());
     // NTP: 3_944_678_400 seconds (2025-01-01), 0 fraction
     payload[4..8].copy_from_slice(&3_944_678_400u32.to_le_bytes());
 
@@ -200,14 +214,15 @@ fn parse_f2_ntp_payload() {
     }
 }
 
+/// Requirements: L2-PTP-105, L3-PTP-105
 #[test]
 fn parse_f2_ptp_payload() {
-    let mut payload = [0u8; 14]; // 4 CSDW + 10 PTP
+    let mut payload = [0u8; 12]; // 4 CSDW + 8 PTP
     // CSDW: protocol = PTP (1)
-    payload[0..4].copy_from_slice(&0x0000_0001u32.to_le_bytes());
+    payload[0..4].copy_from_slice(&0x0000_0011u32.to_le_bytes());
     // PTP: 1000 seconds, 500M nanoseconds
-    payload[4..10].copy_from_slice(&1000u64.to_le_bytes()[0..6]);
-    payload[10..14].copy_from_slice(&500_000_000u32.to_le_bytes());
+    payload[4..8].copy_from_slice(&1000u32.to_le_bytes());
+    payload[8..12].copy_from_slice(&500_000_000u32.to_le_bytes());
 
     let (csdw, time) = parse_time_f2_payload(&payload).unwrap();
     assert_eq!(csdw.time_protocol(), NetworkTimeProtocol::Ptp);

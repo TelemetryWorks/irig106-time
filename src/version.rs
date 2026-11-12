@@ -37,3 +37,25 @@ pub fn supports_format_2(version: &Irig106Version) -> bool {
 #[cfg(test)]
 #[path = "version_tests.rs"]
 mod version_tests;
+
+/// Availability in an explicitly caller-declared edition, not header inference.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Format2Availability {
+    /// Declared release is earlier than 106-17 (TF-026).
+    Unavailable,
+    /// Declared release is 106-17 or later.
+    Available,
+    /// Declaration is unknown; do not guess.
+    Unknown,
+}
+
+/// 106-17 Table 11-4, printed 11-6/PDF14, and Figures 11-14..16.
+/// **Traces:** L3-EDN-101 ← L2-EDN-101
+pub fn format2_availability(version: &Irig106Version) -> Format2Availability {
+    match version {
+        Irig106Version::Unknown(_) => Format2Availability::Unknown,
+        v if supports_format_2(v) => Format2Availability::Available,
+        _ => Format2Availability::Unavailable,
+    }
+}

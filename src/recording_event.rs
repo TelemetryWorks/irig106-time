@@ -1,3 +1,9 @@
+//! **Deprecated prototype API:** event-body decoding belongs in
+//! [irig106-decode](https://github.com/TelemetryWorks/irig106-decode), with setup
+//! definitions from irig106-tmats (ADR-0009). No replacement event decoder is
+//! implemented in this PR. §11.2.7.3 event numbers are setup-defined 12-bit
+//! values, not the fixed meanings below; do not rely on this prototype table.
+//!
 //! Recording Event (Data Type 0x02) time extraction.
 //!
 //! Recording Event packets carry timestamps that can serve as additional
@@ -26,6 +32,8 @@
 //! |-------------|-------------|
 //! | GAP-08      | Recording Events (0x02) time data |
 
+#![allow(deprecated)] // Retain the deprecated implementation/tests during migration.
+
 use crate::absolute::AbsoluteTime;
 use crate::rtc::Rtc;
 
@@ -34,6 +42,9 @@ use crate::rtc::Rtc;
 /// **Traces:** GAP-08
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[deprecated(
+    note = "Prototype fixed event meanings are unsupported; migrate to irig106-decode with irig106-tmats setup definitions (ADR-0009). Replacement availability is not claimed."
+)]
 pub enum RecordingEventType {
     /// Recording started (index 0x01).
     Started,
@@ -79,6 +90,9 @@ impl RecordingEventType {
 /// **Traces:** GAP-08
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[deprecated(
+    note = "Recording event decoding belongs in irig106-decode; retain only time-tag decoding here (ADR-0009). Replacement availability is not claimed."
+)]
 pub struct RecordingEvent {
     /// The type of recording event.
     pub event_type: RecordingEventType,

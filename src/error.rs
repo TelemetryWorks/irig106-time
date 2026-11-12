@@ -60,6 +60,18 @@ pub enum TimeError {
         flags: u8,
     },
 
+    /// Conversion cannot proceed without explicit, reviewed context.
+    NeedsContext {
+        /// Missing or unresolved conversion context.
+        context: &'static str,
+    },
+
+    /// Format 2 status does not mark time valid.
+    InvalidTimeStatus {
+        /// Raw TS nibble.
+        status: u8,
+    },
+
     /// No reference point available for RTC-to-absolute-time correlation.
     NoReferencePoint,
 
@@ -116,6 +128,10 @@ impl fmt::Display for TimeError {
             }
             TimeError::InvalidPacketFlags { flags } => {
                 write!(f, "invalid intra-packet time flags {flags:#04x}")
+            }
+            TimeError::NeedsContext { context } => write!(f, "time needs context: {context}"),
+            TimeError::InvalidTimeStatus { status } => {
+                write!(f, "network time status is not valid: {status:#x}")
             }
             TimeError::NoReferencePoint => {
                 write!(f, "no time reference point available for correlation")

@@ -77,6 +77,15 @@ CSDW and bodies; 106-13 and 106-15 do not mention network time.
 
 **Change:** Format 2 from 106-17.
 
+**Page check, 2026-11-12 (slice 2):** rendered and inspected 106-17
+Table 11-4, printed 11-6 / PDF14, and Figures 11-14..16, printed 11-24 /
+PDF32. Type 0x12 is Network Time, current data type version 0x08; NTF is
+bits 7–4 and TS 3–0; both bodies have two 32-bit words. Rendered 106-15
+Table 10-10, printed 10-27 / PDF39: 0x12–0x17 are reserved. This confirms
+availability from 106-17. PR #6 already corrected the version helper; slice 2
+adds explicit unknown availability rather than inventing edition inference.
+See [slice-2 page/evidence record](verification-slice-two.md).
+
 ### T-5 ERTC is converted as if it counted 100 ns
 
 **Code:** `irig106-types/src/rtc.rs:184-185`, `Ertc::to_nanos` multiplies by

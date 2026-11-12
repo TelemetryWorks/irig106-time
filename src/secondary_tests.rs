@@ -22,12 +22,7 @@ use super::*;
 fn make_sec_hdr(data: &[u8; 10]) -> [u8; 12] {
     let mut buf = [0u8; 12];
     buf[0..10].copy_from_slice(data);
-    let mut sum: u32 = 0;
-    for i in 0..5 {
-        let word = u16::from_le_bytes([buf[i * 2], buf[i * 2 + 1]]);
-        sum = sum.wrapping_add(word as u32);
-    }
-    let checksum = (sum & 0xFFFF) as u16;
+    let checksum: u16 = buf[..10].iter().map(|b| *b as u16).sum();
     buf[10..12].copy_from_slice(&checksum.to_le_bytes());
     buf
 }

@@ -12,6 +12,10 @@
 //! - [`Ieee1588Time`] — IEEE-1588 Precision Time Protocol value
 //! - [`Ertc`] — 64-bit Extended Relative Time Counter
 //!
+//! This prototype calendar cannot represent second 60 and does not establish
+//! a time scale. [`crate::format1::CalendarReading`] retains leap labels and
+//! scale evidence; its checked projection refuses unsupported conversion.
+//!
 //! # Type Safety
 //!
 //! `AbsoluteTime` cannot hold partial calendar state — it has no month or

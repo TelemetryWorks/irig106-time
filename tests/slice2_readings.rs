@@ -34,7 +34,19 @@ fn t2_each_ntf_and_status_remain_independent() {
             );
             assert_eq!(r.time.is_some(), ntf < 3);
             assert_eq!(r.is_usable(), ntf < 3 && ts == 1);
+            assert_eq!(
+                irig106_time::network_time::parse_time_f2_payload(&bytes).is_ok(),
+                ntf < 3 && ts == 1
+            );
         }
+    }
+    for bit in 8..32 {
+        let mut bytes = [0; 12];
+        bytes[..4].copy_from_slice(&((1u32 << bit) | 0x21).to_le_bytes());
+        let r = decode_time_f2(&bytes, 12).unwrap();
+        assert_eq!(r.csdw.reserved_bits(), 1u32 << bit);
+        assert!(r.csdw.validate_reserved().is_err());
+        assert!(r.is_usable()); // TF-005 warning never discards the decoded value.
     }
 }
 
@@ -52,6 +64,25 @@ fn f2_data_length_bounds_and_nanosecond_boundaries() {
             assert!(decode_time_f2(&bytes, n).is_err());
         }
         assert!(decode_time_f2(&bytes, 17).is_err());
+    }
+    for (fraction, nanos) in [
+        (0u32, 0),
+        (0x80000000, 500_000_000),
+        (u32::MAX, 999_999_999),
+    ] {
+        let mut bytes = [0xff; 16];
+        bytes[..4].copy_from_slice(&1u32.to_le_bytes());
+        bytes[4..8].copy_from_slice(&u32::MAX.to_le_bytes());
+        bytes[8..12].copy_from_slice(&fraction.to_le_bytes());
+        let r = decode_time_f2(&bytes, 12).unwrap();
+        assert_eq!(r.consumed, 12);
+        let irig106_time::NetworkTime::Ntp(t) = r.time.unwrap().value else {
+            panic!("not NTP")
+        };
+        assert_eq!(
+            (t.seconds, t.fraction, t.fraction_as_nanos()),
+            (u32::MAX, fraction, nanos)
+        );
     }
 }
 
@@ -155,6 +186,54 @@ fn t17_all_fmt_scales_and_policy_provenance() {
     assert_eq!(t.scale.stated(), TimeScale::Unknown);
     assert_eq!(t.scale.effective(), TimeScale::Gps);
     assert_eq!(t.scale.origin(), ScaleOrigin::Policy);
+    for fmt in [0, 1, 2, 3, 4, 5] {
+        let mut bytes = [0; 14];
+        bytes[0] = fmt << 4;
+        bytes[8] = 1;
+        bytes[10..].fill(0xff);
+        let r = decode_time_f1(
+            &bytes,
+            10,
+            TimeF1Layout::Source05,
+            ScalePolicy {
+                irig: TimeScale::Tai,
+                rtc: TimeScale::Utc,
+            },
+        )
+        .unwrap();
+        let t = r.time.unwrap();
+        assert_eq!(r.consumed, 10);
+        assert_eq!(
+            t.scale.effective(),
+            match fmt {
+                0..=2 => TimeScale::Tai,
+                3 | 4 => TimeScale::Utc,
+                5 => TimeScale::Gps,
+                _ => unreachable!(),
+            }
+        );
+        for n in 0..10 {
+            assert!(
+                decode_time_f1(&bytes, n, TimeF1Layout::Source05, ScalePolicy::default()).is_err()
+            );
+        }
+        assert!(
+            decode_time_f1(&bytes, 15, TimeF1Layout::Source05, ScalePolicy::default()).is_err()
+        );
+    }
+    let bytes = [0x30, 0, 0, 0, 0, 0x60, 0x59, 0x23, 0x81, 1];
+    assert!(
+        decode_time_f1(
+            &bytes,
+            10,
+            TimeF1Layout::Source05,
+            ScalePolicy {
+                irig: TimeScale::Utc,
+                rtc: TimeScale::Utc
+            }
+        )
+        .is_err()
+    );
 }
 
 /// Requirements: L1-TAI-007, L2-TAI-107, L3-TAI-107
@@ -174,7 +253,7 @@ fn t16_leap_second_retained_only_at_permitted_utc_dates() {
                 0x60,
                 0x59,
                 0x23,
-                ((day / 10 % 10) << 4 | day % 10) as u8,
+                (((day / 10 % 10) << 4) | (day % 10)) as u8,
                 (day / 100) as u8,
             ];
             let r = decode_time_f1(
@@ -221,6 +300,23 @@ fn t16_calendar_known_year_and_wrong_time_boundaries() {
         );
         bytes[offset] = old;
     }
+    let bytes = [0x40, 0, 0, 0, 0x99, 0x60, 0x59, 0x23, 0x82, 1];
+    let t = decode_time_f1(&bytes, 10, TimeF1Layout::Source05, ScalePolicy::default())
+        .unwrap()
+        .time
+        .unwrap();
+    assert_eq!((t.seconds, t.nanoseconds), (60, 990_000_000));
+    assert!(t.with_year(2024).is_ok());
+    assert!(t.with_year(2023).is_err());
+    let bytes = [0x40, 0, 0, 0, 0, 0x60, 0x59, 0x23, 0x65, 3];
+    let t = decode_time_f1(&bytes, 10, TimeF1Layout::Source05, ScalePolicy::default())
+        .unwrap()
+        .time
+        .unwrap();
+    assert!(t.with_year(2023).is_ok());
+    assert!(t.with_year(2024).is_err());
+    let bytes = [0x40, 2, 0, 0, 0x35, 0x27, 0x45, 0x13, 0x29, 2, 0x23, 0x20]; // invalid 2023-Feb29
+    assert!(decode_time_f1(&bytes, 12, TimeF1Layout::Source05, ScalePolicy::default()).is_err());
 }
 
 /// Requirements: L1-SEC-004, L2-SEC-104, L3-SEC-104, L1-ERR-004, L2-ERR-104, L3-ERR-104
@@ -238,4 +334,16 @@ fn rdg008_reports_byte_word_both_and_neither() {
         assert_eq!((r.byte_valid(), r.word_valid()), (byte_ok, word_ok));
         assert_eq!(r.stored, u16::from_le_bytes([bytes[10], bytes[11]]));
     }
+    let mut bytes = [0xff; 16];
+    bytes[10] = 0xf6;
+    bytes[11] = 9; // ten*255=2550=0x09f6
+    let r = inspect_secondary_checksum(&bytes).unwrap();
+    assert_eq!((r.byte_sum, r.word_sum), (2550, 65531));
+    assert!(r.byte_valid());
+    assert!(!r.word_valid());
+    for n in 0..12 {
+        assert!(inspect_secondary_checksum(&bytes[..n]).is_err());
+    }
+    bytes[12..].fill(0);
+    assert_eq!(inspect_secondary_checksum(&bytes).unwrap(), r);
 }

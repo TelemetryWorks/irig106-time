@@ -66,6 +66,11 @@ extern crate std;
 
 extern crate alloc;
 
+/// Scale-qualified, leap-preserving Format 1 wire readings.
+pub mod format1;
+/// Explicit time-scale evidence and policy assumptions.
+pub mod scale;
+
 /// Absolute time representations: `AbsoluteTime`, `CalendarTime`, `Ch4BinaryTime`, `Ieee1588Time`, `Ertc`.
 pub mod absolute;
 /// BCD-encoded Day-of-Year and Day-Month-Year time message decoding.
@@ -119,6 +124,7 @@ pub use network_time::{
 };
 pub use packet_standard::PacketStandard;
 pub use quality::{TimeQuality, compute_quality};
+#[allow(deprecated)] // Compatibility re-export until the reviewed migration.
 pub use recording_event::{RecordingEvent, RecordingEventType};
 pub use rtc::Rtc;
 pub use secondary::{SecHdrTimeFormat, SecondaryHeaderTime};
@@ -127,3 +133,5 @@ pub use version::{Irig106Version, detect_data_type_version, detect_version};
 
 /// Unit and epoch newtypes from [`irig106_types`], re-exported for convenience.
 pub use irig106_types::{NanosDuration, TaiSeconds, TaiUtcOffset, UnixSeconds};
+
+pub use scale::{ScaleEvidence, ScaleOrigin, ScalePolicy, Scaled, TimeScale, TimeScaleTagged};
