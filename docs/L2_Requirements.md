@@ -13,7 +13,7 @@ categories**, not the 144 mentioned in the assignment. Every one has a
 complete L1 → L2 → L3 path; no missing L1 requirements have been invented. The prototype
 identifiers below are retired, never reassigned; new base IDs start at
 101 and additional decompositions at 201. They do not imply existing test
-coverage. Implementation is a later tests-first step (ADR-0016). There are **142
+coverage. Implementation is a later tests-first step (ADR-0016). There are **143
 active requirements at this level**; all 27 L1 categories are covered.
 
 Every obligation uses SHALL. Verification is planned: T = Test, I =
@@ -43,6 +43,28 @@ results. Every entry has exactly one L1 parent. Its L3 child supplies data
 layout/algorithm obligations and planned cases. Additional STRM and RDG
 entries decompose complex policy and reading obligations.
 
+## Shared types and edition qualification
+
+The target shared API is `irig106-types` merge **c59e004**, described in
+its `docs/STANDARD-VALUES-REVIEW.md`: `Ertc::to_nanos(self) -> u128`
+returns **1 ns per tick**; `TimeSource::Gps` is removed in favour of
+`Reserved(3)`; source 2 is `InternalFromRmm` (formerly `InternalRtc`);
+`TimeFormat::None` and `IrigTimeSource` exist; version-list decoding uses
+`Irig106Version::from_setup_record` and `from_data_type_version`.
+These are documentation targets, not changes to the dependency or Rust code.
+
+**Edition qualification applies throughout this document:** modern SRC,
+source None and FMT None obligations apply from **106-05**, after the
+layout is selected by L2/L3-EDN-201. Resolved **106-04** uses a distinct EXT
+value (external-present bit 0, reserved bits 3–1), reserves FMT 6–15 and
+bits 31–12, and never feeds EXT to `TimeSource::from_raw`. Unknown edition
+retains raw fields and an unresolved layout; do not label nibble 3 None,
+FMT 15 None, or EXT 0 internal SRC merely by guessing. Scope the accepted
+RDG mappings/source comparisons to their applicable resolved layouts;
+legacy-to-declaration comparisons require separately documented analysis.
+The existing L1 statements describe the 106-24R1 baseline; these cited
+legacy differences qualify their L2/L3 decomposition without rewriting L1.
+
 ## Questions requiring owner decisions
 
 | ID | Question | Recommended option and reason |
@@ -54,6 +76,7 @@ entries decompose complex policy and reading obligations.
 | Q-NTP | How should NTP eras and the phrase “includes leap seconds” map to Unix/absolute time? | Preserve raw UTC-labelled seconds/fractions and **require explicit era plus a reviewed RFC 1305/leap mapping analysis** before ambiguous conversions are implemented. Never add all historical leap offsets by inference or assume the host's current era. |
 | Q-FLAGS | Must reserved secondary format 11 reject an RTC-form stamp even when bit 6 is clear? | Keep **L1-IPT-007's rejection for this draft**; recommend an owner-approved L1 refinement limiting reserved-format rejection to secondary-derived stamps (bit 6 set). §11.2.1.1 g and §11.2.1.3 b select RTC by bit 6; current L1 wording is stricter. No L1 change is made here. |
 | Q-CLI-EXIT | Accept the proposed numeric exit assignments? | **0 success, 1 findings threshold, 2 I/O/input failure, 3 usage**; document these before scripts depend on them. The four classes are L1; their numbers are a new interface proposal. |
+| Q-EDITION | What selects EXT versus SRC when edition evidence is missing or conflicting? | Recommend **explicit caller layout override first (labelled), otherwise compatible caller-declared and governing setup-record version evidence; unresolved on conflict/absence**. Header data type version is supporting lower-bound evidence, never an exact recording-edition selector; 0x01 alone must not select EXT. An override preserves contradictions as evidence. Setup codes naming a family do not prove an exact later edition. This precedence is a product-policy proposal, not settled by the standard. |
 
 Rounding (NTP fractions and interpolation), midpoint ties, mixed-resolution
 jump thresholds, and mode-change flushing are explicitly proposed design
@@ -281,7 +304,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL read a Format 1 data word independently from its body, retaining raw fields and diagnostics for reserved values.
 
-**Source**: §11.2.3.2 a; Figure 11-12; Table 11-4. Prototype identifier kept.
+**Source**: §11.2.3.2 a; Figure 11-12; Table 11-4. Prototype identifier kept. Edition qualification: 106-04 §10.6.3.3, Figure 10-15, printed 10-30–31 / PDF 288–289; 106-05 Figure 10-16a, printed 10-37 / PDF 41; 106-24R1 §11.2.1.1 e, printed 11-6 / PDF 14; STANDARD-REVIEW T-6.
 
 **Verification Method**: Test (T)
 
@@ -291,25 +314,25 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-CSDW-002
 
-**Statement**: The library SHALL use the corrected shared source mapping, preserving reserved numeric values rather than presenting source 3 as GPS.
+**Statement**: The library SHALL select EXT versus SRC only after resolving edition evidence under L2-EDN-201; read 106-04 EXT bit 0 with bits 3–1 reserved, and from 106-05 use corrected shared SRC values, never GPS or legacy None for raw 3.
 
-**Source**: §11.2.3.2 a, "0x3 – 0xE = Reserved"; T-6. Prototype identifier kept; value 3 is no longer "GPS".
+**Source**: §11.2.3.2 a, "0x3 – 0xE = Reserved"; T-6. Prototype identifier kept; value 3 is no longer "GPS". Edition qualification: 106-04 §10.6.3.3, Figure 10-15, printed 10-30–31 / PDF 288–289; 106-05 Figure 10-16a, printed 10-37 / PDF 41; 106-24R1 §11.2.1.1 e, printed 11-6 / PDF 14; STANDARD-REVIEW T-6.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: All sixteen SRC values, especially 3 and 15; T-6 regression independent of current types implementation.
+**Planned verification**: Resolved 106-04: all sixteen EXT nibbles, with bit 0 present/absent and every reserved bit 3–1; raw 3 is present plus reserved-bit evidence, never None. Resolved 106-05+: all sixteen SRC/FMT values, including Reserved(3), InternalFromRmm for 2 and FMT None for 15. Unknown/conflicting edition plus header 0x01 must not silently select EXT; a later setup declaration with header 0x01 must not be treated as 106-04.
 
 #### L2-CSDW-103
 
 **Parent**: L1-CSDW-003
 
-**Statement**: The library SHALL expose every FMT value and prevent FMT NONE from producing a usable time reference.
+**Statement**: The library SHALL expose FMT with edition qualification: resolved 106-04 reserves 6–15; from 106-05 FMT 15 is TimeFormat::None and cannot produce a default usable reference.
 
-**Source**: "0xF = NONE (time packet payload invalid)" (§11.2.3.2 a); T-7. Prototype identifier kept.
+**Source**: "0xF = NONE (time packet payload invalid)" (§11.2.3.2 a); T-7. Prototype identifier kept. Edition qualification: 106-04 §10.6.3.3, Figure 10-15, printed 10-30–31 / PDF 288–289; 106-05 Figure 10-16a, printed 10-37 / PDF 41; 106-24R1 §11.2.1.1 e, printed 11-6 / PDF 14; STANDARD-REVIEW T-6.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: All sixteen FMT values crossed with SRC=0/1/3/15; NONE yields TF-003 and no default reference; reserved yields TF-006.
+**Planned verification**: For resolved 106-05+, all FMT values crossed with SRC=0/1/3/15; None yields TF-003 and reserved values TF-006. In resolved 106-04, FMT 0xF is reserved, not None; unknown edition preserves that distinction as unresolved.
 
 #### L2-CSDW-104
 
@@ -353,11 +376,11 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL report reserved Format 1 bits using the recording's declared edition, separately from field-value validation.
 
-**Source**: "All reserved bit fields in packet headers or CSDWs shall be set to zero (0x0)" (§11.2.1 f); §11.2.3.2 a; T-7.
+**Source**: "All reserved bit fields in packet headers or CSDWs shall be set to zero (0x0)" (§11.2.1 f); §11.2.3.2 a; T-7. Edition qualification: 106-04 §10.6.3.3, Figure 10-15, printed 10-30–31 / PDF 288–289; 106-05 Figure 10-16a, printed 10-37 / PDF 41; 106-24R1 §11.2.1.1 e, printed 11-6 / PDF 14; STANDARD-REVIEW T-6.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Set each bit of both masks independently; no false positives on valid FMT/SRC/DATE/LY/ITS; old-edition ITS cannot be treated as a modern lock state.
+**Planned verification**: Set each bit of all three masks independently (106-04 EXT, 106-05–15 SRC, 106-17+ ITS); distinguish reserved bits from valid fields, preserve unknown-layout ambiguity, and never treat old zero ITS bits as certain freewheeling.
 
 ## BCD
 
@@ -755,7 +778,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL keep setup-record RCCVER and packet data-type-version values in distinct typed domains using corrected irig106-types mappings.
 
-**Source**: Table 11-4 and §11.2.1.1 e ("0x0A = RCC 106-22"); Figure 11-34 ("0x0E = RCC 106-22", "0x0F through 0xFF = Reserved"); T-9; ADR-0015.
+**Source**: Table 11-4 and §11.2.1.1 e ("0x0A = RCC 106-22"); Figure 11-34 ("0x0E = RCC 106-22", "0x0F through 0xFF = Reserved"); T-9; ADR-0015. Edition qualification: 106-04 §10.6.3.3, Figure 10-15, printed 10-30–31 / PDF 288–289; 106-05 Figure 10-16a, printed 10-37 / PDF 41; 106-24R1 §11.2.1.1 e, printed 11-6 / PDF 14; STANDARD-REVIEW T-6.
 
 **Verification Method**: Test (T)
 
@@ -767,11 +790,23 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL select explicitly cited edition differences without extrapolating missing archive evidence into claims of verified legacy support.
 
-**Source**: "References to RCC 106-04 through RCC 106-15 refer to Chapter 10, while RCC 106-17 onward refer to Chapter 11" (§11.2.1.1 e); ADR-0004.
+**Source**: "References to RCC 106-04 through RCC 106-15 refer to Chapter 10, while RCC 106-17 onward refer to Chapter 11" (§11.2.1.1 e); ADR-0004. Edition qualification: 106-04 §10.6.3.3, Figure 10-15, printed 10-30–31 / PDF 288–289; 106-05 Figure 10-16a, printed 10-37 / PDF 41; 106-24R1 §11.2.1.1 e, printed 11-6 / PDF 14; STANDARD-REVIEW T-6.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: An independent fixture per available edition touched by a reading, unknown edition/code, pre-07 declared edition absent, and source-backed exceptions. Missing 106-04 evidence stays an explicit validation gap.
+**Planned verification**: An independent fixture per available edition touched by a reading, unknown edition/code, pre-07 declared edition absent, and source-backed exceptions. Include the archived 106-04 full-PDF fixture, EXT/SRC transition and version-evidence conflicts under L2-EDN-201.
+
+#### L2-EDN-201
+
+**Parent**: L1-EDN-002
+
+**Statement**: The library SHALL keep raw setup-record version, header data type version, caller-declared edition and layout policy as separate provenance; select a 106-04 EXT layout only from resolved explicit edition evidence or a labelled caller override, never header 0x01 alone.
+
+**Source**: 106-04 §10.6.3.3, Figure 10-15, printed 10-30–31 / PDF 288–289; 106-05 Figure 10-16a, printed 10-37 / PDF 41; 106-24R1 §11.2.1.1 e, printed 11-6 / PDF 14; STANDARD-REVIEW T-6. 106-04 §10.6.1.1.5, printed 10-19 / PDF 277; corrected Irig106Version constructors, irig106-types c59e004. Proposed precedence requires owner decision Q-EDITION.
+
+**Verification Method**: Test (T)
+
+**Planned verification**: Known 106-04 caller declaration with header 0x01 selects EXT; later declared/setup edition with the same header does not. Header 0x01 alone, reserved/zero setup code, unknown code and conflicting declarations stay unresolved absent explicit override. Test both constructors with identical raw bytes in different domains; an override records all contradictions. Setup 0x0E names the unchanged 106-22 family, not exact 106-24R1 identity.
 
 ## DECL
 
@@ -1239,7 +1274,7 @@ does not settle it or replace its real-recording evidence.
 
 **Verification Method**: Inspection (I)
 
-**Planned verification**: Fixtures per touched archived edition:106-05/07/13/15/17 and current; every ITS value, non-IRIG FMT and missing edition. Record unavailable 106-04 evidence explicitly.
+**Planned verification**: Fixtures per touched archived edition:106-05/07/13/15/17 and current; every ITS value, non-IRIG FMT and missing edition. Include archived 106-04 reserved bits 31–12 and EXT bits 3–1; edition uncertainty is preserved under L2-EDN-201.
 
 #### L2-RDG-208
 

@@ -288,7 +288,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
 | L1-EDN-001 | L2-EDN-101 | _(none)_ | Draft |
-| L1-EDN-002 | L2-EDN-102 | _(none)_ | Draft |
+| L1-EDN-002 | L2-EDN-102, L2-EDN-201 | _(none)_ | Draft |
 | L1-EDN-003 | L2-EDN-103 | _(none)_ | Draft |
 
 **L2 -> L3 -> Verification Artifacts**
@@ -298,6 +298,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L2-EDN-101 | L3-EDN-101 | _(TBD)_ | Draft |
 | L2-EDN-102 | L3-EDN-102 | _(TBD)_ | Draft |
 | L2-EDN-103 | L3-EDN-103 | _(TBD)_ | Draft |
+| L2-EDN-201 | L3-EDN-201 | _(TBD)_ | Draft |
 
 ### L1-DECL: Time declarations from the setup record
 
@@ -629,7 +630,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | TAI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
 | WORD | 2 | 2 | 2 | 0 | 0 | 0 | 0 |
 | ENC | 3 | 3 | 3 | 0 | 0 | 0 | 0 |
-| EDN | 3 | 3 | 3 | 0 | 0 | 0 | 0 |
+| EDN | 3 | 4 | 4 | 0 | 0 | 0 | 0 |
 | DECL | 2 | 2 | 2 | 0 | 0 | 0 | 0 |
 | COR | 13 | 13 | 13 | 0 | 0 | 0 | 0 |
 | ANS | 5 | 5 | 5 | 0 | 0 | 0 | 0 |
@@ -643,13 +644,13 @@ This matrix is the single source of truth for live status; the requirement docum
 | CLI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
 | REL | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
 | TST | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
-| **Total** | **124** | **142** | **142** | **0** | **0** | **0** | **0** |
+| **Total** | **124** | **143** | **143** | **0** | **0** | **0** | **0** |
 
 The countable requirement set is every L2 and L3 requirement plus the 0 L1 *leaf* requirement(s) (L1s with no L2 decomposition yet). Composite L1s are verified through their children.
 
-**Tested by at least one test marker**: 0 of 284 (0.0%).
+**Tested by at least one test marker**: 0 of 286 (0.0%).
 
-**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 0 of 284 (0.0%).
+**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 0 of 286 (0.0%).
 
 ### Orphan check
 

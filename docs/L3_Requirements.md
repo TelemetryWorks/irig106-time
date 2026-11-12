@@ -13,7 +13,7 @@ categories**, not the 144 mentioned in the assignment. Every one has a
 complete L1 → L2 → L3 path; no missing L1 requirements have been invented. The prototype
 identifiers below are retired, never reassigned; new base IDs start at
 101 and additional decompositions at 201. They do not imply existing test
-coverage. Implementation is a later tests-first step (ADR-0016). There are **142
+coverage. Implementation is a later tests-first step (ADR-0016). There are **143
 active requirements at this level**; all 27 L1 categories are covered.
 
 Every obligation uses SHALL. Verification is planned: T = Test, I =
@@ -42,7 +42,29 @@ L3 states implementation obligations and planned verification cases, not
 Rust source changes. Each entry names its immediate L2 parent and its L1
 ancestor explicitly. Names are responsibility boundaries, not a commitment
 to a new public type or dependency. See L2 for owner questions Q-DEFAULT
-through Q-CLI-EXIT; the same unresolved constraints bind L3.
+through Q-CLI-EXIT and Q-EDITION; the same unresolved constraints bind L3.
+
+## Shared types and edition qualification
+
+The target shared API is `irig106-types` merge **c59e004**, described in
+its `docs/STANDARD-VALUES-REVIEW.md`: `Ertc::to_nanos(self) -> u128`
+returns **1 ns per tick**; `TimeSource::Gps` is removed in favour of
+`Reserved(3)`; source 2 is `InternalFromRmm` (formerly `InternalRtc`);
+`TimeFormat::None` and `IrigTimeSource` exist; version-list decoding uses
+`Irig106Version::from_setup_record` and `from_data_type_version`.
+These are documentation targets, not changes to the dependency or Rust code.
+
+**Edition qualification applies throughout this document:** modern SRC,
+source None and FMT None obligations apply from **106-05**, after the
+layout is selected by L2/L3-EDN-201. Resolved **106-04** uses a distinct EXT
+value (external-present bit 0, reserved bits 3–1), reserves FMT 6–15 and
+bits 31–12, and never feeds EXT to `TimeSource::from_raw`. Unknown edition
+retains raw fields and an unresolved layout; do not label nibble 3 None,
+FMT 15 None, or EXT 0 internal SRC merely by guessing. Scope the accepted
+RDG mappings/source comparisons to their applicable resolved layouts;
+legacy-to-declaration comparisons require separately documented analysis.
+The existing L1 statements describe the 106-24R1 baseline; these cited
+legacy differences qualify their L2/L3 decomposition without rewriting L1.
 
 ## RTC
 
@@ -228,9 +250,9 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **L1 ancestor**: L1-CSDW-001
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Require four bytes and decode one little-endian u32. Expose SRC, FMT, LY, DATE, ITS, and reserved masks as separate fields; body dispatch uses DATE only after time validity checks.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Require four bytes and decode one little-endian u32. Resolve layout through L3-EDN-201, then expose tagged EXT or SRC, FMT, LY, DATE, applicable ITS and the edition-specific reserved mask. Unknown layout preserves raw competing meanings; body dispatch uses DATE only after validity and edition checks.
 
-**Source**: §11.2.3.2 a; Figure 11-12; Table 11-4. Prototype identifier kept.
+**Source**: §11.2.3.2 a; Figure 11-12; Table 11-4. Prototype identifier kept. Edition qualification: 106-04 §10.6.3.3, Figure 10-15, printed 10-30–31 / PDF 288–289; 106-05 Figure 10-16a, printed 10-37 / PDF 41; 106-24R1 §11.2.1.1 e, printed 11-6 / PDF 14; STANDARD-REVIEW T-6.
 
 **Planned verification**: One-bit field walking and asymmetric bytes; data type 0x11 dispatch; every truncated word length.
 
@@ -238,21 +260,21 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **L1 ancestor**: L1-CSDW-002
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Decode word & 0xF: 0 internal, 1 external, 2 internal-from-RMM, 15 none, 3..14 reserved(raw). Reserved values emit TF-006 and are not promoted to a named source.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Resolve layout under L3-EDN-201 first. For 106-04 expose LegacyExt { external_present: (word & 1)!=0, reserved: word & 0xE }; report nonzero reserved bits, never interpret the nibble as TimeSource. From 106-05 use TimeSource::from_raw(word & 0xF): 0 Internal, 1 External, 2 InternalFromRmm, 15 None, 3..14 Reserved(raw). In particular Reserved(3) never becomes Gps or legacy None. Unknown layout preserves raw EXT/SRC alternatives without assigning a source.
 
-**Source**: §11.2.3.2 a, "0x3 – 0xE = Reserved"; T-6. Prototype identifier kept; value 3 is no longer "GPS".
+**Source**: §11.2.3.2 a, "0x3 – 0xE = Reserved"; T-6. Prototype identifier kept; value 3 is no longer "GPS". Edition qualification: 106-04 §10.6.3.3, Figure 10-15, printed 10-30–31 / PDF 288–289; 106-05 Figure 10-16a, printed 10-37 / PDF 41; 106-24R1 §11.2.1.1 e, printed 11-6 / PDF 14; STANDARD-REVIEW T-6.
 
-**Planned verification**: All sixteen SRC values, especially 3 and 15; T-6 regression independent of current types implementation.
+**Planned verification**: Resolved 106-04: all sixteen EXT nibbles, with bit 0 present/absent and every reserved bit 3–1; raw 3 is present plus reserved-bit evidence, never None. Resolved 106-05+: all sixteen SRC/FMT values, including Reserved(3), InternalFromRmm for 2 and FMT None for 15. Unknown/conflicting edition plus header 0x01 must not silently select EXT; a later setup declaration with header 0x01 must not be treated as 106-04.
 
 **L3-CSDW-103** · Parent: L2-CSDW-103 · Verification: T
 
 **L1 ancestor**: L1-CSDW-003
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Decode (word>>4)&0xF as B/A/G/RTC/UTC-from-GPS/native-GPS for 0..5; 6..14 reserved; 15 NONE with invalid payload. Preserve SRC independently; GPS is a format/scale, not SRC=3.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: After L3-EDN-201, decode (word>>4)&0xF as B/A/G/RTC/UTC-from-GPS/native-GPS for 0..5. In 106-04, 6..15 are reserved; do not call shared from_raw(15) and promote its modern None meaning. From 106-05, 6..14 are reserved and 15 is TimeFormat::None (invalid payload). Preserve raw fields on unresolved layout. GPS is a format/scale, never SRC=3.
 
-**Source**: "0xF = NONE (time packet payload invalid)" (§11.2.3.2 a); T-7. Prototype identifier kept.
+**Source**: "0xF = NONE (time packet payload invalid)" (§11.2.3.2 a); T-7. Prototype identifier kept. Edition qualification: 106-04 §10.6.3.3, Figure 10-15, printed 10-30–31 / PDF 288–289; 106-05 Figure 10-16a, printed 10-37 / PDF 41; 106-24R1 §11.2.1.1 e, printed 11-6 / PDF 14; STANDARD-REVIEW T-6.
 
-**Planned verification**: All sixteen FMT values crossed with SRC=0/1/3/15; NONE yields TF-003 and no default reference; reserved yields TF-006.
+**Planned verification**: All sixteen FMT values for resolved 106-04 and 106-05+, checking FMT 15 reserved versus None; unresolved edition must not choose a meaning by enum conversion alone.
 
 **L3-CSDW-104** · Parent: L2-CSDW-104 · Verification: T
 
@@ -278,7 +300,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **L1 ancestor**: L1-CSDW-006
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Extract (word>>12)&0xF; use the eight §11.2.3.2 a values through the corrected shared enum. For non-A/B/G FMT report not-applicable; pre-106-17 report not-reported; absent edition and zero report freewheeling-or-not-reported; 8..15 remain reserved and evidenced.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Extract (word>>12)&0xF; use the eight §11.2.3.2 a values through IrigTimeSource::from_raw: Freewheeling, TimeCommand, Rmm, ExternalIrig, ExternalGps, ExternalNtp, ExternalPtp, Embedded for 0..7 and Reserved(raw) for 8..15. For non-A/B/G FMT report not-applicable; pre-106-17 report not-reported; absent edition and zero report freewheeling-or-not-reported; 8..15 remain reserved and evidenced.
 
 **Source**: "IRIG Time Source (ITS). Bits 15-12 provide dynamic information regarding the source of time for an internal IRIG time code generator (TCG) when FMT is IRIG-A, B, or G" (§11.2.3.2 a); T-7; the field is reserved before 106-17 and Format 1's data type version did not change (T-14, a reading for the register).
 
@@ -288,11 +310,11 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **L1 ancestor**: L1-CSDW-007
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: For 106-17 onward test mask 0xFFFF0C00. Before 106-17 ITS bits are also reserved (mask 0xFFFFFC00), per RDG-007; unknown edition preserves ambiguity. Emit TF-005 with raw mask intersections.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Resolve layout under L3-EDN-201. For 106-04 test mask 0xFFFFFC0E, including EXT reserved bits 3–1. From 106-05 through 106-15 test 0xFFFFFC00; from 106-17 test 0xFFFF0C00 under RDG-007. Unknown layout preserves the competing reserved-bit interpretations rather than claiming a modern source or ITS. Emit TF-005 with raw mask intersections.
 
-**Source**: "All reserved bit fields in packet headers or CSDWs shall be set to zero (0x0)" (§11.2.1 f); §11.2.3.2 a; T-7.
+**Source**: "All reserved bit fields in packet headers or CSDWs shall be set to zero (0x0)" (§11.2.1 f); §11.2.3.2 a; T-7. Edition qualification: 106-04 §10.6.3.3, Figure 10-15, printed 10-30–31 / PDF 288–289; 106-05 Figure 10-16a, printed 10-37 / PDF 41; 106-24R1 §11.2.1.1 e, printed 11-6 / PDF 14; STANDARD-REVIEW T-6.
 
-**Planned verification**: Set each bit of both masks independently; no false positives on valid FMT/SRC/DATE/LY/ITS; old-edition ITS cannot be treated as a modern lock state.
+**Planned verification**: Set each bit of all three masks independently (106-04 EXT, 106-05–15 SRC, 106-17+ ITS); distinguish reserved bits from valid fields, preserve unknown-layout ambiguity, and never treat old zero ITS bits as certain freewheeling.
 
 ## BCD
 
@@ -626,9 +648,9 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **L1 ancestor**: L1-EDN-002
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Map RCCVER 0x0C to106-17,0x0D to106-19 (rules include 106-20 per owner),0x0E to106-22 with note unchanged through 106-24R1;0x0F..0xFF unknown. Packet version 0x0A means 106-22 in its separate list; never feed it to RCCVER decoding.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Use Irig106Version::from_setup_record for setup RCCVER: 0x0C names V17, 0x0D V19 (applicable rules include 106-20 per owner), 0x0E V22 with note unchanged through 106-24R1; 0x0F..0xFF are Unknown(raw). Use from_data_type_version for the separate header list, where 0x0A names V22 and 0x01 V04. These decode code-list names, not exact recording editions; L3-EDN-201 resolves applicability. Never exchange the two domains or infer legacy EXT from V04 returned for a header byte alone.
 
-**Source**: Table 11-4 and §11.2.1.1 e ("0x0A = RCC 106-22"); Figure 11-34 ("0x0E = RCC 106-22", "0x0F through 0xFF = Reserved"); T-9; ADR-0015.
+**Source**: Table 11-4 and §11.2.1.1 e ("0x0A = RCC 106-22"); Figure 11-34 ("0x0E = RCC 106-22", "0x0F through 0xFF = Reserved"); T-9; ADR-0015. Edition qualification: 106-04 §10.6.3.3, Figure 10-15, printed 10-30–31 / PDF 288–289; 106-05 Figure 10-16a, printed 10-37 / PDF 41; 106-24R1 §11.2.1.1 e, printed 11-6 / PDF 14; STANDARD-REVIEW T-6.
 
 **Planned verification**: All assigned/reserved shared codes in both lists, especially 0x0A/0x0D/0x0E/0x0F, preserving raw unknown codes. T-9 regression.
 
@@ -636,11 +658,21 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **L1 ancestor**: L1-EDN-003
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Maintain an edition rule table with source chapter/section and available fixture per change: Chapter 10 before 106-17, Chapter 11 thereafter, ITS applicability, Format 2 availability, and late-packet limits. Record that 106-04 Chapter 10 is unavailable in the archive; do not assert its reserved values were checked.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Maintain an edition rule table with source chapter/section and available fixture per change: Chapter 10 before 106-17, Chapter 11 thereafter, ITS applicability, Format 2 availability, and late-packet limits. Use the archived 106-04 full PDF §10.6.3.3/Figure 10-15 for the EXT layout, and 106-05 Figure 10-16a for SRC/None. Select the rule only after L3-EDN-201 resolves layout evidence; header 0x01 is not proof of a 106-04 recording.
 
-**Source**: "References to RCC 106-04 through RCC 106-15 refer to Chapter 10, while RCC 106-17 onward refer to Chapter 11" (§11.2.1.1 e); ADR-0004.
+**Source**: "References to RCC 106-04 through RCC 106-15 refer to Chapter 10, while RCC 106-17 onward refer to Chapter 11" (§11.2.1.1 e); ADR-0004. Edition qualification: 106-04 §10.6.3.3, Figure 10-15, printed 10-30–31 / PDF 288–289; 106-05 Figure 10-16a, printed 10-37 / PDF 41; 106-24R1 §11.2.1.1 e, printed 11-6 / PDF 14; STANDARD-REVIEW T-6.
 
-**Planned verification**: An independent fixture per available edition touched by a reading, unknown edition/code, pre-07 declared edition absent, and source-backed exceptions. Missing 106-04 evidence stays an explicit validation gap.
+**Planned verification**: An independent fixture per available edition touched by a reading, unknown edition/code, pre-07 declared edition absent, and source-backed exceptions. Include archived 106-04 EXT/SRC transition fixtures and the version-evidence conflict cases of L3-EDN-201.
+
+**L3-EDN-201** · Parent: L2-EDN-201 · Verification: T
+
+**L1 ancestor**: L1-EDN-002
+
+**Obligation**: The implementation SHALL extract setup CSDW bits 7–0 for Irig106Version::from_setup_record and pass the header version byte separately to Irig106Version::from_data_type_version; neither constructor alone is a recording-edition resolver. Retain raw codes and provenance, including Unknown(raw), never map setup zero to Pre07 or code 15 to V23. Proposed policy: a caller's explicit layout override wins but is labelled with contradictions; otherwise compatible caller-declared edition and governing setup-version evidence establish an edition/family. Conflicting/absent evidence stays unresolved. Header codes constrain consistency as release hints, not an exact edition equality: 0x01 cannot alone select LegacyExt, and a later declaration must not be downgraded by it. Resolve the required boundary (106-04 versus 106-05+) before calling modern source/FMT constructors; undecidable cases return raw/unresolved fields and no invented source. The standard does not prescribe this precedence; implementation awaits Q-EDITION review. Inherited L3-EDN-102 code-list mapping is decoding vocabulary only, subject to this resolver.
+
+**Source**: 106-04 §10.6.3.3, Figure 10-15, printed 10-30–31 / PDF 288–289; 106-05 Figure 10-16a, printed 10-37 / PDF 41; 106-24R1 §11.2.1.1 e, printed 11-6 / PDF 14; STANDARD-REVIEW T-6. §11.2.1.1 e says "This byte contains a value at or below the release version of the standard applied to the data types in Table 11-4." 106-04 §10.6.1.1.5, printed 10-19 / PDF 277; irig106-types c59e004 adoption list. Precedence is proposed product policy (Q-EDITION).
+
+**Planned verification**: Known 106-04 declaration + header 0x01 -> LegacyExt; 106-05/106-24R1 declaration + header 0x01 -> SRC layout; header 0x01 alone -> unresolved. Include compatible/incompatible setup evidence, setup zero/reserved, unknown values, explicit override with contradiction retained, governing setup changes, and no exact later-edition inference from setup 0x0E. Verify all sixteen EXT nibbles and the 106-04/05 FMT 15 distinction through the resolved branch.
 
 ## DECL
 
@@ -1032,7 +1064,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Source**: 106-24R1 Chapter 11 §11.2.3.2 a/Table 11-4/Figure 11-34; 106-05/07/13/15 Chapter 10 reserved31..12; RDG-007.
 
-**Planned verification**: Fixtures per touched archived edition:106-05/07/13/15/17 and current; every ITS value, non-IRIG FMT and missing edition. Record unavailable 106-04 evidence explicitly.
+**Planned verification**: Fixtures per touched archived edition:106-05/07/13/15/17 and current; every ITS value, non-IRIG FMT and missing edition. Include archived 106-04 reserved bits 31–12 and EXT bits 3–1, with unresolved edition handling under L3-EDN-201.
 
 **L3-RDG-208** · Parent: L2-RDG-208 · Verification: I
 
@@ -1284,7 +1316,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **L1 ancestor**: L1-API-010
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Serialize/deserialize answers, findings, policies, tables, timelines and value types; validate numeric/date ranges and reference/session links on input. Unknown raw values retain their explicit unsupported designation; large integers remain exact.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Serialize/deserialize answers, findings, policies, tables, timelines and value types; validate numeric/date ranges and reference/session links on input. Unknown raw values retain their explicit unsupported designation; large integers remain exact. Use the c59e004 shared serde vocabulary: InternalFromRmm, Reserved(3), TimeFormat::None and IrigTimeSource. Removed source variants Gps and InternalRtc must not be emitted or silently accepted as current values; test their rejection separately from native-GPS FMT and ExternalGps ITS, which remain valid.
 
 **Source**: Architecture section 9; tools store and exchange answers (contract 4.7 to 4.9).
 

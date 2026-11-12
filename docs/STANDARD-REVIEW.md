@@ -90,18 +90,64 @@ free-running 1-gigahertz (GHz) clock … (RTC = ERTC/100)".
 
 **Change:** one ERTC tick is 1 ns (in `irig106-types`).
 
-### T-6 Time source 3 is not "GPS" in any archived edition
+### T-6 106-04 has EXT; from 106-05 source 3 is reserved, never GPS
 
-**Code:** `irig106-types` `TimeSource::Gps = 3`; `csdw.rs:292-305` and
-`version.rs:218-229` describe 3 as GPS from 106-05 (and "None" in 106-04).
+**Prototype code:** `TimeSource::Gps = 3` and the time crate's
+`csdw.rs`/`version.rs` source mapping treated 3 as GPS from 106-05 and
+as "None" in 106-04. Neither claim is supported. The corrected shared
+contract at `irig106-types` merge `c59e004` removes Gps, returns
+`Reserved(3)`, and names source 2 `InternalFromRmm`. Adopting that merge
+in this crate's code/dependency is outside this documentation PR.
 
-**Standard:** the Format 1 CSDW's "Time Source (SRC). Bits 3-0" lists "0x0 =
-Internal … 0x1 = External … 0x2 = Internal from RMM … 0x3 – 0xE = Reserved …
-0xF = None" in 106-24R1, and the same values with 3 reserved in 106-05,
-106-07, and 106-13 (Chapter 10 in those editions). 106-04's Chapter 10 is
-not in the archive, so its value 3 cannot be checked.
+**Correction to the earlier archive claim (visual page check, 2026-11-12):**
+106-04 Chapter 10 **is archived inside the full PDF**, not a separate
+chapter asset. The archive fetcher verified size and SHA-256 with
+`python3 scripts/fetch.py --edition 106-04 --kind full`, producing
+`files/106-04/106-04.pdf` (SHA-256
+`a75ef16a77ecb4838c0c9678b7d483049e84c94d7a49a3edb7f7199ce98914c8`).
+Rendered with `pdftoppm -f N -l N -scale-to 1800 -png -singlefile INPUT OUTPUT`
+and inspected visually; PDF page numbers are one-based:
 
-**Change:** treat 3 as reserved unless a source shows otherwise.
+- **106-04 §10.6.3.3, Figure 10-15, printed 10-30 / PDF 288**:
+  the diagram reads "RESERVED", "DATE", "FMT", "EXT", with EXT in
+  bits 3–0, not SRC.
+- **106-04 printed 10-31 / PDF 289**, adjacent definitions:
+  "Bit 0 indicates if the external time source is present.";
+  "0 = External time is not present."; "1 = External time present.";
+  "Bits 3-1 are reserved"; FMT "0x6 thru 0xF = Reserved.";
+  "Bits 31-12: Reserved." EXT raw nibble 3 is bit 0 set plus a reserved
+  bit violation; it is **not None** and is not a modern SRC enumeration.
+- **106-05 Figure 10-16a, printed 10-37 / PDF 41**:
+  the diagram changes to "RESERVED", "DATE", "FMT", "SRC".
+  Its SRC list includes "0x3 – 0xE Reserved" and "0xF = None";
+  its FMT list includes "0xF = None (time packet payload invalid)".
+  Thus SRC and FMT None begin in 106-05; 106-04 reserves FMT 0xF.
+  `files/106-05/chapter10.pdf` SHA-256 is
+  `7aa84ef996df5ecd59da4159b82415ef2ba791a81dd20266c7d96a29adbf6bae`.
+
+**Edition-selection limitation:** 106-04 §10.6.1.1.5, printed 10-19 /
+PDF 277, lists "0x01 = Initial Release Header Version." But 106-24R1
+§11.2.1.1 e, printed 11-6 / PDF 14 (also visually checked), says:
+"This byte contains a value at or below the release version of the
+standard applied to the data types in Table 11-4." Therefore a header
+byte 0x01 alone does **not** prove that a recording uses the 106-04 EXT
+layout. Shared version constructors decode the named lists, not a
+complete recording's effective edition. Setup-record version evidence,
+caller-declared edition and explicit policy must be reconciled before
+selecting EXT versus SRC. Missing/conflicting evidence remains unresolved
+unless the caller supplies a labelled override; proposed precedence is
+L2/L3-EDN-201, owner question Q-EDITION. Do not silently infer 106-04 from
+a low header byte or interpret legacy EXT using TimeSource::from_raw.
+
+**Change required in the rebuild:** after resolving the layout, 106-04
+reads bit 0 as external-present, reports reserved bits 3–1, and reserves
+FMT 6–15. From 106-05, use the SRC table (3–14 reserved) and FMT 15 None.
+Keep raw EXT and SRC as different tagged values. T-7's None requirement
+and the downstream source/validity checks must respect this edition gate.
+
+Sources: [106-04 full PDF](https://github.com/TelemetryWorks/rcc-106-standards/releases/download/106-04/106-04.pdf),
+[106-05 Chapter 10](https://github.com/TelemetryWorks/rcc-106-standards/releases/download/106-05/chapter10.pdf),
+[106-24R1 Chapter 11](https://github.com/TelemetryWorks/rcc-106-standards/releases/download/106-24R1/chapter11.pdf).
 
 ### T-7 Fields of the Format 1 CSDW are missing
 
