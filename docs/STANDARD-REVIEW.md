@@ -345,6 +345,12 @@ to split out at bit 17. A hand-derived distinguishing fixture is
 701.969999 seconds. The prototype's secondary-byte word order and its
 17-bit split both disagree with the checked figures.
 
+**Wording caveat:** §11.2.1.1 g says "The two lsbs of the 64-bit
+packet secondary header time and IPTS shall be zero-filled." The phrase
+"two lsbs" is imprecise if read as two bits: Figure 11-4 explicitly shows
+a **16-bit reserved half-word**. The byte layout above follows that
+figure; the wording discrepancy is retained here for review.
+
 **Remaining ambiguity:** neither figure establishes a binary calendar
 origin; the three BCD day bits do not identify a complete day of year.
 L2/L3 must retain partial time or require explicit caller context before
