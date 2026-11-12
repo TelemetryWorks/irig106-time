@@ -385,17 +385,17 @@ Every entry of `docs/INTERPRETATIONS.md` with its written analysis and the tests
 
 | Entry | Title | Design | Analysis | Tests |
 |-------|-------|--------|----------|-------|
-| RDG-001 | `R-x\TTF-n` 1 and 2 name the packet formats `0x11` and `0x12` | proposed | not yet written | _(none)_ |
-| RDG-002 | `R-x\TFMT-n` letters A, B, G, N, U, X name Format 1 FMT values | proposed | not yet written | _(none)_ |
-| RDG-003 | `R-x\TFMT-n` I "Internal" has no clear FMT value | open | not yet written | _(none)_ |
-| RDG-004 | `R-x\TFMT-n` 0, 1, 2 name Format 2 NTF values | proposed | not yet written | _(none)_ |
-| RDG-005 | `R-x\TSRC-n` letters name Format 1 SRC values; a difference is information | proposed | not yet written | _(none)_ |
-| RDG-006 | `R-x\SHTF-n` 0 "Chapter 4 BCD" names packet flags `00`, "Chapter 4 binary weighted" | proposed | not yet written | _(none)_ |
-| RDG-007 | ITS (Format 1 bits 15–12) is read only for recordings declared 106-17 or later | proposed | not yet written | _(none)_ |
+| RDG-001 | `R-x\TTF-n` 1 and 2 name the packet formats `0x11` and `0x12` | accepted | not yet written | _(none)_ |
+| RDG-002 | `R-x\TFMT-n` letters A, B, G, N, U, X name Format 1 FMT values | accepted | not yet written | _(none)_ |
+| RDG-003 | `R-x\TFMT-n` I "Internal" has no clear FMT value | accepted | not yet written | _(none)_ |
+| RDG-004 | `R-x\TFMT-n` 0, 1, 2 name Format 2 NTF values | accepted | not yet written | _(none)_ |
+| RDG-005 | `R-x\TSRC-n` letters name Format 1 SRC values; a difference is information | accepted | not yet written | _(none)_ |
+| RDG-006 | `R-x\SHTF-n` 0 "Chapter 4 BCD" names packet flags `00`, "Chapter 4 binary weighted" | accepted | not yet written | _(none)_ |
+| RDG-007 | ITS (Format 1 bits 15–12) is read only for recordings declared 106-17 or later | accepted | not yet written | _(none)_ |
 | RDG-008 | The secondary header checksum sums bytes, not 16-bit words | suspect | not yet written | _(none)_ |
-| RDG-009 | The time scale of each time format; IRIG time is UTC by assumption | proposed | not yet written | _(none)_ |
-| RDG-010 | Second 60 is a leap second on a day that can be 30 June or 31 December | proposed | not yet written | _(none)_ |
-| RDG-011 | "The first dynamic data packet" is checked per session | proposed | not yet written | _(none)_ |
+| RDG-009 | The time scale of each time format; IRIG time is UTC by assumption | accepted | not yet written | _(none)_ |
+| RDG-010 | Second 60 is a leap second on a day that can be 30 June or 31 December | accepted | not yet written | _(none)_ |
+| RDG-011 | "The first dynamic data packet" is checked per session | accepted | not yet written | _(none)_ |
 
 * Entries without a written analysis: **11** of 11
 * Entries without a test: **11** of 11

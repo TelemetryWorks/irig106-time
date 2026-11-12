@@ -37,22 +37,36 @@ pushed 2026-09-27 at `b37eb80`). Push only on the owner's word.
 **Questions for the owner, to answer when resuming** (each a choice; the
 first option is the recommendation):
 
-1. TMATS can declare a time channel's format as "I — Internal". Should we
-   read that as the recorder's own clock (packet format `0x3`, "Real-Time
-   Clock")? **Yes** / leave it undecided for now. *(RDG-003)*
-2. When a tool reads a file once, front to back, and needs a packet's time
-   straight away: should it wait for the next time packet (at most about
-   one second of data later) to give the more accurate answer, or answer at
-   once from the last time packet? **Wait** / answer at once. *(architecture
-   section 13, point 5)*
-3. Accept the 27 finding names and their levels (error, warning,
-   information) as listed in `docs/architecture.md` section 8? **Yes** / go
-   through them one by one.
-4. Accept the nine proposed readings in `docs/INTERPRETATIONS.md` (all but
-   RDG-003 and RDG-008) as written, each still needing its analysis and
-   tests before it is coded? **Yes** / go through them one by one.
-5. For the secondary-header checksum (RDG-008), keep checking both ways and
-   let real recordings decide? **Yes** / pick one now.
+1. ~~Read TMATS "I — Internal" as packet format `0x3`?~~ Yes, as an
+   **inference** (owner, 2026-11-11). Neither 106-24R1 nor RCC 123-20 or
+   RCC 124-22 states it: Table 9-4 gives only "I Internal", §11.2.3.2 a only
+   "0x3 = Real-Time Clock", and RCC 124-22's one example pairs `TFMT-1:I`
+   ("Time format is internal") with `TSRC-1:I`. It rests on the one-for-one
+   match of the other letters (B/A/G/U/N/X ↔ `0x0`/`0x1`/`0x2`/`0x4`/`0x5`/
+   `0xF`), leaving I ↔ `0x3`. A disagreement is a warning, labelled as
+   inferred. Owner requires a test for every letter ↔ value pair and for the
+   RCC 124-22 example. *(RDG-003)*
+2. ~~Wait for the next time packet, or answer at once?~~ Both, switchable
+   (owner, 2026-11-11). The time policy offers two `stream` modes:
+   **standard** — answer at once from the preceding reference (RCC 123-20
+   §5.6; 106-24R1 §10.6.2 makes a time packet the first dynamic packet, so
+   a compliant recording always has one); and **interpolate** — hold the
+   packet until the next reference of its channel and interpolate between
+   the two, correcting for clock drift. The hold is bounded by the 1 Hz
+   minimum time-packet rate (§10.6.2) plus a tolerance; when no reference
+   arrives in time or the recording ends, the answer comes from the
+   preceding reference, labelled extrapolated, and a gap over 1 s is a
+   finding. A packet before any time packet gets no absolute time and a
+   finding; time source None (`0xF`) gives none. The standard gives no
+   guidance on these cases. Default mode still to be fixed in L2.
+   *(architecture section 13, point 5)*
+3. ~~Accept the 27 finding names and levels in `docs/architecture.md`
+   section 8?~~ Yes (owner, 2026-11-11).
+4. ~~Accept the nine proposed readings in `docs/INTERPRETATIONS.md`?~~ Yes
+   (owner, 2026-11-11): design `accepted`; each still needs its analysis and
+   tests before it is coded, and the two-person review stays pending.
+5. ~~Keep checking the secondary-header checksum both ways (RDG-008)?~~ Yes
+   (owner, 2026-11-11): stays `suspect` until real recordings decide.
 6. ~~Before 0.8.0, add a README note that 0.7.0 has known errors?~~ Done
    (2026-09-27, with the team review's recommendation for both READMEs).
 7. ~~Check `0x0D` files against 106-20's rules?~~ Yes (owner, 2026-09-27;
