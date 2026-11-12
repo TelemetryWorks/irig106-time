@@ -266,8 +266,10 @@ a set of time words (from `irig106-decode`).
 before answering, so "nearest" can look ahead. A caller that must answer as
 it reads (`irig106-decode` streaming, `irig106-studio`) uses `stream`: it
 holds a packet until the next reference of its channel arrives or the
-policy's bound passes, then answers; with the policy "preceding reference
-only", it answers at once. Memory is bounded by the late-packet bound and
+policy's bound passes, then answers, interpolating between the two
+references to correct for drift (mode `interpolate`); with mode `standard`
+(RCC 123-20 §5.6, preceding reference only), it answers at once. The owner
+requires both, switchable (2026-11-11). Memory is bounded by the late-packet bound and
 the reference spacing, not by the recording.
 
 ---
@@ -421,8 +423,8 @@ wrong are retired and never reused (L1, section "Prototype requirements").
 
 1. ~~ADR-0011, 0012, 0013, 0014, 0016, 0017~~ — **accepted** (2026-09-27).
    0.1.0 to 0.7.0 are not yanked (owner, 2026-09-27).
-2. **The finding identifiers and default severities** of section 8
-   (TF-001 to TF-027): proposed; L2 fixes them.
+2. ~~The finding identifiers and default severities of section 8
+   (TF-001 to TF-027)~~ — **accepted** (owner, 2026-11-11).
 3. ~~RTC sync error as a finding~~ — now in the contract (section 6.7) and
    TF-024.
 4. **T-10**, the Chapter 4 binary layout: Figure 11-4 as extracted places
@@ -430,11 +432,14 @@ wrong are retired and never reused (L1, section "Prototype requirements").
    high-order word above the low-order word in the second; the page image,
    and Chapter 4 Figure 4-4, still need checking before `secondary` and
    `words` are specified in L2.
-5. **The one-pass answer** (section 6): whether `stream` holds packets until
-   the next reference by default, or answers at once from the preceding
-   reference.
+5. ~~The one-pass answer (section 6)~~ — **both, a policy setting** (owner,
+   2026-11-11): `standard` answers at once from the preceding reference;
+   `interpolate` holds until the next reference and corrects for drift,
+   bounded by the 1 Hz time-packet rate; see `docs/ROADMAP.md` question 2.
+   The default is fixed in L2.
 6. **The reading register** (`docs/INTERPRETATIONS.md`, RDG-001 to RDG-011):
-   every entry awaits review. RDG-003 (`TFMT` I "Internal") is open;
+   design accepted by the owner (2026-11-11), two-person review pending.
+   RDG-003 (`TFMT` I "Internal") is accepted as an inference;
    RDG-007 (ITS before 106-17, T-14) and RDG-008 (the checksum, T-15,
    suspect) change what L2 specifies; RDG-009 (time scales, T-17) and
    RDG-010 (the leap second, T-16) were added at the completeness check.

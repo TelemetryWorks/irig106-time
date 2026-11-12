@@ -61,7 +61,7 @@ reads both.
 
 **Reason**: Table 9-4 names the formats in words, Table 11-4 in numbers; the pairing is by name, not stated.
 
-**Design**: proposed · **Review**: pending · **Origin**: contract 3.7, 6.4
+**Design**: accepted · **Review**: pending · **Origin**: contract 3.7, 6.4
 
 **Test**: not yet written
 
@@ -79,7 +79,7 @@ reads both.
 
 **Reason**: The names match one for one. Applying the default silently would hide a non-conforming setup record.
 
-**Design**: proposed · **Review**: pending · **Origin**: contract 3.7
+**Design**: accepted · **Review**: pending · **Origin**: contract 3.7
 
 **Test**: not yet written
 
@@ -92,12 +92,13 @@ reads both.
 **Sources**:
 - Table 9-4, `R-x\TFMT-n`: "I Internal".
 - §11.2.3.2 a, FMT: "0x3 = Real-Time Clock"; SRC (bits 3–0): "0x0 = Internal (time derived from a clock in the recorder)".
+- RCC 124-22 Chapter 7 example (page 7-3): `R-1\TFMT-1:I;` "Time format is internal", with `R-1\TSRC-1:I;` "Time source is internal". No archived source maps I to a FMT value.
 
-**Behaviour**: none chosen. "Internal" may mean FMT `0x3` (the recorder's real-time clock) or describe the source rather than the format. Until decided, a declared I is reported with the packets' FMT beside it and no agreement or disagreement is claimed.
+**Behaviour**: I ↔ `0x3` (Real-Time Clock), an inference. A difference is reported as a warning, labelled inferred rather than stated.
 
-**Reason**: The two readings give opposite findings for the same recording.
+**Reason**: The standard and both handbooks are silent. The other letters match FMT values one for one (B `0x0`, A `0x1`, G `0x2`, U `0x4`, N `0x5`, X `0xF`), which leaves I and `0x3`. Owner, 2026-11-11: tests for every letter ↔ value pair and for the RCC 124-22 example.
 
-**Design**: open · **Review**: pending · **Origin**: contract 3.7
+**Design**: accepted · **Review**: pending · **Origin**: contract 3.7
 
 **Test**: not yet written
 
@@ -115,7 +116,7 @@ reads both.
 
 **Reason**: The lists match one for one.
 
-**Design**: proposed · **Review**: pending · **Origin**: contract 3.7
+**Design**: accepted · **Review**: pending · **Origin**: contract 3.7
 
 **Test**: not yet written
 
@@ -133,7 +134,7 @@ reads both.
 
 **Reason**: The standard itself makes the packets' source change while the declaration stays.
 
-**Design**: proposed · **Review**: pending · **Origin**: contract 3.7, 5.2 rule 6
+**Design**: accepted · **Review**: pending · **Origin**: contract 3.7, 5.2 rule 6
 
 **Test**: not yet written
 
@@ -152,7 +153,7 @@ reads both.
 
 **Reason**: Chapter 11 defines the packet; Chapter 9 describes it. Chapter 4 allows both weightings for PCM time words, which may be the source of the wording.
 
-**Design**: proposed · **Review**: pending · **Origin**: contract 3.7
+**Design**: accepted · **Review**: pending · **Origin**: contract 3.7
 
 **Test**: not yet written
 
@@ -177,7 +178,7 @@ reads both.
 
 **Reason**: The field arrived without a data type version change, so a 106-15 recording's zero bits would otherwise read as a freewheeling clock.
 
-**Design**: proposed · **Review**: pending · **Origin**: T-14
+**Design**: accepted · **Review**: pending · **Origin**: T-14
 
 **Test**: not yet written
 
@@ -220,7 +221,7 @@ reads both.
 
 **Reason**: Chapter 11 states the scale for some formats only. The GPS offset is derived from RCC 200-16's own figures (TAI − UTC = 35 s when GPS was 16 s ahead of UTC), not stated as such; the IRIG assumption rests on range practice, not on a rule.
 
-**Design**: proposed · **Review**: pending · **Origin**: T-17; contract 3.2
+**Design**: accepted · **Review**: pending · **Origin**: T-17; contract 3.2
 
 **Test**: not yet written
 
@@ -239,7 +240,7 @@ reads both.
 
 **Reason**: Rejecting it loses a valid second of data; accepting it anywhere would hide malformed bodies.
 
-**Design**: proposed · **Review**: pending · **Origin**: T-16; contract 3.2
+**Design**: accepted · **Review**: pending · **Origin**: T-16; contract 3.2
 
 **Test**: not yet written
 
@@ -258,7 +259,7 @@ reads both.
 
 **Reason**: The session is the stricter of the two wordings and the unit within which the counter is continuous; a check per recording would miss a counter reset without a time packet after it.
 
-**Design**: proposed · **Review**: pending · **Origin**: contract 6.1, 6.2
+**Design**: accepted · **Review**: pending · **Origin**: contract 6.1, 6.2
 
 **Test**: not yet written
 
