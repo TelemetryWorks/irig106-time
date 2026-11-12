@@ -23,10 +23,19 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-RTC-001 | _(none)_ | _(none)_ | Draft |
-| L1-RTC-002 | _(none)_ | _(none)_ | Draft |
-| L1-RTC-003 | _(none)_ | _(none)_ | Draft |
-| L1-RTC-004 | _(none)_ | _(none)_ | Draft |
+| L1-RTC-001 | L2-RTC-101 | _(none)_ | Draft |
+| L1-RTC-002 | L2-RTC-102 | _(none)_ | Draft |
+| L1-RTC-003 | L2-RTC-103 | _(none)_ | Draft |
+| L1-RTC-004 | L2-RTC-104 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-RTC-101 | L3-RTC-101 | _(TBD)_ | Draft |
+| L2-RTC-102 | L3-RTC-102 | _(TBD)_ | Draft |
+| L2-RTC-103 | L3-RTC-103 | _(TBD)_ | Draft |
+| L2-RTC-104 | L3-RTC-104 | _(TBD)_ | Draft |
 
 ### L1-ABS: Absolute time values
 
@@ -34,10 +43,19 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-ABS-001 | _(none)_ | _(none)_ | Draft |
-| L1-ABS-002 | _(none)_ | _(none)_ | Draft |
-| L1-ABS-003 | _(none)_ | _(none)_ | Draft |
-| L1-ABS-004 | _(none)_ | _(none)_ | Draft |
+| L1-ABS-001 | L2-ABS-101 | _(none)_ | Draft |
+| L1-ABS-002 | L2-ABS-102 | _(none)_ | Draft |
+| L1-ABS-003 | L2-ABS-103 | _(none)_ | Draft |
+| L1-ABS-004 | L2-ABS-104 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-ABS-101 | L3-ABS-101 | _(TBD)_ | Draft |
+| L2-ABS-102 | L3-ABS-102 | _(TBD)_ | Draft |
+| L2-ABS-103 | L3-ABS-103 | _(TBD)_ | Draft |
+| L2-ABS-104 | L3-ABS-104 | _(TBD)_ | Draft |
 
 ### L1-IPT: Packet flags and intra-packet time stamps
 
@@ -45,9 +63,17 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-IPT-005 | _(none)_ | _(none)_ | Draft |
-| L1-IPT-006 | _(none)_ | _(none)_ | Draft |
-| L1-IPT-007 | _(none)_ | _(none)_ | Draft |
+| L1-IPT-005 | L2-IPT-105 | _(none)_ | Draft |
+| L1-IPT-006 | L2-IPT-106 | _(none)_ | Draft |
+| L1-IPT-007 | L2-IPT-107 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-IPT-105 | L3-IPT-105 | _(TBD)_ | Draft |
+| L2-IPT-106 | L3-IPT-106 | _(TBD)_ | Draft |
+| L2-IPT-107 | L3-IPT-107 | _(TBD)_ | Draft |
 
 ### L1-SEC: The secondary header
 
@@ -55,12 +81,23 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-SEC-001 | _(none)_ | _(none)_ | Draft |
-| L1-SEC-002 | _(none)_ | _(none)_ | Draft |
-| L1-SEC-003 | _(none)_ | _(none)_ | Draft |
-| L1-SEC-004 | _(none)_ | _(none)_ | Draft |
-| L1-SEC-005 | _(none)_ | _(none)_ | Draft |
-| L1-SEC-006 | _(none)_ | _(none)_ | Draft |
+| L1-SEC-001 | L2-SEC-101 | _(none)_ | Draft |
+| L1-SEC-002 | L2-SEC-102 | _(none)_ | Draft |
+| L1-SEC-003 | L2-SEC-103 | _(none)_ | Draft |
+| L1-SEC-004 | L2-SEC-104 | _(none)_ | Draft |
+| L1-SEC-005 | L2-SEC-105 | _(none)_ | Draft |
+| L1-SEC-006 | L2-SEC-106 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-SEC-101 | L3-SEC-101 | _(TBD)_ | Draft |
+| L2-SEC-102 | L3-SEC-102 | _(TBD)_ | Draft |
+| L2-SEC-103 | L3-SEC-103 | _(TBD)_ | Draft |
+| L2-SEC-104 | L3-SEC-104 | _(TBD)_ | Draft |
+| L2-SEC-105 | L3-SEC-105 | _(TBD)_ | Draft |
+| L2-SEC-106 | L3-SEC-106 | _(TBD)_ | Draft |
 
 ### L1-CSDW: Format 1 channel-specific data word
 
@@ -68,13 +105,25 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-CSDW-001 | _(none)_ | _(none)_ | Draft |
-| L1-CSDW-002 | _(none)_ | _(none)_ | Draft |
-| L1-CSDW-003 | _(none)_ | _(none)_ | Draft |
-| L1-CSDW-004 | _(none)_ | _(none)_ | Draft |
-| L1-CSDW-005 | _(none)_ | _(none)_ | Draft |
-| L1-CSDW-006 | _(none)_ | _(none)_ | Draft |
-| L1-CSDW-007 | _(none)_ | _(none)_ | Draft |
+| L1-CSDW-001 | L2-CSDW-101 | _(none)_ | Draft |
+| L1-CSDW-002 | L2-CSDW-102 | _(none)_ | Draft |
+| L1-CSDW-003 | L2-CSDW-103 | _(none)_ | Draft |
+| L1-CSDW-004 | L2-CSDW-104 | _(none)_ | Draft |
+| L1-CSDW-005 | L2-CSDW-105 | _(none)_ | Draft |
+| L1-CSDW-006 | L2-CSDW-106 | _(none)_ | Draft |
+| L1-CSDW-007 | L2-CSDW-107 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-CSDW-101 | L3-CSDW-101 | _(TBD)_ | Draft |
+| L2-CSDW-102 | L3-CSDW-102 | _(TBD)_ | Draft |
+| L2-CSDW-103 | L3-CSDW-103 | _(TBD)_ | Draft |
+| L2-CSDW-104 | L3-CSDW-104 | _(TBD)_ | Draft |
+| L2-CSDW-105 | L3-CSDW-105 | _(TBD)_ | Draft |
+| L2-CSDW-106 | L3-CSDW-106 | _(TBD)_ | Draft |
+| L2-CSDW-107 | L3-CSDW-107 | _(TBD)_ | Draft |
 
 ### L1-BCD: Format 1 time bodies
 
@@ -82,10 +131,19 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-BCD-003 | _(none)_ | _(none)_ | Draft |
-| L1-BCD-004 | _(none)_ | _(none)_ | Draft |
-| L1-BCD-005 | _(none)_ | _(none)_ | Draft |
-| L1-BCD-006 | _(none)_ | _(none)_ | Draft |
+| L1-BCD-003 | L2-BCD-103 | _(none)_ | Draft |
+| L1-BCD-004 | L2-BCD-104 | _(none)_ | Draft |
+| L1-BCD-005 | L2-BCD-105 | _(none)_ | Draft |
+| L1-BCD-006 | L2-BCD-106 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-BCD-103 | L3-BCD-103 | _(TBD)_ | Draft |
+| L2-BCD-104 | L3-BCD-104 | _(TBD)_ | Draft |
+| L2-BCD-105 | L3-BCD-105 | _(TBD)_ | Draft |
+| L2-BCD-106 | L3-BCD-106 | _(TBD)_ | Draft |
 
 ### L1-F2CSDW: Format 2 channel-specific data word
 
@@ -93,10 +151,19 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-F2CSDW-001 | _(none)_ | _(none)_ | Draft |
-| L1-F2CSDW-004 | _(none)_ | _(none)_ | Draft |
-| L1-F2CSDW-005 | _(none)_ | _(none)_ | Draft |
-| L1-F2CSDW-006 | _(none)_ | _(none)_ | Draft |
+| L1-F2CSDW-001 | L2-F2CSDW-101 | _(none)_ | Draft |
+| L1-F2CSDW-004 | L2-F2CSDW-104 | _(none)_ | Draft |
+| L1-F2CSDW-005 | L2-F2CSDW-105 | _(none)_ | Draft |
+| L1-F2CSDW-006 | L2-F2CSDW-106 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-F2CSDW-101 | L3-F2CSDW-101 | _(TBD)_ | Draft |
+| L2-F2CSDW-104 | L3-F2CSDW-104 | _(TBD)_ | Draft |
+| L2-F2CSDW-105 | L3-F2CSDW-105 | _(TBD)_ | Draft |
+| L2-F2CSDW-106 | L3-F2CSDW-106 | _(TBD)_ | Draft |
 
 ### L1-NTP: Format 2 NTP time
 
@@ -104,10 +171,19 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-NTP-001 | _(none)_ | _(none)_ | Draft |
-| L1-NTP-002 | _(none)_ | _(none)_ | Draft |
-| L1-NTP-003 | _(none)_ | _(none)_ | Draft |
-| L1-NTP-004 | _(none)_ | _(none)_ | Draft |
+| L1-NTP-001 | L2-NTP-101 | _(none)_ | Draft |
+| L1-NTP-002 | L2-NTP-102 | _(none)_ | Draft |
+| L1-NTP-003 | L2-NTP-103 | _(none)_ | Draft |
+| L1-NTP-004 | L2-NTP-104 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-NTP-101 | L3-NTP-101 | _(TBD)_ | Draft |
+| L2-NTP-102 | L3-NTP-102 | _(TBD)_ | Draft |
+| L2-NTP-103 | L3-NTP-103 | _(TBD)_ | Draft |
+| L2-NTP-104 | L3-NTP-104 | _(TBD)_ | Draft |
 
 ### L1-PTP: Format 2 PTP time
 
@@ -115,10 +191,19 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-PTP-002 | _(none)_ | _(none)_ | Draft |
-| L1-PTP-003 | _(none)_ | _(none)_ | Draft |
-| L1-PTP-004 | _(none)_ | _(none)_ | Draft |
-| L1-PTP-005 | _(none)_ | _(none)_ | Draft |
+| L1-PTP-002 | L2-PTP-102 | _(none)_ | Draft |
+| L1-PTP-003 | L2-PTP-103 | _(none)_ | Draft |
+| L1-PTP-004 | L2-PTP-104 | _(none)_ | Draft |
+| L1-PTP-005 | L2-PTP-105 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-PTP-102 | L3-PTP-102 | _(TBD)_ | Draft |
+| L2-PTP-103 | L3-PTP-103 | _(TBD)_ | Draft |
+| L2-PTP-104 | L3-PTP-104 | _(TBD)_ | Draft |
+| L2-PTP-105 | L3-PTP-105 | _(TBD)_ | Draft |
 
 ### L1-F2COR: Format 2 references
 
@@ -126,8 +211,15 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-F2COR-001 | _(none)_ | _(none)_ | Draft |
-| L1-F2COR-002 | _(none)_ | _(none)_ | Draft |
+| L1-F2COR-001 | L2-F2COR-101 | _(none)_ | Draft |
+| L1-F2COR-002 | L2-F2COR-102 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-F2COR-101 | L3-F2COR-101 | _(TBD)_ | Draft |
+| L2-F2COR-102 | L3-F2COR-102 | _(TBD)_ | Draft |
 
 ### L1-TAI: Time scales and leap seconds
 
@@ -135,13 +227,25 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-TAI-001 | _(none)_ | _(none)_ | Draft |
-| L1-TAI-002 | _(none)_ | _(none)_ | Draft |
-| L1-TAI-003 | _(none)_ | _(none)_ | Draft |
-| L1-TAI-004 | _(none)_ | _(none)_ | Draft |
-| L1-TAI-005 | _(none)_ | _(none)_ | Draft |
-| L1-TAI-006 | _(none)_ | _(none)_ | Draft |
-| L1-TAI-007 | _(none)_ | _(none)_ | Draft |
+| L1-TAI-001 | L2-TAI-101 | _(none)_ | Draft |
+| L1-TAI-002 | L2-TAI-102 | _(none)_ | Draft |
+| L1-TAI-003 | L2-TAI-103 | _(none)_ | Draft |
+| L1-TAI-004 | L2-TAI-104 | _(none)_ | Draft |
+| L1-TAI-005 | L2-TAI-105 | _(none)_ | Draft |
+| L1-TAI-006 | L2-TAI-106 | _(none)_ | Draft |
+| L1-TAI-007 | L2-TAI-107 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-TAI-101 | L3-TAI-101 | _(TBD)_ | Draft |
+| L2-TAI-102 | L3-TAI-102 | _(TBD)_ | Draft |
+| L2-TAI-103 | L3-TAI-103 | _(TBD)_ | Draft |
+| L2-TAI-104 | L3-TAI-104 | _(TBD)_ | Draft |
+| L2-TAI-105 | L3-TAI-105 | _(TBD)_ | Draft |
+| L2-TAI-106 | L3-TAI-106 | _(TBD)_ | Draft |
+| L2-TAI-107 | L3-TAI-107 | _(TBD)_ | Draft |
 
 ### L1-WORD: Time words inside data
 
@@ -149,8 +253,15 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-WORD-001 | _(none)_ | _(none)_ | Draft |
-| L1-WORD-002 | _(none)_ | _(none)_ | Draft |
+| L1-WORD-001 | L2-WORD-101 | _(none)_ | Draft |
+| L1-WORD-002 | L2-WORD-102 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-WORD-101 | L3-WORD-101 | _(TBD)_ | Draft |
+| L2-WORD-102 | L3-WORD-102 | _(TBD)_ | Draft |
 
 ### L1-ENC: Encoding
 
@@ -158,9 +269,17 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-ENC-001 | _(none)_ | _(none)_ | Draft |
-| L1-ENC-002 | _(none)_ | _(none)_ | Draft |
-| L1-ENC-003 | _(none)_ | _(none)_ | Draft |
+| L1-ENC-001 | L2-ENC-101 | _(none)_ | Draft |
+| L1-ENC-002 | L2-ENC-102 | _(none)_ | Draft |
+| L1-ENC-003 | L2-ENC-103 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-ENC-101 | L3-ENC-101 | _(TBD)_ | Draft |
+| L2-ENC-102 | L3-ENC-102 | _(TBD)_ | Draft |
+| L2-ENC-103 | L3-ENC-103 | _(TBD)_ | Draft |
 
 ### L1-EDN: Editions
 
@@ -168,9 +287,18 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-EDN-001 | _(none)_ | _(none)_ | Draft |
-| L1-EDN-002 | _(none)_ | _(none)_ | Draft |
-| L1-EDN-003 | _(none)_ | _(none)_ | Draft |
+| L1-EDN-001 | L2-EDN-101 | _(none)_ | Draft |
+| L1-EDN-002 | L2-EDN-102, L2-EDN-201 | _(none)_ | Draft |
+| L1-EDN-003 | L2-EDN-103 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-EDN-101 | L3-EDN-101 | _(TBD)_ | Draft |
+| L2-EDN-102 | L3-EDN-102 | _(TBD)_ | Draft |
+| L2-EDN-103 | L3-EDN-103 | _(TBD)_ | Draft |
+| L2-EDN-201 | L3-EDN-201 | _(TBD)_ | Draft |
 
 ### L1-DECL: Time declarations from the setup record
 
@@ -178,8 +306,15 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-DECL-001 | _(none)_ | _(none)_ | Draft |
-| L1-DECL-002 | _(none)_ | _(none)_ | Draft |
+| L1-DECL-001 | L2-DECL-101 | _(none)_ | Draft |
+| L1-DECL-002 | L2-DECL-102 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-DECL-101 | L3-DECL-101 | _(TBD)_ | Draft |
+| L2-DECL-102 | L3-DECL-102 | _(TBD)_ | Draft |
 
 ### L1-COR: Correlation over a recording (the time timeline)
 
@@ -187,19 +322,37 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-COR-001 | _(none)_ | _(none)_ | Draft |
-| L1-COR-002 | _(none)_ | _(none)_ | Draft |
-| L1-COR-003 | _(none)_ | _(none)_ | Draft |
-| L1-COR-004 | _(none)_ | _(none)_ | Draft |
-| L1-COR-005 | _(none)_ | _(none)_ | Draft |
-| L1-COR-006 | _(none)_ | _(none)_ | Draft |
-| L1-COR-007 | _(none)_ | _(none)_ | Draft |
-| L1-COR-008 | _(none)_ | _(none)_ | Draft |
-| L1-COR-009 | _(none)_ | _(none)_ | Draft |
-| L1-COR-010 | _(none)_ | _(none)_ | Draft |
-| L1-COR-011 | _(none)_ | _(none)_ | Draft |
-| L1-COR-012 | _(none)_ | _(none)_ | Draft |
-| L1-COR-013 | _(none)_ | _(none)_ | Draft |
+| L1-COR-001 | L2-COR-101 | _(none)_ | Draft |
+| L1-COR-002 | L2-COR-102 | _(none)_ | Draft |
+| L1-COR-003 | L2-COR-103 | _(none)_ | Draft |
+| L1-COR-004 | L2-COR-104 | _(none)_ | Draft |
+| L1-COR-005 | L2-COR-105 | _(none)_ | Draft |
+| L1-COR-006 | L2-COR-106 | _(none)_ | Draft |
+| L1-COR-007 | L2-COR-107 | _(none)_ | Draft |
+| L1-COR-008 | L2-COR-108 | _(none)_ | Draft |
+| L1-COR-009 | L2-COR-109 | _(none)_ | Draft |
+| L1-COR-010 | L2-COR-110 | _(none)_ | Draft |
+| L1-COR-011 | L2-COR-111 | _(none)_ | Draft |
+| L1-COR-012 | L2-COR-112 | _(none)_ | Draft |
+| L1-COR-013 | L2-COR-113 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-COR-101 | L3-COR-101 | _(TBD)_ | Draft |
+| L2-COR-102 | L3-COR-102 | _(TBD)_ | Draft |
+| L2-COR-103 | L3-COR-103 | _(TBD)_ | Draft |
+| L2-COR-104 | L3-COR-104 | _(TBD)_ | Draft |
+| L2-COR-105 | L3-COR-105 | _(TBD)_ | Draft |
+| L2-COR-106 | L3-COR-106 | _(TBD)_ | Draft |
+| L2-COR-107 | L3-COR-107 | _(TBD)_ | Draft |
+| L2-COR-108 | L3-COR-108 | _(TBD)_ | Draft |
+| L2-COR-109 | L3-COR-109 | _(TBD)_ | Draft |
+| L2-COR-110 | L3-COR-110 | _(TBD)_ | Draft |
+| L2-COR-111 | L3-COR-111 | _(TBD)_ | Draft |
+| L2-COR-112 | L3-COR-112 | _(TBD)_ | Draft |
+| L2-COR-113 | L3-COR-113 | _(TBD)_ | Draft |
 
 ### L1-ANS: Answers and their basis
 
@@ -207,11 +360,21 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-ANS-001 | _(none)_ | _(none)_ | Draft |
-| L1-ANS-002 | _(none)_ | _(none)_ | Draft |
-| L1-ANS-003 | _(none)_ | _(none)_ | Draft |
-| L1-ANS-004 | _(none)_ | _(none)_ | Draft |
-| L1-ANS-005 | _(none)_ | _(none)_ | Draft |
+| L1-ANS-001 | L2-ANS-101 | _(none)_ | Draft |
+| L1-ANS-002 | L2-ANS-102 | _(none)_ | Draft |
+| L1-ANS-003 | L2-ANS-103 | _(none)_ | Draft |
+| L1-ANS-004 | L2-ANS-104 | _(none)_ | Draft |
+| L1-ANS-005 | L2-ANS-105 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-ANS-101 | L3-ANS-101 | _(TBD)_ | Draft |
+| L2-ANS-102 | L3-ANS-102 | _(TBD)_ | Draft |
+| L2-ANS-103 | L3-ANS-103 | _(TBD)_ | Draft |
+| L2-ANS-104 | L3-ANS-104 | _(TBD)_ | Draft |
+| L2-ANS-105 | L3-ANS-105 | _(TBD)_ | Draft |
 
 ### L1-POL: The time policy
 
@@ -219,9 +382,18 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-POL-001 | _(none)_ | _(none)_ | Draft |
-| L1-POL-002 | _(none)_ | _(none)_ | Draft |
-| L1-POL-003 | _(none)_ | _(none)_ | Draft |
+| L1-POL-001 | L2-POL-101, L2-POL-201 | _(none)_ | Draft |
+| L1-POL-002 | L2-POL-102 | _(none)_ | Draft |
+| L1-POL-003 | L2-POL-103 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-POL-101 | L3-POL-101 | _(TBD)_ | Draft |
+| L2-POL-102 | L3-POL-102 | _(TBD)_ | Draft |
+| L2-POL-103 | L3-POL-103 | _(TBD)_ | Draft |
+| L2-POL-201 | L3-POL-201 | _(TBD)_ | Draft |
 
 ### L1-FND: Findings
 
@@ -229,11 +401,21 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-FND-001 | _(none)_ | _(none)_ | Draft |
-| L1-FND-002 | _(none)_ | _(none)_ | Draft |
-| L1-FND-003 | _(none)_ | _(none)_ | Draft |
-| L1-FND-004 | _(none)_ | _(none)_ | Draft |
-| L1-FND-005 | _(none)_ | _(none)_ | Draft |
+| L1-FND-001 | L2-FND-101 | _(none)_ | Draft |
+| L1-FND-002 | L2-FND-102 | _(none)_ | Draft |
+| L1-FND-003 | L2-FND-103 | _(none)_ | Draft |
+| L1-FND-004 | L2-FND-104 | _(none)_ | Draft |
+| L1-FND-005 | L2-FND-105 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-FND-101 | L3-FND-101 | _(TBD)_ | Draft |
+| L2-FND-102 | L3-FND-102 | _(TBD)_ | Draft |
+| L2-FND-103 | L3-FND-103 | _(TBD)_ | Draft |
+| L2-FND-104 | L3-FND-104 | _(TBD)_ | Draft |
+| L2-FND-105 | L3-FND-105 | _(TBD)_ | Draft |
 
 ### L1-RDG: Readings between TMATS and the packets
 
@@ -241,8 +423,26 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-RDG-001 | _(none)_ | _(none)_ | Draft |
-| L1-RDG-002 | _(none)_ | `scripts/build-trace-matrix.py` | Implemented (I) |
+| L1-RDG-001 | L2-RDG-101 | _(none)_ | Draft |
+| L1-RDG-002 | L2-RDG-102, L2-RDG-201, L2-RDG-202, L2-RDG-203, L2-RDG-204, L2-RDG-205, L2-RDG-206, L2-RDG-207, L2-RDG-208, L2-RDG-209, L2-RDG-210, L2-RDG-211 | _(none)_ | Implemented (I) |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-RDG-101 | L3-RDG-101 | _(TBD)_ | Draft |
+| L2-RDG-102 | L3-RDG-102 | _(TBD)_ | Draft |
+| L2-RDG-201 | L3-RDG-201 | _(TBD)_ | Draft |
+| L2-RDG-202 | L3-RDG-202 | _(TBD)_ | Draft |
+| L2-RDG-203 | L3-RDG-203 | _(TBD)_ | Draft |
+| L2-RDG-204 | L3-RDG-204 | _(TBD)_ | Draft |
+| L2-RDG-205 | L3-RDG-205 | _(TBD)_ | Draft |
+| L2-RDG-206 | L3-RDG-206 | _(TBD)_ | Draft |
+| L2-RDG-207 | L3-RDG-207 | _(TBD)_ | Draft |
+| L2-RDG-208 | L3-RDG-208 | _(TBD)_ | Draft |
+| L2-RDG-209 | L3-RDG-209 | _(TBD)_ | Draft |
+| L2-RDG-210 | L3-RDG-210 | _(TBD)_ | Draft |
+| L2-RDG-211 | L3-RDG-211 | _(TBD)_ | Draft |
 
 ### L1-STRM: Streaming
 
@@ -250,7 +450,19 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-STRM-001 | _(none)_ | _(none)_ | Draft |
+| L1-STRM-001 | L2-STRM-101, L2-STRM-201, L2-STRM-202, L2-STRM-203, L2-STRM-204, L2-STRM-205, L2-STRM-206 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-STRM-101 | L3-STRM-101 | _(TBD)_ | Draft |
+| L2-STRM-201 | L3-STRM-201 | _(TBD)_ | Draft |
+| L2-STRM-202 | L3-STRM-202 | _(TBD)_ | Draft |
+| L2-STRM-203 | L3-STRM-203 | _(TBD)_ | Draft |
+| L2-STRM-204 | L3-STRM-204 | _(TBD)_ | Draft |
+| L2-STRM-205 | L3-STRM-205 | _(TBD)_ | Draft |
+| L2-STRM-206 | L3-STRM-206 | _(TBD)_ | Draft |
 
 ### L1-ERR: Errors and robustness
 
@@ -258,11 +470,21 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-ERR-001 | _(none)_ | _(none)_ | Draft |
-| L1-ERR-002 | _(none)_ | _(none)_ | Draft |
-| L1-ERR-003 | _(none)_ | _(none)_ | Draft |
-| L1-ERR-004 | _(none)_ | _(none)_ | Draft |
-| L1-ERR-005 | _(none)_ | _(none)_ | Draft |
+| L1-ERR-001 | L2-ERR-101 | _(none)_ | Draft |
+| L1-ERR-002 | L2-ERR-102 | _(none)_ | Draft |
+| L1-ERR-003 | L2-ERR-103 | _(none)_ | Draft |
+| L1-ERR-004 | L2-ERR-104 | _(none)_ | Draft |
+| L1-ERR-005 | L2-ERR-105 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-ERR-101 | L3-ERR-101 | _(TBD)_ | Draft |
+| L2-ERR-102 | L3-ERR-102 | _(TBD)_ | Draft |
+| L2-ERR-103 | L3-ERR-103 | _(TBD)_ | Draft |
+| L2-ERR-104 | L3-ERR-104 | _(TBD)_ | Draft |
+| L2-ERR-105 | L3-ERR-105 | _(TBD)_ | Draft |
 
 ### L1-API: Library form and portability
 
@@ -270,17 +492,33 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-API-001 | _(none)_ | _(none)_ | Draft |
-| L1-API-002 | _(none)_ | `.github/workflows/ci.yml`<br>`wasm`<br>`cargo build --target wasm32-unknown-unknown --no-default-features` | Implemented (I) |
-| L1-API-004 | _(none)_ | _(none)_ | Draft |
-| L1-API-005 | _(none)_ | _(none)_ | Draft |
-| L1-API-006 | _(none)_ | _(none)_ | Draft |
-| L1-API-007 | _(none)_ | `.github/workflows/ci.yml`<br>`wasm`<br>`cargo build --target wasm32-unknown-unknown --no-default-features`<br>`--features serde` | Implemented (I) |
-| L1-API-008 | _(none)_ | `#![deny(missing_docs)]`<br>`src/lib.rs`<br>`.github/workflows/ci.yml`<br>`doc`<br>`cargo doc --no-deps --all-features` | Implemented (I) |
-| L1-API-009 | _(none)_ | _(none)_ | Draft |
-| L1-API-010 | _(none)_ | _(none)_ | Draft |
-| L1-API-011 | _(none)_ | _(none)_ | Draft |
-| L1-API-012 | _(none)_ | _(none)_ | Draft |
+| L1-API-001 | L2-API-101 | _(none)_ | Draft |
+| L1-API-002 | L2-API-102 | _(none)_ | Implemented (I) |
+| L1-API-004 | L2-API-104 | _(none)_ | Draft |
+| L1-API-005 | L2-API-105 | _(none)_ | Draft |
+| L1-API-006 | L2-API-106 | _(none)_ | Draft |
+| L1-API-007 | L2-API-107 | _(none)_ | Implemented (I) |
+| L1-API-008 | L2-API-108 | _(none)_ | Implemented (I) |
+| L1-API-009 | L2-API-109 | _(none)_ | Draft |
+| L1-API-010 | L2-API-110 | _(none)_ | Draft |
+| L1-API-011 | L2-API-111 | _(none)_ | Draft |
+| L1-API-012 | L2-API-112 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-API-101 | L3-API-101 | _(TBD)_ | Draft |
+| L2-API-102 | L3-API-102 | _(TBD)_ | Draft |
+| L2-API-104 | L3-API-104 | _(TBD)_ | Draft |
+| L2-API-105 | L3-API-105 | _(TBD)_ | Draft |
+| L2-API-106 | L3-API-106 | _(TBD)_ | Draft |
+| L2-API-107 | L3-API-107 | _(TBD)_ | Draft |
+| L2-API-108 | L3-API-108 | _(TBD)_ | Draft |
+| L2-API-109 | L3-API-109 | _(TBD)_ | Draft |
+| L2-API-110 | L3-API-110 | _(TBD)_ | Draft |
+| L2-API-111 | L3-API-111 | _(TBD)_ | Draft |
+| L2-API-112 | L3-API-112 | _(TBD)_ | Draft |
 
 ### L1-PERF: Performance
 
@@ -288,7 +526,13 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-PERF-001 | _(none)_ | _(none)_ | Draft |
+| L1-PERF-001 | L2-PERF-101 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-PERF-101 | L3-PERF-101 | _(TBD)_ | Draft |
 
 ### L1-CLI: The command-line crate
 
@@ -296,13 +540,25 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-CLI-001 | _(none)_ | _(none)_ | Draft |
-| L1-CLI-002 | _(none)_ | _(none)_ | Draft |
-| L1-CLI-003 | _(none)_ | _(none)_ | Draft |
-| L1-CLI-004 | _(none)_ | _(none)_ | Draft |
-| L1-CLI-005 | _(none)_ | _(none)_ | Draft |
-| L1-CLI-006 | _(none)_ | _(none)_ | Draft |
-| L1-CLI-007 | _(none)_ | _(none)_ | Draft |
+| L1-CLI-001 | L2-CLI-101 | _(none)_ | Draft |
+| L1-CLI-002 | L2-CLI-102 | _(none)_ | Draft |
+| L1-CLI-003 | L2-CLI-103 | _(none)_ | Draft |
+| L1-CLI-004 | L2-CLI-104 | _(none)_ | Draft |
+| L1-CLI-005 | L2-CLI-105 | _(none)_ | Draft |
+| L1-CLI-006 | L2-CLI-106 | _(none)_ | Draft |
+| L1-CLI-007 | L2-CLI-107 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-CLI-101 | L3-CLI-101 | _(TBD)_ | Draft |
+| L2-CLI-102 | L3-CLI-102 | _(TBD)_ | Draft |
+| L2-CLI-103 | L3-CLI-103 | _(TBD)_ | Draft |
+| L2-CLI-104 | L3-CLI-104 | _(TBD)_ | Draft |
+| L2-CLI-105 | L3-CLI-105 | _(TBD)_ | Draft |
+| L2-CLI-106 | L3-CLI-106 | _(TBD)_ | Draft |
+| L2-CLI-107 | L3-CLI-107 | _(TBD)_ | Draft |
 
 ### L1-REL: Versioning and release
 
@@ -310,12 +566,23 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-REL-001 | _(none)_ | _(none)_ | Draft |
-| L1-REL-002 | _(none)_ | `.github/workflows/ci.yml`<br>`msrv`<br>`cargo check` | Implemented (I) |
-| L1-REL-003 | _(none)_ | _(none)_ | Draft |
-| L1-REL-004 | _(none)_ | `.github/workflows/ci.yml`<br>`test`<br>`ubuntu-latest`<br>`windows-latest`<br>`macos-latest` | Implemented (I) |
-| L1-REL-005 | _(none)_ | `.github/workflows/ci.yml`<br>`deny`<br>`EmbarkStudios/cargo-deny-action`<br>`deny.toml` | Implemented (I) |
-| L1-REL-006 | _(none)_ | _(none)_ | Draft |
+| L1-REL-001 | L2-REL-101 | _(none)_ | Draft |
+| L1-REL-002 | L2-REL-102 | _(none)_ | Implemented (I) |
+| L1-REL-003 | L2-REL-103 | _(none)_ | Draft |
+| L1-REL-004 | L2-REL-104 | _(none)_ | Implemented (I) |
+| L1-REL-005 | L2-REL-105 | _(none)_ | Implemented (I) |
+| L1-REL-006 | L2-REL-106 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-REL-101 | L3-REL-101 | _(TBD)_ | Draft |
+| L2-REL-102 | L3-REL-102 | _(TBD)_ | Draft |
+| L2-REL-103 | L3-REL-103 | _(TBD)_ | Draft |
+| L2-REL-104 | L3-REL-104 | _(TBD)_ | Draft |
+| L2-REL-105 | L3-REL-105 | _(TBD)_ | Draft |
+| L2-REL-106 | L3-REL-106 | _(TBD)_ | Draft |
 
 ### L1-TST: Verification
 
@@ -323,12 +590,23 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-TST-001 | _(none)_ | _(none)_ | Draft |
-| L1-TST-002 | _(none)_ | _(none)_ | Draft |
-| L1-TST-003 | _(none)_ | _(none)_ | Draft |
-| L1-TST-004 | _(none)_ | _(none)_ | Draft |
-| L1-TST-005 | _(none)_ | `.github/workflows/ci.yml`<br>`trace-matrix`<br>`python scripts/build-trace-matrix.py --check` | Implemented (I) |
-| L1-TST-006 | _(none)_ | _(none)_ | Draft |
+| L1-TST-001 | L2-TST-101 | _(none)_ | Draft |
+| L1-TST-002 | L2-TST-102 | _(none)_ | Draft |
+| L1-TST-003 | L2-TST-103 | _(none)_ | Draft |
+| L1-TST-004 | L2-TST-104 | _(none)_ | Draft |
+| L1-TST-005 | L2-TST-105 | _(none)_ | Implemented (I) |
+| L1-TST-006 | L2-TST-106 | _(none)_ | Draft |
+
+**L2 -> L3 -> Verification Artifacts**
+
+| L2 ID | L3 Children | Test Artifacts | Status |
+|-------|-------------|----------------|--------|
+| L2-TST-101 | L3-TST-101 | _(TBD)_ | Draft |
+| L2-TST-102 | L3-TST-102 | _(TBD)_ | Draft |
+| L2-TST-103 | L3-TST-103 | _(TBD)_ | Draft |
+| L2-TST-104 | L3-TST-104 | _(TBD)_ | Draft |
+| L2-TST-105 | L3-TST-105 | _(TBD)_ | Draft |
+| L2-TST-106 | L3-TST-106 | _(TBD)_ | Draft |
 
 ---
 
@@ -339,40 +617,40 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | Category | L1 | L2 | L3 | L2 tested | L3 tested | L2 verified | L3 verified |
 |----------|----|----|----|-----------|-----------|-------------|-------------|
-| RTC | 4 | 0 | 0 | 0 | 0 | 0 | 0 |
-| ABS | 4 | 0 | 0 | 0 | 0 | 0 | 0 |
-| IPT | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
-| SEC | 6 | 0 | 0 | 0 | 0 | 0 | 0 |
-| CSDW | 7 | 0 | 0 | 0 | 0 | 0 | 0 |
-| BCD | 4 | 0 | 0 | 0 | 0 | 0 | 0 |
-| F2CSDW | 4 | 0 | 0 | 0 | 0 | 0 | 0 |
-| NTP | 4 | 0 | 0 | 0 | 0 | 0 | 0 |
-| PTP | 4 | 0 | 0 | 0 | 0 | 0 | 0 |
-| F2COR | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
-| TAI | 7 | 0 | 0 | 0 | 0 | 0 | 0 |
-| WORD | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
-| ENC | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
-| EDN | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
-| DECL | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
-| COR | 13 | 0 | 0 | 0 | 0 | 0 | 0 |
-| ANS | 5 | 0 | 0 | 0 | 0 | 0 | 0 |
-| POL | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
-| FND | 5 | 0 | 0 | 0 | 0 | 0 | 0 |
-| RDG | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
-| STRM | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
-| ERR | 5 | 0 | 0 | 0 | 0 | 0 | 0 |
-| API | 11 | 0 | 0 | 0 | 0 | 0 | 0 |
-| PERF | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
-| CLI | 7 | 0 | 0 | 0 | 0 | 0 | 0 |
-| REL | 6 | 0 | 0 | 0 | 0 | 0 | 0 |
-| TST | 6 | 0 | 0 | 0 | 0 | 0 | 0 |
-| **Total** | **124** | **0** | **0** | **0** | **0** | **0** | **0** |
+| RTC | 4 | 4 | 4 | 0 | 0 | 0 | 0 |
+| ABS | 4 | 4 | 4 | 0 | 0 | 0 | 0 |
+| IPT | 3 | 3 | 3 | 0 | 0 | 0 | 0 |
+| SEC | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
+| CSDW | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
+| BCD | 4 | 4 | 4 | 0 | 0 | 0 | 0 |
+| F2CSDW | 4 | 4 | 4 | 0 | 0 | 0 | 0 |
+| NTP | 4 | 4 | 4 | 0 | 0 | 0 | 0 |
+| PTP | 4 | 4 | 4 | 0 | 0 | 0 | 0 |
+| F2COR | 2 | 2 | 2 | 0 | 0 | 0 | 0 |
+| TAI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
+| WORD | 2 | 2 | 2 | 0 | 0 | 0 | 0 |
+| ENC | 3 | 3 | 3 | 0 | 0 | 0 | 0 |
+| EDN | 3 | 4 | 4 | 0 | 0 | 0 | 0 |
+| DECL | 2 | 2 | 2 | 0 | 0 | 0 | 0 |
+| COR | 13 | 13 | 13 | 0 | 0 | 0 | 0 |
+| ANS | 5 | 5 | 5 | 0 | 0 | 0 | 0 |
+| POL | 3 | 4 | 4 | 0 | 0 | 0 | 0 |
+| FND | 5 | 5 | 5 | 0 | 0 | 0 | 0 |
+| RDG | 2 | 13 | 13 | 0 | 0 | 0 | 0 |
+| STRM | 1 | 7 | 7 | 0 | 0 | 0 | 0 |
+| ERR | 5 | 5 | 5 | 0 | 0 | 0 | 0 |
+| API | 11 | 11 | 11 | 0 | 0 | 0 | 0 |
+| PERF | 1 | 1 | 1 | 0 | 0 | 0 | 0 |
+| CLI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
+| REL | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
+| TST | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
+| **Total** | **124** | **143** | **143** | **0** | **0** | **0** | **0** |
 
-The countable requirement set is every L2 and L3 requirement plus the 124 L1 *leaf* requirement(s) (L1s with no L2 decomposition yet). Composite L1s are verified through their children.
+The countable requirement set is every L2 and L3 requirement plus the 0 L1 *leaf* requirement(s) (L1s with no L2 decomposition yet). Composite L1s are verified through their children.
 
-**Tested by at least one test marker**: 0 of 124 (0.0%).
+**Tested by at least one test marker**: 0 of 286 (0.0%).
 
-**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 8 of 124 (6.5%).
+**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 0 of 286 (0.0%).
 
 ### Orphan check
 

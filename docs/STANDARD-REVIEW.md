@@ -90,18 +90,81 @@ free-running 1-gigahertz (GHz) clock … (RTC = ERTC/100)".
 
 **Change:** one ERTC tick is 1 ns (in `irig106-types`).
 
-### T-6 Time source 3 is not "GPS" in any archived edition
+### T-6 106-04 has EXT; from 106-05 source 3 is reserved, never GPS
 
-**Code:** `irig106-types` `TimeSource::Gps = 3`; `csdw.rs:292-305` and
-`version.rs:218-229` describe 3 as GPS from 106-05 (and "None" in 106-04).
+**Prototype code:** `TimeSource::Gps = 3` and the time crate's
+`csdw.rs`/`version.rs` source mapping treated 3 as GPS from 106-05 and
+as "None" in 106-04. Neither claim is supported. The corrected shared
+contract at `irig106-types` merge `c59e004` removes Gps, returns
+`Reserved(3)`, and names source 2 `InternalFromRmm`. Adopting that merge
+in this crate's code/dependency is outside this documentation PR.
 
-**Standard:** the Format 1 CSDW's "Time Source (SRC). Bits 3-0" lists "0x0 =
-Internal … 0x1 = External … 0x2 = Internal from RMM … 0x3 – 0xE = Reserved …
-0xF = None" in 106-24R1, and the same values with 3 reserved in 106-05,
-106-07, and 106-13 (Chapter 10 in those editions). 106-04's Chapter 10 is
-not in the archive, so its value 3 cannot be checked.
+**Correction to the earlier archive claim (visual page check, 2026-11-12):**
+106-04 Chapter 10 **is archived inside the full PDF**, not a separate
+chapter asset. The archive fetcher verified size and SHA-256 with
+`python3 scripts/fetch.py --edition 106-04 --kind full`, producing
+`files/106-04/106-04.pdf` (SHA-256
+`a75ef16a77ecb4838c0c9678b7d483049e84c94d7a49a3edb7f7199ce98914c8`).
+Rendered with `pdftoppm -f N -l N -scale-to 1800 -png -singlefile INPUT OUTPUT`
+and inspected visually; PDF page numbers are one-based:
 
-**Change:** treat 3 as reserved unless a source shows otherwise.
+- **106-04 §10.6.3.3, Figure 10-15, printed 10-30 / PDF 288**:
+  the diagram reads "RESERVED", "DATE", "FMT", "EXT", with EXT in
+  bits 3–0, not SRC.
+- **106-04 printed 10-31 / PDF 289**, adjacent definitions:
+  "Bit 0 indicates if the external time source is present.";
+  "0 = External time is not present."; "1 = External time present.";
+  "Bits 3-1 are reserved"; FMT "0x6 thru 0xF = Reserved.";
+  "Bits 31-12: Reserved." EXT raw nibble 3 is bit 0 set plus a reserved
+  bit violation; it is **not None** and is not a modern SRC enumeration.
+- **106-05 Figure 10-16a, printed 10-37 / PDF 41**:
+  the diagram changes to "RESERVED", "DATE", "FMT", "SRC".
+  Its SRC list includes "0x3 – 0xE Reserved" and "0xF = None";
+  its FMT list includes "0xF = None (time packet payload invalid)".
+  Thus SRC and FMT None begin in 106-05; 106-04 reserves FMT 0xF.
+  `files/106-05/chapter10.pdf` SHA-256 is
+  `7aa84ef996df5ecd59da4159b82415ef2ba791a81dd20266c7d96a29adbf6bae`.
+
+**Edition-selection limitation:** 106-04 §10.6.1.1.5, printed 10-19 /
+PDF 277, lists "0x01 = Initial Release Header Version." But 106-24R1
+§11.2.1.1 e, printed 11-6 / PDF 14 (also visually checked), says:
+"This byte contains a value at or below the release version of the
+standard applied to the data types in Table 11-4." Therefore a header
+byte 0x01 alone does **not** prove that a recording uses the 106-04 EXT
+layout. Shared version constructors decode the named lists, not a
+complete recording's effective edition. **There is no setup-version code
+at the 106-04/05 boundary:** 106-04 §10.6.7.2.2 and its generic reserved
+CSDW (Figure 10-34), printed 10-48 / PDF 306, define no setup version
+field; 106-05 Figure 10-34b, printed 10-55 / PDF 59, says
+"Reserved. (Bits 31-0) are reserved." CH10VER begins in 106-07 Figure
+10-50, printed 10-72 / PDF 76, with "0x00 thru 06 = Reserved" and
+"0x07 = IRIG-106-07". Those pages were rendered and inspected visually.
+Consequently no fixture may invent a 106-04/05 RCCVER or CH10VER code.
+
+The in-file candidate is TMATS `G\106`: 106-04 Table 9-1, printed 9-8 /
+PDF 186, defines "VERSION OF IRIG 106 STANDARD USED TO GENERATE THIS
+TMATS FILE". In 106-24R1 Table 9-2, printed **9-10 / PDF 16** (the
+attribute index is Figure 9-2 on 9-9 / PDF 15), its row says
+"R/R Ch 10 Status: R", "Required when: Always", "Range: 0 to 99" and
+"Version of RCC IRIG 106 standard used to generate this TMATS file."
+Both attribute pages were visually inspected. This describes TMATS,
+**not necessarily the packet layout**. At the legacy boundary only a
+caller declaration can select EXT: an explicit layout override, or a
+caller policy expressly accepting `G\106` as a labelled layout assumption.
+Missing/conflicting evidence stays unresolved. Later setup codes remain
+useful only in their applicable editions; they do not supply missing
+legacy evidence. L2/L3-EDN-201 and Q-EDITION propose this policy for the
+owner, without changing any accepted Design or Review field.
+
+**Change required in the rebuild:** after resolving the layout, 106-04
+reads bit 0 as external-present, reports reserved bits 3–1, and reserves
+FMT 6–15. From 106-05, use the SRC table (3–14 reserved) and FMT 15 None.
+Keep raw EXT and SRC as different tagged values. T-7's None requirement
+and the downstream source/validity checks must respect this edition gate.
+
+Sources: [106-04 full PDF](https://github.com/TelemetryWorks/rcc-106-standards/releases/download/106-04/106-04.pdf),
+[106-05 Chapter 10](https://github.com/TelemetryWorks/rcc-106-standards/releases/download/106-05/chapter10.pdf),
+[106-24R1 Chapter 11](https://github.com/TelemetryWorks/rcc-106-standards/releases/download/106-24R1/chapter11.pdf).
 
 ### T-7 Fields of the Format 1 CSDW are missing
 
@@ -300,21 +363,94 @@ report which reading a recording's headers satisfy. Register entry RDG-008.
 
 ### T-10 Chapter 4 binary time
 
-**Code:** `src/absolute.rs:610-630` takes the low 17 bits of the combined
-high and low words as tens of milliseconds and the bits above as the day of
-year; `irig106-types` `Ch4BinaryTime::from_secondary_bytes` reads the 8
-bytes as unused, high, low, microseconds. (Already open as GAP-03.)
+**Code / GAP-03 (current prerequisite, not fixed here):** the prototype
+`src/absolute.rs` splits the combined high/low value at bit 17 into a day
+and a time count. Separately, **irig106-types c59e004 remains wrong**:
+`src/binary_time.rs` `Ch4BinaryTime::from_secondary_bytes` reads
+`[unused(2), high(2), low(2), usec(2)]`; `from_intra_packet_bytes`
+delegates to it. Figure 11-4 instead requires
+`[reserved(2), usec(2), low(2), high(2)]`. That shared parser **must not be
+used as-is** by the rebuild. Accepted ADR-0015 requires correcting the
+shared implementation in **irig106-types first**, with independent byte
+fixtures, before time adopts the corrected revision. The coordinator has
+assigned that fix; this documentation PR neither implements it nor claims
+GAP-03 closed. Fixing ERTC/SRC/ITS/version values in c59e004 did not fix
+this Chapter 4 byte-order defect.
 
-**Standard:** Chapter 4 §4.7 — "The microsecond time word shall have a
-resolution of 1 microsecond … the maximum value of the counter is 9999";
-"The low order time word shall have a resolution of 10 milliseconds";
-"The high order time word shall have a resolution of 655.36 seconds when
-binary weighted" — which reads as one count of 10 ms across both words
-(17 bits of 10 ms reach only about 21.8 minutes). Chapter 11 Figure 11-4
-places "Micro-Seconds Word" and "Reserved" in the first long word and
-"High Order Time Word" and "Low Order Time Word" in the second. Figure 4-4,
-which shows the bit layout, is an image; both need checking on the page
-before the code changes.
+**Page check, 2026-11-12 (visual inspection, not an implementation check):**
+The archive's `scripts/fetch.py --edition 106-24R1 --chapter 4 --chapter 9
+--chapter 10 --chapter 11` verified size and SHA-256. Pages were rendered
+with `pdftoppm -f N -l N -scale-to 1800 -png -singlefile INPUT OUTPUT` and
+inspected visually; text extraction was used only to locate pages and
+transcribe prose. PDF page numbers below are one-based.
+
+- **Chapter 11 Figure 11-4, printed page 11-10, PDF page 18**
+  (`chapter11.pdf`, SHA-256
+  `0f63792dcac39f6010df371ee0afc46a396017918f4155cba9ebab6c2d6d263e`):
+  the column labels are "msb", "31", "16", "15", "0", "lsb".
+  The first row has "Micro-Seconds Word" in bits 31–16 and "Reserved"
+  in bits 15–0; the second has "High Order Time Word" in bits 31–16
+  and "Low Order Time Word" in bits 15–0. With Chapter 11's little-endian
+  ordering (§11.2.1), the eight time bytes are **reserved [0..2),
+  microseconds [2..4), low [4..6), high [6..8)**. The two reserved time
+  bytes are distinct from secondary-header reserved bytes [8..10).
+- **Chapter 4 Figure 4-4, printed page 4-10, PDF page 14**
+  (`chapter4.pdf`, SHA-256
+  `4225f8008cce2e99d02ca4da94aeefd1605442cd3acf7ac50b93d2e1c612d72b`):
+  positions run 1 to 16, left to right, with the least significant position
+  at 16. The binary high-word LSB is labelled "655.36 SEC", the low-word
+  LSB "0.01 SEC", and the microsecond LSB "1 MICROSECOND". The BCD row
+  separately shows "1 DAY", "10 HR", "1 HR", "10 MIN", "1 MIN";
+  its low word shows "10 SEC", "1 SEC", "0.1 SEC", "0.01 SEC".
+  The microsecond word's two leading positions are zero.
+- **Chapter 4 §4.7, printed page 4-11, PDF page 15** confirms:
+  "The high order time word shall have a resolution of 655.36 seconds
+  when binary weighted"; "Thus the maximum value of the counter is
+  9999 (decimal)." For BCD: "the days field shall contain the three
+  least significant bits of the BCD Julian date."
+
+**DERIVED reading — full binary count despite the drawn zero:**
+Figure 4-4 (4-10 / PDF 14) and Figure 4-5 (4-11 / PDF 15, also rendered
+and inspected) put a fixed "0" in low-word position 1 in the box row
+shared by BCD and binary weighting. It is not visually unambiguous that
+this zero applies only to BCD. We retain that reading **as derived**, not
+as a literal statement of the figures: §4.7 says "the lsb, bit 16, has a
+value of 655.36 seconds" for binary high order. Since
+`655.36 s = 2^16 × 0.01 s`, the low binary word must supply all sixteen
+bits between high-word increments. A low word capped at `0x7FFF` reaches
+only `32767 × 0.01 s = 327.67 s`; its next high-word count begins at
+655.36 s, leaving 327.68–655.35 s unrepresentable. Thus the retained
+binary interpretation permits bit 15 = 1, while BCD retains the drawn
+fixed zero. This is a documented discrepancy/reading for review, not a
+claim that the figure itself settles the conflict.
+
+Under that DERIVED reading, binary duration is
+`(((u64(high) << 16) | u64(low)) * 10_000_000) + u64(microseconds) * 1_000`
+nanoseconds, with microseconds in 0..=9999. There is **no binary day field**
+to split out at bit 17. A hand-derived distinguishing fixture is
+`00 00 0f 27 34 12 01 00`: high=1, low=0x1234, microseconds=9999,
+701.969999 seconds. Add the independent opposing-reading fixture
+`00 00 00 00 00 80 00 00`: low=`0x8000`, high=usec=0, giving
+**327.68 s = 327680000000 ns**. The earlier low=`0x1234` fixture alone
+cannot distinguish a parser that wrongly clears/rejects the binary top
+bit. Both secondary and intra-packet shared parsers must be checked.
+The prototype's 17-bit split and c59e004's word order remain separate
+GAP-03 defects; neither is fixed in this PR.
+
+**Wording caveat:** §11.2.1.1 g says "The two lsbs of the 64-bit
+packet secondary header time and IPTS shall be zero-filled." The phrase
+"two lsbs" is imprecise if read as two bits: Figure 11-4 explicitly shows
+a **16-bit reserved half-word**. The byte layout above follows that
+figure; the wording discrepancy is retained here for review.
+
+**Remaining ambiguity:** neither figure establishes a binary calendar
+origin; the three BCD day bits do not identify a complete day of year.
+L2/L3 must retain partial time or require explicit caller context before
+assigning a calendar day, never invent one. This page check is not the
+register's required all-edition analysis or two-person human review.
+
+Sources: [Chapter 11](https://github.com/TelemetryWorks/rcc-106-standards/releases/download/106-24R1/chapter11.pdf),
+[Chapter 4](https://github.com/TelemetryWorks/rcc-106-standards/releases/download/106-24R1/chapter4.pdf).
 
 ### T-11 A caption error in the standard
 
