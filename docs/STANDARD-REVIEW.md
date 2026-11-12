@@ -132,12 +132,29 @@ PDF 277, lists "0x01 = Initial Release Header Version." But 106-24R1
 standard applied to the data types in Table 11-4." Therefore a header
 byte 0x01 alone does **not** prove that a recording uses the 106-04 EXT
 layout. Shared version constructors decode the named lists, not a
-complete recording's effective edition. Setup-record version evidence,
-caller-declared edition and explicit policy must be reconciled before
-selecting EXT versus SRC. Missing/conflicting evidence remains unresolved
-unless the caller supplies a labelled override; proposed precedence is
-L2/L3-EDN-201, owner question Q-EDITION. Do not silently infer 106-04 from
-a low header byte or interpret legacy EXT using TimeSource::from_raw.
+complete recording's effective edition. **There is no setup-version code
+at the 106-04/05 boundary:** 106-04 §10.6.7.2.2 and its generic reserved
+CSDW (Figure 10-34), printed 10-48 / PDF 306, define no setup version
+field; 106-05 Figure 10-34b, printed 10-55 / PDF 59, says
+"Reserved. (Bits 31-0) are reserved." CH10VER begins in 106-07 Figure
+10-50, printed 10-72 / PDF 76, with "0x00 thru 06 = Reserved" and
+"0x07 = IRIG-106-07". Those pages were rendered and inspected visually.
+Consequently no fixture may invent a 106-04/05 RCCVER or CH10VER code.
+
+The in-file candidate is TMATS `G\106`: 106-04 Table 9-1, printed 9-8 /
+PDF 186, defines "VERSION OF IRIG 106 STANDARD USED TO GENERATE THIS
+TMATS FILE". In 106-24R1 Table 9-2, printed **9-10 / PDF 16** (the
+attribute index is Figure 9-2 on 9-9 / PDF 15), its row says
+"R/R Ch 10 Status: R", "Required when: Always", "Range: 0 to 99" and
+"Version of RCC IRIG 106 standard used to generate this TMATS file."
+Both attribute pages were visually inspected. This describes TMATS,
+**not necessarily the packet layout**. At the legacy boundary only a
+caller declaration can select EXT: an explicit layout override, or a
+caller policy expressly accepting `G\106` as a labelled layout assumption.
+Missing/conflicting evidence stays unresolved. Later setup codes remain
+useful only in their applicable editions; they do not supply missing
+legacy evidence. L2/L3-EDN-201 and Q-EDITION propose this policy for the
+owner, without changing any accepted Design or Review field.
 
 **Change required in the rebuild:** after resolving the layout, 106-04
 reads bit 0 as external-present, reports reserved bits 3–1, and reserves
@@ -346,10 +363,19 @@ report which reading a recording's headers satisfy. Register entry RDG-008.
 
 ### T-10 Chapter 4 binary time
 
-**Code:** `src/absolute.rs:610-630` takes the low 17 bits of the combined
-high and low words as tens of milliseconds and the bits above as the day of
-year; `irig106-types` `Ch4BinaryTime::from_secondary_bytes` reads the 8
-bytes as unused, high, low, microseconds. (Already open as GAP-03.)
+**Code / GAP-03 (current prerequisite, not fixed here):** the prototype
+`src/absolute.rs` splits the combined high/low value at bit 17 into a day
+and a time count. Separately, **irig106-types c59e004 remains wrong**:
+`src/binary_time.rs` `Ch4BinaryTime::from_secondary_bytes` reads
+`[unused(2), high(2), low(2), usec(2)]`; `from_intra_packet_bytes`
+delegates to it. Figure 11-4 instead requires
+`[reserved(2), usec(2), low(2), high(2)]`. That shared parser **must not be
+used as-is** by the rebuild. Accepted ADR-0015 requires correcting the
+shared implementation in **irig106-types first**, with independent byte
+fixtures, before time adopts the corrected revision. The coordinator has
+assigned that fix; this documentation PR neither implements it nor claims
+GAP-03 closed. Fixing ERTC/SRC/ITS/version values in c59e004 did not fix
+this Chapter 4 byte-order defect.
 
 **Page check, 2026-11-12 (visual inspection, not an implementation check):**
 The archive's `scripts/fetch.py --edition 106-24R1 --chapter 4 --chapter 9
@@ -383,13 +409,33 @@ transcribe prose. PDF page numbers below are one-based.
   9999 (decimal)." For BCD: "the days field shall contain the three
   least significant bits of the BCD Julian date."
 
-**Outcome:** binary duration is
+**DERIVED reading — full binary count despite the drawn zero:**
+Figure 4-4 (4-10 / PDF 14) and Figure 4-5 (4-11 / PDF 15, also rendered
+and inspected) put a fixed "0" in low-word position 1 in the box row
+shared by BCD and binary weighting. It is not visually unambiguous that
+this zero applies only to BCD. We retain that reading **as derived**, not
+as a literal statement of the figures: §4.7 says "the lsb, bit 16, has a
+value of 655.36 seconds" for binary high order. Since
+`655.36 s = 2^16 × 0.01 s`, the low binary word must supply all sixteen
+bits between high-word increments. A low word capped at `0x7FFF` reaches
+only `32767 × 0.01 s = 327.67 s`; its next high-word count begins at
+655.36 s, leaving 327.68–655.35 s unrepresentable. Thus the retained
+binary interpretation permits bit 15 = 1, while BCD retains the drawn
+fixed zero. This is a documented discrepancy/reading for review, not a
+claim that the figure itself settles the conflict.
+
+Under that DERIVED reading, binary duration is
 `(((u64(high) << 16) | u64(low)) * 10_000_000) + u64(microseconds) * 1_000`
 nanoseconds, with microseconds in 0..=9999. There is **no binary day field**
 to split out at bit 17. A hand-derived distinguishing fixture is
 `00 00 0f 27 34 12 01 00`: high=1, low=0x1234, microseconds=9999,
-701.969999 seconds. The prototype's secondary-byte word order and its
-17-bit split both disagree with the checked figures.
+701.969999 seconds. Add the independent opposing-reading fixture
+`00 00 00 00 00 80 00 00`: low=`0x8000`, high=usec=0, giving
+**327.68 s = 327680000000 ns**. The earlier low=`0x1234` fixture alone
+cannot distinguish a parser that wrongly clears/rejects the binary top
+bit. Both secondary and intra-packet shared parsers must be checked.
+The prototype's 17-bit split and c59e004's word order remain separate
+GAP-03 defects; neither is fixed in this PR.
 
 **Wording caveat:** §11.2.1.1 g says "The two lsbs of the 64-bit
 packet secondary header time and IPTS shall be zero-filled." The phrase

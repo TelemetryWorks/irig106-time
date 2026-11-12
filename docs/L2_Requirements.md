@@ -53,6 +53,9 @@ returns **1 ns per tick**; `TimeSource::Gps` is removed in favour of
 `Irig106Version::from_setup_record` and `from_data_type_version`.
 These are documentation targets, not changes to the dependency or Rust code.
 
+**Chapter 4 exception:** Do not use c59e004 Ch4BinaryTime::from_secondary_bytes or its delegating from_intra_packet_bytes as-is: they swap high/usec relative to Figure 11-4. Per accepted ADR-0015 the shared parser must be fixed in irig106-types first, then adopted at a corrected revision; no local duplicate parser or dependency change is authorized by this documentation draft.
+
+
 **Edition qualification applies throughout this document:** modern SRC,
 source None and FMT None obligations apply from **106-05**, after the
 layout is selected by L2/L3-EDN-201. Resolved **106-04** uses a distinct EXT
@@ -76,7 +79,8 @@ legacy differences qualify their L2/L3 decomposition without rewriting L1.
 | Q-NTP | How should NTP eras and the phrase “includes leap seconds” map to Unix/absolute time? | Preserve raw UTC-labelled seconds/fractions and **require explicit era plus a reviewed RFC 1305/leap mapping analysis** before ambiguous conversions are implemented. Never add all historical leap offsets by inference or assume the host's current era. |
 | Q-FLAGS | Must reserved secondary format 11 reject an RTC-form stamp even when bit 6 is clear? | Keep **L1-IPT-007's rejection for this draft**; recommend an owner-approved L1 refinement limiting reserved-format rejection to secondary-derived stamps (bit 6 set). §11.2.1.1 g and §11.2.1.3 b select RTC by bit 6; current L1 wording is stricter. No L1 change is made here. |
 | Q-CLI-EXIT | Accept the proposed numeric exit assignments? | **0 success, 1 findings threshold, 2 I/O/input failure, 3 usage**; document these before scripts depend on them. The four classes are L1; their numbers are a new interface proposal. |
-| Q-EDITION | What selects EXT versus SRC when edition evidence is missing or conflicting? | Recommend **explicit caller layout override first (labelled), otherwise compatible caller-declared and governing setup-record version evidence; unresolved on conflict/absence**. Header data type version is supporting lower-bound evidence, never an exact recording-edition selector; 0x01 alone must not select EXT. An override preserves contradictions as evidence. Setup codes naming a family do not prove an exact later edition. This precedence is a product-policy proposal, not settled by the standard. |
+| Q-EDITION | What caller declaration may select EXT versus SRC at the 106-04/05 boundary? | Recommend **an explicit caller layout declaration/override**. Permit `G\106` as a labelled assumption only when the caller explicitly opts into that policy; its standard meaning dates the TMATS file, not packet layout. No setup version code exists in 106-04/05, and header 0x01 alone is insufficient. On absent/conflicting declaration evidence, leave the layout unresolved; later setup version evidence must not be invented for this boundary. |
+| Q-TFMT-DEFAULT | Should the declared TFMT default A feed packet comparisons when the attribute is absent? | Recommend **explicit opt-in default application**, labelled default-derived, while retaining the missing-required-attribute finding. Chapter 9 defines Default for processing absent values, but R status still requires the attribute. Keep the accepted no-silent-substitution behaviour until the owner decides. |
 
 Rounding (NTP fractions and interpolation), midpoint ties, mixed-resolution
 jump thresholds, and mode-change flushing are explicitly proposed design
@@ -152,13 +156,13 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-ABS-002
 
-**Statement**: The library SHALL read and encode Chapter 4 binary secondary time using the visually checked Figure 11-4 layout; expose a binary duration until a calendar origin is supplied.
+**Statement**: The library SHALL read and encode Chapter 4 binary secondary time using Figure 11-4, after the shared parser is corrected in irig106-types under ADR-0015; use T-10's DERIVED full-binary-low-word reading, and expose a binary duration until a calendar origin is supplied.
 
-**Source**: "00 = Chapter 4 binary weighted 48-bit time format. The two lsbs of the 64-bit packet secondary header time and IPTS shall be zero-filled" (§11.2.1.1 g); Figure 11-4; Chapter 4 §4.7. The word layout is to be confirmed on the page images of Figures 11-4 and 4-4 before L2 (T-10). Prototype identifier kept.
+**Source**: "00 = Chapter 4 binary weighted 48-bit time format. The two lsbs of the 64-bit packet secondary header time and IPTS shall be zero-filled" (§11.2.1.1 g); Figure 11-4; Chapter 4 §4.7. The word layout is to be confirmed on the page images of Figures 11-4 and 4-4 before L2 (T-10) (confirmed 2026-11-12, T-10). Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Hand-derived 00 00 0f 27 34 12 01 00 gives 701969999000 ns; nonzero reserved bytes, microseconds=9999/10000, high=0xFFFF, short buffers, and missing calendar origin. T-10 must fail on the prototype.
+**Planned verification**: Hand-derived 00 00 0f 27 34 12 01 00 gives 701969999000 ns; nonzero reserved bytes, microseconds=9999/10000, high=0xFFFF, short buffers, and missing calendar origin. T-10 must fail on the prototype. Independent top-bit fixture: `00 00 00 00 00 80 00 00` -> low=0x8000, high=usec=0 -> 327.68 s (327680000000 ns); accept under the DERIVED binary reading of T-10, and retain BCD bit 15=0. The low=0x1234 fixture alone cannot reject the opposing reading.
 
 #### L2-ABS-103
 
@@ -320,7 +324,7 @@ does not settle it or replace its real-recording evidence.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Resolved 106-04: all sixteen EXT nibbles, with bit 0 present/absent and every reserved bit 3–1; raw 3 is present plus reserved-bit evidence, never None. Resolved 106-05+: all sixteen SRC/FMT values, including Reserved(3), InternalFromRmm for 2 and FMT None for 15. Unknown/conflicting edition plus header 0x01 must not silently select EXT; a later setup declaration with header 0x01 must not be treated as 106-04.
+**Planned verification**: Resolved 106-04: all sixteen EXT nibbles, with bit 0 present/absent and every reserved bit 3–1; raw 3 is present plus reserved-bit evidence, never None. Resolved 106-05+: all sixteen SRC/FMT values, including Reserved(3), InternalFromRmm for 2 and FMT None for 15. Unknown/conflicting edition plus header 0x01 must not silently select EXT; a later explicit declaration with header 0x01 must not be treated as 106-04; never invent a legacy setup version code.
 
 #### L2-CSDW-103
 
@@ -702,7 +706,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL accept already extracted high/low/microsecond PCM words with an explicit binary-or-BCD weighting and reconstruction context.
 
-**Source**: "High and low order time words shall be binary or binary coded decimal (BCD) weighted, and microsecond words shall be binary weighted"; resolutions of 1 µs (to 9999), 10 ms, and 655.36 s binary or one minute BCD; "For BCD, the days field shall contain the three least significant bits of the BCD Julian date" (Chapter 4 §4.7); `C-d\PTM`, `C-d\BTM` (Chapter 9); contract 3.8. Layout to be confirmed with T-10.
+**Source**: "High and low order time words shall be binary or binary coded decimal (BCD) weighted, and microsecond words shall be binary weighted"; resolutions of 1 µs (to 9999), 10 ms, and 655.36 s binary or one minute BCD; "For BCD, the days field shall contain the three least significant bits of the BCD Julian date" (Chapter 4 §4.7); `C-d\PTM`, `C-d\BTM` (Chapter 9); contract 3.8. Layout to be confirmed with T-10 (confirmed 2026-11-12, T-10).
 
 **Verification Method**: Test (T)
 
@@ -800,13 +804,13 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-EDN-002
 
-**Statement**: The library SHALL keep raw setup-record version, header data type version, caller-declared edition and layout policy as separate provenance; select a 106-04 EXT layout only from resolved explicit edition evidence or a labelled caller override, never header 0x01 alone.
+**Statement**: The library SHALL select legacy EXT versus SRC from an explicit caller layout declaration/override, or a caller policy explicitly accepting G\106 as a labelled layout assumption; it SHALL NOT infer the legacy layout from a nonexistent 106-04/05 setup version code, from raw G\106 alone, or from header 0x01 alone. Keep later setup-record version evidence distinct and applicable only where defined.
 
-**Source**: 106-04 §10.6.3.3, Figure 10-15, printed 10-30–31 / PDF 288–289; 106-05 Figure 10-16a, printed 10-37 / PDF 41; 106-24R1 §11.2.1.1 e, printed 11-6 / PDF 14; STANDARD-REVIEW T-6. 106-04 §10.6.1.1.5, printed 10-19 / PDF 277; corrected Irig106Version constructors, irig106-types c59e004. Proposed precedence requires owner decision Q-EDITION.
+**Source**: 106-04 §10.6.7.2.2/Figure 10-34, printed 10-48 / PDF 306; 106-05 Figure 10-34b, printed 10-55 / PDF 59; 106-07 Figure 10-50, printed 10-72 / PDF 76; 106-04 Table 9-1, printed 9-8 / PDF 186; 106-24R1 Table 9-2, printed 9-10 / PDF 16 (index 9-9 / PDF 15), and §11.2.1.1 e; STANDARD-REVIEW T-6. Edition precedence and G\106 adoption are proposed policy requiring owner decision Q-EDITION.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Known 106-04 caller declaration with header 0x01 selects EXT; later declared/setup edition with the same header does not. Header 0x01 alone, reserved/zero setup code, unknown code and conflicting declarations stay unresolved absent explicit override. Test both constructors with identical raw bytes in different domains; an override records all contradictions. Setup 0x0E names the unchanged 106-22 family, not exact 106-24R1 identity.
+**Planned verification**: 106-04/05 fixtures contain no setup version field: their reserved CSDW is not evidence of version zero. Header 0x01 alone -> unresolved. Explicit caller layout 106-04 -> EXT; explicit 106-05 -> SRC, retaining header hints. G\106=04 or05 without opt-in policy -> TMATS-version metadata only, unresolved packet layout; with explicit caller acceptance -> labelled assumed layout. Missing/malformed/conflicting G\106 and explicit declaration retain contradictions without inventing a legacy setup code. Separately test post-106-07 CH10VER 0x07, its reserved0..6, and later RCCVER-family ambiguity; none can be used as a fictional 106-04/05 setup code.
 
 ## DECL
 
@@ -1214,7 +1218,9 @@ does not settle it or replace its real-recording evidence.
 
 **Verification Method**: Inspection (I)
 
-**Planned verification**: Each pair in both directions, all mismatches, missing/unknown and a non-TIMEIN channel. Cite Table 9-4 printed 9-72/PDF 78 visual check.
+**Source supplement**: 106-24R1 Chapter 9 §9.5.1 a, printed 9-5–6 / PDF 11–12, defines R and Default, including the requirement to include R attributes even if they have defaults; Table 9-4 TFMT is R. Q-TFMT-DEFAULT is pending owner decision.
+
+**Planned verification**: Each pair in both directions, all mismatches, missing/unknown and a non-TIMEIN channel. Cite Table 9-4 printed 9-72/PDF 78 visual check. Explicit TFMT A versus absent TFMT with default processing disabled/enabled: preserve the missing-required finding and label any approved default-derived comparison.
 
 #### L2-RDG-203
 

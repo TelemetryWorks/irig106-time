@@ -42,7 +42,7 @@ L3 states implementation obligations and planned verification cases, not
 Rust source changes. Each entry names its immediate L2 parent and its L1
 ancestor explicitly. Names are responsibility boundaries, not a commitment
 to a new public type or dependency. See L2 for owner questions Q-DEFAULT
-through Q-CLI-EXIT and Q-EDITION; the same unresolved constraints bind L3.
+through Q-CLI-EXIT, Q-EDITION and Q-TFMT-DEFAULT; the same unresolved constraints bind L3.
 
 ## Shared types and edition qualification
 
@@ -53,6 +53,9 @@ returns **1 ns per tick**; `TimeSource::Gps` is removed in favour of
 `TimeFormat::None` and `IrigTimeSource` exist; version-list decoding uses
 `Irig106Version::from_setup_record` and `from_data_type_version`.
 These are documentation targets, not changes to the dependency or Rust code.
+
+**Chapter 4 exception:** Do not use c59e004 Ch4BinaryTime::from_secondary_bytes or its delegating from_intra_packet_bytes as-is: they swap high/usec relative to Figure 11-4. Per accepted ADR-0015 the shared parser must be fixed in irig106-types first, then adopted at a corrected revision; no local duplicate parser or dependency change is authorized by this documentation draft.
+
 
 **Edition qualification applies throughout this document:** modern SRC,
 source None and FMT None obligations apply from **106-05**, after the
@@ -124,11 +127,13 @@ legacy differences qualify their L2/L3 decomposition without rewriting L1.
 
 **L1 ancestor**: L1-ABS-002
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Eight-byte layout: [0..2) zero, [2..4) microseconds, [4..6) low, [6..8) high, each word little-endian. Compute ns = ((high * 65536 + low) * 10000000) + microseconds * 1000 in u64; require microseconds <=9999. Do not split a day field from the binary count. Calendar resolution requires caller context (Q-CH4).
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Eight-byte layout: [0..2) zero, [2..4) microseconds, [4..6) low, [6..8) high, each word little-endian. Compute ns = ((high * 65536 + low) * 10000000) + microseconds * 1000 in u64; require microseconds <=9999. Permit binary low bit 15 under the DERIVED arithmetic reading in T-10 despite the zero drawn in Figure 4-4/4-5; do not describe it as an unambiguous figure transcription. Do not split a day field from the binary count. Calendar resolution requires caller context (Q-CH4).
 
-**Source**: "00 = Chapter 4 binary weighted 48-bit time format. The two lsbs of the 64-bit packet secondary header time and IPTS shall be zero-filled" (§11.2.1.1 g); Figure 11-4; Chapter 4 §4.7. The word layout is to be confirmed on the page images of Figures 11-4 and 4-4 before L2 (T-10). Prototype identifier kept.
+**Shared implementation prerequisite**: Do not use c59e004 Ch4BinaryTime::from_secondary_bytes or its delegating from_intra_packet_bytes as-is: they swap high/usec relative to Figure 11-4. Per accepted ADR-0015 the shared parser must be fixed in irig106-types first, then adopted at a corrected revision; no local duplicate parser or dependency change is authorized by this documentation draft.
 
-**Planned verification**: Hand-derived 00 00 0f 27 34 12 01 00 gives 701969999000 ns; nonzero reserved bytes, microseconds=9999/10000, high=0xFFFF, short buffers, and missing calendar origin. T-10 must fail on the prototype.
+**Source**: "00 = Chapter 4 binary weighted 48-bit time format. The two lsbs of the 64-bit packet secondary header time and IPTS shall be zero-filled" (§11.2.1.1 g); Figure 11-4; Chapter 4 §4.7. The word layout is to be confirmed on the page images of Figures 11-4 and 4-4 before L2 (T-10) (confirmed 2026-11-12, T-10). Prototype identifier kept.
+
+**Planned verification**: Hand-derived 00 00 0f 27 34 12 01 00 gives 701969999000 ns; nonzero reserved bytes, microseconds=9999/10000, high=0xFFFF, short buffers, and missing calendar origin. T-10 must fail on the prototype. Independent top-bit fixture: `00 00 00 00 00 80 00 00` -> low=0x8000, high=usec=0 -> 327.68 s (327680000000 ns); accept under the DERIVED binary reading of T-10, and retain BCD bit 15=0. The low=0x1234 fixture alone cannot reject the opposing reading.
 
 **L3-ABS-103** · Parent: L2-ABS-103 · Verification: T
 
@@ -264,7 +269,7 @@ legacy differences qualify their L2/L3 decomposition without rewriting L1.
 
 **Source**: §11.2.3.2 a, "0x3 – 0xE = Reserved"; T-6. Prototype identifier kept; value 3 is no longer "GPS". Edition qualification: 106-04 §10.6.3.3, Figure 10-15, printed 10-30–31 / PDF 288–289; 106-05 Figure 10-16a, printed 10-37 / PDF 41; 106-24R1 §11.2.1.1 e, printed 11-6 / PDF 14; STANDARD-REVIEW T-6.
 
-**Planned verification**: Resolved 106-04: all sixteen EXT nibbles, with bit 0 present/absent and every reserved bit 3–1; raw 3 is present plus reserved-bit evidence, never None. Resolved 106-05+: all sixteen SRC/FMT values, including Reserved(3), InternalFromRmm for 2 and FMT None for 15. Unknown/conflicting edition plus header 0x01 must not silently select EXT; a later setup declaration with header 0x01 must not be treated as 106-04.
+**Planned verification**: Resolved 106-04: all sixteen EXT nibbles, with bit 0 present/absent and every reserved bit 3–1; raw 3 is present plus reserved-bit evidence, never None. Resolved 106-05+: all sixteen SRC/FMT values, including Reserved(3), InternalFromRmm for 2 and FMT None for 15. Unknown/conflicting edition plus header 0x01 must not silently select EXT; a later explicit declaration with header 0x01 must not be treated as 106-04; never invent a legacy setup version code.
 
 **L3-CSDW-103** · Parent: L2-CSDW-103 · Verification: T
 
@@ -584,11 +589,11 @@ legacy differences qualify their L2/L3 decomposition without rewriting L1.
 
 **L1 ancestor**: L1-WORD-001
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: For binary use full 32-bit high/low count and microseconds as L3-ABS-102. For BCD Figure 4-4 high word: day fragment bits 15..13, tens-hour 12..11, hour 10..7, tens-minute 6..4, minute 3..0; low word: bit 15=0, tens-second 14..12, second 11..8, tenths 7..4, hundredths 3..0. Microseconds are binary 0..9999 in both. Validate digit/ranges and require explicit context to resolve the three-bit day fragment (Q-CH4).
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: For binary use T-10's explicitly DERIVED full 32-bit high/low count and microseconds as L3-ABS-102. For BCD Figure 4-4 high word: day fragment bits 15..13, tens-hour 12..11, hour 10..7, tens-minute 6..4, minute 3..0; low word: bit 15=0, tens-second 14..12, second 11..8, tenths 7..4, hundredths 3..0. Microseconds are binary 0..9999 in both. The shared-row fixed zero in Figures 4-4/4-5 conflicts with full binary counting; derive the binary exception from 655.36 s = 2^16 × 0.01 s and retain the zero for BCD. Validate digit/ranges and require explicit context to resolve the three-bit day fragment (Q-CH4).
 
-**Source**: "High and low order time words shall be binary or binary coded decimal (BCD) weighted, and microsecond words shall be binary weighted"; resolutions of 1 µs (to 9999), 10 ms, and 655.36 s binary or one minute BCD; "For BCD, the days field shall contain the three least significant bits of the BCD Julian date" (Chapter 4 §4.7); `C-d\PTM`, `C-d\BTM` (Chapter 9); contract 3.8. Layout to be confirmed with T-10.
+**Source**: "High and low order time words shall be binary or binary coded decimal (BCD) weighted, and microsecond words shall be binary weighted"; resolutions of 1 µs (to 9999), 10 ms, and 655.36 s binary or one minute BCD; "For BCD, the days field shall contain the three least significant bits of the BCD Julian date" (Chapter 4 §4.7); `C-d\PTM`, `C-d\BTM` (Chapter 9); contract 3.8. Layout to be confirmed with T-10 (confirmed 2026-11-12, T-10).
 
-**Planned verification**: One fixture per binary and BCD weighting, each bit group distinguished, decimal digit>9, day fragment collisions, 9999/10000 microseconds, and absent origin/day context returning partial time.
+**Planned verification**: One fixture per binary and BCD weighting, each bit group distinguished, decimal digit>9, day fragment collisions, 9999/10000 microseconds, and absent origin/day context returning partial time. Independent top-bit fixture: `00 00 00 00 00 80 00 00` -> low=0x8000, high=usec=0 -> 327.68 s (327680000000 ns); accept under the DERIVED binary reading of T-10, and retain BCD bit 15=0. The low=0x1234 fixture alone cannot reject the opposing reading.
 
 **L3-WORD-102** · Parent: L2-WORD-102 · Verification: T
 
@@ -668,11 +673,11 @@ legacy differences qualify their L2/L3 decomposition without rewriting L1.
 
 **L1 ancestor**: L1-EDN-002
 
-**Obligation**: The implementation SHALL extract setup CSDW bits 7–0 for Irig106Version::from_setup_record and pass the header version byte separately to Irig106Version::from_data_type_version; neither constructor alone is a recording-edition resolver. Retain raw codes and provenance, including Unknown(raw), never map setup zero to Pre07 or code 15 to V23. Proposed policy: a caller's explicit layout override wins but is labelled with contradictions; otherwise compatible caller-declared edition and governing setup-version evidence establish an edition/family. Conflicting/absent evidence stays unresolved. Header codes constrain consistency as release hints, not an exact edition equality: 0x01 cannot alone select LegacyExt, and a later declaration must not be downgraded by it. Resolve the required boundary (106-04 versus 106-05+) before calling modern source/FMT constructors; undecidable cases return raw/unresolved fields and no invented source. The standard does not prescribe this precedence; implementation awaits Q-EDITION review. Inherited L3-EDN-102 code-list mapping is decoding vocabulary only, subject to this resolver.
+**Obligation**: The implementation SHALL keep caller-declared packet layout, raw TMATS G\106, applicable later setup version evidence, header version hints and policy provenance distinct. At the 106-04/05 boundary there is no setup version field: 106-04's generic computer-generated CSDW and 106-05's Format 1 CSDW are reserved, not RCCVER=0. CH10VER first appears in 106-07, with only 0x07 assigned. Do not call from_setup_record on reserved legacy bits; use that constructor only on a version field known to exist. Pass header bytes separately to from_data_type_version; V04 returned for header 0x01 does not identify the recording layout. Proposed policy for Q-EDITION: select EXT only on an explicit caller layout declaration/override, or explicit caller opt-in accepting G\106 as a labelled assumption. G\106 dates the TMATS file and never silently establishes packet layout. Conflicts/absence remain unresolved unless an explicit override retains and labels contradictory evidence. Later valid setup version codes may inform their own era, but must not create nonexistent 106-04/05 setup evidence or identify an exact later edition from an unchanged code. Resolve the boundary before modern source/FMT constructors; preserve raw unresolved fields otherwise. L3-EDN-102 code-list decoding is vocabulary, not this policy resolver.
 
-**Source**: 106-04 §10.6.3.3, Figure 10-15, printed 10-30–31 / PDF 288–289; 106-05 Figure 10-16a, printed 10-37 / PDF 41; 106-24R1 §11.2.1.1 e, printed 11-6 / PDF 14; STANDARD-REVIEW T-6. §11.2.1.1 e says "This byte contains a value at or below the release version of the standard applied to the data types in Table 11-4." 106-04 §10.6.1.1.5, printed 10-19 / PDF 277; irig106-types c59e004 adoption list. Precedence is proposed product policy (Q-EDITION).
+**Source**: 106-04 §10.6.7.2.2/Figure 10-34, printed 10-48 / PDF 306; 106-05 Figure 10-34b, printed 10-55 / PDF 59; 106-07 Figure 10-50, printed 10-72 / PDF 76; 106-04 Table 9-1, printed 9-8 / PDF 186; 106-24R1 Table 9-2, printed 9-10 / PDF 16 (index 9-9 / PDF 15), and §11.2.1.1 e; STANDARD-REVIEW T-6. G\106 is "VERSION OF IRIG 106 STANDARD USED TO GENERATE THIS TMATS FILE" in 106-04. The 106-24R1 header byte is "a value at or below the release version of the standard applied to the data types" (§11.2.1.1 e). Caller adoption of G\106 and precedence remain proposed policy (Q-EDITION).
 
-**Planned verification**: Known 106-04 declaration + header 0x01 -> LegacyExt; 106-05/106-24R1 declaration + header 0x01 -> SRC layout; header 0x01 alone -> unresolved. Include compatible/incompatible setup evidence, setup zero/reserved, unknown values, explicit override with contradiction retained, governing setup changes, and no exact later-edition inference from setup 0x0E. Verify all sixteen EXT nibbles and the 106-04/05 FMT 15 distinction through the resolved branch.
+**Planned verification**: 106-04/05 fixtures contain no setup version field: their reserved CSDW is not evidence of version zero. Header 0x01 alone -> unresolved. Explicit caller layout 106-04 -> EXT; explicit 106-05 -> SRC, retaining header hints. G\106=04 or05 without opt-in policy -> TMATS-version metadata only, unresolved packet layout; with explicit caller acceptance -> labelled assumed layout. Missing/malformed/conflicting G\106 and explicit declaration retain contradictions without inventing a legacy setup code. Separately test post-106-07 CH10VER 0x07, its reserved0..6, and later RCCVER-family ambiguity; none can be used as a fictional 106-04/05 setup code.
 
 ## DECL
 
@@ -1014,7 +1019,9 @@ legacy differences qualify their L2/L3 decomposition without rewriting L1.
 
 **Source**: 106-24R1 Chapter 9 Table 9-4, printed9-72/PDF78; Chapter 11 §11.2.3.2 a; RDG-002.
 
-**Planned verification**: Each pair in both directions, all mismatches, missing/unknown and a non-TIMEIN channel. Cite Table 9-4 printed 9-72/PDF 78 visual check.
+**Source supplement**: 106-24R1 Chapter 9 §9.5.1 a, printed 9-5–6 / PDF 11–12, defines R and Default, including the requirement to include R attributes even if they have defaults; Table 9-4 TFMT is R. Q-TFMT-DEFAULT is pending owner decision.
+
+**Planned verification**: Each pair in both directions, all mismatches, missing/unknown and a non-TIMEIN channel. Cite Table 9-4 printed 9-72/PDF 78 visual check. Explicit TFMT A versus absent TFMT with default processing disabled/enabled: preserve the missing-required finding and label any approved default-derived comparison.
 
 **L3-RDG-203** · Parent: L2-RDG-203 · Verification: I
 

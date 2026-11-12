@@ -75,6 +75,28 @@ reads both.
 - Table 9-4, `R-x\TFMT-n`: "Indicate the format for the time. For additional information, see RCC 200-16. y is an optional last digit"; "A IRIG-A 1xy", "B IRIG-B 1xy", "G IRIG-G 1xy", "I Internal", "N Native GPS time", "U UTC time from GPS", "X None"; "Default: A" (visually confirmed in the `TFMT` row, printed page 9-72, PDF page 78).
 - §11.2.3.2 a, FMT (bits 7–4): "0x0 = IRIG-B", "0x1 = IRIG-A", "0x2 = IRIG-G", "0x3 = Real-Time Clock", "0x4 = Universal Coordinated Time (UTC) time from GPS", "0x5 = Native GPS Time", "0xF = NONE (time packet payload invalid)".
 
+**Required/default semantics (pages rendered and inspected):** Table 9-4's
+TFMT row (9-72 / PDF 78) also says "R/R Ch 10 Status: R". Chapter 9
+§9.5.1 a (9-5 / PDF 11) defines: "A value of “R” requires that the
+attribute be specified in the TMATS file whenever the attribute is allowed."
+On 9-6 / PDF 12, "Default: This identifies the default value required to
+process a TMATS file when the file itself does not contain the attribute."
+Its note states: "If the R/R Ch10 Status field is “R”, then the attribute
+must be included in the TMATS file if all other conditions apply even if
+it has a default." Thus **missing-required validation and default-based
+processing are different questions**. A default does not make the TMATS
+conforming. The accepted behaviour below still forbids silent substitution;
+these source definitions do not record a new Design decision.
+
+**Owner question Q-TFMT-DEFAULT:** should declared default A feed the
+comparison when explicit TFMT is missing? Recommend explicit opt-in
+application, labelled default-derived, **while retaining the missing-required
+finding**. The default's role in processing supports that option; it does
+not authorize dropping the finding. Keep the current accepted rule until
+the owner decides. Planned tests must distinguish explicit A, absent TFMT
+without default application, and absent TFMT with an approved labelled
+default policy, including the required-field finding in the latter case.
+
 **Behaviour**: A ↔ `0x1`, B ↔ `0x0`, G ↔ `0x2`, N ↔ `0x5`, U ↔ `0x4`, X ↔ `0xF`. A difference is reported. A missing `TFMT` on a TIMEIN channel is reported as missing, not silently read as IRIG-A; the table's default is recorded as a declared default, separately from an explicit value. Applying it as an effective comparison value would need a separately approved policy; this check does not change the accepted missing-value behaviour.
 
 **Page check (2026-11-12)**: visually inspected a `pdftoppm` rendering of
