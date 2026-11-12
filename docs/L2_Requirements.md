@@ -1,4 +1,4 @@
-# irig 106-time — Level 2 Requirements
+# irig106-time — Level 2 Requirements
 
 > **Status: draft for owner and independent review, 2026-11-12.**
 > Rebuild requirements, not implementation evidence. Replaces the prototype
@@ -24,14 +24,15 @@ reviewed and explicitly linked to it in the later implementation work.
 
 **Source convention:** every §, figure and table without another edition
 means **IRIG 106-24R1**; Chapters 4/9/10/11 are named where needed.
-The Source lines retain the L1 citations and quoted source words; obsolete
-prototype-ID commentary is omitted and completed page checks are annotated. Requirements based on contract/ADR/owner policy
+The base Source lines retain the L1 citations and quoted source words
+verbatim, including historical prototype commentary. Completed page checks
+are recorded separately in STANDARD-REVIEW T-10 and RDG-002. Requirements based on contract/ADR/owner policy
 are product decisions, not claims that the standard prescribes an
 algorithm. Quotes are verbatim; derived arithmetic and proposed choices
 are identified as such. Archive provenance and rendered-page checks are
 in STANDARD-REVIEW T-10 and INTERPRETATIONS RDG-002.
 
-Shared-value contracts target the corrected irig 106-types semantics of
+Shared-value contracts target the corrected irig106-types semantics of
 contract section 8.6 (T-5/T-6/T-7/T-9), not the current prototype dependency.
 A source's unresolved context is retained explicitly; Q-items below are
 proposals requiring owner decisions, not silently implemented assumptions.
@@ -68,7 +69,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL expose the shared Rtc type without adding an absolute epoch; retain its raw 48-bit value and distinguish counter ticks from durations.
 
-**Source**: "This is a free-running 10-MHz binary counter represented by 48 bits that are common to all data channels" (§11.2.1.1 i).
+**Source**: "This is a free-running 10-MHz binary counter represented by 48 bits that are common to all data channels" (§11.2.1.1 i). Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -80,7 +81,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL provide separate header-counter and eight-byte counter-stamp readers, each checking its own minimum length and padding.
 
-**Source**: §11.2.1.1 i, Table 11-2; "48-bit RTC format (plus 16 high-order zero bits)" (§11.2.1.3 b).
+**Source**: §11.2.1.1 i, Table 11-2; "48-bit RTC format (plus 16 high-order zero bits)" (§11.2.1.3 b). Prototype identifier kept, widened to time stamps.
 
 **Verification Method**: Test (T)
 
@@ -92,7 +93,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL resolve wrap-safe counter differences within a named session; require ordering context for differences that cannot be uniquely unwrapped.
 
-**Source**: 2^48 ticks at 10 MHz is about 325.8 days; the counter "shall remain free-running during each session" (§11.2.1.1 i).
+**Source**: 2^48 ticks at 10 MHz is about 325.8 days; the counter "shall remain free-running during each session" (§11.2.1.1 i). Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -104,7 +105,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL convert signed counter deltas to typed nanosecond durations without truncation or overflow.
 
-**Source**: §11.2.1.1 i (10 MHz).
+**Source**: §11.2.1.1 i (10 MHz). Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -118,7 +119,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL represent day-of-year, time-of-day, optional calendar year, and leap-second state without collapsing an unknown year into a fabricated one.
 
-**Source**: IEEE 1588 and ERTC times resolve 1 ns (§11.2.1.1 g); the day format carries no year (Figure 11-13); "excluding leap second days when a second may be added or subtracted" (RCC 200-16 §3.6); contract 3.2; T-16.
+**Source**: IEEE 1588 and ERTC times resolve 1 ns (§11.2.1.1 g); the day format carries no year (Figure 11-13); "excluding leap second days when a second may be added or subtracted" (RCC 200-16 §3.6); contract 3.2; T-16. Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -130,7 +131,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL read and encode Chapter 4 binary secondary time using the visually checked Figure 11-4 layout; expose a binary duration until a calendar origin is supplied.
 
-**Source**: "00 = Chapter 4 binary weighted 48-bit time format. The two lsbs of the 64-bit packet secondary header time and IPTS shall be zero-filled" (§11.2.1.1 g); Figure 11-4; Chapter 4 §4.7. The L1 source note still calls for the page check; it is now recorded in STANDARD-REVIEW T-10 (2026-11-12).
+**Source**: "00 = Chapter 4 binary weighted 48-bit time format. The two lsbs of the 64-bit packet secondary header time and IPTS shall be zero-filled" (§11.2.1.1 g); Figure 11-4; Chapter 4 §4.7. The word layout is to be confirmed on the page images of Figures 11-4 and 4-4 before L2 (T-10). Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -142,7 +143,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL keep secondary-header IEEE 1588 seconds/nanoseconds distinct from the reversed word sequence of a Format 2 PTP body.
 
-**Source**: "The 32 bits indicating seconds shall be placed into the MSLW portion of the secondary header and the 32 bits indicating nanoseconds shall be placed into the LSLW portion" (§11.2.1.1 g); Figure 11-5.
+**Source**: "The 32 bits indicating seconds shall be placed into the MSLW portion of the secondary header and the 32 bits indicating nanoseconds shall be placed into the LSLW portion" (§11.2.1.1 g); Figure 11-5. Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -154,7 +155,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL use the corrected shared Ertc value as nanoseconds, retaining its relative nature and full 64-bit range.
 
-**Source**: "64-bit binary extended relative time counter (ERTC) with 1-nanosecond resolution … (RTC = ERTC/100)" (§11.2.1.1 g); Figure 11-6 (LSLW, MSLW); T-5.
+**Source**: "64-bit binary extended relative time counter (ERTC) with 1-nanosecond resolution … (RTC = ERTC/100)" (§11.2.1.1 g); Figure 11-6 (LSLW, MSLW); T-5. Prototype identifier kept; the resolution is now stated.
 
 **Verification Method**: Test (T)
 
@@ -168,7 +169,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL decode flags once into secondary-presence, stamp-source, secondary-format, and RTC-sync-error fields; unrelated flag bits must not alter time dispatch.
 
-**Source**: "Bit 7: Indicates the presence or absence of the packet secondary header"; "Bit 6: Indicates the IPTS time source. 0 = Packet header 48-bit RTC. 1 = Packet secondary header time (bit 7 must be 1)"; "Bits 3-2: Indicate the packet secondary header time format" (§11.2.1.1 g); T-1.
+**Source**: "Bit 7: Indicates the presence or absence of the packet secondary header"; "Bit 6: Indicates the IPTS time source. 0 = Packet header 48-bit RTC. 1 = Packet secondary header time (bit 7 must be 1)"; "Bits 3-2: Indicate the packet secondary header time format" (§11.2.1.1 g); T-1. Replaces L1-IPT-001 to 004.
 
 **Verification Method**: Test (T)
 
@@ -206,7 +207,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL parse a secondary header as a bounded twelve-byte structure and decode Chapter 4 time only after validation.
 
-**Source**: "The length of the packet secondary header is fixed at 12 bytes (96 bits)" (§11.2.1.2); Figure 11-4.
+**Source**: "The length of the packet secondary header is fixed at 12 bytes (96 bits)" (§11.2.1.2); Figure 11-4. Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -218,7 +219,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL for secondary format 01, return the IEEE 1588 value plus header validation results, not a Format 2 body.
 
-**Source**: §11.2.1.2 a; Figure 11-5.
+**Source**: §11.2.1.2 a; Figure 11-5. Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -230,7 +231,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL for secondary format 10, return the relative ERTC value and validate it independently of calendar correlation.
 
-**Source**: §11.2.1.2 a; Figure 11-6.
+**Source**: §11.2.1.2 a; Figure 11-6. Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -242,7 +243,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL use the RDG-008 byte-sum reading for trust decisions and calculate the alternative word sum for diagnostics; retain its suspect status.
 
-**Source**: "a 16-bit arithmetic sum of all secondary header bytes excluding the secondary header checksum word" (§11.2.1.2 c); whether "bytes" means bytes or 16-bit words is open (T-15: the prototype sums words; the words of the standard and RCC 123-20's `uCalcSecHeaderChecksum` sum bytes); contract 6.6.
+**Source**: "a 16-bit arithmetic sum of all secondary header bytes excluding the secondary header checksum word" (§11.2.1.2 c); whether "bytes" means bytes or 16-bit words is open (T-15: the prototype sums words; the words of the standard and RCC 123-20's `uCalcSecHeaderChecksum` sum bytes); contract 6.6. Prototype identifier kept; the reading is settled in L2.
 
 **Verification Method**: Test (T)
 
@@ -280,7 +281,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL read a Format 1 data word independently from its body, retaining raw fields and diagnostics for reserved values.
 
-**Source**: §11.2.3.2 a; Figure 11-12; Table 11-4.
+**Source**: §11.2.3.2 a; Figure 11-12; Table 11-4. Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -292,7 +293,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL use the corrected shared source mapping, preserving reserved numeric values rather than presenting source 3 as GPS.
 
-**Source**: §11.2.3.2 a, "0x3 – 0xE = Reserved"; T-6.
+**Source**: §11.2.3.2 a, "0x3 – 0xE = Reserved"; T-6. Prototype identifier kept; value 3 is no longer "GPS".
 
 **Verification Method**: Test (T)
 
@@ -304,7 +305,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL expose every FMT value and prevent FMT NONE from producing a usable time reference.
 
-**Source**: "0xF = NONE (time packet payload invalid)" (§11.2.3.2 a); T-7.
+**Source**: "0xF = NONE (time packet payload invalid)" (§11.2.3.2 a); T-7. Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -316,7 +317,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL carry the LY bit with each Format 1 value for later checks against the resolved day and year.
 
-**Source**: "Bit 8: Indicates if this is a leap year" (§11.2.3.2 a).
+**Source**: "Bit 8: Indicates if this is a leap year" (§11.2.3.2 a). Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -328,7 +329,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL select the six-byte or eight-byte Format 1 body solely by DATE bit 9.
 
-**Source**: "0 = IRIG day available (Figure 11-13) 1 = Month and year available (Figure 11-14)" (§11.2.3.2 a).
+**Source**: "0 = IRIG day available (Figure 11-13) 1 = Month and year available (Figure 11-14)" (§11.2.3.2 a). Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -366,7 +367,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL validate the zero positions in each date-format figure without consuming a fictitious extra reserved word.
 
-**Source**: Figures 11-13 and 11-14; Table 11-16, "0 Always zero".
+**Source**: Figures 11-13 and 11-14; Table 11-16, "0 Always zero". Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -378,7 +379,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL validate each BCD digit before combining digits, returning a field-specific error for an invalid nibble.
 
-**Source**: "the time data words are inserted in the packet in binary-coded decimal format" (§11.2.3.2 b).
+**Source**: "the time data words are inserted in the packet in binary-coded decimal format" (§11.2.3.2 b). Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -390,7 +391,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL read and encode the day body as exactly three little-endian u16 words and preserve its 10 ms resolution.
 
-**Source**: Figure 11-13; Table 11-16; T-12.
+**Source**: Figure 11-13; Table 11-16; T-12. Replaces L1-BCD-001 (8 bytes).
 
 **Verification Method**: Test (T)
 
@@ -402,7 +403,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL read and encode the calendar body as exactly four little-endian u16 words, validating the resulting calendar date.
 
-**Source**: Figure 11-14; Table 11-16; T-12.
+**Source**: Figure 11-14; Table 11-16; T-12. Replaces L1-BCD-002 (10 bytes).
 
 **Verification Method**: Test (T)
 
@@ -416,7 +417,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL decode Format 2 data words independently of the Format 1 representation and distinguish network format from time validity.
 
-**Source**: §11.2.3.3 a; Figure 11-15.
+**Source**: §11.2.3.3 a; Figure 11-15. Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -428,7 +429,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL dispatch NTP and the two PTP versions from NTF bits 7-4 while preserving unsupported values.
 
-**Source**: "Network Time Format (NTF). Bits 7-4" (§11.2.3.3 a); T-2.
+**Source**: "Network Time Format (NTF). Bits 7-4" (§11.2.3.3 a); T-2. Replaces L1-F2CSDW-002.
 
 **Verification Method**: Test (T)
 
@@ -440,7 +441,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL carry TS validity into the reference-admission decision; a reserved status is not implicitly valid.
 
-**Source**: "Time Status (TS). Bits 3-0 indicate the status of the network time" (§11.2.3.3 a); T-2.
+**Source**: "Time Status (TS). Bits 3-0 indicate the status of the network time" (§11.2.3.3 a); T-2. Replaces L1-F2CSDW-002.
 
 **Verification Method**: Test (T)
 
@@ -452,7 +453,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL report each nonzero bit in the Format 2 reserved region without rejecting valid NTF bits as reserved.
 
-**Source**: "Reserved. Bits 31-8 are reserved" (§11.2.3.3 a); §11.2.1 f; T-2.
+**Source**: "Reserved. Bits 31-8 are reserved" (§11.2.3.3 a); §11.2.1 f; T-2. Replaces L1-F2CSDW-003 (bits 31–4).
 
 **Verification Method**: Test (T)
 
@@ -466,7 +467,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL read and write a bounded eight-byte NTP time body as seconds then fractional word.
 
-**Source**: "Time Unsigned Seconds", "Time Unsigned Seconds Fractions" (Figure 11-16).
+**Source**: "Time Unsigned Seconds", "Time Unsigned Seconds Fractions" (Figure 11-16). Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -478,7 +479,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL retain UTC scale and the 1900 epoch in an NTP value; expose unresolved era/leap interpretation explicitly.
 
-**Source**: "The NTP is referenced in UTC time with an epoch of January 1, 1900. The NTP time includes leap seconds" (§11.2.3.3).
+**Source**: "The NTP is referenced in UTC time with an epoch of January 1, 1900. The NTP time includes leap seconds" (§11.2.3.3). Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -490,7 +491,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL offer a deterministic nanosecond view of the binary fractional word with a documented loss of precision.
 
-**Source**: NTP version 3 (RFC 1305, cited by §11.2.3.3 a).
+**Source**: NTP version 3 (RFC 1305, cited by §11.2.3.3 a). Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -502,7 +503,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL convert NTP to absolute/Unix time only with sufficient epoch/era/leap context and carry conversion provenance.
 
-**Source**: Contract 3.3.
+**Source**: Contract 3.3. Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -516,7 +517,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL give Format 2 PTP a stated TAI scale and the standard's 1970 epoch, independent of NTP UTC.
 
-**Source**: "The PTP is referenced in International Atomic Time with an epoch of January 1, 1970. The PTP time does not include leap seconds" (§11.2.3.3).
+**Source**: "The PTP is referenced in International Atomic Time with an epoch of January 1, 1970. The PTP time does not include leap seconds" (§11.2.3.3). Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -528,7 +529,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL reject a PTP body with a nanosecond word outside a single second.
 
-**Source**: Figure 11-17 ("Time Unsigned Nanoseconds").
+**Source**: Figure 11-17 ("Time Unsigned Nanoseconds"). Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -540,7 +541,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL convert TAI to UTC using the date-appropriate offset and report table currency with the answer.
 
-**Source**: §11.2.3.3; L1-TAI.
+**Source**: §11.2.3.3; L1-TAI. Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -552,7 +553,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL read and encode the IRIG Format 2 PTP body as eight bytes, separate from general IEEE 1588 network-message layouts.
 
-**Source**: "Time Unsigned Seconds", "Time Unsigned Nanoseconds" (Figure 11-17; the same in 106-17 and 106-19); T-3.
+**Source**: "Time Unsigned Seconds", "Time Unsigned Nanoseconds" (Figure 11-17; the same in 106-17 and 106-19); T-3. Replaces L1-PTP-001 (10 bytes, 48-bit seconds).
 
 **Verification Method**: Test (T)
 
@@ -566,7 +567,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL build Format 2 references using the packet header RTC as the capture point and the decoded body as absolute time.
 
-**Source**: "The Format 2 Network Time packet data type is used to extract and encapsulate absolute time from NTP or IEEE-1588 PTP and time tag it with the RTC" (§11.2.3.3).
+**Source**: "The Format 2 Network Time packet data type is used to extract and encapsulate absolute time from NTP or IEEE-1588 PTP and time tag it with the RTC" (§11.2.3.3). Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -578,7 +579,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL prevent arithmetic between differently scaled references unless an explicit conversion is recorded.
 
-**Source**: §11.2.3.3; contract 4.1 rule 4.
+**Source**: §11.2.3.3; contract 4.1 rule 4. Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -592,7 +593,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL represent leap-table transitions as dated, ordered offset records with explicit coverage information.
 
-**Source**: L1-PTP-004.
+**Source**: L1-PTP-004. Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -604,7 +605,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL keep a release-reviewed built-in table and its known-current-through date as separate data from the last offset change.
 
-**Source**: Contract 6.8.
+**Source**: Contract 6.8. Prototype identifier kept.
 
 **Verification Method**: Inspection (I)
 
@@ -616,7 +617,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL allow a caller-supplied table to replace or extend built-in data through the same validation path.
 
-**Source**: Contract 6.8.
+**Source**: Contract 6.8. Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -678,7 +679,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL accept already extracted high/low/microsecond PCM words with an explicit binary-or-BCD weighting and reconstruction context.
 
-**Source**: "High and low order time words shall be binary or binary coded decimal (BCD) weighted, and microsecond words shall be binary weighted"; resolutions of 1 µs (to 9999), 10 ms, and 655.36 s binary or one minute BCD; "For BCD, the days field shall contain the three least significant bits of the BCD Julian date" (Chapter 4 §4.7); `C-d\PTM`, `C-d\BTM` (Chapter 9); contract 3.8. The L1 page-check prerequisite is now recorded in STANDARD-REVIEW T-10 (2026-11-12).
+**Source**: "High and low order time words shall be binary or binary coded decimal (BCD) weighted, and microsecond words shall be binary weighted"; resolutions of 1 µs (to 9999), 10 ms, and 655.36 s binary or one minute BCD; "For BCD, the days field shall contain the three least significant bits of the BCD Julian date" (Chapter 4 §4.7); `C-d\PTM`, `C-d\BTM` (Chapter 9); contract 3.8. Layout to be confirmed with T-10.
 
 **Verification Method**: Test (T)
 
@@ -752,7 +753,7 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-EDN-002
 
-**Statement**: The library SHALL keep setup-record RCCVER and packet data-type-version values in distinct typed domains using corrected irig 106-types mappings.
+**Statement**: The library SHALL keep setup-record RCCVER and packet data-type-version values in distinct typed domains using corrected irig106-types mappings.
 
 **Source**: Table 11-4 and §11.2.1.1 e ("0x0A = RCC 106-22"); Figure 11-34 ("0x0E = RCC 106-22", "0x0F through 0xFF = Reserved"); T-9; ADR-0015.
 
@@ -806,7 +807,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL build a timeline through an explicit ordered input API for declarations, time packets, and other packet metadata, returning sessions and evidenced references.
 
-**Source**: "Time is treated like another data channel" (§11.2.3.2); "Since Time Data, Format 1 packets contain both the absolute input time value and the RTC clock value at the instant the absolute time was valid, these packets can be used to relate RTC values to the input absolute time source" (RCC 123-20 §5.6); contract 5.5.
+**Source**: "Time is treated like another data channel" (§11.2.3.2); "Since Time Data, Format 1 packets contain both the absolute input time value and the RTC clock value at the instant the absolute time was valid, these packets can be used to relate RTC values to the input absolute time source" (RCC 123-20 §5.6); contract 5.5. Prototype identifier kept; citation corrected (T-13).
 
 **Verification Method**: Test (T)
 
@@ -818,7 +819,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL keep whole-recording nearest-reference lookup distinct from streaming preceding/interpolating modes; make ties deterministic and record the selection rule.
 
-**Source**: "It is better to use the clock and relative time values from a time packet that occurs near the current data packet as the data file is decoded since there is some drift in the RTC during a recording session" (RCC 123-09 §6.6; T-13); contract 5.2 rule 5; a policy setting (L1-POL-001).
+**Source**: "It is better to use the clock and relative time values from a time packet that occurs near the current data packet as the data file is decoded since there is some drift in the RTC during a recording session" (RCC 123-09 §6.6; T-13); contract 5.2 rule 5; a policy setting (L1-POL-001). Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -830,7 +831,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL select one eligible time channel per session using explicit caller choice, then declared-external preference, then valid-reference count, then channel ID.
 
-**Source**: "When multiple time channels are available, it is incumbent on the programmer or data analyst to determine and select the best source of time for a particular data set" (RCC 123-20 §5.6); "It is usually most correct to select one time channel only and to use this channel exclusively" (RCC 123-09 §6.6); contract 5.2 rule 4; a policy setting.
+**Source**: "When multiple time channels are available, it is incumbent on the programmer or data analyst to determine and select the best source of time for a particular data set" (RCC 123-20 §5.6); "It is usually most correct to select one time channel only and to use this channel exclusively" (RCC 123-09 §6.6); contract 5.2 rule 4; a policy setting. Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -842,7 +843,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL measure jumps from consecutive same-channel references using the configured threshold and compatible scales.
 
-**Source**: "there is a jump in input clock time during a recording, such as when GPS locks for the first time, or when an IRIG time source is reprogrammed" (RCC 123-09 §6.6; T-13); contract 5.4; default threshold the format's resolution (L1-POL-001).
+**Source**: "there is a jump in input clock time during a recording, such as when GPS locks for the first time, or when an IRIG time source is reprogrammed" (RCC 123-09 §6.6; T-13); contract 5.4; default threshold the format's resolution (L1-POL-001). Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -1062,7 +1063,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL propose standard as the stream default for owner decision, independently of the accepted offline-nearest default.
 
-**Source**: Owner2026-11-11 ROADMAP question2; RCC 123-20 §5.6; 106-24R1 Chapter 10 §10.6.2 only supplies cadence/first-packet constraints.
+**Source**: Owner 2026-11-11 ROADMAP question 2; RCC 123-20 §5.6; 106-24R1 Chapter 10 §10.6.2 only supplies cadence/first-packet constraints.
 
 **Verification Method**: Test (T)
 
@@ -1186,7 +1187,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The project SHALL specify and verify RDG-003: Require tests for every TFMT letter/FMT pair, including the accepted inferred I->0x3 pair and the RCC 124-22 Chapter 7 example.
 
-**Source**: Owner2026-11-11 ROADMAP question1; 106-24R1 Table 9-4 and§11.2.3.2 a; RCC 124-22 Chapter7 printed7-3/PDF149; RDG-002/003.
+**Source**: Owner 2026-11-11 ROADMAP question 1; 106-24R1 Table 9-4 and§11.2.3.2 a; RCC 124-22 Chapter7 printed7-3/PDF 149; RDG-002/003.
 
 **Verification Method**: Inspection (I)
 
@@ -1246,11 +1247,11 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The project SHALL specify and verify RDG-008: Retain the suspect byte-checksum reading and diagnose word-only-valid headers until local recordings settle it.
 
-**Source**: 106-24R1 §11.2.1.2 c and§11.2.1.1 j; RCC 123-20 AppendixA-2; RDG-008.
+**Source**: 106-24R1 §11.2.1.2 c and§11.2.1.1 j; RCC 123-20 Appendix A-2; RDG-008.
 
 **Verification Method**: Inspection (I)
 
-**Planned verification**: Byte-only, word-only, both, neither across the listed editions; reference handbook AppendixA-2 code; local recordings remain outside Git/CI and human Review pending.
+**Planned verification**: Byte-only, word-only, both, neither across the listed editions; reference handbook Appendix A-2 code; local recordings remain outside Git/CI and human Review pending.
 
 #### L2-RDG-209
 
@@ -1258,7 +1259,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The project SHALL specify and verify RDG-009: Assign stated and assumed scales separately, with GPS=TAI-19s as a recorded inference.
 
-**Source**: 106-24R1 §11.2.3.2 a/§11.2.3.3; RCC 200-16 §1/AppendixA.2; RDG-009.
+**Source**: 106-24R1 §11.2.3.2 a/§11.2.3.3; RCC 200-16 §1/Appendix A.2; RDG-009.
 
 **Verification Method**: Inspection (I)
 
@@ -1270,11 +1271,11 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The project SHALL specify and verify RDG-010: Pin the accepted UTC leap-second reading with boundary and scale tests rather than accepting second 60 everywhere.
 
-**Source**: 106-24R1 Figure 11-13; RCC 200-16 §3.6/AppendixA.2; RDG-010.
+**Source**: 106-24R1 Figure 11-13; RCC 200-16 §3.6/Appendix A.2; RDG-010.
 
 **Verification Method**: Inspection (I)
 
-**Planned verification**: Known/unknown year, June 30/December 31 candidates and neighbours,23:59 vsother times, UTC/assumed UTC/TAI/GPS/unknown.
+**Planned verification**: Known/unknown year, June 30/December 31 candidates and neighbours,23:59 versus other times, UTC/assumed UTC/TAI/GPS/unknown.
 
 #### L2-RDG-211
 
@@ -1286,7 +1287,7 @@ does not settle it or replace its real-recording evidence.
 
 **Verification Method**: Inspection (I)
 
-**Planned verification**: Two sessions each compliant, missing time insecond, static-only prefix, time None and malformed first time packet.
+**Planned verification**: Two sessions each compliant, missing time in the second, static-only prefix, time None and malformed first time packet.
 
 ## STRM
 
@@ -1320,11 +1321,11 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL in interpolate mode, hold a packet for the next eligible reference of its selected channel and interpolate between the bracketing references to correct drift.
 
-**Source**: Owner2026-11-11, ROADMAP question2; 106-24R1 Chapter 10 §10.6.2 (rate bound); architecture 6. Interpolation and its rounding are product policy, not standard wording.
+**Source**: Owner 2026-11-11, ROADMAP question 2; 106-24R1 Chapter 10 §10.6.2 (rate bound); architecture 6. Interpolation and its rounding are product policy, not standard wording.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: A 1 s RTC interval with absolute interval 1.000010s gives 0.500005s at midpoint; exact endpoints, non-integral result, RTC wrap, equal endpoint counters and incompatible scales.
+**Planned verification**: A 1 s RTC interval with absolute interval 1.000010 s gives 0.500005 s at midpoint; exact endpoints, non-integral result, RTC wrap, equal endpoint counters and incompatible scales.
 
 #### L2-STRM-203
 
@@ -1332,7 +1333,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL bound interpolation hold by the 1 Hz reference interval plus a caller-visible tolerance; timeout or end-of-recording falls back to the preceding reference, labelled extrapolated.
 
-**Source**: Owner2026-11-11 ROADMAP question2; 106-24R1 Chapter 10 §10.6.2; Chapter 11 §11.2.3.3 raw-network exception; RCC 123-20 §5.6 supports preceding-reference fallback.
+**Source**: Owner 2026-11-11 ROADMAP question 2; 106-24R1 Chapter 10 §10.6.2; Chapter 11 §11.2.3.3 raw-network exception; RCC 123-20 §5.6 supports preceding-reference fallback.
 
 **Verification Method**: Test (T)
 
@@ -1344,7 +1345,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL in both modes, packets before any usable preceding time reference get no absolute time; time source None supplies no absolute reference.
 
-**Source**: Owner2026-11-11 ROADMAP question2; 106-24R1 Chapter 10 §10.6.2 first dynamic packet; Chapter 11 §11.2.3.2 source None/invalid FMT. Missing-time fallback is product policy; the standard gives no such algorithm.
+**Source**: Owner 2026-11-11 ROADMAP question 2; 106-24R1 Chapter 10 §10.6.2 first dynamic packet; Chapter 11 §11.2.3.2 source None/invalid FMT. Missing-time fallback is product policy; the standard gives no such algorithm.
 
 **Verification Method**: Test (T)
 
@@ -1356,7 +1357,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL bound retained stream state with explicit caller limits and drain/reset behaviour that never bridges sessions or clock discontinuities.
 
-**Source**: Architecture6; ADR-0010/0011/0014; L1-STRM-001. Resource caps and discontinuity handling are proposed product rules; 106-24R1 §11.2.1.1 i supplies the session-continuity constraint.
+**Source**: Architecture 6; ADR-0010/0011/0014; L1-STRM-001. Resource caps and discontinuity handling are proposed product rules; 106-24R1 §11.2.1.1 i supplies the session-continuity constraint.
 
 **Verification Method**: Test (T)
 
@@ -1368,7 +1369,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL make switching modes explicit, preserving the policy and fallback reason attached to every released answer.
 
-**Source**: Owner2026-11-11 ROADMAP question2 (both switchable); ADR-0010/0011; architecture 6. Transition flushing is a proposed implementation rule.
+**Source**: Owner 2026-11-11 ROADMAP question 2 (both switchable); ADR-0010/0011; architecture 6. Transition flushing is a proposed implementation rule.
 
 **Verification Method**: Test (T)
 
@@ -1394,11 +1395,11 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL name the invalid decimal field and digit position in BCD errors while retaining packet context at the timeline boundary.
 
-**Source**: §11.2.3.2 b.
+**Source**: §11.2.3.2 b. Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: DigitA..F at each BCD position; invalid hour 24 with valid digits yields range error instead; zero-mask violations produce their own finding.
+**Planned verification**: Digits A..F at each BCD position; invalid hour 24 with valid digits yields range error instead; zero-mask violations produce their own finding.
 
 #### L2-ERR-103
 
@@ -1406,7 +1407,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL apply field and calendar range validation before constructing time values, with the RDG-010 exception explicitly isolated.
 
-**Source**: Figures 11-13, 11-14; RDG-010.3); second 60 is no longer always rejected (T-16).
+**Source**: Figures 11-13, 11-14; RDG-010. Prototype identifier kept; day 0 is rejected, never turned into day 1 (contract 8.3); second 60 is no longer always rejected (T-16).
 
 **Verification Method**: Test (T)
 
@@ -1418,7 +1419,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL surface secondary checksum failure as a typed validation result and a finding when attached to a recording.
 
-**Source**: §11.2.1.2 c.
+**Source**: §11.2.1.2 c. Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -1456,7 +1457,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL separate allocation-free value operations from alloc-backed timeline/stream state while retaining a no_std library build.
 
-**Source**: ADR-0014.
+**Source**: ADR-0014. Prototype identifier kept.
 
 **Verification Method**: Inspection (I)
 
@@ -1478,9 +1479,9 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-API-005
 
-**Statement**: The library SHALL keep irig 106-types as the library's only ecosystem dependency and accept all packet/TMATS context through plain values.
+**Statement**: The library SHALL keep irig106-types as the library's only ecosystem dependency and accept all packet/TMATS context through plain values.
 
-**Source**: ADR-0005.
+**Source**: ADR-0005. Replaces L1-API-003 ("zero required runtime dependencies").
 
 **Verification Method**: Inspection (I)
 
@@ -1602,7 +1603,7 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-CLI-002
 
-**Statement**: The CLI SHALL expose host-callable commands and renderers so irig 106-cli can mount the same implementation.
+**Statement**: The CLI SHALL expose host-callable commands and renderers so irig106-cli can mount the same implementation.
 
 **Source**: ADR-0007; ROADMAP P6-10.
 

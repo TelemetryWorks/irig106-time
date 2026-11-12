@@ -1,4 +1,4 @@
-# irig 106-time — Level 3 Requirements
+# irig106-time — Level 3 Requirements
 
 > **Status: draft for owner and independent review, 2026-11-12.**
 > Rebuild requirements, not implementation evidence. Replaces the prototype
@@ -24,14 +24,15 @@ reviewed and explicitly linked to it in the later implementation work.
 
 **Source convention:** every §, figure and table without another edition
 means **IRIG 106-24R1**; Chapters 4/9/10/11 are named where needed.
-The Source lines retain the L1 citations and quoted source words; obsolete
-prototype-ID commentary is omitted and completed page checks are annotated. Requirements based on contract/ADR/owner policy
+The base Source lines retain the L1 citations and quoted source words
+verbatim, including historical prototype commentary. Completed page checks
+are recorded separately in STANDARD-REVIEW T-10 and RDG-002. Requirements based on contract/ADR/owner policy
 are product decisions, not claims that the standard prescribes an
 algorithm. Quotes are verbatim; derived arithmetic and proposed choices
 are identified as such. Archive provenance and rendered-page checks are
 in STANDARD-REVIEW T-10 and INTERPRETATIONS RDG-002.
 
-Shared-value contracts target the corrected irig 106-types semantics of
+Shared-value contracts target the corrected irig106-types semantics of
 contract section 8.6 (T-5/T-6/T-7/T-9), not the current prototype dependency.
 A source's unresolved context is retained explicitly; Q-items below are
 proposals requiring owner decisions, not silently implemented assumptions.
@@ -49,9 +50,9 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **L1 ancestor**: L1-RTC-001
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Use irig 106-types::Rtc; the valid raw range is 0 through 0xFFFF_FFFF_FFFF and one tick is 100 ns. Out-of-width construction must follow an explicitly named checked or masking operation, never an implicit calendar interpretation.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Use irig106-types::Rtc; the valid raw range is 0 through 0xFFFF_FFFF_FFFF and one tick is 100 ns. Out-of-width construction must follow an explicitly named checked or masking operation, never an implicit calendar interpretation.
 
-**Source**: "This is a free-running 10-MHz binary counter represented by 48 bits that are common to all data channels" (§11.2.1.1 i).
+**Source**: "This is a free-running 10-MHz binary counter represented by 48 bits that are common to all data channels" (§11.2.1.1 i). Prototype identifier kept.
 
 **Planned verification**: Raw zero, maximum, one-bit boundaries, and a value with bit 48 set; confirm the chosen constructor contract and that no calendar date is produced.
 
@@ -61,7 +62,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Read header bytes [16..22) or the six supplied counter bytes as little-endian. For a counter-form stamp consume exactly eight bytes, decode [0..6), and report nonzero [6..8) as reserved padding; never reinterpret them as counter bits.
 
-**Source**: §11.2.1.1 i, Table 11-2; "48-bit RTC format (plus 16 high-order zero bits)" (§11.2.1.3 b).
+**Source**: §11.2.1.1 i, Table 11-2; "48-bit RTC format (plus 16 high-order zero bits)" (§11.2.1.3 b). Prototype identifier kept, widened to time stamps.
 
 **Planned verification**: Distinct bytes 01 02 03 04 05 06 decode to 0x060504030201; truncate at every byte; vary both padding bytes independently.
 
@@ -71,7 +72,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Compute the modular difference modulo 2^48 in a wider signed representation and unwrap against session ordering. A short forward crossing of maximum to zero stays positive; do not infer an elapsed duration of multiple wraps from two raw counters. At a half-range tie, report ambiguity rather than choose a sign silently.
 
-**Source**: 2^48 ticks at 10 MHz is about 325.8 days; the counter "shall remain free-running during each session" (§11.2.1.1 i).
+**Source**: 2^48 ticks at 10 MHz is about 325.8 days; the counter "shall remain free-running during each session" (§11.2.1.1 i). Prototype identifier kept.
 
 **Planned verification**: Maximum to zero is +1 tick and reverse is -1; equal counters are zero; exercise half-range ambiguity and reject a cross-session subtraction.
 
@@ -81,7 +82,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Multiply unwrapped signed ticks by 100 using checked i128 intermediates, returning a typed range error if the destination cannot hold the result; preserve sign.
 
-**Source**: §11.2.1.1 i (10 MHz).
+**Source**: §11.2.1.1 i (10 MHz). Prototype identifier kept.
 
 **Planned verification**: Zero, +1, -1, maximum session-supported delta, and destination overflow; 150000 ticks equals 15000000 ns.
 
@@ -93,7 +94,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Calendar values must validate day/month/year and nanoseconds before construction; preserve second=60 as a distinct labelled UTC leap second under RDG-010, not as the next midnight. Day zero is invalid. Arithmetic crossing year-end updates a known year and preserves unknown-year provenance otherwise.
 
-**Source**: IEEE 1588 and ERTC times resolve 1 ns (§11.2.1.1 g); the day format carries no year (Figure 11-13); "excluding leap second days when a second may be added or subtracted" (RCC 200-16 §3.6); contract 3.2; T-16.
+**Source**: IEEE 1588 and ERTC times resolve 1 ns (§11.2.1.1 g); the day format carries no year (Figure 11-13); "excluding leap second days when a second may be added or subtracted" (RCC 200-16 §3.6); contract 3.2; T-16. Prototype identifier kept.
 
 **Planned verification**: Day 0/1/365/366, Gregorian 1900/2000/2100, unknown year, midnight and year-end, 23:59:59 to 23:59:60 to 00:00:00 with explicit leap context.
 
@@ -103,7 +104,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Eight-byte layout: [0..2) zero, [2..4) microseconds, [4..6) low, [6..8) high, each word little-endian. Compute ns = ((high * 65536 + low) * 10000000) + microseconds * 1000 in u64; require microseconds <=9999. Do not split a day field from the binary count. Calendar resolution requires caller context (Q-CH4).
 
-**Source**: "00 = Chapter 4 binary weighted 48-bit time format. The two lsbs of the 64-bit packet secondary header time and IPTS shall be zero-filled" (§11.2.1.1 g); Figure 11-4; Chapter 4 §4.7. The L1 source note still calls for the page check; it is now recorded in STANDARD-REVIEW T-10 (2026-11-12).
+**Source**: "00 = Chapter 4 binary weighted 48-bit time format. The two lsbs of the 64-bit packet secondary header time and IPTS shall be zero-filled" (§11.2.1.1 g); Figure 11-4; Chapter 4 §4.7. The word layout is to be confirmed on the page images of Figures 11-4 and 4-4 before L2 (T-10). Prototype identifier kept.
 
 **Planned verification**: Hand-derived 00 00 0f 27 34 12 01 00 gives 701969999000 ns; nonzero reserved bytes, microseconds=9999/10000, high=0xFFFF, short buffers, and missing calendar origin. T-10 must fail on the prototype.
 
@@ -113,7 +114,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Decode little-endian nanoseconds at [0..4) and seconds at [4..8); encode the same. Require nanoseconds <1000000000. Carry format and scale context into calendar conversion rather than assuming that every IEEE-1588-looking value is UTC.
 
-**Source**: "The 32 bits indicating seconds shall be placed into the MSLW portion of the secondary header and the 32 bits indicating nanoseconds shall be placed into the LSLW portion" (§11.2.1.1 g); Figure 11-5.
+**Source**: "The 32 bits indicating seconds shall be placed into the MSLW portion of the secondary header and the 32 bits indicating nanoseconds shall be placed into the LSLW portion" (§11.2.1.1 g); Figure 11-5. Prototype identifier kept.
 
 **Planned verification**: Distinct seconds=0x01020304 and ns=123456789; ns=999999999/1000000000; compare with a Format 2 body containing seconds first.
 
@@ -121,9 +122,9 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **L1 ancestor**: L1-ABS-004
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Read low u32 then high u32, combine to u64, and expose one nanosecond per tick through irig 106-types. Correlation requires a session reference, not a presumed Unix epoch; compare RTC with integer Ertc/100 when both are available.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Read low u32 then high u32, combine to u64, and expose one nanosecond per tick through irig106-types. Correlation requires a session reference, not a presumed Unix epoch; compare RTC with integer Ertc/100 when both are available.
 
-**Source**: "64-bit binary extended relative time counter (ERTC) with 1-nanosecond resolution … (RTC = ERTC/100)" (§11.2.1.1 g); Figure 11-6 (LSLW, MSLW); T-5.
+**Source**: "64-bit binary extended relative time counter (ERTC) with 1-nanosecond resolution … (RTC = ERTC/100)" (§11.2.1.1 g); Figure 11-6 (LSLW, MSLW); T-5. Prototype identifier kept; the resolution is now stated.
 
 **Planned verification**: ERTC=1 gives 1 ns, 100 gives 100 ns; max u64 and asymmetric bytes; T-5 regression must distinguish the prototype factor of 100.
 
@@ -135,7 +136,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Extract presence=(flags>>7)&1, source=(flags>>6)&1, sync_error=(flags>>5)&1 and format=(flags>>2)&3; keep reserved format as an explicit value. Bit 2 is never a presence indicator.
 
-**Source**: "Bit 7: Indicates the presence or absence of the packet secondary header"; "Bit 6: Indicates the IPTS time source. 0 = Packet header 48-bit RTC. 1 = Packet secondary header time (bit 7 must be 1)"; "Bits 3-2: Indicate the packet secondary header time format" (§11.2.1.1 g); T-1.
+**Source**: "Bit 7: Indicates the presence or absence of the packet secondary header"; "Bit 6: Indicates the IPTS time source. 0 = Packet header 48-bit RTC. 1 = Packet secondary header time (bit 7 must be 1)"; "Bits 3-2: Indicate the packet secondary header time format" (§11.2.1.1 g); T-1. Replaces L1-IPT-001 to 004.
 
 **Planned verification**: All 256 flag bytes; compare flags differing only in unrelated bits. Cite T-1 on fixtures.
 
@@ -167,7 +168,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Require 12 bytes; time=[0..8), header-reserved=[8..10), checksum=[10..12). For format 00 invoke L3-ABS-102 after checksum verification, preserving separate findings for its internal reserved word and header-reserved bytes.
 
-**Source**: "The length of the packet secondary header is fixed at 12 bytes (96 bits)" (§11.2.1.2); Figure 11-4.
+**Source**: "The length of the packet secondary header is fixed at 12 bytes (96 bits)" (§11.2.1.2); Figure 11-4. Prototype identifier kept.
 
 **Planned verification**: Twelve bytes with distinguishing words and an independently computed checksum; lengths 0 through 11; trailing body bytes must not enter the checksum.
 
@@ -177,7 +178,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Reuse L3-ABS-103 on the first eight bytes after validating the twelve-byte header. Associate its time with the first data bit unless the caller supplies a cited data-type exception.
 
-**Source**: §11.2.1.2 a; Figure 11-5.
+**Source**: §11.2.1.2 a; Figure 11-5. Prototype identifier kept.
 
 **Planned verification**: Seconds/nanoseconds in different values, boundary nanoseconds, bad checksum, and a packet-specific applicability supplied as metadata.
 
@@ -187,7 +188,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Reuse L3-ABS-104 after header validation; preserve the raw ERTC even when no absolute reference exists and report any RTC/ERTC disagreement separately.
 
-**Source**: §11.2.1.2 a; Figure 11-6.
+**Source**: §11.2.1.2 a; Figure 11-6. Prototype identifier kept.
 
 **Planned verification**: ERTC=1/99/100 and all-high bits; checksum failure suppresses trusted own time, while absent references must not fabricate absolute time.
 
@@ -197,7 +198,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Compute byte_sum=sum(header[0..10)) modulo 65536 and word_sum=sum(five little-endian u16 words) modulo 65536; compare both with the little-endian stored checksum. Only byte-sum validity admits trusted own time; word-only validity records TF-027 and TF-012 without silently switching algorithms.
 
-**Source**: "a 16-bit arithmetic sum of all secondary header bytes excluding the secondary header checksum word" (§11.2.1.2 c); whether "bytes" means bytes or 16-bit words is open (T-15: the prototype sums words; the words of the standard and RCC 123-20's `uCalcSecHeaderChecksum` sum bytes); contract 6.6.
+**Source**: "a 16-bit arithmetic sum of all secondary header bytes excluding the secondary header checksum word" (§11.2.1.2 c); whether "bytes" means bytes or 16-bit words is open (T-15: the prototype sums words; the words of the standard and RCC 123-20's `uCalcSecHeaderChecksum` sum bytes); contract 6.6. Prototype identifier kept; the reading is settled in L2.
 
 **Planned verification**: Headers matching byte only, word only, both, neither, and short input; all-edition synthetic cases plus local-only real recordings remain prerequisites to settling the suspect reading.
 
@@ -229,7 +230,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Require four bytes and decode one little-endian u32. Expose SRC, FMT, LY, DATE, ITS, and reserved masks as separate fields; body dispatch uses DATE only after time validity checks.
 
-**Source**: §11.2.3.2 a; Figure 11-12; Table 11-4.
+**Source**: §11.2.3.2 a; Figure 11-12; Table 11-4. Prototype identifier kept.
 
 **Planned verification**: One-bit field walking and asymmetric bytes; data type 0x11 dispatch; every truncated word length.
 
@@ -239,7 +240,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Decode word & 0xF: 0 internal, 1 external, 2 internal-from-RMM, 15 none, 3..14 reserved(raw). Reserved values emit TF-006 and are not promoted to a named source.
 
-**Source**: §11.2.3.2 a, "0x3 – 0xE = Reserved"; T-6.
+**Source**: §11.2.3.2 a, "0x3 – 0xE = Reserved"; T-6. Prototype identifier kept; value 3 is no longer "GPS".
 
 **Planned verification**: All sixteen SRC values, especially 3 and 15; T-6 regression independent of current types implementation.
 
@@ -249,7 +250,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Decode (word>>4)&0xF as B/A/G/RTC/UTC-from-GPS/native-GPS for 0..5; 6..14 reserved; 15 NONE with invalid payload. Preserve SRC independently; GPS is a format/scale, not SRC=3.
 
-**Source**: "0xF = NONE (time packet payload invalid)" (§11.2.3.2 a); T-7.
+**Source**: "0xF = NONE (time packet payload invalid)" (§11.2.3.2 a); T-7. Prototype identifier kept.
 
 **Planned verification**: All sixteen FMT values crossed with SRC=0/1/3/15; NONE yields TF-003 and no default reference; reserved yields TF-006.
 
@@ -259,7 +260,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Extract bit 8 as recorded metadata, not as a replacement for a Gregorian leap-year calculation. Compare day 366 and a known year with LY in the timeline and emit TF-007 on contradiction.
 
-**Source**: "Bit 8: Indicates if this is a leap year" (§11.2.3.2 a).
+**Source**: "Bit 8: Indicates if this is a leap year" (§11.2.3.2 a). Prototype identifier kept.
 
 **Planned verification**: LY 0/1 with day 365/day 366 and known leap/common years; extraction must not depend on DATE or source bits.
 
@@ -269,7 +270,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: DATE=0 selects Figure 11-13 day-of-year; DATE=1 selects Figure 11-14 calendar-date fields. Body lengths exclude the four-byte data word and any trailer filler.
 
-**Source**: "0 = IRIG day available (Figure 11-13) 1 = Month and year available (Figure 11-14)" (§11.2.3.2 a).
+**Source**: "0 = IRIG day available (Figure 11-13) 1 = Month and year available (Figure 11-14)" (§11.2.3.2 a). Prototype identifier kept.
 
 **Planned verification**: Toggle bit 9 alone on hand-written 6/8-byte payloads; Data Length 10 and 12 respectively; no access to filler.
 
@@ -301,7 +302,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Use per-word zero masks transcribed from Figures 11-13/14, not from the prototype encoder; retain the offending word/bit positions in TF-005. Only the three/four defined words are inspected.
 
-**Source**: Figures 11-13 and 11-14; Table 11-16, "0 Always zero".
+**Source**: Figures 11-13 and 11-14; Table 11-16, "0 Always zero". Prototype identifier kept.
 
 **Planned verification**: A fixture per figure, each always-zero bit set individually, and adjacent filler made nonzero to prove it is not parsed.
 
@@ -311,7 +312,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Extract each figure-defined decimal digit by its mask/shift; check <=9 before multiplication. Bits that do not belong to a digit remain reserved/zero checks, not decimal digits.
 
-**Source**: "the time data words are inserted in the packet in binary-coded decimal format" (§11.2.3.2 b).
+**Source**: "the time data words are inserted in the packet in binary-coded decimal format" (§11.2.3.2 b). Prototype identifier kept.
 
 **Planned verification**: All 0..15 digit patterns at every digit position, separating reserved-bit violations from invalid decimal digits.
 
@@ -321,7 +322,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Word 0 has tens-ms at bits 0..3, hundreds-ms at 4..7, seconds-units at 8..11 and seconds-tens at 12..14. Word 1 has minutes-units at 0..3, minutes-tens at 4..6, hours-units at 8..11, hours-tens at 12..13. Word 2 has day-units at 0..3, day-tens at 4..7, day-hundreds at 8..9. Other bits are zero.
 
-**Source**: Figure 11-13; Table 11-16; T-12.
+**Source**: Figure 11-13; Table 11-16; T-12. Replaces L1-BCD-001 (8 bytes).
 
 **Planned verification**: Contract section 7 bytes 35 27 45 13 87 01 decode day 187 13:45:27.350; exactly 6 bytes succeeds, shorter fails; 10 ms steps and second 60 under RDG-010.
 
@@ -331,7 +332,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Use Figure 11-14: word 0/word 1 time fields as day format; word 2 day-units bits 0..3, day-tens 4..7, month-units 8..11, month-tens 12; word 3 year units at bits 0..3, tens 4..7, hundreds 8..11 and thousands 12..13, with bits 15..14 zero. Derive day-of-year only after validating the month/day/year.
 
-**Source**: Figure 11-14; Table 11-16; T-12.
+**Source**: Figure 11-14; Table 11-16; T-12. Replaces L1-BCD-002 (10 bytes).
 
 **Planned verification**: Independently packed 2000-02-29 and 1900-02-29; exactly 8 bytes and every shorter length; December 31 rollover; no fifth word read. T-12 regression.
 
@@ -343,7 +344,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Read one little-endian u32 from four bytes. Expose NTF, TS, and reserved bits; never reuse Format 1 SRC/FMT names or treat NTF as the low nibble.
 
-**Source**: §11.2.3.3 a; Figure 11-15.
+**Source**: §11.2.3.3 a; Figure 11-15. Prototype identifier kept.
 
 **Planned verification**: Data words 0x00000001, 0x00000011, 0x00000021 represent valid NTP/PTP 2002/PTP 2008; short words and T-2 regression.
 
@@ -353,7 +354,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Extract (word>>4)&15: 0=NTPv 3, 1=IEEE 1588-2002, 2=IEEE 1588-2008, 3..15=reserved(raw). Reserved formats produce TF-006 and no decoded body time.
 
-**Source**: "Network Time Format (NTF). Bits 7-4" (§11.2.3.3 a); T-2.
+**Source**: "Network Time Format (NTF). Bits 7-4" (§11.2.3.3 a); T-2. Replaces L1-F2CSDW-002.
 
 **Planned verification**: All sixteen values; vary TS independently and verify NTF=2 is accepted as PTP 2008 rather than reserved.
 
@@ -363,7 +364,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Extract word&15: 0=not-valid, 1=valid, 2..15=reserved(raw). Emit TF-003 for not-valid and TF-006 for reserved; default timeline admits only TS=1.
 
-**Source**: "Time Status (TS). Bits 3-0 indicate the status of the network time" (§11.2.3.3 a); T-2.
+**Source**: "Time Status (TS). Bits 3-0 indicate the status of the network time" (§11.2.3.3 a); T-2. Replaces L1-F2CSDW-002.
 
 **Planned verification**: Every status with all three defined NTFs; explicit policy admission of invalid time remains labelled and cannot change its recorded status.
 
@@ -373,7 +374,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Test word & 0xFFFFFF00 and emit TF-005 with the nonzero mask. Keep NTF and TS diagnostics separate.
 
-**Source**: "Reserved. Bits 31-8 are reserved" (§11.2.3.3 a); §11.2.1 f; T-2.
+**Source**: "Reserved. Bits 31-8 are reserved" (§11.2.3.3 a); §11.2.1 f; T-2. Replaces L1-F2CSDW-003 (bits 31–4).
 
 **Planned verification**: Walking bits 8..31 and valid low-byte fields; NTF=1/2 must not trigger reserved-bit findings.
 
@@ -385,7 +386,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Decode two little-endian u32 values at offsets 0 and 4. Retain raw fraction for lossless wire round trips, even when a nanosecond view is rounded; do not apply network byte order merely because the payload is named NTP.
 
-**Source**: "Time Unsigned Seconds", "Time Unsigned Seconds Fractions" (Figure 11-16).
+**Source**: "Time Unsigned Seconds", "Time Unsigned Seconds Fractions" (Figure 11-16). Prototype identifier kept.
 
 **Planned verification**: Seconds=0x01020304 and fraction=0x80000000; short 0..7 bytes, trailing bytes untouched, independently supplied wire expectations.
 
@@ -395,7 +396,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Keep the raw unsigned 32 seconds and an optional caller era. Do not silently choose a century after counter rollover or convert the standard's phrase "includes leap seconds" into an extra accumulated-offset arithmetic rule. Q-NTP requires documented conversion semantics before code; raw decoding remains possible.
 
-**Source**: "The NTP is referenced in UTC time with an epoch of January 1, 1900. The NTP time includes leap seconds" (§11.2.3.3).
+**Source**: "The NTP is referenced in UTC time with an epoch of January 1, 1900. The NTP time includes leap seconds" (§11.2.3.3). Prototype identifier kept.
 
 **Planned verification**: 1900 epoch, 0xFFFFFFFF to0 era boundary, missing/provided era and a leap insertion; expected UTC/Unix mapping must be reviewed against Q-NTP before implementation.
 
@@ -405,7 +406,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Use integer floor((u64(fraction)*1000000000)/2^32); keep the original fractional word separately. This truncation is a proposed implementation choice, not additional standard wording.
 
-**Source**: NTP version 3 (RFC 1305, cited by §11.2.3.3 a).
+**Source**: NTP version 3 (RFC 1305, cited by §11.2.3.3 a). Prototype identifier kept.
 
 **Planned verification**: Fraction 0=0 ns, 0x80000000=500000000 ns, 0xFFFFFFFF=999999999 ns; reverse conversion is tested against representability, not assumed bit-exact.
 
@@ -415,7 +416,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Route raw seconds plus fraction through scale/calendar conversion with checked signed arithmetic. The nominal epoch separation is 2208988800 s; any ambiguous era or leap mapping returns an unresolved result under Q-NTP rather than wrapping or assuming the present era.
 
-**Source**: Contract 3.3.
+**Source**: Contract 3.3. Prototype identifier kept.
 
 **Planned verification**: Before/at/after 1970, dates beyond 2036 using explicit era, negative Unix time, unknown era, and leap-second conversion limitations.
 
@@ -427,7 +428,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Store TaiSeconds and nanos; do not subtract an offset during byte parsing. Conversion to UTC is a separate operation using the supplied leap table.
 
-**Source**: "The PTP is referenced in International Atomic Time with an epoch of January 1, 1970. The PTP time does not include leap seconds" (§11.2.3.3).
+**Source**: "The PTP is referenced in International Atomic Time with an epoch of January 1, 1970. The PTP time does not include leap seconds" (§11.2.3.3). Prototype identifier kept.
 
 **Planned verification**: Raw epoch 0 remains TAI; values around a leap transition; NTP/PTP raw seconds with the same number must retain distinct epoch/scale metadata.
 
@@ -437,7 +438,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Validate nanos<1000000000 before constructing a PTP value; return an error naming nanoseconds and its raw u32. Do not carry overflow silently into seconds.
 
-**Source**: Figure 11-17 ("Time Unsigned Nanoseconds").
+**Source**: Figure 11-17 ("Time Unsigned Nanoseconds"). Prototype identifier kept.
 
 **Planned verification**: 0, 999999999, 1000000000, and 0xFFFFFFFF; reject malformed values even if TS=valid.
 
@@ -447,7 +448,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Locate the table interval using TAI-side transition instants, then subtract its offset with checked arithmetic and preserve leap-second state where representable. Do not pick an offset by a guessed UTC year or always subtract the latest offset.
 
-**Source**: §11.2.3.3; L1-TAI.
+**Source**: §11.2.3.3; L1-TAI. Prototype identifier kept.
 
 **Planned verification**: A hand-constructed offset transition with before/at/after cases; historical offsets, stale table, and an insertion second that requires a leap label.
 
@@ -457,7 +458,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Read seconds=u32 LE at[0..4), ns=u32 LE at[4..8); never read a 48-bit seconds field or a ten-byte message. Encode those same fields in that order.
 
-**Source**: "Time Unsigned Seconds", "Time Unsigned Nanoseconds" (Figure 11-17; the same in 106-17 and 106-19); T-3.
+**Source**: "Time Unsigned Seconds", "Time Unsigned Nanoseconds" (Figure 11-17; the same in 106-17 and 106-19); T-3. Replaces L1-PTP-001 (10 bytes, 48-bit seconds).
 
 **Planned verification**: Distinct 32-bit words, max seconds, short 0..7 bytes, exactly 8 bytes with two nonzero following filler bytes; T-3 regression.
 
@@ -469,7 +470,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Reference data must include session, channel, packet identity, raw RTC, NTF, TS, scale, precision, and decoded body. Apply the same admission and channel-selection stages used for Format 1; invalid status is not a usable reference by default.
 
-**Source**: "The Format 2 Network Time packet data type is used to extract and encapsulate absolute time from NTP or IEEE-1588 PTP and time tag it with the RTC" (§11.2.3.3).
+**Source**: "The Format 2 Network Time packet data type is used to extract and encapsulate absolute time from NTP or IEEE-1588 PTP and time tag it with the RTC" (§11.2.3.3). Prototype identifier kept.
 
 **Planned verification**: Mixed Format 1/2 timeline, valid/invalid TS, each NTF, and absent declarations; no use of packet arrival wall-clock time.
 
@@ -479,7 +480,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Before computing jumps, drift, or interpolated time, normalize operands to an explicitly selected known scale using the leap table. Retain each input scale and all offsets applied; unknown scale blocks cross-scale arithmetic.
 
-**Source**: §11.2.3.3; contract 4.1 rule 4.
+**Source**: §11.2.3.3; contract 4.1 rule 4. Prototype identifier kept.
 
 **Planned verification**: Same physical instant expressed as NTP UTC and PTP TAI, GPS versus UTC, unknown scale, and a stale-table conversion; equal raw seconds are not equal instants by default.
 
@@ -491,7 +492,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Table construction validates strictly increasing effective instants and rejects conflicting duplicate dates; store typed TAI-minus-UTC seconds, and lookups select the latest transition not after the requested instant. Dates before the supported table start return unresolved.
 
-**Source**: L1-PTP-004.
+**Source**: L1-PTP-004. Prototype identifier kept.
 
 **Planned verification**: Empty table, unordered entries, equal-date conflicting offsets, before-first and exact-boundary lookups.
 
@@ -501,7 +502,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Release verification must compare every transition and coverage date with an authoritative IERS list and record the source/version. A recent release date alone must not imply an independently verified coverage date.
 
-**Source**: Contract 6.8.
+**Source**: Contract 6.8. Prototype identifier kept.
 
 **Planned verification**: Planned inspection: table/source diff and release checklist, including a period with no new leap transition; no live network fetch inside the library.
 
@@ -511,7 +512,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Validate the merged transitions before installing them; reject inconsistent historical offsets and overlapping conflicting entries with a typed error. Pass the table by value/borrowed data into conversion APIs, never fetch it implicitly.
 
-**Source**: Contract 6.8.
+**Source**: Contract 6.8. Prototype identifier kept.
 
 **Planned verification**: Valid extension, replacement, conflicting boundary, unsorted extension, and proof that previously issued answers retain the table provenance they used.
 
@@ -563,7 +564,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: For binary use full 32-bit high/low count and microseconds as L3-ABS-102. For BCD Figure 4-4 high word: day fragment bits 15..13, tens-hour 12..11, hour 10..7, tens-minute 6..4, minute 3..0; low word: bit 15=0, tens-second 14..12, second 11..8, tenths 7..4, hundredths 3..0. Microseconds are binary 0..9999 in both. Validate digit/ranges and require explicit context to resolve the three-bit day fragment (Q-CH4).
 
-**Source**: "High and low order time words shall be binary or binary coded decimal (BCD) weighted, and microsecond words shall be binary weighted"; resolutions of 1 µs (to 9999), 10 ms, and 655.36 s binary or one minute BCD; "For BCD, the days field shall contain the three least significant bits of the BCD Julian date" (Chapter 4 §4.7); `C-d\PTM`, `C-d\BTM` (Chapter 9); contract 3.8. The L1 page-check prerequisite is now recorded in STANDARD-REVIEW T-10 (2026-11-12).
+**Source**: "High and low order time words shall be binary or binary coded decimal (BCD) weighted, and microsecond words shall be binary weighted"; resolutions of 1 µs (to 9999), 10 ms, and 655.36 s binary or one minute BCD; "For BCD, the days field shall contain the three least significant bits of the BCD Julian date" (Chapter 4 §4.7); `C-d\PTM`, `C-d\BTM` (Chapter 9); contract 3.8. Layout to be confirmed with T-10.
 
 **Planned verification**: One fixture per binary and BCD weighting, each bit group distinguished, decimal digit>9, day fragment collisions, 9999/10000 microseconds, and absent origin/day context returning partial time.
 
@@ -671,7 +672,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: A builder consumes caller packet identity, channel, RTC and flags in file order, and bounded CSDW/body bytes for time packets. Retain both eligible and rejected references with their admission reason. Finalization returns immutable session/channel indexes and findings; library code never walks a file.
 
-**Source**: "Time is treated like another data channel" (§11.2.3.2); "Since Time Data, Format 1 packets contain both the absolute input time value and the RTC clock value at the instant the absolute time was valid, these packets can be used to relate RTC values to the input absolute time source" (RCC 123-20 §5.6); contract 5.5.
+**Source**: "Time is treated like another data channel" (§11.2.3.2); "Since Time Data, Format 1 packets contain both the absolute input time value and the RTC clock value at the instant the absolute time was valid, these packets can be used to relate RTC values to the input absolute time source" (RCC 123-20 §5.6); contract 5.5. Prototype identifier kept; citation corrected (T-13).
 
 **Planned verification**: Contract 7 recording, malformed time packet between valid references, empty recording, setup changes, multiple channels, and repeated finalization/query semantics documented.
 
@@ -681,7 +682,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Index eligible references by unwrapped counter within session/channel; binary-search neighbours, choose minimum absolute counter distance, and choose the preceding reference on an equal-distance tie (proposed deterministic tie rule). Do not extrapolate before the first reference unless policy enables it.
 
-**Source**: "It is better to use the clock and relative time values from a time packet that occurs near the current data packet as the data file is decoded since there is some drift in the RTC during a recording session" (RCC 123-09 §6.6; T-13); contract 5.2 rule 5; a policy setting (L1-POL-001).
+**Source**: "It is better to use the clock and relative time values from a time packet that occurs near the current data packet as the data file is decoded since there is some drift in the RTC during a recording session" (RCC 123-09 §6.6; T-13); contract 5.2 rule 5; a policy setting (L1-POL-001). Prototype identifier kept.
 
 **Planned verification**: Exact reference, midpoint tie, before-first default/override, beyond-last, wrap, and no reference from another session or channel. Compare streaming only with the same reference strategy, not offline nearest by accident.
 
@@ -691,7 +692,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Rank eligible channels lexicographically by declared-external status, descending valid-reference count, ascending ID, unless caller selection/ranking overrides it. An unavailable caller-selected channel yields no absolute time with evidence, never a silent substitute. For streaming channel stability and count-based choice see Q-STREAM-CHANNEL.
 
-**Source**: "When multiple time channels are available, it is incumbent on the programmer or data analyst to determine and select the best source of time for a particular data set" (RCC 123-20 §5.6); "It is usually most correct to select one time channel only and to use this channel exclusively" (RCC 123-09 §6.6); contract 5.2 rule 4; a policy setting.
+**Source**: "When multiple time channels are available, it is incumbent on the programmer or data analyst to determine and select the best source of time for a particular data set" (RCC 123-20 §5.6); "It is usually most correct to select one time channel only and to use this channel exclusively" (RCC 123-09 §6.6); contract 5.2 rule 4; a policy setting. Prototype identifier kept.
 
 **Planned verification**: Every ranking branch, equal counts, multiple external channels, unavailable explicit choice, configuration changes, and lock loss not causing automatic channel mixing.
 
@@ -701,7 +702,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Compute residual=(absolute_next-absolute_prev)-(rtc_delta*100 ns) after scale normalization; emit TF-017 only when abs(residual)>threshold. Default threshold is format resolution; heterogeneous-resolution handling uses the coarser resolution as a proposed choice. Preserve residual/sign and packet identities.
 
-**Source**: "there is a jump in input clock time during a recording, such as when GPS locks for the first time, or when an IRIG time source is reprogrammed" (RCC 123-09 §6.6; T-13); contract 5.4; default threshold the format's resolution (L1-POL-001).
+**Source**: "there is a jump in input clock time during a recording, such as when GPS locks for the first time, or when an IRIG time source is reprogrammed" (RCC 123-09 §6.6; T-13); contract 5.4; default threshold the format's resolution (L1-POL-001). Prototype identifier kept.
 
 **Planned verification**: Threshold-1, exact threshold and threshold+1; positive/negative jumps, lock regain, no false jump at RTC wrap, different scales requiring conversion, and unknown scale unresolved.
 
@@ -885,7 +886,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Keep mode as an explicit enum {Standard, Interpolate}; document Standard as PROPOSED DEFAULT, OWNER DECISION REQUIRED, not accepted. Rationale: immediate answers reproduce the RCC 123-20 preceding-reference example; callers can explicitly select interpolation for drift correction. Any implementation must await this decision rather than assert approval from this draft.
 
-**Source**: Owner2026-11-11 ROADMAP question2; RCC 123-20 §5.6; 106-24R1 Chapter 10 §10.6.2 only supplies cadence/first-packet constraints.
+**Source**: Owner 2026-11-11 ROADMAP question 2; RCC 123-20 §5.6; 106-24R1 Chapter 10 §10.6.2 only supplies cadence/first-packet constraints.
 
 **Planned verification**: Default-mode acceptance test remains pending owner selection; both explicitly selected modes and serialized policy distinguishable regardless of default.
 
@@ -977,7 +978,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **L1 ancestor**: L1-RDG-002
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Map A1,B0,G2,N5,U4,X15; do not silently inject A when absent. Record published default A and raw missing state separately; applying an effective default remains a future owner decision.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Map A ↔ 0x1, B ↔ 0x0, G ↔ 0x2, N ↔ 0x5, U ↔ 0x4, X ↔ 0xF; do not silently inject A when absent. Record published default A and raw missing state separately; applying an effective default remains a future owner decision.
 
 **Source**: 106-24R1 Chapter 9 Table 9-4, printed9-72/PDF78; Chapter 11 §11.2.3.2 a; RDG-002.
 
@@ -987,9 +988,9 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **L1 ancestor**: L1-RDG-002
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Seven bidirectional pairs: B0,A1,G2,I3,U4,N5,X15. RDG-003 I mapping is inferred, not stated; mismatch emits warning TF-010 labelled inferred. Handbook input remains plain values from caller, not parsed TMATS here.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Seven bidirectional pairs: B ↔ 0x0, A ↔ 0x1, G ↔ 0x2, I ↔ 0x3, U ↔ 0x4, N ↔ 0x5, X ↔ 0xF. RDG-003 I mapping is inferred, not stated; mismatch emits warning TF-010 labelled inferred. Handbook input remains plain values from caller, not parsed TMATS here.
 
-**Source**: Owner2026-11-11 ROADMAP question1; 106-24R1 Table 9-4 and§11.2.3.2 a; RCC 124-22 Chapter7 printed7-3/PDF149; RDG-002/003.
+**Source**: Owner 2026-11-11 ROADMAP question 1; 106-24R1 Table 9-4 and§11.2.3.2 a; RCC 124-22 Chapter7 printed7-3/PDF 149; RDG-002/003.
 
 **Planned verification**: For each of7 letters, test matching FMT and every other nibble, reverse comparisons, missing/unknown values. Reproduce RCC 124-22 printed 7-3/PDF 149 R-1\TTF-1:1;, R-1\TFMT-1:I;, R-1\TSRC-1:I; ("Time format is internal", "Time source is internal"); compare FMT 3/SRC 0 and contradictory values.
 
@@ -1039,9 +1040,9 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Use byte sum for trust, word sum for comparison, emit TF-027 on word-only matches and TF-012 when byte trust fails. Never auto-switch per file while claiming the reading is settled.
 
-**Source**: 106-24R1 §11.2.1.2 c and§11.2.1.1 j; RCC 123-20 AppendixA-2; RDG-008.
+**Source**: 106-24R1 §11.2.1.2 c and§11.2.1.1 j; RCC 123-20 Appendix A-2; RDG-008.
 
-**Planned verification**: Byte-only, word-only, both, neither across the listed editions; reference handbook AppendixA-2 code; local recordings remain outside Git/CI and human Review pending.
+**Planned verification**: Byte-only, word-only, both, neither across the listed editions; reference handbook Appendix A-2 code; local recordings remain outside Git/CI and human Review pending.
 
 **L3-RDG-209** · Parent: L2-RDG-209 · Verification: I
 
@@ -1049,7 +1050,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Apply L3-TAI-105 mappings and require override before unknown-scale conversion; retain inferred GPS relationship and policy assumption for IRIG UTC.
 
-**Source**: 106-24R1 §11.2.3.2 a/§11.2.3.3; RCC 200-16 §1/AppendixA.2; RDG-009.
+**Source**: 106-24R1 §11.2.3.2 a/§11.2.3.3; RCC 200-16 §1/Appendix A.2; RDG-009.
 
 **Planned verification**: All FMT/NTF values, IRIG/RTC overrides, historical table transitions, cross-scale reference comparisons and stale table.
 
@@ -1059,19 +1060,19 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Use L3-TAI-107 date/time/scale checks, keeping the actual second 60 in the result and reporting TF-022.
 
-**Source**: 106-24R1 Figure 11-13; RCC 200-16 §3.6/AppendixA.2; RDG-010.
+**Source**: 106-24R1 Figure 11-13; RCC 200-16 §3.6/Appendix A.2; RDG-010.
 
-**Planned verification**: Known/unknown year, June 30/December 31 candidates and neighbours,23:59 vsother times, UTC/assumed UTC/TAI/GPS/unknown.
+**Planned verification**: Known/unknown year, June 30/December 31 candidates and neighbours,23:59 versus other times, UTC/assumed UTC/TAI/GPS/unknown.
 
 **L3-RDG-211** · Parent: L2-RDG-211 · Verification: I
 
 **L1 ancestor**: L1-RDG-002
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: A reset starts a new first-packet check; static CGFormat 1 may precede time, dynamic data may not. source None time counts as present but not absolute.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: A reset starts a new first-packet check; static Computer-Generated Data, Format 1 may precede time, dynamic data may not. Source None time counts as present but not absolute.
 
 **Source**: 106-24R1 §11.2.3.2/§11.2.3.3, Chapter 10 §10.6.2, §11.2.1.1 i; RDG-011.
 
-**Planned verification**: Two sessions each compliant, missing time insecond, static-only prefix, time None and malformed first time packet.
+**Planned verification**: Two sessions each compliant, missing time in the second, static-only prefix, time None and malformed first time packet.
 
 ## STRM
 
@@ -1101,9 +1102,9 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Given same-session/channel compatible references (r0,t0),(r1,t1), require r1>r0 and r0<=r<=r1; calculate t=t0+floor((r-r0)*(t1-t0)/(r1-r0)) with checked i128 rational arithmetic after scale normalization. Floor is a proposed deterministic rounding choice. Record both references, drift correction and reference precision; no precision claim beyond the inputs.
 
-**Source**: Owner2026-11-11, ROADMAP question2; 106-24R1 Chapter 10 §10.6.2 (rate bound); architecture 6. Interpolation and its rounding are product policy, not standard wording.
+**Source**: Owner 2026-11-11, ROADMAP question 2; 106-24R1 Chapter 10 §10.6.2 (rate bound); architecture 6. Interpolation and its rounding are product policy, not standard wording.
 
-**Planned verification**: A 1 s RTC interval with absolute interval 1.000010s gives 0.500005s at midpoint; exact endpoints, non-integral result, RTC wrap, equal endpoint counters and incompatible scales.
+**Planned verification**: A 1 s RTC interval with absolute interval 1.000010 s gives 0.500005 s at midpoint; exact endpoints, non-integral result, RTC wrap, equal endpoint counters and incompatible scales.
 
 **L3-STRM-203** · Parent: L2-STRM-203 · Verification: T
 
@@ -1111,7 +1112,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Track a pending packet deadline relative to explicit caller progress in recording/counter time; no wall-clock reads. Proposed hold tolerance 100 ms gives 1.1 s (Q-STREAM-BOUND); keep this separate from 1100 ms late ordering. At timeout/EOF emit preceding-reference time with extrapolated/fallback reason; a gap>1 s is a finding even if hold tolerance has not expired. Raw-network Format 2 exceptions retain their non-standard-violation label.
 
-**Source**: Owner2026-11-11 ROADMAP question2; 106-24R1 Chapter 10 §10.6.2; Chapter 11 §11.2.3.3 raw-network exception; RCC 123-20 §5.6 supports preceding-reference fallback.
+**Source**: Owner 2026-11-11 ROADMAP question 2; 106-24R1 Chapter 10 §10.6.2; Chapter 11 §11.2.3.3 raw-network exception; RCC 123-20 §5.6 supports preceding-reference fallback.
 
 **Planned verification**: Reference at 1 s/just-after 1 s/at deadline/after deadline, no next reference, EOF before deadline, another channel arriving, and stalled progress. Owner fallback must be visible in basis.
 
@@ -1121,7 +1122,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Track observed time-packet presence separately from reference eligibility. For SRC=0xF or FMT=0xF/invalid TS, preserve packet/invalid evidence and do not correlate from that reference in stream modes. Before any eligible preceding reference return counter-only with TF-002 when it precedes the first time packet, and the applicable invalid/undeclared evidence otherwise.
 
-**Source**: Owner2026-11-11 ROADMAP question2; 106-24R1 Chapter 10 §10.6.2 first dynamic packet; Chapter 11 §11.2.3.2 source None/invalid FMT. Missing-time fallback is product policy; the standard gives no such algorithm.
+**Source**: Owner 2026-11-11 ROADMAP question 2; 106-24R1 Chapter 10 §10.6.2 first dynamic packet; Chapter 11 §11.2.3.2 source None/invalid FMT. Missing-time fallback is product policy; the standard gives no such algorithm.
 
 **Planned verification**: Data-before-time, first time packet SRC None with a valid-looking body, FMT NONE, TS invalid, no time until EOF, and usable reference arriving later must not retroactively invent an early absolute answer.
 
@@ -1131,7 +1132,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Constructor requires maximum pending packets/bytes and reference-state limits as explicit resource settings. Before a limit is exceeded, drain pending answers using the documented preceding-reference fallback or return a typed resource-limit error, recording the reason. Do not interpolate across a detected jump, unsupported scale transition or session reset; flush the old segment first.
 
-**Source**: Architecture6; ADR-0010/0011/0014; L1-STRM-001. Resource caps and discontinuity handling are proposed product rules; 106-24R1 §11.2.1.1 i supplies the session-continuity constraint.
+**Source**: Architecture 6; ADR-0010/0011/0014; L1-STRM-001. Resource caps and discontinuity handling are proposed product rules; 106-24R1 §11.2.1.1 i supplies the session-continuity constraint.
 
 **Planned verification**: Fixed-rate long input, pathological data burst without reference, per-byte/per-packet limits, reference flood, duplicate counters, jump/reset during hold, and bounded exported findings with caller consumption.
 
@@ -1141,7 +1142,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: On a requested mode change flush pending packets under their original mode and deadline/resource rules; then install a new policy snapshot at the declared effective input boundary. Never rewrite emitted answers or reuse references across a session boundary. Channel selection follows Q-STREAM-CHANNEL until the owner resolves prefix-vs-final ranking.
 
-**Source**: Owner2026-11-11 ROADMAP question2 (both switchable); ADR-0010/0011; architecture 6. Transition flushing is a proposed implementation rule.
+**Source**: Owner 2026-11-11 ROADMAP question 2 (both switchable); ADR-0010/0011; architecture 6. Transition flushing is a proposed implementation rule.
 
 **Planned verification**: Switch with empty/nonempty pending state, standard->interpolate->standard, two configurations, and reconstruction of each result from its retained policy snapshot.
 
@@ -1163,9 +1164,9 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Use an error variant carrying field identifier, digit index and raw bits; distinguish BCD digit failure from an invalid total hour/day or always-zero-bit finding. Timeline converts parse failure into TF-004 without losing the original error.
 
-**Source**: §11.2.3.2 b.
+**Source**: §11.2.3.2 b. Prototype identifier kept.
 
-**Planned verification**: DigitA..F at each BCD position; invalid hour 24 with valid digits yields range error instead; zero-mask violations produce their own finding.
+**Planned verification**: Digits A..F at each BCD position; invalid hour 24 with valid digits yields range error instead; zero-mask violations produce their own finding.
 
 **L3-ERR-103** · Parent: L2-ERR-103 · Verification: T
 
@@ -1173,7 +1174,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Validate hours<=23, minutes<=59, nanos<1e9, day 1..366, month 1..12, and day-of-month against year/month. Seconds<=59 except approved UTC 23:59:60 dates; unknown year never invents leap certainty. Microseconds in Chapter 4 require<=9999.
 
-**Source**: Figures 11-13, 11-14; RDG-010.3); second 60 is no longer always rejected (T-16).
+**Source**: Figures 11-13, 11-14; RDG-010. Prototype identifier kept; day 0 is rejected, never turned into day 1 (contract 8.3); second 60 is no longer always rejected (T-16).
 
 **Planned verification**: Every minimum/maximum and one out-of-range value, Feb 29 in leap/common years, day 0, second 60 combinations, and no silent day 0->1 repair.
 
@@ -1183,7 +1184,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Preserve stored, byte-calculated and word-calculated checksums; no trusted secondary time on byte-reading failure under RDG-008. The packet's independent RTC may still support a counter answer, labelled with the failed own-time evidence.
 
-**Source**: §11.2.1.2 c.
+**Source**: §11.2.1.2 c. Prototype identifier kept.
 
 **Planned verification**: Stored checksum corruption in either byte, byte-only/word-only cases, and counter-derived answer remaining available without claiming own time valid.
 
@@ -1191,7 +1192,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **L1 ancestor**: L1-ERR-005
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Require 4-byte CSDW then 6/8-byte Format 1 body or8-byte Format 2 body; slice only required fields within the bounded input. Extra trailing bytes are not read as a phantom reserved word. Document consumed byte counts and reject underlength before any field access.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Require 4-byte CSDW then 6/8-byte Format 1 body or 8-byte Format 2 body; slice only required fields within the bounded input. Extra trailing bytes are not read as a phantom reserved word. Document consumed byte counts and reject underlength before any field access.
 
 **Source**: "Data Length … does not include packet trailer filler and data checksum" (§11.2.1.1 d); T-12.
 
@@ -1215,7 +1216,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Core value modules must not allocate; recording modules may use alloc collections. std is a default feature adding std::error::Error/conveniences, with no std-only type leaking into no-default public signatures.
 
-**Source**: ADR-0014.
+**Source**: ADR-0014. Prototype identifier kept.
 
 **Planned verification**: Planned inspection: no-default host and no_std/WASM builds; review allocation paths in each value reader, and default/no-default API signature comparison.
 
@@ -1223,7 +1224,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **L1 ancestor**: L1-API-004
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Use Rtc/Ertc, typed nanosecond durations, UnixSeconds/TaiSeconds and TaiUtcOffset from corrected irig 106-types; plainu 32 is confined to raw wire fields. Checked conversion functions document units, epoch and sign instead of accepting interchangeable integer seconds.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Use Rtc/Ertc, typed nanosecond durations, UnixSeconds/TaiSeconds and TaiUtcOffset from corrected irig106-types; plain u32 is confined to raw wire fields. Checked conversion functions document units, epoch and sign instead of accepting interchangeable integer seconds.
 
 **Source**: Prototype identifier kept; `irig106-types` newtypes.
 
@@ -1233,9 +1234,9 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **L1 ancestor**: L1-API-005
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Dependency review checks normal and feature-enabled edges from irig 106-time: no core/tmats/decode/write/index/CLI edge. Optional serde/chrono are allowed under their features; tests must not turn a temporary cross-repo path into a runtime dependency.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Dependency review checks normal and feature-enabled edges from irig106-time: no core/tmats/decode/write/index/CLI edge. Optional serde/chrono are allowed under their features; tests must not turn a temporary cross-repo path into a runtime dependency.
 
-**Source**: ADR-0005.
+**Source**: ADR-0005. Replaces L1-API-003 ("zero required runtime dependencies").
 
 **Planned verification**: Planned inspection: cargo-tree review for every feature combination, manifest edge inventory, and standalone library-use example using plain declarations.
 
@@ -1243,7 +1244,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **L1 ancestor**: L1-API-006
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Library APIs accept slices/value records and never open files, fetch leap data, read wall/monotonic clocks, environment ornetwork. Stream expiry receives explicit progress from caller. Do not infer year, scale orera from the execution environment.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Library APIs accept slices/value records and never open files, fetch leap data, read wall/monotonic clocks, environment or network. Stream expiry receives explicit progress from caller. Do not infer year, scale or era from the execution environment.
 
 **Source**: ADR-0006.
 
@@ -1253,7 +1254,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **L1 ancestor**: L1-API-007
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Avoid host-only interfaces in exported library signatures; WASM compile checks cover no-default and no-default + serde. Serialization ofu 64/i128 quantities must preserve exact values rather than rely on JavaScript floating-point integers.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Avoid host-only interfaces in exported library signatures; WASM compile checks cover no-default and no-default + serde. Serialization of u64/i128 quantities must preserve exact values rather than rely on JavaScript floating-point integers.
 
 **Source**: `irig106-tmats` L1-REL-003; contract 4.8; ADR-0014.
 
@@ -1337,7 +1338,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **L1 ancestor**: L1-CLI-002
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Run accepts injected arguments and input/output interfaces and returns a structured outcome; it must not call process::exit. The host strips its time subcommand before invoking the shared parser. No reverse dependency on irig 106-cli.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Run accepts injected arguments and input/output interfaces and returns a structured outcome; it must not call process::exit. The host strips its time subcommand before invoking the shared parser. No reverse dependency on irig106-cli.
 
 **Source**: ADR-0007; ROADMAP P6-10.
 
@@ -1439,7 +1440,7 @@ through Q-CLI-EXIT; the same unresolved constraints bind L3.
 
 **L1 ancestor**: L1-REL-005
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Check resolved lockfiles and feature sets with cargo-deny for advisories, maintenance, yanks, licences and sources. Retain the reviewed irig 106-types Git exception until a reviewed replacement; do not loosen global policy for one failure.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Check resolved lockfiles and feature sets with cargo-deny for advisories, maintenance, yanks, licences and sources. Retain the reviewed irig106-types Git exception until a reviewed replacement; do not loosen global policy for one failure.
 
 **Source**: `deny.toml`, adapted from the retired `irig106-rust` repository (its `semgrep-rust.yml`, its draft L1 specification, `CODE_ANALYSIS.md`, and `notes/SLSA1.md`; kept in `irig106-tmats` `docs/research/2026-09-26-irig106-rust/`); as `irig106-tmats` L1-REL-005. Its first run found `crossbeam-epoch` below 0.9.20 (RUSTSEC-2026-0204, through `criterion`), fixed by updating the lock file.
 
