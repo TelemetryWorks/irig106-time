@@ -108,7 +108,9 @@ pub use absolute::{
 };
 pub use bcd::{DayFormatTime, DmyFormatTime};
 pub use correlation::{ReferencePoint, RtcReset, TimeCorrelator, TimeJump};
-pub use csdw::{DateFormat, TimeF1Csdw, TimeFormat, TimeSource};
+pub use csdw::{
+    DateFormat, IrigTimeSource, TimeF1Csdw, TimeF1Layout, TimeF1Source, TimeFormat, TimeSource,
+};
 pub use error::{Result, TimeError};
 pub use intra_packet::{IntraPacketTime, IntraPacketTimeFormat};
 pub use network_time::{
@@ -121,7 +123,7 @@ pub use recording_event::{RecordingEvent, RecordingEventType};
 pub use rtc::Rtc;
 pub use secondary::{SecHdrTimeFormat, SecondaryHeaderTime};
 pub use streaming::{StreamingRef, StreamingTimeCorrelator};
-pub use version::{Irig106Version, detect_version};
+pub use version::{Irig106Version, detect_data_type_version, detect_version};
 
 /// Unit and epoch newtypes from [`irig106_types`], re-exported for convenience.
 pub use irig106_types::{NanosDuration, TaiSeconds, TaiUtcOffset, UnixSeconds};

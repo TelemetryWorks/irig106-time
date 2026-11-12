@@ -17,6 +17,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Ch4BinaryTime::to_absolute()` is now provided by the `Ch4BinaryTimeExt` trait. `use irig106_time::*;` or `use irig106_time::Ch4BinaryTimeExt;` brings it into scope.
   - `Ieee1588Time::from_le_bytes`, `Ertc::from_le_bytes`, and `Ch4BinaryTime::from_secondary_bytes` / `from_intra_packet_bytes` now return `irig106_types::TypesError`. `TimeError` implements `From<TypesError>`, so `?` inside functions returning `irig106_time::Result` is unchanged.
 
+- **Shared version API replaces the local `Irig106Version`** (T-9) — existing
+  `irig106_time::version::Irig106Version` imports now name the shared enum.
+  `Pre07` and `V23` are gone; handle `V04`, `V05` and `Unknown(raw)` explicitly
+  in matches and migrate persisted/serde variant names where applicable.
+  `from_version_field` is removed: use `Irig106Version::from_setup_record(code)`
+  (or `version::detect_version(csdw)`) for an applicable setup record, and
+  `Irig106Version::from_data_type_version(byte)` (or
+  `version::detect_data_type_version(byte)`) for a header. These are different
+  code lists; setup 0 and 0x0F now stay `Unknown`, not `Pre07`/`V23`. There is no
+  setup version code at the 106-04/05 boundary, and header 0x01 alone does not
+  establish the recording edition. Removed `is_pre_ordering_guarantee` has no
+  automatic replacement: provide an explicit caller edition/ordering policy.
+  Replace `version.supports_format_2()` with `version::supports_format_2(&version)`;
+  this now enables known V17/V19/V22 and returns false for unknown versions.
+
+- **Edition-qualified Format 1 CSDW** (T-6/T-7) — removed
+  `Irig106Version::has_gps_time_source` and
+  `TimeF1Csdw::time_source_versioned`. SRC 3 is reserved, never GPS or legacy
+  None. Use `time_source_for_layout(TimeF1Layout::...)` and match `TimeF1Source`:
+  explicit `Legacy04` returns EXT bit 0 plus reserved bits 3–1, while
+  `Source05`/`SourceWithIts17` return SRC. For legacy FMT use
+  `time_format_for_layout`; FMT 15 is reserved in 106-04 and None from 106-05.
+  Existing `time_source()`/`time_format()` accessors mean modern 106-05+ only.
+  New `payload_is_valid`, `irig_time_source_for_layout`, and `validate_reserved`
+  expose validity, applicable ITS, and reserved diagnostics independently;
+  reserved validation must not discard the decoded value. Layout is a required
+  caller declaration on these APIs, not an inference from the header version.
+
+- **Correct BCD body sizes** (T-12) — `DayFormatTime::to_le_bytes()` returns
+  `[u8; 6]` instead of `[u8; 8]`; `DmyFormatTime::to_le_bytes()` returns `[u8; 8]`
+  instead of `[u8; 10]`. Their parsers require at least 6/8 bytes respectively
+  and inspect exactly those bytes, excluding CSDW, trailer filler and checksums.
+  Resize caller buffers and length checks; do not append a phantom reserved
+  word. Encoded bodies are two bytes shorter. The CLI now accepts exact 6/8-byte
+  consumer bodies instead of reporting buffer-too-short errors, so those
+  packets can contribute time channels and correlation references to output.
+
+- **Flag decoding and exhaustive matches** (T-1) —
+  `IntraPacketTimeFormat::from_packet_flags` now uses bit 7 for secondary
+  presence, bit 6 for stamp source, and bits 3–2 for format; the former bit-2
+  presence interpretation was wrong. Bit 6 clear selects RTC; inconsistent
+  secondary-source flags or reserved format 11 yield `InvalidFlags(raw)`.
+  Current L1-IPT-007 strictness rejects format 11 even with RTC source, pending
+  Q-FLAGS. `parse_intra_packet_time` returns the new
+  `TimeError::InvalidPacketFlags { flags }` for this case instead of falling
+  back to RTC. Add match arms for `IntraPacketTimeFormat::InvalidFlags` and
+  `PacketStandard::Unknown`: these two enums are **not** `non_exhaustive`, so
+  existing exhaustive matches break. `PacketStandard::from_version(Unknown(_))`
+  now returns `Unknown`, not `Ch11`; both `is_ch10()` and `is_ch11()` return
+  false, and Display emits `Unknown`. `TimeError` remains `non_exhaustive`.
+
+- **Corrected shared types at `48f1834`** — replace `TimeSource::InternalRtc`
+  with `InternalFromRmm` (SRC 2) and `TimeSource::Gps` with `Reserved(3)`;
+  GPS remains a `TimeFormat`, not a source. Match the new `TimeFormat::None`
+  for modern FMT 0xF (previously Reserved), including serialized variant changes.
+  `IrigTimeSource` exposes ITS. `Ertc::to_nanos()` now uses **1 ns/tick** rather
+  than 100 ns/tick; remove caller compensation for the old scale.
+  `Ch4BinaryTime::from_secondary_bytes`/`from_intra_packet_bytes` now read
+  `[reserved, microseconds, low, high]` u16 LE words instead of
+  `[unused, high, low, microseconds]`, preserving the full 32-bit binary count,
+  including low bit 15. Update manually packed fixtures and any workaround.
+  The time crate's secondary/intra-packet paths now reject microseconds above
+  9999 as `OutOfRange` (TF-004). Reserved words/padding remain usable values
+  with separate TF-005 diagnostics: call `intra_packet::validate_rtc48_reserved`,
+  `secondary::validate_ch4_reserved`, and `secondary::validate_secondary_reserved`
+  as applicable, without propagating a reserved-warning result as a parse error.
+  These validators return `BufferTooShort` for incomplete buffers. The prototype
+  `Ch4BinaryTimeExt::to_absolute()` calendar conversion still has the incorrect
+  17-bit split; it is documented as untrusted pending Q-CH4, not fixed here.
+  CLI labels change only as required by corrected enums: source 2 is
+  `Internal from RMM` (was `Internal RTC`), source 3 is `Reserved` (was `GPS`),
+  and modern FMT 0xF is `None` (was `Reserved`); native GPS FMT 5 stays `GPS`.
+
 - **Unit and epoch newtypes replace raw integers** (P6-01, team review #3) — `UnixSeconds`, `TaiSeconds`, `TaiUtcOffset`, and `NanosDuration` (from `irig106-types`, re-exported at the crate root).
 
   | Before | After |

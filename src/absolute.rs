@@ -601,9 +601,18 @@ impl core::fmt::Display for CalendarTime {
 /// re-exported at the crate root, so `use irig106_time::*` or
 /// `use irig106_time::Ch4BinaryTimeExt` brings `to_absolute()` into scope.
 pub trait Ch4BinaryTimeExt {
-    /// Decode to absolute time.
+    /// Decode to absolute time using the prototype interpretation.
     ///
-    /// **Traces:** L3-CH4-002, L3-CH4-003, L3-CH4-004
+    /// # Warning
+    ///
+    /// This method still uses an incorrect 17-bit time/day split. It does not
+    /// implement the full 32-bit binary count verified in T-10. Calendar/day
+    /// interpretation remains pending owner question
+    /// [Q-CH4](https://github.com/TelemetryWorks/irig106-time/blob/main/docs/L2_Requirements.md#questions-requiring-owner-decisions);
+    /// do not use this conversion for trusted time.
+    /// Raw secondary/intra-packet decoding is unaffected by this limitation.
+    ///
+    /// Prototype traces (superseded): L3-CH4-002, L3-CH4-003, L3-CH4-004
     fn to_absolute(&self) -> Result<AbsoluteTime>;
 }
 

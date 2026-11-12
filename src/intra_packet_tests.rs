@@ -15,9 +15,10 @@
 
 use super::*;
 
+/// Requirements: L1-IPT-006
 #[test]
 fn format_no_secondary_is_rtc() {
-    // Any flags with bit 2 clear → Rtc48
+    // Bit 6 clear selects RTC; secondary format 11 remains invalid.
     assert_eq!(
         IntraPacketTimeFormat::from_packet_flags(0x00),
         IntraPacketTimeFormat::Rtc48,
@@ -27,11 +28,12 @@ fn format_no_secondary_is_rtc() {
         IntraPacketTimeFormat::Rtc48,
     );
     assert_eq!(
-        IntraPacketTimeFormat::from_packet_flags(0xFB), // all except bit 2
+        IntraPacketTimeFormat::from_packet_flags(0xBB), // source bit 6 clear
         IntraPacketTimeFormat::Rtc48,
     );
 }
 
+/// Requirements: L1-IPT-006
 #[test]
 fn format_ch4_binary() {
     // Directly use the enum since bit-mapping is version-dependent
@@ -39,6 +41,7 @@ fn format_ch4_binary() {
     assert_eq!(fmt, IntraPacketTimeFormat::Ch4Binary);
 }
 
+/// Requirements: L1-IPT-006
 #[test]
 fn parse_rtc48_known() {
     // RTC = 0x0000_AABB_CCDD_EEFF → LE bytes [0xFF, 0xEE, 0xDD, 0xCC, 0xBB, 0xAA, 0x00, 0x00]
@@ -52,19 +55,18 @@ fn parse_rtc48_known() {
     }
 }
 
+/// Requirements: L1-RTC-002, L2-RTC-102, L3-RTC-102
 #[test]
 fn parse_rtc48_reserved_ignored() {
     // Same RTC value but with non-zero reserved bytes [6..8]
     let buf: [u8; 8] = [0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB];
-    let result = parse_intra_packet_time(&buf, IntraPacketTimeFormat::Rtc48).unwrap();
-    match result {
-        IntraPacketTime::Rtc(rtc) => {
-            assert_eq!(rtc.as_raw(), 1); // reserved bytes don't affect RTC
-        }
-        other => panic!("expected Rtc, got {other:?}"),
-    }
+    assert_eq!(
+        parse_intra_packet_time(&buf, IntraPacketTimeFormat::Rtc48).unwrap(),
+        IntraPacketTime::Rtc(Rtc::from_raw(1))
+    );
 }
 
+/// Requirements: L1-IPT-006
 #[test]
 fn parse_ieee1588_known() {
     // 123_456_789 ns, 42 seconds
@@ -81,6 +83,7 @@ fn parse_ieee1588_known() {
     }
 }
 
+/// Requirements: L1-IPT-006
 #[test]
 fn parse_ertc64_known() {
     let val: u64 = 0xDEAD_BEEF_CAFE_BABE;
@@ -94,6 +97,7 @@ fn parse_ertc64_known() {
     }
 }
 
+/// Requirements: L1-IPT-006
 #[test]
 fn parse_buffer_too_short() {
     let buf = [0u8; 6];
@@ -108,6 +112,7 @@ fn parse_buffer_too_short() {
     }
 }
 
+/// Requirements: L1-IPT-006
 #[test]
 fn intra_packet_time_is_enum() {
     // Ensure all four variants are constructible

@@ -54,6 +54,12 @@ pub enum TimeError {
         computed: u16,
     },
 
+    /// Packet flags cannot select a valid intra-packet time (§11.2.1.1 g).
+    InvalidPacketFlags {
+        /// Original flag byte, retained for diagnostics.
+        flags: u8,
+    },
+
     /// No reference point available for RTC-to-absolute-time correlation.
     NoReferencePoint,
 
@@ -107,6 +113,9 @@ impl fmt::Display for TimeError {
                     f,
                     "secondary header checksum mismatch: stored=0x{stored:04X}, computed=0x{computed:04X}"
                 )
+            }
+            TimeError::InvalidPacketFlags { flags } => {
+                write!(f, "invalid intra-packet time flags {flags:#04x}")
             }
             TimeError::NoReferencePoint => {
                 write!(f, "no time reference point available for correlation")

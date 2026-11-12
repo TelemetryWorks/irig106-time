@@ -7,7 +7,7 @@
 //!
 //! | Requirement | Description |
 //! |-------------|-------------|
-//! | L3-BCD-001..007 | BCD helpers, DayFormatTime, DmyFormatTime |
+//! | L3-BCD-103..106 | BCD helpers, DayFormatTime, DmyFormatTime |
 
 use crate::absolute::AbsoluteTime;
 use crate::error::{Result, TimeError};
@@ -26,7 +26,7 @@ const BCD_LUT: [u8; 16] = [
 
 /// Extract a 4-bit BCD nibble from a u16 word and validate it via lookup table.
 ///
-/// **Traces:** L3-BCD-001 ← L2-BCD-006, L2-BCD-009, P4-03
+/// **Traces:** L3-BCD-104 ← L2-BCD-104 ← L1-BCD-004; P4-03
 #[inline]
 fn extract_bcd_digit(word: u16, bit_offset: u8, position: &'static str) -> Result<u8> {
     let nibble = ((word >> bit_offset) & 0x0F) as usize;
@@ -42,7 +42,7 @@ fn extract_bcd_digit(word: u16, bit_offset: u8, position: &'static str) -> Resul
 
 /// Verify that specific bits in a word are zero.
 ///
-/// **Traces:** L3-BCD-002 ← L2-BCD-005
+/// **Traces:** L3-BCD-103 ← L2-BCD-103 ← L1-BCD-003
 #[inline]
 fn check_reserved(word: u16, mask: u16, position: &'static str) -> Result<()> {
     if word & mask != 0 {
@@ -56,7 +56,7 @@ fn check_reserved(word: u16, mask: u16, position: &'static str) -> Result<()> {
 // Day-of-Year Format
 // ---------------------------------------------------------------------------
 
-/// Decoded Day-of-Year format time message (8 bytes).
+/// Decoded Day-of-Year format time message (6 bytes).
 ///
 /// This is a **BCD-validated decoded representation** — field ranges are
 /// guaranteed to match the BCD wire format (e.g., hours 0–23, DOY 1–366).
@@ -67,7 +67,7 @@ fn check_reserved(word: u16, mask: u16, position: &'static str) -> Result<()> {
 /// [`DayFormatTime::from_le_bytes`] to parse from wire format, or
 /// [`DayFormatTime::new`] for programmatic construction with validation.
 ///
-/// **Traces:** L3-BCD-003 ← L2-BCD-001, L2-BCD-002 ← L1-BCD-001
+/// **Traces:** L3-BCD-105 ← L2-BCD-105 ← L1-BCD-005
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DayFormatTime {
     /// Milliseconds (0–990, resolution 10 ms).
@@ -206,20 +206,19 @@ impl DayFormatTime {
     pub fn day_of_year(&self) -> u16 {
         self.day_of_year
     }
-    /// Parse from 8 little-endian bytes (4× u16 words).
+    /// Parse from 6 little-endian bytes (3× u16 words).
     ///
-    /// # Wire Format (per RCC 123-20 Figure 5-13)
+    /// # Wire Format (106-24R1 Figure 11-13)
     ///
     /// Word 0: `[3:0]=Tmn [7:4]=Hmn [11:8]=Sn [14:12]=TSn [15]=rsv`
     /// Word 1: `[3:0]=Mn [6:4]=TMn [7]=rsv [11:8]=Hn [13:12]=THn [15:14]=rsv`
     /// Word 2: `[3:0]=Dn [7:4]=TDn [9:8]=HDn [15:10]=rsv`
-    /// Word 3: reserved
     ///
-    /// **Traces:** L3-BCD-003, L3-BCD-005, L3-BCD-006
+    /// **Traces:** L3-BCD-103, L3-BCD-104, L3-BCD-105
     pub fn from_le_bytes(buf: &[u8]) -> Result<Self> {
-        if buf.len() < 8 {
+        if buf.len() < 6 {
             return Err(TimeError::BufferTooShort {
-                expected: 8,
+                expected: 6,
                 actual: buf.len(),
             });
         }
@@ -227,7 +226,6 @@ impl DayFormatTime {
         let w0 = u16::from_le_bytes([buf[0], buf[1]]);
         let w1 = u16::from_le_bytes([buf[2], buf[3]]);
         let w2 = u16::from_le_bytes([buf[4], buf[5]]);
-        // w3 is reserved
 
         // Word 0 reserved: bit 15
         check_reserved(w0, 0x8000, "day_fmt word0 bit15")?;
@@ -236,7 +234,7 @@ impl DayFormatTime {
         // Word 2 reserved: bits [15:10]
         check_reserved(w2, 0xFC00, "day_fmt word2 bits[15:10]")?;
 
-        // Milliseconds: Hmn*100 + Tmn*10 (L3-BCD-005)
+        // Milliseconds: Hmn*100 + Tmn*10 (L3-BCD-105)
         let tmn = extract_bcd_digit(w0, 0, "tens_of_ms")?;
         let hmn = extract_bcd_digit(w0, 4, "hundreds_of_ms")?;
         let milliseconds = (hmn as u16) * 100 + (tmn as u16) * 10;
@@ -274,7 +272,7 @@ impl DayFormatTime {
         let hdn = ((w2 >> 8) & 0x03) as u8;
         let day_of_year = (hdn as u16) * 100 + (tdn as u16) * 10 + (dn as u16);
 
-        // Validate ranges (L3-BCD-006)
+        // Validate ranges (L3-BCD-105)
         if seconds > 59 {
             return Err(TimeError::OutOfRange {
                 field: "seconds",
@@ -315,7 +313,7 @@ impl DayFormatTime {
 
     /// Convert to `AbsoluteTime`.
     ///
-    /// **Traces:** L3-BCD-007 ← L2-BCD-007
+    /// **Traces:** L3-BCD-105 ← L2-BCD-105
     pub fn to_absolute(&self) -> AbsoluteTime {
         // Safe to unwrap: values were validated in from_le_bytes
         AbsoluteTime::new(
@@ -328,12 +326,12 @@ impl DayFormatTime {
         .unwrap()
     }
 
-    /// Encode as 8 little-endian bytes (4× u16 LE) in the BCD Day-of-Year wire format.
+    /// Encode as 6 little-endian bytes (3× u16 LE) in the BCD Day-of-Year wire format.
     ///
-    /// This is the inverse of `from_le_bytes`. Word 3 is reserved (zero).
+    /// This is the inverse of `from_le_bytes`.
     ///
     /// **Traces:** GAP-11
-    pub fn to_le_bytes(&self) -> [u8; 8] {
+    pub fn to_le_bytes(&self) -> [u8; 6] {
         let ms_tens = (self.milliseconds / 10) % 10;
         let ms_hundreds = self.milliseconds / 100;
         let sec_units = self.seconds % 10;
@@ -355,13 +353,10 @@ impl DayFormatTime {
         let day_hundreds = (self.day_of_year / 100) % 10;
         let w2: u16 = day_units | (day_tens << 4) | (day_hundreds << 8);
 
-        let w3: u16 = 0; // reserved
-
-        let mut buf = [0u8; 8];
+        let mut buf = [0u8; 6];
         buf[0..2].copy_from_slice(&w0.to_le_bytes());
         buf[2..4].copy_from_slice(&w1.to_le_bytes());
         buf[4..6].copy_from_slice(&w2.to_le_bytes());
-        buf[6..8].copy_from_slice(&w3.to_le_bytes());
         buf
     }
 }
@@ -370,7 +365,7 @@ impl DayFormatTime {
 // Day-Month-Year Format
 // ---------------------------------------------------------------------------
 
-/// Decoded Day-Month-Year format time message (10 bytes).
+/// Decoded Day-Month-Year format time message (8 bytes).
 ///
 /// This is a **BCD-validated decoded representation** — field ranges are
 /// guaranteed to match the BCD wire format (e.g., month 1–12, day 1–31,
@@ -384,7 +379,7 @@ impl DayFormatTime {
 /// [`DmyFormatTime::from_le_bytes`] to parse from wire format, or
 /// [`DmyFormatTime::new`] for programmatic construction with validation.
 ///
-/// **Traces:** L3-BCD-004 ← L2-BCD-003, L2-BCD-004 ← L1-BCD-002
+/// **Traces:** L3-BCD-106 ← L2-BCD-106 ← L1-BCD-006
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DmyFormatTime {
     /// Milliseconds (0–990, resolution 10 ms).
@@ -573,20 +568,19 @@ impl DmyFormatTime {
     pub fn year(&self) -> u16 {
         self.year
     }
-    /// Parse from 10 little-endian bytes (5× u16 words).
+    /// Parse from 8 little-endian bytes (4× u16 words).
     ///
-    /// # Wire Format (per RCC 123-20 Figure 5-14)
+    /// # Wire Format (106-24R1 Figure 11-14)
     ///
     /// Words 0–1: identical to DayFormatTime
     /// Word 2: `[3:0]=Dn [7:4]=TDn [11:8]=On [12]=TOn [15:13]=rsv`
     /// Word 3: `[3:0]=Yn [7:4]=TYn [11:8]=HYn [13:12]=OYn [15:14]=rsv`
-    /// Word 4: reserved
     ///
-    /// **Traces:** L3-BCD-004, L3-BCD-005, L3-BCD-006
+    /// **Traces:** L3-BCD-103, L3-BCD-104, L3-BCD-106
     pub fn from_le_bytes(buf: &[u8]) -> Result<Self> {
-        if buf.len() < 10 {
+        if buf.len() < 8 {
             return Err(TimeError::BufferTooShort {
-                expected: 10,
+                expected: 8,
                 actual: buf.len(),
             });
         }
@@ -595,7 +589,6 @@ impl DmyFormatTime {
         let w1 = u16::from_le_bytes([buf[2], buf[3]]);
         let w2 = u16::from_le_bytes([buf[4], buf[5]]);
         let w3 = u16::from_le_bytes([buf[6], buf[7]]);
-        // w4 is reserved
 
         // Word 0 reserved: bit 15
         check_reserved(w0, 0x8000, "dmy_fmt word0 bit15")?;
@@ -655,7 +648,7 @@ impl DmyFormatTime {
         let oyn = ((w3 >> 12) & 0x03) as u8;
         let year = (oyn as u16) * 1000 + (hyn as u16) * 100 + (tyn as u16) * 10 + (yn as u16);
 
-        // Validate ranges (L3-BCD-006)
+        // Validate ranges (L3-BCD-106)
         if seconds > 59 {
             return Err(TimeError::OutOfRange {
                 field: "seconds",
@@ -725,7 +718,7 @@ impl DmyFormatTime {
     /// The day-of-year is computed from the calendar date. If callers need a
     /// plain `AbsoluteTime`, use `.into_absolute_time()` on the result.
     ///
-    /// **Traces:** L3-BCD-007 ← L2-BCD-008
+    /// **Traces:** L3-BCD-106 ← L2-BCD-106
     pub fn to_calendar_time(&self) -> crate::error::Result<crate::absolute::CalendarTime> {
         let doy = month_day_to_doy(self.year, self.month, self.day);
         let abs = crate::absolute::AbsoluteTime::new(
@@ -739,12 +732,12 @@ impl DmyFormatTime {
         crate::absolute::CalendarTime::new(abs, self.month, self.day)
     }
 
-    /// Encode as 10 little-endian bytes (5× u16 LE) in the BCD Day-Month-Year wire format.
+    /// Encode as 8 little-endian bytes (4× u16 LE) in the BCD Day-Month-Year wire format.
     ///
-    /// This is the inverse of `from_le_bytes`. Word 4 is reserved (zero).
+    /// This is the inverse of `from_le_bytes`.
     ///
     /// **Traces:** GAP-11
-    pub fn to_le_bytes(&self) -> [u8; 10] {
+    pub fn to_le_bytes(&self) -> [u8; 8] {
         let ms_tens = (self.milliseconds / 10) % 10;
         let ms_hundreds = self.milliseconds / 100;
         let sec_units = self.seconds % 10;
@@ -773,14 +766,11 @@ impl DmyFormatTime {
         let yr_thousands = (self.year / 1000) % 10;
         let w3: u16 = yr_units | (yr_tens << 4) | (yr_hundreds << 8) | (yr_thousands << 12);
 
-        let w4: u16 = 0; // reserved
-
-        let mut buf = [0u8; 10];
+        let mut buf = [0u8; 8];
         buf[0..2].copy_from_slice(&w0.to_le_bytes());
         buf[2..4].copy_from_slice(&w1.to_le_bytes());
         buf[4..6].copy_from_slice(&w2.to_le_bytes());
         buf[6..8].copy_from_slice(&w3.to_le_bytes());
-        buf[8..10].copy_from_slice(&w4.to_le_bytes());
         buf
     }
 }

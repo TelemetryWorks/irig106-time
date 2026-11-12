@@ -253,7 +253,7 @@ impl Ch10TimeScanner {
         let bcd_start = data_start + 4;
         let abs_time = match csdw.date_format() {
             DateFormat::DayOfYear => {
-                if bcd_start + 8 > pkt_buf.len() {
+                if bcd_start + 6 > pkt_buf.len() {
                     self.errors.push(format!(
                         "Time packet ch={}: buffer too short for DOY BCD",
                         hdr.channel_id
@@ -272,7 +272,7 @@ impl Ch10TimeScanner {
                 }
             }
             DateFormat::DayMonthYear => {
-                if bcd_start + 10 > pkt_buf.len() {
+                if bcd_start + 8 > pkt_buf.len() {
                     self.errors.push(format!(
                         "Time packet ch={}: buffer too short for DMY BCD",
                         hdr.channel_id
@@ -447,8 +447,7 @@ fn fmt_time_source(src: &TimeSource) -> &'static str {
     match src {
         TimeSource::Internal => "Internal",
         TimeSource::External => "External",
-        TimeSource::InternalRtc => "Internal RTC",
-        TimeSource::Gps => "GPS",
+        TimeSource::InternalFromRmm => "Internal from RMM",
         TimeSource::None => "None",
         TimeSource::Reserved(_) => "Reserved",
     }
@@ -462,6 +461,7 @@ fn fmt_time_format(fmt: &TimeFormat) -> &'static str {
         TimeFormat::Rtc => "RTC",
         TimeFormat::Utc => "UTC",
         TimeFormat::Gps => "GPS",
+        TimeFormat::None => "None",
         TimeFormat::Reserved(_) => "Reserved",
     }
 }
@@ -996,3 +996,7 @@ fn main() {
 }
 
 use std::io::Write;
+
+#[cfg(test)]
+#[path = "main_tests.rs"]
+mod main_tests;
