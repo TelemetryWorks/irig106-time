@@ -97,7 +97,7 @@ the owner decides. Planned tests must distinguish explicit A, absent TFMT
 without default application, and absent TFMT with an approved labelled
 default policy, including the required-field finding in the latter case.
 
-**Behaviour**: A ↔ `0x1`, B ↔ `0x0`, G ↔ `0x2`, N ↔ `0x5`, U ↔ `0x4`, X ↔ `0xF`. A difference is reported. A missing `TFMT` on a TIMEIN channel is reported as missing, not silently read as IRIG-A; the table's default is recorded as a declared default, separately from an explicit value. Applying it as an effective comparison value would need a separately approved policy; this check does not change the accepted missing-value behaviour.
+**Behaviour**: A ↔ `0x1`, B ↔ `0x0`, G ↔ `0x2`, N ↔ `0x5`, U ↔ `0x4`, X ↔ `0xF`. A difference is reported. A missing `TFMT` on a TIMEIN channel is reported as missing, not silently read as IRIG-A; the table's default is recorded as a declared default, separately from an explicit value. Owner 2026-11-13, Q-TFMT-DEFAULT resolves the earlier question above: by default report the missing required attribute and make no TFMT comparison. Only explicit caller opt-in uses default A for comparison, labelled default-derived, while still raising the missing-required-attribute finding and preserving raw absence; never insert a default into TMATS (irig106-tmats ADR-0023).
 
 **Page check (2026-11-12)**: visually inspected a `pdftoppm` rendering of
 106-24R1 `Chapter9.pdf`, printed page **9-72**, one-based PDF page **78**,

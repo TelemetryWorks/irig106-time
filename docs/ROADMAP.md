@@ -103,7 +103,7 @@ reporting.**
 
 ## L2 decisions accepted 2026-11-12/13
 
-The owner settled eight of the nine L2 questions. Requirements and exact
+The owner settled all nine L2 questions. Requirements and exact
 verbatim Source lines are recorded in
 [the decision/source audit](analysis/owner-decisions-2026-11-12.md).
 
@@ -117,10 +117,10 @@ verbatim Source lines are recorded in
 | Q-FLAGS | Refine (owner 2026-11-12): RTC stamps survive reserved secondary format 11 with TF-006 warning; secondary-derived stamps require a present header and defined format. Separate unreadable secondary time never discards valid RTC stamps. [Verified pages and planned cases](analysis/Q-FLAGS-2026-11-12.md). |
 | Q-CLI-EXIT | Align with `irig106-tmats` (owner 2026-11-12): **0 success; 1 threshold findings; 2 usage; 3 unreadable/invalid Chapter 10/time input; 4 output-write failure**. Shared ecosystem convention, never renumber; IRIG 106 is silent. [Pinned draft source and planned checks](analysis/Q-CLI-EXIT-2026-11-12.md). |
 | Q-EDITION | Accepted owner 2026-11-13: explicit declaration/override **wins**, basis **override**, contradictory opted-in G\106/header evidence retained side by side; without override, caller opt-in G\106 packet edition → **declared, assumed from TMATS** only when uncontradicted by packet evidence, else unresolved/raw bits with evidence shown (and a finding for a no-override conflict), no SRC/None invention. TMATS ADR-0028 vocabulary; no fallback selects EXT. [Sources and planned fixtures](analysis/Q-EDITION-2026-11-13.md). |
+| Q-TFMT-DEFAULT | Accepted owner 2026-11-13: by default missing required TFMT is reported and no comparison made; caller opt-in compares default A with default-derived basis, retaining the missing finding and raw absence. RDG-002 / Table 9-4 / Ch9 §9.5.1 a / TMATS ADR-0023. |
 
-**Still open:** Q-TFMT-DEFAULT. NTP fraction floor is accepted (owner
-2026-11-13), with the raw fraction retained. Q-FLAGS-ERROR below remains a
-finding-assignment open item, not a reopening of the stamp-selection rule.
+All original L2 questions are decided; Q-FLAGS-ERROR is TF-028. NTP floor
+is accepted (owner 2026-11-13), with raw fraction retained.
 Existing interpolation rounding/ties/mode-change flushing proposals are not
 silently accepted. Propose archiving RFC 1305/5905 in rcc-106-standards; they
 are external sources today, and this task does not archive them.
@@ -571,4 +571,4 @@ No breaking changes without major version bump after this release.
 | **0.9.0** | Phase 7 | Validation: real-file testing, fuzz/benchmark on hardware, requirement trace validation, security analysis (SonarQube, cargo-audit, coverage), cyber security report | Planned |
 | **1.0.0** | Phase 8 | Stable API: complete rustdoc with architecture diagrams, VCRM with zero gaps, IRIG 106 primer, semver freeze | Planned |
 
-**Open implementation item Q-FLAGS-ERROR:** TF-006 remains the accepted reserved-VALUE warning (including flags format 11); TF-005 remains the reserved-BITS warning. Neither row nor default level changes. For source=1/format=11 with presence=1, no existing error-level finding fits: TF-004 is scoped to malformed time packets, TF-012 to checksum failure, and TF-015 to bit 6 without bit 7. Return no secondary-derived time and an error outcome, retain TF-006, and leave its numeric error-finding assignment open; recommend a separately reviewed explicit undefined-secondary-format error finding, with no numeric ID allocated here. The same assignment gap applies to an unreadable own secondary time in source=0/presence=1/format=11; keep the RTC value. Source=1/presence=0 already has TF-015. Owner 2026-11-13 explicitly preserves TF-005/TF-006.
+**Accepted Q-FLAGS-ERROR, owner 2026-11-13:** TF-028 "Secondary-derived time has an undefined format" is ERROR and maps from UndefinedSecondaryTimeFormat. It reports selected or present secondary time with format 11; RTC stamps remain usable. TF-006 remains the separate reserved-VALUE warning, TF-005 reserved-BITS warning, and TF-015 missing-required-header error. With 0x4C, TF-015/TF-028/TF-006 evidence can coexist. TF-001..TF-027 are unchanged; the former numeric finding-assignment open item is resolved.

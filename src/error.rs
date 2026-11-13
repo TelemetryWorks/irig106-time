@@ -72,8 +72,8 @@ pub enum TimeError {
     /// A secondary-derived time has no defined wire format.
     ///
     /// No time is returned for the affected secondary time; an independent
-    /// RTC stamp remains usable. TODO(Q-FLAGS-ERROR): the numeric error-level
-    /// finding ID awaits an owner decision; TF-006 remains a warning.
+    /// RTC stamp remains usable. Maps to TF-028 (ERROR), accepted by owner
+    /// 2026-11-13; TF-006 remains the separate reserved-value warning.
     /// **Traces:** L3-IPT-107 ← L2-IPT-107 ← L1-IPT-007
     UndefinedSecondaryTimeFormat {
         /// Original flags, retained beside any other flag findings.

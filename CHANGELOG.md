@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Owner decisions: absent required TFMT is reported and skipped in comparison
+  by default; only caller opt-in permits default A, labelled default-derived,
+  with the missing finding preserved. Requirements only: declaration comparison
+  implementation is deferred; no defaults are inserted into TMATS.
+- Document `UndefinedSecondaryTimeFormat` as TF-028 ERROR. No error variant,
+  parser result or Display string changes; a findings enum/report emitter is
+  not implemented yet. Keep RTC values and the independent TF-006 warning.
+- Strengthen flag validation with an independent 4x4 truth table over all256
+  flags and exact literal error-variant assertions.
+
 ### ⚠️ BREAKING CHANGES
 
 - **Edition 2024 and MSRV 1.85** (was edition 2021 and 1.60), the same across the IRIG 106 ecosystem (owner, 2026-09-27; `docs/adr/0003`). CI checks 1.85; formatting follows the 2024 style edition.
@@ -83,8 +95,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   separate reserved-format validation preserving simultaneous evidence.
   Update error handling for the new variants and invoke separate validation
   when reporting findings. `TimeError` remains `non_exhaustive`.
-  `TODO(Q-FLAGS-ERROR)`: the undefined-format numeric error finding ID remains
-  an owner decision; no new numeric finding or TF-006 severity change.
+  Owner 2026-11-13 maps `UndefinedSecondaryTimeFormat` to **TF-028 ERROR**;
+  TF-001..TF-027 and the TF-006 warning level remain unchanged.
   No CLI behaviour/output changes in this slice.
 
 - **Corrected shared types at `48f1834`** — replace `TimeSource::InternalRtc`
