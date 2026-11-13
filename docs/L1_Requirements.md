@@ -640,9 +640,9 @@ Handbook, cited as support, never as the rule.
 
 ### L1-COR-002
 
-**Statement**: By default, the library SHALL take the reference of the chosen time channel nearest in counter value to the counter being converted.
+**Statement**: For offline queries by default, the library SHALL take the reference of the chosen time channel nearest in counter value to the counter being converted.
 
-**Source**: "It is better to use the clock and relative time values from a time packet that occurs near the current data packet as the data file is decoded since there is some drift in the RTC during a recording session" (RCC 123-09 §6.6; T-13); contract 5.2 rule 5; a policy setting (L1-POL-001). Prototype identifier kept.
+**Source**: "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78, supports the preceding-reference stream example); ADR-0010 (cited selectable defaults). The offline nearest-reference default remains contract 5.2 rule 5 / L1-POL-001 product policy; owner 2026-11-12 Q-DEFAULT selects standard for streaming, not a new offline algorithm.
 
 **Verification Method**: Test (T)
 

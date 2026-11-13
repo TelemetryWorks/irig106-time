@@ -25,7 +25,8 @@ silently resolved by accepting the caller-context boundary.
 
 ## Why L1 changed, and why NTP L1 did not
 
-Only three L1 statements needed correction: L1-COR-003's blanket offline
+Only four L1 statements needed correction: L1-COR-002's blanket nearest
+default is explicitly offline; L1-COR-003's blanket offline
 count ranking conflicts with a committed stream channel; L1-STRM-001's
 blanket same-answer promise conflicts with the distinct stream modes;
 L1-WORD-001's unconditional complete calendar result conflicts with required
@@ -50,6 +51,7 @@ Line references are to the accompanying requirements files in this PR.
 | Changed ID(s) and parent(s) | Source location(s) | Exact new **Source** line |
 |---|---|---|
 | L1-WORD-001 ← top-level owner/product requirement | `docs/L1_Requirements.md:541` | "resolution of 655.36 seconds", "10 milliseconds", "three least significant bits of the BCD Julian date", "at a rate necessary to resolve time ambiguities" (106-24R1 Chapter 4 §4.7, printed 4-11 / PDF 15); RCC 123-20 `enI106_Ch4Binary2IrigTime`, printed B-43 / PDF 149, applies word weights without an origin. Explicit caller context and partial results are owner policy (2026-11-12); historical characters/bits wording remains unresolved (T-10). |
+| L1-COR-002 ← top-level owner/product requirement | `docs/L1_Requirements.md:645` | "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78, supports the preceding-reference stream example); ADR-0010 (cited selectable defaults). The offline nearest-reference default remains contract 5.2 rule 5 / L1-POL-001 product policy; owner 2026-11-12 Q-DEFAULT selects standard for streaming, not a new offline algorithm. |
 | L1-COR-003 ← top-level owner/product requirement | `docs/L1_Requirements.md:653` | "it is incumbent on the programmer or data analyst to determine and select the best source of time" (RCC 123-20 §5.6, printed 5-44 / PDF 78); "TIMEIN" / "IRIG Time Input" (`R-x\CDT-n`, 106-24R1 Chapter 9 Table 9-4, printed 9-50 / PDF 56), "E" / "External" (`R-x\TSRC-n`, printed 9-72 / PDF 78). Option A ranking/commitment is owner policy (2026-11-12); the standard names attributes, not that ranking. |
 | L1-STRM-001 ← top-level owner/product requirement | `docs/L1_Requirements.md:885` | "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78); ADR-0010 (cited, selectable defaults). Owner decision 2026-11-12; policy/interpretation, not an added standard mandate. "minimum frequency of 1 hertz" (106-24R1 Chapter 10 §10.6.2); "packet generation times shall be equal to or less than 100 milliseconds" (§10.6.1 b); "stream commit time equal to or less than 1000 ms" (§10.6.1 c), all printed 10-26 / PDF 32. The 100 ms hold tolerance, zero gap tolerance, explicit progress, caps and release rules are owner-selected policy (2026-11-12), not timing guarantees imposed on a reader. |
 | L2-ABS-102 ← L1-ABS-002<br>L3-ABS-102 ← L2-ABS-102 | `docs/L2_Requirements.md:180`<br>`docs/L3_Requirements.md:138` | "resolution of 655.36 seconds", "10 milliseconds", "three least significant bits of the BCD Julian date", "at a rate necessary to resolve time ambiguities" (106-24R1 Chapter 4 §4.7, printed 4-11 / PDF 15); RCC 123-20 `enI106_Ch4Binary2IrigTime`, printed B-43 / PDF 149, applies word weights without an origin. Explicit caller context and partial results are owner policy (2026-11-12); historical characters/bits wording remains unresolved (T-10). Figure 11-4, printed 11-10 / PDF 18; raw layout already confirmed in T-10 and adopted from types 48f1834. |
