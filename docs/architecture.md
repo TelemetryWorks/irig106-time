@@ -130,7 +130,7 @@ lists — the packet header's data type version and the setup record's RCCVER
 | `format2` | the Format 2 data word (NTF bits 7–4, TS bits 3–0, reserved 31–8) and bodies: NTP seconds and fraction, PTP seconds and nanoseconds, 8 bytes each; decode and encode | §11.2.3.3, Figures 11-15 to 11-17 | T-2, T-3 |
 | `words` | time words from data: Chapter 4 high/low/microseconds with explicit caller binary origin or BCD year/full day, otherwise labelled partial (no nearest-packet inference); network words use RDG-012 | Chapter 4 §4.7; contract 3.8 | — (new) |
 | `calendar` | absolute time: day of year and time of day to the nanosecond, with an optional year; calendar dates; leap years; the leap second 23:59:60 | Figures 11-13, 11-14; RCC 200-16 §3.6, A.2 | T-16 |
-| `scale` | time scales and epochs: UTC (FMT `0x4`, NTP from 1900, "includes leap seconds"), TAI (PTP from 1970, "does not include leap seconds"), GPS (FMT `0x5`, TAI − 19 s), unknown (FMT `0x3`), and IRIG-A, B, G as UTC by assumption; NTP UTC/Unix reckoning and labelled era evidence under RDG-012, without cumulative TAI-UTC; PTP UTC only within table coverage, raw TAI otherwise; fraction rounding proposed | §11.2.3.2 a, §11.2.3.3; RCC 200-16 §1, A.2; RFC 1305 Appendix E.8 pp.78–79, RFC 5905 §6 pp.12–15; RDG-009/012 | T-17 |
+| `scale` | time scales and epochs: UTC (FMT `0x4`, NTP from 1900, "includes leap seconds"), TAI (PTP from 1970, "does not include leap seconds"), GPS (FMT `0x5`, TAI − 19 s), unknown (FMT `0x3`), and IRIG-A, B, G as UTC by assumption; NTP UTC/Unix reckoning and labelled era evidence under RDG-012, without cumulative TAI-UTC; PTP UTC with last-known-offset fallback outside coverage, possibly out of date with TF-021; raw TAI retained; fraction floor accepted owner 2026-11-13 | §11.2.3.2 a, §11.2.3.3; RCC 200-16 §1, A.2; RFC 1305 Appendix E.8 pp.78–79, RFC 5905 §6 pp.12–15; RDG-009/012 | T-17 |
 | `edition` | what exists in which edition: Format 2 from 106-17; Chapter 10 section numbers before 106-17, Chapter 11 after | §11.2.1.1 e | T-4 |
 
 Every reader in this layer takes a byte slice bounded by the caller —
@@ -315,8 +315,10 @@ use the host clock. All-zero seconds/fraction is unknown/unsynchronized, no
 absolute answer. Format 2 lacks NTP leap bits: retain mapped values with
 leap-ambiguous findings at covered insertion coordinates, and record uncertain
 coverage when the table does not reach the date. NTP fraction floor rounding
-is still proposed. PTP retains TAI; UTC requires the applicable covered-table
-offset and currency evidence, with no UTC outside coverage. See
+is accepted (floor/round toward zero, owner 2026-11-13). PTP retains TAI;
+UTC uses the applicable offset, or the last known offset outside coverage
+with a possibly-out-of-date label and TF-021 warning. The contrary no-UTC
+coordinator instruction is withdrawn. See
 [the RFC/all-edition analysis](analysis/RDG-012-ntp-utc-era.md).
 
 ---
@@ -357,8 +359,8 @@ nothing is wrong.
 | TF-002 | A dynamic packet precedes the session's first time packet | warning | 6.2 |
 | TF-003 | A time packet is marked invalid (FMT `0xF` NONE; TS "Time Not Valid") | warning | 6.3 |
 | TF-004 | A time packet is malformed (a digit above 9, a field out of range, a short body) | error | 6.3 |
-| TF-005 | Reserved bits are set (data word, body, secondary header; source=0/format=11 flags under Q-FLAGS) | warning | 6.3 |
-| TF-006 | A reserved value is used (SRC `0x3`–`0xE`, FMT `0x6`–`0xE`, NTF `0x3`–`0xF`, TS `0x2`–`0xF`, ITS `1000`–`1111`, undefined secondary-derived flags bits 3–2 `11`) | warning; undefined secondary-derived time is error | 6.3, 6.6 |
+| TF-005 | Reserved bits are set (data word, body, secondary header) | warning | 6.3 |
+| TF-006 | A reserved value is used (SRC `0x3`–`0xE`, FMT `0x6`–`0xE`, NTF `0x3`–`0xF`, TS `0x2`–`0xF`, ITS `1000`–`1111`, flags bits 3–2 `11`) | warning | 6.3, 6.6 |
 | TF-007 | The leap-year bit disagrees with the day or the year | warning | 6.3, 6.8 |
 | TF-008 | Time packets on a channel the setup record does not declare TIMEIN | warning | 6.4 |
 | TF-009 | A declared time channel carries no time packets | information | 6.4 |
@@ -383,12 +385,14 @@ nothing is wrong.
 
 Q-FLAGS (owner 2026-11-12, refine): bit 6=1/bit 7=0 is an error with no
 stamp time. Bit 6=1/format 11 is undefined-format error with no stamp time.
-Bit 6=0/format 11 retains the padded RTC value with TF-005 warning; if bit 7=1,
+Bit 6=0/format 11 retains the padded RTC value with TF-006 warning; if bit 7=1,
 the secondary header time is unreadable and reported separately, without
 discarding the RTC stamp. These conditions are scoped to the affected value,
 not a reason to discard every time in the packet. Verbatim sources and
 page checks: [Q-FLAGS analysis](analysis/Q-FLAGS-2026-11-12.md);
 L1-IPT-007 → L2-IPT-107 → L3-IPT-107.
+
+**Open implementation item Q-FLAGS-ERROR:** TF-006 remains the accepted reserved-VALUE warning (including flags format 11); TF-005 remains the reserved-BITS warning. Neither row nor default level changes. For source=1/format=11 with presence=1, no existing error-level finding fits: TF-004 is scoped to malformed time packets, TF-012 to checksum failure, and TF-015 to bit 6 without bit 7. Return no secondary-derived time and an error outcome, retain TF-006, and leave its numeric error-finding assignment open; recommend a separately reviewed explicit undefined-secondary-format error finding, with no numeric ID allocated here. The same assignment gap applies to an unreadable own secondary time in source=0/presence=1/format=11; keep the RTC value. Source=1/presence=0 already has TF-015. Owner 2026-11-13 explicitly preserves TF-005/TF-006.
 
 Weak time (contract 6.5) is not a finding: every answer's basis carries
 it.
@@ -498,7 +502,7 @@ wrong are retired and never reused (L1, section "Prototype requirements").
    L2/L3 for accepted behaviour and remaining rounding proposals.
 6. **The reading register** (`docs/INTERPRETATIONS.md`, RDG-001 to RDG-012):
    prior Design states remain unchanged; RDG-012 is accepted (owner 2026-11-12),
-   with written RFC/all-edition analysis and fraction rounding still proposed.
+   with written RFC/all-edition analysis and floor rounding accepted, owner 2026-11-13.
    Two-person review remains pending.
    RDG-003 (`TFMT` I "Internal") is accepted as an inference;
    RDG-007 (ITS before 106-17, T-14) and RDG-008 (the checksum, T-15,

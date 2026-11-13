@@ -2,8 +2,7 @@
 
 Owner direction, 2026-11-12: **“make this as correct as possible”**. This is
 written requirements analysis, not an implementation change or human Review.
-RDG-012 Design is accepted; fractional rounding below remains an explicit
-proposal. Existing Review fields and other Design decisions are unchanged.
+RDG-012 Design is accepted; fractional floor rounding is accepted by the owner, 2026-11-13. Existing Review fields and other Design decisions are unchanged.
 
 ## Source and page checks
 
@@ -120,7 +119,7 @@ fallback that claims evidence. With no supplied pivot, the accepted labelled
 era0 fallback applies. Never inspect the execution environment's time.
 The pivot provides era, not a new source of timestamp seconds/fraction.
 
-## Unknown timestamp and fraction proposal
+## Unknown timestamp and accepted fraction rounding
 
 Check raw **s=0 and f=0 before rounding or era conversion**. This is the
 unknown/unsynchronized sentinel: retain raw evidence, emit a finding, and
@@ -128,15 +127,17 @@ produce no absolute time even if an era declaration was supplied. It also
 coincides numerically with an era boundary; the accepted sentinel rule takes
 precedence. Raw s=0, f!=0 is not the sentinel, even if rounding produces 0 ns.
 PTP zero is not this NTP sentinel; its stated TAI epoch remains a valid raw
-answer, with UTC subject to table coverage.
+answer; UTC conversion records table currency and uses the last known offset
+outside coverage, labelled possibly out of date with TF-021 warning.
 
-**PROPOSAL FOR OWNER, not accepted rounding:** floor/truncate
+**Accepted owner 2026-11-13:** floor (round toward zero for this unsigned
+fraction)/truncate
 `(u64(f) * 1000000000) / 4294967296`. It is deterministic, loses less than
 1 ns, never produces a 1e9-ns carry, and preserves the original fraction for
 lossless wire reproduction. Expected boundaries: 0 -> 0 ns,
 0x80000000 -> 500000000 ns, 0xFFFFFFFF -> 999999999 ns. Mark rounding and
-quantization in the basis. The accepted Design field covers the reckoning
-and evidence policy; it does not silently approve this proposal.
+quantization in the basis. The rounding decision is now explicit; no
+Design or Review field is changed.
 
 ## Leap ambiguity and table currency
 
@@ -175,10 +176,13 @@ PTP is different: retain TAI seconds since 1970 and nanos without any leap
 adjustment during parsing. To obtain UTC, select the date-appropriate
 TAI−UTC offset on the table's TAI-side intervals and subtract it, preserving
 covered leap state. Record table identity and currency. **Outside supported
-coverage, no UTC answer**; the TAI answer remains. The final known transition
-is not itself the table's known-current-through date. This supersedes the
-old contract's last-offset-after-coverage fallback for PTP only; it does not
-make NTP's direct UTC mapping depend on an offset table.
+coverage use the last known offset**, label the UTC conversion possibly out
+of date and raise **TF-021 (warning)**; retain TAI and offset/table provenance
+(contract 6.8/6.9, L1-TAI-004; owner 2026-11-13). The earlier contrary no-UTC
+instruction came from the coordinator brief and is withdrawn, not an owner
+decision. No known offset at all is missing context, not permission to invent
+one. The last transition is not the table's known-current-through date; NTP
+direct UTC mapping remains independent of cumulative offsets.
 
 ## Planned independent verification, not tests executed here
 
@@ -197,13 +201,14 @@ checked separately from any Rust implementation. Future tests must cover:
 - Every era evidence route and its exact basis label, adjacent-era pivots,
   missing pivot, exact half-era tie/conflict, era rollover and raw-zero cases.
 - Raw fractions 0/1/0x80000000/0xFFFFFFFF; exact original-word retention and
-  sentinel detection before rounding. Approval of floor remains pending.
+  sentinel detection before rounding. Floor is accepted owner 2026-11-13.
 - A synthetic covered positive insertion with B-1, B, B+fraction and B+1;
   value retained and leap ambiguity distinct from a definite second60.
   Missing/stale/empty coverage must not fabricate certainty.
 - PTP within coverage, its TAI-side leap transition, table before-start and
   after-end, and a long no-new-transition interval with current metadata:
-  UTC only when covered, TAI always retained for readable raw input.
+  outside coverage UTC retained with last known offset, possibly-out-of-date
+  label and TF-021; TAI always retained for readable raw input.
 - Every archived edition above, not a fixture made by the crate's own
   encoder; no host clock, real recordings or extra dependencies in CI.
 
