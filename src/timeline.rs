@@ -188,6 +188,9 @@ pub struct ReferenceInput {
     pub its: Option<IrigTimeSource>,
     /// Actual format resolution, in ns (not arithmetic output resolution).
     pub precision_ns: u64,
+    /// Original bounded wire reading and explicit layout, including reserved
+    /// bits and leap labels which cannot be projected into this core calendar.
+    pub wire: Option<(TimeF1Layout, crate::format1::Format1Reading)>,
     /// Original channel-specific word where available.
     pub raw_csdw: Option<u32>,
     /// Basis of a resolved year; unknown remains unknown.
@@ -236,6 +239,7 @@ impl ReferenceInput {
             format,
             its: reading.csdw.irig_time_source_for_layout(layout),
             precision_ns: 10_000_000,
+            wire: Some((layout, reading)),
             raw_csdw: Some(reading.csdw.as_raw()),
             year_origin,
         })
@@ -410,6 +414,16 @@ impl TimelineBuilder {
                 .first_time_packet
                 .get_or_insert(packet.id);
             if let Some(input) = packet.reference {
+                if let Some((layout, wire)) = input.wire {
+                    if wire.csdw.validate_reserved(layout).is_err()
+                        || wire.reserved_body_bits.iter().any(|bits| *bits != 0)
+                    {
+                        self.finding(5, key, Some(packet.channel), None, None);
+                    }
+                    if wire.time.is_some_and(|t| t.is_leap_second()) {
+                        self.finding(22, key, Some(packet.channel), None, None);
+                    }
+                }
                 let mut reasons = Vec::new();
                 if !packet.declared_timein {
                     reasons.push(Rejection::Undeclared);
@@ -493,7 +507,7 @@ impl TimelineBuilder {
     ) {
         let default = match code {
             4 => Severity::Error,
-            11 | 18 => Severity::Information,
+            11 | 18 | 22 => Severity::Information,
             _ => Severity::Warning,
         };
         self.findings.push(TimelineFinding {

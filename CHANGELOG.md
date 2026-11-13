@@ -14,7 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   retained reference admission evidence, nearest/preceding lookup, counter-only
   results, complete implemented-policy snapshots, source/format/ITS/scale/year
   basis, and per-session/channel quality. TF severities follow architecture §8.
-  Existing correlator/streaming entry points remain compatibility APIs; use
+  Retain the bounded wire reading/layout: TF-005 reserved warnings keep the
+  value, and TF-022 leap labels remain available even when projection needs
+  context. Existing correlator/streaming entry points remain compatibility APIs; use
   the new builder for policy/session-aware answers. No automatic year inference,
   inverse lookup, drift correction, Format 2 conversion, leap-label arithmetic,
   snapshot serialization or streaming rebuild is claimed by this first part.

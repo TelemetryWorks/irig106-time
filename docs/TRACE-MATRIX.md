@@ -233,7 +233,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1-TAI-004 | L2-TAI-104 | _(none)_ | Draft |
 | L1-TAI-005 | L2-TAI-105 | `tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance`<br>`tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value` | Implemented |
 | L1-TAI-006 | L2-TAI-106 | `tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance` | Implemented |
-| L1-TAI-007 | L2-TAI-107 | `tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates` | Implemented |
+| L1-TAI-007 | L2-TAI-107 | `tests/offline_timeline.rs::bounded_wire_findings_survive_reference_admission`<br>`tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
@@ -245,7 +245,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L2-TAI-104 | L3-TAI-104 | _(TBD)_ | Draft |
 | L2-TAI-105 | L3-TAI-105 | `tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance`<br>`tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value` | Implemented |
 | L2-TAI-106 | L3-TAI-106 | `tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance` | Implemented |
-| L2-TAI-107 | L3-TAI-107 | `tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates` | Implemented |
+| L2-TAI-107 | L3-TAI-107 | `tests/offline_timeline.rs::bounded_wire_findings_survive_reference_admission`<br>`tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates` | Implemented |
 
 ### L1-WORD: Time words inside data
 
@@ -322,7 +322,7 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-COR-001 | L2-COR-101 | _(none)_ | Draft |
+| L1-COR-001 | L2-COR-101 | `tests/offline_timeline.rs::bounded_wire_findings_survive_reference_admission` | Implemented |
 | L1-COR-002 | L2-COR-102 | `tests/offline_timeline.rs::both_literal_examples_carry_reproducible_basis`<br>`tests/offline_timeline.rs::contract_example_literal_wire_baseline`<br>`tests/offline_timeline.rs::handbook_example_literal_wire_baseline`<br>`tests/offline_timeline.rs::nearest_preceding_ties_counter_only_and_policy_snapshots` | Implemented |
 | L1-COR-003 | L2-COR-103 | `tests/offline_timeline.rs::channel_rank_admission_none_and_caller_no_fallback`<br>`tests/offline_timeline.rs::valid_count_id_and_caller_preference_are_ordered` | Implemented |
 | L1-COR-004 | L2-COR-104 | `tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons` | Implemented |
@@ -340,7 +340,7 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L2-COR-101 | L3-COR-101 | _(TBD)_ | Draft |
+| L2-COR-101 | L3-COR-101 | `tests/offline_timeline.rs::bounded_wire_findings_survive_reference_admission` | Implemented |
 | L2-COR-102 | L3-COR-102 | `tests/offline_timeline.rs::both_literal_examples_carry_reproducible_basis`<br>`tests/offline_timeline.rs::contract_example_literal_wire_baseline`<br>`tests/offline_timeline.rs::handbook_example_literal_wire_baseline`<br>`tests/offline_timeline.rs::nearest_preceding_ties_counter_only_and_policy_snapshots` | Implemented |
 | L2-COR-103 | L3-COR-103 | `tests/offline_timeline.rs::channel_rank_admission_none_and_caller_no_fallback`<br>`tests/offline_timeline.rs::valid_count_id_and_caller_preference_are_ordered` | Implemented |
 | L2-COR-104 | L3-COR-104 | `tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons` | Implemented |
@@ -633,7 +633,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | ENC | 3 | 3 | 3 | 0 | 0 | 0 | 0 |
 | EDN | 3 | 4 | 4 | 2 | 2 | 2 | 2 |
 | DECL | 2 | 2 | 2 | 0 | 0 | 0 | 0 |
-| COR | 13 | 13 | 13 | 10 | 10 | 10 | 10 |
+| COR | 13 | 13 | 13 | 11 | 11 | 11 | 11 |
 | ANS | 5 | 5 | 5 | 2 | 2 | 2 | 2 |
 | POL | 3 | 4 | 4 | 2 | 2 | 2 | 2 |
 | FND | 5 | 5 | 5 | 0 | 0 | 0 | 0 |
@@ -645,13 +645,13 @@ This matrix is the single source of truth for live status; the requirement docum
 | CLI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
 | REL | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
 | TST | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
-| **Total** | **124** | **144** | **144** | **43** | **43** | **43** | **43** |
+| **Total** | **124** | **144** | **144** | **44** | **44** | **44** | **44** |
 
 The countable requirement set is every L2 and L3 requirement plus the 0 L1 *leaf* requirement(s) (L1s with no L2 decomposition yet). Composite L1s are verified through their children.
 
-**Tested by at least one test marker**: 86 of 288 (29.9%).
+**Tested by at least one test marker**: 88 of 288 (30.6%).
 
-**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 86 of 288 (29.9%).
+**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 88 of 288 (30.6%).
 
 ### Orphan check
 

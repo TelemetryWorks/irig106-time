@@ -106,6 +106,7 @@ fn reference(second: u8) -> ReferenceInput {
         format: TimeFormat::IrigB,
         its: None,
         precision_ns: 10_000_000,
+        wire: None,
         raw_csdw: None,
         year_origin: YearOrigin::Unknown,
     }
@@ -531,4 +532,39 @@ fn none_format_never_supplies_a_readable_body() {
     let t = b.finish();
     assert!(t.lookup(key).unwrap().time.is_none());
     assert!(!t.sessions()[0].references[0].admitted);
+}
+
+/// Requirements: L1-COR-001, L2-COR-101, L3-COR-101, L1-TAI-007, L2-TAI-107, L3-TAI-107
+#[test]
+fn bounded_wire_findings_survive_reference_admission() {
+    // Figure 11-13: word0 bit15 reserved, value retained (TF-005).
+    let mut bytes = CONTRACT;
+    bytes[29] |= 0x80;
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    let key = b.observe(source_packet(1, &bytes), false).unwrap();
+    let t = b.finish();
+    assert!(t.lookup(key).unwrap().time.is_some());
+    assert!(
+        t.findings()
+            .iter()
+            .any(|f| f.code == 5 && f.severity == Severity::Warning)
+    );
+    // Literal UTC day365 23:59:60: retained wire label, no calendar normalization.
+    let r = ReferenceInput::format1(
+        &[0x41, 0, 0, 0, 0, 0x60, 0x59, 0x23, 0x65, 3],
+        10,
+        TimeF1Layout::SourceWithIts17,
+        ScalePolicy::default(),
+    )
+    .unwrap();
+    assert_eq!(r.wire.unwrap().1.time.unwrap().seconds, 60);
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    let key = b.observe(packet(1, 1, 0, Some(r)), false).unwrap();
+    let t = b.finish();
+    assert!(t.lookup(key).unwrap().time.is_none());
+    assert!(
+        t.findings()
+            .iter()
+            .any(|f| f.code == 22 && f.severity == Severity::Information)
+    );
 }
