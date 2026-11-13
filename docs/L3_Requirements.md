@@ -1,9 +1,10 @@
 # irig106-time — Level 3 Requirements
 
-> **Status: draft for owner and independent review, 2026-11-12.**
+> **Status: requirements updated for owner decisions, 2026-11-13; independent review pending.**
 > Rebuild requirements, not implementation evidence. Replaces the prototype
 > document. Derives from the current L1, the contract, accepted ADRs, the
-> architecture, and the owner's 2026-11-11 answers (ROADMAP questions 1–5).
+> architecture, the owner's 2026-11-11 answers, and the five L2 decisions
+> of 2026-11-12 (see L2's accepted-decision table).
 > No Review field or owner-set Design status is changed by this draft.
 
 ## Scope and conventions
@@ -13,7 +14,7 @@ categories**, not the 144 mentioned in the assignment. Every one has a
 complete L1 → L2 → L3 path; no missing L1 requirements have been invented. The prototype
 identifiers below are retired, never reassigned; new base IDs start at
 101 and additional decompositions at 201. They do not imply existing test
-coverage. Implementation is a later tests-first step (ADR-0016). There are **143
+coverage. Implementation is a later tests-first step (ADR-0016). There are **144
 active requirements at this level**; all 27 L1 categories are covered.
 
 Every obligation uses SHALL. Verification is planned: T = Test, I =
@@ -30,19 +31,22 @@ are recorded separately in STANDARD-REVIEW T-10 and RDG-002. Requirements based 
 are product decisions, not claims that the standard prescribes an
 algorithm. Quotes are verbatim; derived arithmetic and proposed choices
 are identified as such. Archive provenance and rendered-page checks are
-in STANDARD-REVIEW T-10 and INTERPRETATIONS RDG-002.
+in STANDARD-REVIEW T-10 and INTERPRETATIONS RDG-002. RFC 1305/5905 are external
+primary sources, not archived there; RDG-012 cites their sections and pages.
 
 Shared-value contracts target the corrected irig106-types semantics of
 contract section 8.6 (T-5/T-6/T-7/T-9), not the current prototype dependency.
-A source's unresolved context is retained explicitly; Q-items below are
-proposals requiring owner decisions, not silently implemented assumptions.
+A source's unresolved context is retained explicitly. The accepted 2026-11-12
+decisions are distinguished from remaining owner proposals; neither is
+silently treated as implemented code.
 Human Review stays pending under the register's two-person rule.
 
 L3 states implementation obligations and planned verification cases, not
 Rust source changes. Each entry names its immediate L2 parent and its L1
 ancestor explicitly. Names are responsibility boundaries, not a commitment
-to a new public type or dependency. See L2 for owner questions Q-DEFAULT
-through Q-CLI-EXIT, Q-EDITION and Q-TFMT-DEFAULT; the same unresolved constraints bind L3.
+to a new public type or dependency. See L2 for the five accepted 2026-11-12 decisions and remaining
+Q-FLAGS/Q-CLI-EXIT/Q-EDITION/Q-TFMT-DEFAULT questions. NTP rounding remains
+proposed; Chapter 4 context is settled while characters/bits wording is not.
 
 ## Shared types and edition qualification
 
@@ -127,13 +131,13 @@ legacy differences qualify their L2/L3 decomposition without rewriting L1.
 
 **L1 ancestor**: L1-ABS-002
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Eight-byte layout: [0..2) zero, [2..4) microseconds, [4..6) low, [6..8) high, each word little-endian. Compute ns = ((high * 65536 + low) * 10000000) + microseconds * 1000 in u64; require microseconds <=9999. Permit binary low bit 15 under the DERIVED arithmetic reading in T-10 despite the zero drawn in Figure 4-4/4-5; do not describe it as an unambiguous figure transcription. Do not split a day field from the binary count. Calendar resolution requires caller context (Q-CH4).
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Eight-byte layout: [0..2) reserved, [2..4) microseconds, [4..6) low, [6..8) high, each u16 LE. Compute ns=((high*65536+low)*10000000)+microseconds*1000, usec<=9999. Keep T-10's DERIVED full binary count including low bit15 despite the shared-row zero; never split a binary day. Reserved words are separate TF-005 warnings, not discarded values. Absolute calendar reconstruction requires caller origin under the accepted Q-CH4 decision; absent origin returns labelled partial time, never day 1/year/origin from a nearby packet.
 
 **Shared implementation prerequisite**: Do not use c59e004 Ch4BinaryTime::from_secondary_bytes or its delegating from_intra_packet_bytes as-is: they swap high/usec relative to Figure 11-4. Per accepted ADR-0015 the shared fix is merged in irig106-types 48f1834 (types PR #4): reserved/usec/low/high layout and full binary count. Adopt that corrected revision in the separate code slice; this documentation change does not update dependencies.
 
-**Source**: "00 = Chapter 4 binary weighted 48-bit time format. The two lsbs of the 64-bit packet secondary header time and IPTS shall be zero-filled" (§11.2.1.1 g); Figure 11-4; Chapter 4 §4.7. The word layout is to be confirmed on the page images of Figures 11-4 and 4-4 before L2 (T-10) (confirmed 2026-11-12, T-10). Prototype identifier kept.
+**Source**: "resolution of 655.36 seconds", "10 milliseconds", "three least significant bits of the BCD Julian date", "at a rate necessary to resolve time ambiguities" (106-24R1 Chapter 4 §4.7, printed 4-11 / PDF 15); RCC 123-20 `enI106_Ch4Binary2IrigTime`, printed B-43 / PDF 149, applies word weights without an origin. Explicit caller context and partial results are owner policy (2026-11-12); historical characters/bits wording remains unresolved (T-10). Figure 11-4, printed 11-10 / PDF 18; raw layout already confirmed in T-10 and adopted from types 48f1834.
 
-**Planned verification**: Hand-derived 00 00 0f 27 34 12 01 00 gives 701969999000 ns; nonzero reserved bytes, microseconds=9999/10000, high=0xFFFF, short buffers, and missing calendar origin. T-10 must fail on the prototype. Independent top-bit fixture: `00 00 00 00 00 80 00 00` -> low=0x8000, high=usec=0 -> 327.68 s (327680000000 ns); accept under the DERIVED binary reading of T-10, and retain BCD bit 15=0. The low=0x1234 fixture alone cannot reject the opposing reading.
+**Planned verification**: Retain distinct-word and low=0x8000 fixtures and usec9999/10000; raw values survive reserved warnings; no-origin result stays labelled partial, explicit-origin reconstruction is separately qualified. Retained raw-layout fixtures: Hand-derived 00 00 0f 27 34 12 01 00 gives 701969999000 ns; nonzero reserved bytes, microseconds=9999/10000, high=0xFFFF, short buffers, and missing calendar origin. T-10 must fail on the prototype. Independent top-bit fixture: `00 00 00 00 00 80 00 00` -> low=0x8000, high=usec=0 -> 327.68 s (327680000000 ns); accept under the DERIVED binary reading of T-10, and retain BCD bit 15=0. The low=0x1234 fixture alone cannot reject the opposing reading.
 
 **L3-ABS-103** · Parent: L2-ABS-103 · Verification: T
 
@@ -421,31 +425,31 @@ legacy differences qualify their L2/L3 decomposition without rewriting L1.
 
 **L1 ancestor**: L1-NTP-002
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Keep the raw unsigned 32 seconds and an optional caller era. Do not silently choose a century after counter rollover or convert the standard's phrase "includes leap seconds" into an extra accumulated-offset arithmetic rule. Q-NTP requires documented conversion semantics before code; raw decoding remains possible.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Resolve the era in this order: explicit caller era; else a unique nearest-era candidate within the RFC 5905 half-era window of caller-supplied approximate date or an independently dated absolute reference in the same session; else labelled era-0 policy assumption when no pivot evidence exists. Record era, evidence kind, pivot/reference identity, session and any assumption in the basis. Conflicting or exactly half-era ambiguous supplied pivots require explicit resolution, not a silently chosen era. Never use the host clock or treat a prior era-0-assumed NTP answer as independent dated evidence. Era 0 covers 1900-01-01 through just before 2036-02-07 06:28:16 UTC, not all earlier centuries.
 
-**Source**: "The NTP is referenced in UTC time with an epoch of January 1, 1900. The NTP time includes leap seconds" (§11.2.3.3). Prototype identifier kept.
+**Source**: "The NTP is referenced in UTC time with an epoch of January 1, 1900. The NTP time includes leap seconds." (106-24R1 §11.2.3.3, printed 11-26 / PDF 34); "the NTP timescale is in effect reset to UTC as each timecode is received" (RFC 1305 Appendix E.8, p.78). RDG-012, owner 2026-11-12; analysis: `docs/analysis/RDG-012-ntp-utc-era.md`. "Eras cannot be produced by NTP directly" and "they can be derived from external means" (RFC 5905 §6, p.12); "if the client is set within 68 years of the server" (§6, p.15); "0 h 1 January 1900 UTC" (§6, p.13). Evidence precedence and labelled era-0 fallback are owner policy (2026-11-12), specified in RDG-012.
 
-**Planned verification**: 1900 epoch, 0xFFFFFFFF to0 era boundary, missing/provided era and a leap insertion; expected UTC/Unix mapping must be reviewed against Q-NTP before implementation.
+**Planned verification**: Explicit era wins; caller-date and same-session dated-reference pivots before/after 2036; exact half-era ambiguity and conflicting pivots; no evidence gives labelled era 0; no host-clock dependence; do not relabel an assumed NTP date as independent evidence.
 
 **L3-NTP-103** · Parent: L2-NTP-103 · Verification: T
 
 **L1 ancestor**: L1-NTP-003
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Use integer floor((u64(fraction)*1000000000)/2^32); keep the original fractional word separately. This truncation is a proposed implementation choice, not additional standard wording.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: PROPOSED, OWNER DECISION REQUIRED: ns=floor((u64(fraction)*1000000000)/2^32). Preserve the original fraction and record truncation/rounding policy in the basis. This loses less than 1 ns, never carries into the seconds field, and does not change era selection. No rounding choice is claimed owner-approved by RDG-012 Design acceptance.
 
-**Source**: NTP version 3 (RFC 1305, cited by §11.2.3.3 a). Prototype identifier kept.
+**Source**: "32-bit fraction field" (RFC 5905 §6, p.13); "Time Unsigned Seconds Fractions" (106-24R1 Figure 11-16, printed 11-27 / PDF 35). Floor rounding is a remaining proposal for the owner, not standard wording (RDG-012).
 
-**Planned verification**: Fraction 0=0 ns, 0x80000000=500000000 ns, 0xFFFFFFFF=999999999 ns; reverse conversion is tested against representability, not assumed bit-exact.
+**Planned verification**: Fraction 0 -> 0 ns, 0x80000000 -> 500000000 ns, 0xFFFFFFFF -> 999999999 ns under proposed floor; adjacent representability boundaries, raw-word preservation, no 1e9 carry; owner decision still required.
 
 **L3-NTP-104** · Parent: L2-NTP-104 · Verification: T
 
 **L1 ancestor**: L1-NTP-004
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Route raw seconds plus fraction through scale/calendar conversion with checked signed arithmetic. The nominal epoch separation is 2208988800 s; any ambiguous era or leap mapping returns an unresolved result under Q-NTP rather than wrapping or assuming the present era.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Use checked signed wide arithmetic: extended_seconds=era*2^32+raw_seconds; unix_seconds=extended_seconds-2208988800; apply the separately documented fraction rounding. UTC follows this Unix-style mapping: never add cumulative TAI-UTC (37 s would be a spurious shift after 2017). Before conversion, seconds=0 AND fraction=0 means unknown/unsynchronized regardless of era evidence: keep raw data, emit a finding, return no absolute time; seconds=0 with nonzero fraction is not the sentinel. Format 2 has no NTP leap indicator and cannot uniquely express 23:59:60. For a covered positive-leap transition with following-midnight Unix value B, NTP values mapping to [B,B+1) are leap-ambiguous under RFC 1305 Figure 8: emit a finding, keep the ordinary mapped value and ambiguity basis, never assert a definite leap label. Outside table coverage keep the NTP UTC answer and record coverage/currency uncertainty; absence of a detected ambiguity is not proof there was none.
 
-**Source**: Contract 3.3. Prototype identifier kept.
+**Source**: "2,208,988,800" (RFC 5905 §6 Figure 4, p.14, 1 Jan 1970); "a value of zero is a special case representing unknown or unsynchronized time" (§6, p.14); "knowledge of all previous leap seconds is lost" (RFC 1305 Appendix E.8, p.78); Figure 8 (p.79) repeats the same NTP number for UTC second 60 and midnight. "The NTP is referenced in UTC time with an epoch of January 1, 1900. The NTP time includes leap seconds." (106-24R1 §11.2.3.3, printed 11-26 / PDF 34); "the NTP timescale is in effect reset to UTC as each timecode is received" (RFC 1305 Appendix E.8, p.78). RDG-012, owner 2026-11-12; analysis: `docs/analysis/RDG-012-ntp-utc-era.md`.
 
-**Planned verification**: Before/at/after 1970, dates beyond 2036 using explicit era, negative Unix time, unknown era, and leap-second conversion limitations.
+**Planned verification**: RFC 5905 Figure 4: 1970, 1972, 1999-12-31 and 2036 era 1; a post-2016-leap date must not acquire +/-37 s; negative pre-1970 Unix time; exact all-zero sentinel vs zero seconds/nonzero fraction; [B,B+1) boundaries with a covered insertion; missing/stale table keeps value and records uncertainty.
 
 ## PTP
 
@@ -473,11 +477,11 @@ legacy differences qualify their L2/L3 decomposition without rewriting L1.
 
 **L1 ancestor**: L1-PTP-004
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Locate the table interval using TAI-side transition instants, then subtract its offset with checked arithmetic and preserve leap-second state where representable. Do not pick an offset by a guessed UTC year or always subtract the latest offset.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Select the offset using TAI-side transition instants and subtract TAI-UTC with checked arithmetic. Record the table identity, offset, coverage interval and known-current-through date; preserve leap-second state at a covered insertion. If the instant is before coverage start or after verified coverage end, return no UTC answer with a finding/context reason; retain raw TAI seconds/nanos. Never subtract the latest offset outside coverage or conflate NTP UTC reckoning with PTP TAI.
 
-**Source**: §11.2.3.3; L1-TAI. Prototype identifier kept.
+**Source**: "The PTP is referenced in International Atomic Time with an epoch of January 1, 1970. The PTP time does not include leap seconds." (106-24R1 §11.2.3.3, printed 11-26 / PDF 34). Date-appropriate table subtraction, currency provenance and no UTC outside coverage are owner correctness requirements (2026-11-12), not a claim the standard specifies a table API; RDG-012.
 
-**Planned verification**: A hand-constructed offset transition with before/at/after cases; historical offsets, stale table, and an insertion second that requires a leap label.
+**Planned verification**: Covered transition before/during/after, historical offset, table identity/currency, empty table, before coverage start and after coverage end: TAI retained, no UTC outside; no guessed year/latest-offset fallback.
 
 **L3-PTP-105** · Parent: L2-PTP-105 · Verification: T
 
@@ -547,11 +551,11 @@ legacy differences qualify their L2/L3 decomposition without rewriting L1.
 
 **L1 ancestor**: L1-TAI-004
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Store last-known-current date independently of the final transition; if requested date exceeds it, apply the last supported offset and emit TF-021 plus currency metadata. No offset exists before coverage start: return unresolved rather than using the final offset backwards.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Store coverage start/end and known-current-through independently of the final offset change. For NTP outside coverage keep its directly mapped UTC value and record that leap ambiguity could not be ruled out. For PTP outside coverage keep TAI but produce no UTC; do not reuse the last offset forwards or the first backwards. Record currency/coverage findings in the answer basis. This owner decision supersedes the contract 6.8 stale-offset fallback for PTP.
 
-**Source**: "The leap-second table does not reach the date … the conversion is given with the last known offset and labelled as possibly out of date" (contract 6.8).
+**Source**: "The PTP is referenced in International Atomic Time with an epoch of January 1, 1970. The PTP time does not include leap seconds." (106-24R1 §11.2.3.3, printed 11-26 / PDF 34). Date-appropriate table subtraction, currency provenance and no UTC outside coverage are owner correctness requirements (2026-11-12), not a claim the standard specifies a table API; RDG-012. "The NTP is referenced in UTC time with an epoch of January 1, 1900. The NTP time includes leap seconds." (106-24R1 §11.2.3.3, printed 11-26 / PDF 34); "the NTP timescale is in effect reset to UTC as each timecode is received" (RFC 1305 Appendix E.8, p.78). RDG-012, owner 2026-11-12; analysis: `docs/analysis/RDG-012-ntp-utc-era.md`.
 
-**Planned verification**: Exact coverage limit vs one instant after, unchanged offset over years, before first supported date, explicit caller extension updating currency.
+**Planned verification**: Exact coverage endpoints and one tick beyond; long no-new-leap interval vs stale table; NTP UTC kept with uncertainty, PTP raw TAI kept but UTC absent; no backwards/forwards unsupported offset.
 
 **L3-TAI-105** · Parent: L2-TAI-105 · Verification: T
 
@@ -577,11 +581,11 @@ legacy differences qualify their L2/L3 decomposition without rewriting L1.
 
 **L1 ancestor**: L1-TAI-007
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Require 23:59:60 with nanos<1e9, on day 181/182/365/366 when year unknown; with year known require June 30 or December 31. Permit assumed-UTC IRIG under its recorded assumption; reject second 60 in TAI/GPS/unknown scale. Emit TF-022 for an accepted value.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Require explicit 23:59:60 with nanos<1e9 on DOY181/182/365/366 when year unknown, or June30/December31 for a known year; allow labelled assumed-UTC IRIG and reject TAI/GPS/unknown second 60. Preserve the explicit leap label and TF-022. NTP seconds/fractions lack a leap indicator: apply RDG-012's covered insertion ambiguity window, keep the mapped value with a distinct leap-ambiguous finding, and do not report that an unambiguous second 60 was read.
 
-**Source**: RCC 200-16 §3.6 and Appendix A.2 ("time changes are made on December 31 and on June 30 at 2400 hours"); Figure 11-13 (tens of seconds in three bits); T-16; RDG-010.
+**Source**: "time changes are made on December 31 and on June 30 at 2400 hours" (RCC 200-16 Appendix A.2, printed A-1 / PDF 56); "Time Unsigned Seconds", "Time Unsigned Seconds Fractions" (106-24R1 Figure 11-16, printed 11-27 / PDF 35); RFC 1305 Appendix E.8 Figure 8, p.79. RDG-010 remains accepted; RDG-012 refines the NTP case.
 
-**Planned verification**: Leap/common-year June 30 and December 31, neighbouring days, other hours/minutes, known-year impossible day 366, each scale, and retained second 60 after serialization. T-16 regression.
+**Planned verification**: Retain Format 1 known/unknown-year UTC leap cases; NTP covered [B,B+1) ambiguity is distinct from explicit second 60, normal values outside, and unknown table coverage.
 
 ## WORD
 
@@ -589,11 +593,11 @@ legacy differences qualify their L2/L3 decomposition without rewriting L1.
 
 **L1 ancestor**: L1-WORD-001
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: For binary use T-10's explicitly DERIVED full 32-bit high/low count and microseconds as L3-ABS-102. For BCD Figure 4-4 high word: day fragment bits 15..13, tens-hour 12..11, hour 10..7, tens-minute 6..4, minute 3..0; low word: bit 15=0, tens-second 14..12, second 11..8, tenths 7..4, hundredths 3..0. Microseconds are binary 0..9999 in both. The shared-row fixed zero in Figures 4-4/4-5 conflicts with full binary counting; derive the binary exception from 655.36 s = 2^16 × 0.01 s and retain the zero for BCD. Validate digit/ranges and require explicit context and an owner decision on the edition-dependent day wording (Q-CH4). The BCD bit-field interpretation here is a 106-24R1 proposal, not a resolution of the older characters wording.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Keep T-10's DERIVED full 32-bit binary count. For BCD Figure 4-4 high word: day fragment bits15..13, tens-hour12..11, hour10..7, tens-minute6..4, minute3..0; low word: bit15=0, tens-second14..12, second11..8, tenths7..4, hundredths3..0. Microseconds are binary0..9999 in both. The binary exception to the shared-row zero remains DERIVED from 655.36 s=2^16*0.01 s, with the zero retained for BCD; validate digit/ranges. The 106-24R1 BCD field interpretation remains a proposal, not a resolution of the older characters wording; do not split a binary day field or silently resolve the older BCD day wording. Require an explicit caller binary origin; BCD requires caller year and full day plus declared interpretation context. Without it return a labelled partial time with raw words, weighting and missing context. Never assume day 1/year/origin or infer it from the nearest time packet; no such opt-in is added now. Preserve/report 106-04..15 "characters" versus 106-17+ "bits" as unresolved, even when caller context permits a labelled reconstruction.
 
-**Source**: "High and low order time words shall be binary or binary coded decimal (BCD) weighted, and microsecond words shall be binary weighted"; resolutions of 1 µs (to 9999), 10 ms, and 655.36 s binary or one minute BCD; "For BCD, the days field shall contain the three least significant bits of the BCD Julian date" (Chapter 4 §4.7); `C-d\PTM`, `C-d\BTM` (Chapter 9); contract 3.8. Layout to be confirmed with T-10 (confirmed 2026-11-12, T-10).
+**Source**: "resolution of 655.36 seconds", "10 milliseconds", "three least significant bits of the BCD Julian date", "at a rate necessary to resolve time ambiguities" (106-24R1 Chapter 4 §4.7, printed 4-11 / PDF 15); RCC 123-20 `enI106_Ch4Binary2IrigTime`, printed B-43 / PDF 149, applies word weights without an origin. Explicit caller context and partial results are owner policy (2026-11-12); historical characters/bits wording remains unresolved (T-10).
 
-**Planned verification**: One fixture per binary and BCD weighting, each bit group distinguished, decimal digit>9, day fragment collisions, 9999/10000 microseconds, and absent origin/day context returning partial time. Independent top-bit fixture: `00 00 00 00 00 80 00 00` -> low=0x8000, high=usec=0 -> 327.68 s (327680000000 ns); accept under the DERIVED binary reading of T-10, and retain BCD bit 15=0. The low=0x1234 fixture alone cannot reject the opposing reading.
+**Planned verification**: Binary count 0/0x8000/full count with absent/provided origin; BCD with absent year/full day and explicit context; day-fragment disagreement; older characters/current bits reported rather than silently harmonized; no nearest-packet setting or day-1 repair. Retained raw-layout fixtures: One fixture per binary and BCD weighting, each bit group distinguished, decimal digit>9, day fragment collisions, 9999/10000 microseconds, and absent origin/day context returning partial time. Independent top-bit fixture: `00 00 00 00 00 80 00 00` -> low=0x8000, high=usec=0 -> 327.68 s (327680000000 ns); accept under the DERIVED binary reading of T-10, and retain BCD bit 15=0. The low=0x1234 fixture alone cannot reject the opposing reading.
 
 **Edition wording (page images checked, §4.7):** 106-04 through
 106-15 say "three least significant characters of the BCD Julian date";
@@ -601,17 +605,19 @@ legacy differences qualify their L2/L3 decomposition without rewriting L1.
 Checked prose: 106-04 printed 4-8 / full-PDF 63; 106-05/07/09/11 printed
 4-8 / PDF 10; 106-13/15 printed 4-10 / PDF 14; 106-17 printed 4-11 /
 PDF 15; 106-24R1 printed 4-11 / PDF 15. Do not silently normalize
-characters to bits or implement calendar reconstruction pending Q-CH4.
+characters to bits. Owner2026-11-12 settled the explicit-context/partial-result
+boundary, not this wording ambiguity; reconstruction may use only explicit
+caller context with the unresolved wording reported.
 
 **L3-WORD-102** · Parent: L2-WORD-102 · Verification: T
 
 **L1 ancestor**: L1-WORD-002
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Accept caller-extracted C-d\NTM kind and values. Full 64-bit values use the appropriate NTP/PTP conversion; component words require the matching seconds or fraction/ns and epoch/era context supplied by the caller. Return incomplete/unresolved rather than invent zero components.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Accept caller-extracted C-d\NTM kind and raw values. Full NTP uses RDG-012 era evidence/assumption, zero sentinel, UTC mapping and leap ambiguity; full PTP retains TAI and requires a covered table for UTC. Component-only seconds/fraction/ns need their matching components and applicable explicit context; do not invent zero components. An NTP era is resolved by RDG-012, not always required as an explicit caller declaration.
 
-**Source**: `C-d\NTM`: "PTP Time (64-bit)", "PTP Seconds (32-bit)", "PTP Nanoseconds (32-bit)", "NTP Time (64-bit)", "NTP Seconds (32-bit)", "NTP Fractions (32-bit)" (Chapter 9, Table 9-11); contract 3.8.
+**Source**: "PTP Time (64-bit)", "NTP Time (64-bit)" (106-24R1 Chapter 9 Table 9-11, `C-d\NTM`); "The NTP is referenced in UTC time with an epoch of January 1, 1900. The NTP time includes leap seconds." (106-24R1 §11.2.3.3, printed 11-26 / PDF 34); "the NTP timescale is in effect reset to UTC as each timecode is received" (RFC 1305 Appendix E.8, p.78). RDG-012, owner 2026-11-12; analysis: `docs/analysis/RDG-012-ntp-utc-era.md`.
 
-**Planned verification**: All six Table 9-11 kinds, full-vs-component equivalence with explicit context, missing seconds, conflicting epoch/scale, and invalid PTP nanoseconds.
+**Planned verification**: All six Table 9-11 kinds; full NTP with declared/pivot/assumed era and zero sentinel; component words missing seconds/fraction/ns stay partial; full PTP outside table retains TAI only.
 
 ## ENC
 
@@ -735,11 +741,11 @@ characters to bits or implement calendar reconstruction pending Q-CH4.
 
 **L1 ancestor**: L1-COR-003
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Rank eligible channels lexicographically by declared-external status, descending valid-reference count, ascending ID, unless caller selection/ranking overrides it. An unavailable caller-selected channel yields no absolute time with evidence, never a silent substitute. For streaming channel stability and count-based choice see Q-STREAM-CHANNEL.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Offline: caller choice, declared-external preference, most valid references, then lowest ID. Stream, before data: caller-fixed channel; else TMATS-declared external TIMEIN (R-x\CDT-n=TIMEIN and R-x\TSRC-n=E); else lowest eligible channel ID, using lowest ID to break equal preference ties. This requires a complete known candidate set/declarations; if selection cannot be decided in advance, return counter-only until the caller chooses. Commit the selected channel for the stream session; never use future valid-reference counts, revise emitted answers or switch on lost lock. An unavailable caller-selected channel yields no absolute time with evidence, never a silent substitute.
 
-**Source**: "When multiple time channels are available, it is incumbent on the programmer or data analyst to determine and select the best source of time for a particular data set" (RCC 123-20 §5.6); "It is usually most correct to select one time channel only and to use this channel exclusively" (RCC 123-09 §6.6); contract 5.2 rule 4; a policy setting. Prototype identifier kept.
+**Source**: "it is incumbent on the programmer or data analyst to determine and select the best source of time" (RCC 123-20 §5.6, printed 5-44 / PDF 78); "TIMEIN" / "IRIG Time Input" (`R-x\CDT-n`, 106-24R1 Chapter 9 Table 9-4, printed 9-50 / PDF 56), "E" / "External" (`R-x\TSRC-n`, printed 9-72 / PDF 78). Option A ranking/commitment is owner policy (2026-11-12); the standard names attributes, not that ranking.
 
-**Planned verification**: Every ranking branch, equal counts, multiple external channels, unavailable explicit choice, configuration changes, and lock loss not causing automatic channel mixing.
+**Planned verification**: Offline count ranking unchanged; fixed caller choice; one/multiple declared external TIMEIN channels with ID ties; complete inventory lowest-ID fallback; incomplete/unknown inventory counter-only until caller choice; future counts/lost lock never alter prior answers.
 
 **L3-COR-104** · Parent: L2-COR-104 · Verification: T
 
@@ -775,21 +781,21 @@ characters to bits or implement calendar reconstruction pending Q-CH4.
 
 **L1 ancestor**: L1-COR-007
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Track each channel's SRC changes and emit TF-011 at the transition with previous/current source. Default does not split session or reset interpolation history solely because SRC changes; detected jumps still prevent unsafe interpolation as specified in streaming requirements.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Track SRC transitions with previous/current source and TF-011. A reported external-to-internal change does not change the stream's committed channel, reinterpret static TSRC declaration, or rewrite prior answers. Default reference retention remains labelled; independently detected jumps still prevent interpolation across discontinuities. A configured stop-on-loss option may withhold absolute answers but does not silently select another channel.
 
-**Source**: "If the time source is external (0x1) and lock on the external source is lost then the time source shall indicate Internal (0x0). Once lock on the external time source is regained, time source shall once again indicate external (0x1)" (§11.2.3.2 a); contract 5.2 rule 6.
+**Source**: "the time source shall indicate Internal (0x0)" (106-24R1 §11.2.3.2 note, printed 11-26 / PDF 34). "it is incumbent on the programmer or data analyst to determine and select the best source of time" (RCC 123-20 §5.6, printed 5-44 / PDF 78); "TIMEIN" / "IRIG Time Input" (`R-x\CDT-n`, 106-24R1 Chapter 9 Table 9-4, printed 9-50 / PDF 56), "E" / "External" (`R-x\TSRC-n`, printed 9-72 / PDF 78). Option A ranking/commitment is owner policy (2026-11-12); the standard names attributes, not that ranking.
 
-**Planned verification**: External->internal->external and RMM/None changes, stop-on-loss policy, lock return with jump, and packets retaining original reported source.
+**Planned verification**: SRC external->internal->external on committed channel; a competing channel gains more references; chosen channel unchanged and transition labelled; stop-on-loss withholds rather than switches.
 
 **L3-COR-108** · Parent: L2-COR-108 · Verification: T
 
 **L1 ancestor**: L1-COR-008
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Compare unwrapped RTC spacing with 1000000000 ns+tolerance; choose tolerance explicitly from policy. Proposed gap tolerance default is 0 ns (Q-STREAM-BOUND). For raw-network Format 2 mark the §11.2.3.3 exception separately: a library policy gap is not falsely described as a standard 1 Hz violation.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Compare same-channel valid reference spacing against 1000000000 ns+gap_tolerance; accepted default gap_tolerance=0 ns. Spacing >1 s is a finding even if within the 1.1 s hold allowance. Keep hold and gap tolerances separate policy fields. Preserve Chapter 11's raw-network Format 2 rate exception in the basis: a policy gap is not falsely called a 1 Hz standard violation.
 
-**Source**: "the time packet will be generated at a minimum frequency of 1 hertz" (§11.2.3.2; Chapter 10 §10.6.2); the Format 2 exception "unless it is recorded at the raw network rate" (§11.2.3.3); contract 5.4.
+**Source**: "minimum frequency of 1 hertz" (106-24R1 Chapter 10 §10.6.2); "packet generation times shall be equal to or less than 100 milliseconds" (§10.6.1 b); "stream commit time equal to or less than 1000 ms" (§10.6.1 c), all printed 10-26 / PDF 32. The 100 ms hold tolerance, zero gap tolerance, explicit progress, caps and release rules are owner-selected policy (2026-11-12), not timing guarantees imposed on a reader. "unless it is recorded at the raw network rate of the NTP or PTP frames" (106-24R1 §11.2.3.3, printed 11-26 / PDF 34).
 
-**Planned verification**: Exactly 1 s, plus one RTC tick, configured tolerance boundary, intervening invalid references, and raw-network Format 2 exception with rate metadata supplied by caller.
+**Planned verification**: Spacing at1 s,1 s+1 ns,1.05 s and1.1 s; zero/default and explicit nonzero gap tolerances independent of hold; raw-network exception labelled.
 
 **L3-COR-109** · Parent: L2-COR-109 · Verification: T
 
@@ -847,11 +853,11 @@ characters to bits or implement calendar reconstruction pending Q-CH4.
 
 **L1 ancestor**: L1-ANS-001
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Basis fields include session, channel/selection reason, reference IDs with counter/time, signed distance(s), position, SRC/FMT/ITS, scale and stated/assumed origin, precision, year source, leap/drift corrections, declaration presence, and policy/table identity. For interpolation include both endpoints and its rounding; do not claim 1 ns accuracy from a 10 ms reference.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Basis retains session, channel/selection reason, reference IDs with counter/time, signed distances, position, SRC/FMT/ITS, scale and stated/assumed origin, precision, year source, leap/drift corrections, declaration presence and policy/table identity. Interpolation retains both endpoints and its rounding; no claim of1 ns accuracy from10 ms references. Add committed stream channel and selection rule, hold/gap bounds, cap/timeout/EOF extrapolation reason, and caller progress. For NTP record raw seconds/fraction, era, declared/pivot/era0-assumed provenance, pivot/reference identity, rounding policy, zero/unsynchronized or leap-ambiguous finding and table coverage/currency. Do not call an assumed era standard-stated or normalize native GPS to UTC implicitly.
 
-**Source**: Contract 3.1 (with the precision of a reference: "consistent with the resolution with the time packet body format (10 milliseconds [ms] as measured by the 10-MHz RTC)", §11.2.3.2), 3.2, 3.5, 7.3; ADR-0011.
+**Source**: "Eras cannot be produced by NTP directly" and "they can be derived from external means" (RFC 5905 §6, p.12); "if the client is set within 68 years of the server" (§6, p.15); "0 h 1 January 1900 UTC" (§6, p.13). Evidence precedence and labelled era-0 fallback are owner policy (2026-11-12), specified in RDG-012. "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78); ADR-0010 (cited, selectable defaults). Owner decision 2026-11-12; policy/interpretation, not an added standard mandate.
 
-**Planned verification**: Contract 7 full expected basis, nearest/preceding/interpolated/extrapolated cases, unknown year/scale, weak references, and serialization preserving all provenance.
+**Planned verification**: Reproduce answers from basis only; declared/pivot/default era distinguishable; lost-lock channel stable; cap/timeout/EOF fallback labelled; ambiguity and stale/missing table survive serialization.
 
 **L3-ANS-102** · Parent: L2-ANS-102 · Verification: T
 
@@ -899,11 +905,11 @@ characters to bits or implement calendar reconstruction pending Q-CH4.
 
 **L1 ancestor**: L1-POL-001
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Policy includes boundaries, declaration/validity admission, channel ranking, offline reference strategy, source-loss handling, year ranking, gap/tolerance, jump threshold, late bound, pre-first handling, own-time tolerance, scale assumptions, finding severities, stream mode and buffer limits. Default offline nearest remains L1-COR-002; proposed stream default is standard, pending Q-DEFAULT. Wrap arithmetic is an invariant, not mutable policy.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Policy includes session boundaries, declaration/validity admission, channel ranking, offline reference strategy, source-loss handling, year ranking, gap/tolerance, jump threshold, late bound, pre-first handling, own-time tolerance, scale assumptions, finding severities, stream mode and buffer limits. Counter wrap is arithmetic, not mutable policy. Policy records offline-nearest separately from default stream Standard, selectable Interpolate, Option A committed channel, hold interval1 s+tolerance100 ms, gap tolerance 0 ns, progress/deadline basis and caller caps. Keep existing boundary/validity/source/year/scale/finding settings. Accepted owner defaults are not pending proposals; unrelated interpolation rounding/ties and mode-change flushing remain proposed where marked.
 
-**Source**: Contract 5.6; ADR-0010.
+**Source**: "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78); ADR-0010 (cited, selectable defaults). Owner decision 2026-11-12; policy/interpretation, not an added standard mandate. "minimum frequency of 1 hertz" (106-24R1 Chapter 10 §10.6.2); "packet generation times shall be equal to or less than 100 milliseconds" (§10.6.1 b); "stream commit time equal to or less than 1000 ms" (§10.6.1 c), all printed 10-26 / PDF 32. The 100 ms hold tolerance, zero gap tolerance, explicit progress, caps and release rules are owner-selected policy (2026-11-12), not timing guarantees imposed on a reader.
 
-**Planned verification**: A default snapshot and a test per field; defaults must match contract 5.6 and owner 2026-11-11 exceptions; no accepted default implied for Q-DEFAULT.
+**Planned verification**: Policy snapshots distinguish offline and stream, default/override values, separate gap/hold fields, explicit caps and progress, no host-clock reads or hidden unbounded queues.
 
 **L3-POL-102** · Parent: L2-POL-102 · Verification: T
 
@@ -929,11 +935,11 @@ characters to bits or implement calendar reconstruction pending Q-CH4.
 
 **L1 ancestor**: L1-POL-001
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Keep mode as an explicit enum {Standard, Interpolate}; document Standard as PROPOSED DEFAULT, OWNER DECISION REQUIRED, not accepted. Rationale: immediate answers reproduce the RCC 123-20 preceding-reference example; callers can explicitly select interpolation for drift correction. Any implementation must await this decision rather than assert approval from this draft.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Use explicit mode enum {Standard,Interpolate}; omitted stream mode selects Standard (owner 2026-11-12), not a proposed default. Its basis cites RCC 123-20 §5.6's subsequent-packet example and ADR-0010; callers explicitly select Interpolate for drift correction. This acceptance does not approve interpolation rounding or change offline nearest.
 
-**Source**: Owner 2026-11-11 ROADMAP question 2; RCC 123-20 §5.6; 106-24R1 Chapter 10 §10.6.2 only supplies cadence/first-packet constraints.
+**Source**: "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78); ADR-0010 (cited, selectable defaults). Owner decision 2026-11-12; policy/interpretation, not an added standard mandate.
 
-**Planned verification**: Default-mode acceptance test remains pending owner selection; both explicitly selected modes and serialized policy distinguishable regardless of default.
+**Planned verification**: Omitted mode selects Standard; explicit Standard/Interpolate; RCC example1000000->1150000 yields15 ms; offline-nearest remains distinct and every answer retains selected mode.
 
 ## FND
 
@@ -1121,47 +1127,57 @@ characters to bits or implement calendar reconstruction pending Q-CH4.
 
 **Planned verification**: Two sessions each compliant, missing time in the second, static-only prefix, time None and malformed first time packet.
 
+**L3-RDG-212** · Parent: L2-RDG-212 · Verification: I
+
+**L1 ancestor**: L1-RDG-002
+
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Implement RDG-012 only after its written analysis and edge-case tests. Preserve era, raw fractions, scale, policy assumptions, sentinel/ambiguity findings and table currency; never apply cumulative TAI-UTC to NTP, invent a leap indicator, or return PTP UTC outside coverage. Keep the fraction floor rule marked proposed until owner approval.
+
+**Source**: "2,208,988,800" (RFC 5905 §6 Figure 4, p.14, 1 Jan 1970); "a value of zero is a special case representing unknown or unsynchronized time" (§6, p.14); "knowledge of all previous leap seconds is lost" (RFC 1305 Appendix E.8, p.78); Figure 8 (p.79) repeats the same NTP number for UTC second 60 and midnight. "The NTP is referenced in UTC time with an epoch of January 1, 1900. The NTP time includes leap seconds." (106-24R1 §11.2.3.3, printed 11-26 / PDF 34); "the NTP timescale is in effect reset to UTC as each timecode is received" (RFC 1305 Appendix E.8, p.78). RDG-012, owner 2026-11-12; analysis: `docs/analysis/RDG-012-ntp-utc-era.md`. "The PTP is referenced in International Atomic Time with an epoch of January 1, 1970. The PTP time does not include leap seconds." (106-24R1 §11.2.3.3, printed 11-26 / PDF 34). Date-appropriate table subtraction, currency provenance and no UTC outside coverage are owner correctness requirements (2026-11-12), not a claim the standard specifies a table API; RDG-012.
+
+**Planned verification**: RFC 5905 Figure 4 date fixtures, era priority/pivot/assumption, all-zero timestamp, fraction boundaries, covered leap ambiguity and PTP coverage edges; implementation tests are not added by this documentation PR.
+
 ## STRM
 
 **L3-STRM-101** · Parent: L2-STRM-101 · Verification: T
 
 **L1 ancestor**: L1-STRM-001
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: The stream accepts caller-supplied monotonic progress and explicit end-of-recording; it does not read a clock. Keep only the late window, required channel/reference neighbours and a bounded pending queue. Export findings incrementally. Channel choice for an irrevocable answer must be explicit/stable (Q-STREAM-CHANNEL), not secretly changed by future counts.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Accept explicit monotonic caller progress and EOF, never host-clock reads. Before data commit Option A channel as L3-COR-103; undecidable choice yields counter-only until caller chooses. Keep bounded late window/reference neighbours/pending queue under mandatory caller caps; export findings incrementally. Default Standard and selectable Interpolate use the common answer/basis model but do not promise offline-nearest/count-ranking results. Never revise emitted answers.
 
-**Source**: Contract 4.8; architecture section 6.
+**Source**: "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78); ADR-0010 (cited, selectable defaults). Owner decision 2026-11-12; policy/interpretation, not an added standard mandate. "it is incumbent on the programmer or data analyst to determine and select the best source of time" (RCC 123-20 §5.6, printed 5-44 / PDF 78); "TIMEIN" / "IRIG Time Input" (`R-x\CDT-n`, 106-24R1 Chapter 9 Table 9-4, printed 9-50 / PDF 56), "E" / "External" (`R-x\TSRC-n`, printed 9-72 / PDF 78). Option A ranking/commitment is owner policy (2026-11-12); the standard names attributes, not that ranking. "minimum frequency of 1 hertz" (106-24R1 Chapter 10 §10.6.2); "packet generation times shall be equal to or less than 100 milliseconds" (§10.6.1 b); "stream commit time equal to or less than 1000 ms" (§10.6.1 c), all printed 10-26 / PDF 32. The 100 ms hold tolerance, zero gap tolerance, explicit progress, caps and release rules are owner-selected policy (2026-11-12), not timing guarantees imposed on a reader.
 
-**Planned verification**: Long synthesized stream at fixed input rate has bounded retained state; compare answers to batch with identical strategy and input prefix, mode changes, absent time channel, and deterministic replay without wall clock.
+**Planned verification**: Long fixed-rate and burst streams remain within caps; incomplete advance channel inventory yields counter-only; later references/counts/lock changes cannot rewrite output; caller progress and EOF drive release.
 
 **L3-STRM-201** · Parent: L2-STRM-201 · Verification: T
 
 **L1 ancestor**: L1-STRM-001
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Compute answer = preceding_absolute + signed_rtc_delta * 100 ns. Never use a later counter reference even if its packet arrived first; the caller may enable late ordering within its configured bounds. Include the preceding-reference basis and no drift correction.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Compute preceding_absolute+signed_rtc_delta*100 ns from the committed channel at/before query counter. Standard is the accepted default; never select a future counter reference merely because its packet arrived first. Preserve configured late-order handling without changing the committed channel; include preceding-reference basis and no drift correction.
 
-**Source**: Owner 2026-11-11, ROADMAP question2; RCC 123-20 §5.6, printed5-44/PDF78. This is handbook-supported product policy, not an IRIG-mandated algorithm.
+**Source**: "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78); ADR-0010 (cited, selectable defaults). Owner decision 2026-11-12; policy/interpretation, not an added standard mandate.
 
-**Planned verification**: RCC 123-20 example: RTC 1000000 at day 100 12:30:25.000; RTC 1150000 gives 12:30:25.015. Exact reference, future-only reference, and intervening other-channel references.
+**Planned verification**: RCC 123-20 example day 10012:30:25.000 RTC1000000 and query1150000 -> .015; explicit/default Standard, future-only reference, other-channel references and no usable preceding time.
 
 **L3-STRM-202** · Parent: L2-STRM-202 · Verification: T
 
 **L1 ancestor**: L1-STRM-001
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Given same-session/channel compatible references (r0,t0),(r1,t1), require r1>r0 and r0<=r<=r1; calculate t=t0+floor((r-r0)*(t1-t0)/(r1-r0)) with checked i128 rational arithmetic after scale normalization. Floor is a proposed deterministic rounding choice. Record both references, drift correction and reference precision; no precision claim beyond the inputs.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Use same-session, committed-channel, scale-compatible references r1>r0 and r0<=r<=r1. Proposed interpolation arithmetic remains t=t0+floor((r-r0)*(t1-t0)/(r1-r0)) using checked i128; this rounding is not newly owner-approved. Record both references and drift correction; apply L3-STRM-203/205 release rules if the next reference is unavailable within the bound or a cap is reached. Never imply greater accuracy than the coarser reference resolution.
 
-**Source**: Owner 2026-11-11, ROADMAP question 2; 106-24R1 Chapter 10 §10.6.2 (rate bound); architecture 6. Interpolation and its rounding are product policy, not standard wording.
+**Source**: "minimum frequency of 1 hertz" (106-24R1 Chapter 10 §10.6.2); "packet generation times shall be equal to or less than 100 milliseconds" (§10.6.1 b); "stream commit time equal to or less than 1000 ms" (§10.6.1 c), all printed 10-26 / PDF 32. The 100 ms hold tolerance, zero gap tolerance, explicit progress, caps and release rules are owner-selected policy (2026-11-12), not timing guarantees imposed on a reader. "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78); ADR-0010 (cited, selectable defaults). Owner decision 2026-11-12; policy/interpretation, not an added standard mandate.
 
-**Planned verification**: A 1 s RTC interval with absolute interval 1.000010 s gives 0.500005 s at midpoint; exact endpoints, non-integral result, RTC wrap, equal endpoint counters and incompatible scales.
+**Planned verification**: 1 s RTC interval and1.000010 s absolute interval -> proposed midpoint0.500005 s; explicit Interpolate, endpoints, rounding proposal, wrap/equal counters and incompatible scale; timeout/cap/EOF fallback.
 
 **L3-STRM-203** · Parent: L2-STRM-203 · Verification: T
 
 **L1 ancestor**: L1-STRM-001
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Track a pending packet deadline relative to explicit caller progress in recording/counter time; no wall-clock reads. Proposed hold tolerance 100 ms gives 1.1 s (Q-STREAM-BOUND); keep this separate from 1100 ms late ordering. At timeout/EOF emit preceding-reference time with extrapolated/fallback reason; a gap>1 s is a finding even if hold tolerance has not expired. Raw-network Format 2 exceptions retain their non-standard-violation label.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Hold bound=1000000000 ns+hold_tolerance, default hold_tolerance=100000000 ns (1.1 s). The caller supplies progress and the recorded deadline basis; do not read a wall clock. Gap tolerance is independently0 ns, so spacing>1 s is a finding during the hold allowance. At timeout/EOF release from a usable preceding reference as extrapolated with reason; absent one return counter-only. Chapter 10 §10.6.1c's <=1000 ms stream commit explains why time packets can appear late in file order; this does not guarantee interpolation succeeds. Keep hold and late-ordering bounds distinct, and retain the raw-network rate exception.
 
-**Source**: Owner 2026-11-11 ROADMAP question 2; 106-24R1 Chapter 10 §10.6.2; Chapter 11 §11.2.3.3 raw-network exception; RCC 123-20 §5.6 supports preceding-reference fallback.
+**Source**: "minimum frequency of 1 hertz" (106-24R1 Chapter 10 §10.6.2); "packet generation times shall be equal to or less than 100 milliseconds" (§10.6.1 b); "stream commit time equal to or less than 1000 ms" (§10.6.1 c), all printed 10-26 / PDF 32. The 100 ms hold tolerance, zero gap tolerance, explicit progress, caps and release rules are owner-selected policy (2026-11-12), not timing guarantees imposed on a reader.
 
-**Planned verification**: Reference at 1 s/just-after 1 s/at deadline/after deadline, no next reference, EOF before deadline, another channel arriving, and stalled progress. Owner fallback must be visible in basis.
+**Planned verification**: Next reference at1 s,1 s+1 ns,1.05 s,at deadline/after deadline; gap finding inside hold; explicit progress stalls, EOF and no usable preceding reference; hold override remains labelled policy.
 
 **L3-STRM-204** · Parent: L2-STRM-204 · Verification: T
 
@@ -1177,21 +1193,21 @@ characters to bits or implement calendar reconstruction pending Q-CH4.
 
 **L1 ancestor**: L1-STRM-001
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Constructor requires maximum pending packets/bytes and reference-state limits as explicit resource settings. Before a limit is exceeded, drain pending answers using the documented preceding-reference fallback or return a typed resource-limit error, recording the reason. Do not interpolate across a detected jump, unsupported scale transition or session reset; flush the old segment first.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Constructor requires explicit pending packet/byte and retained-reference caps. Before a cap would be exceeded, release pending data through the preceding-reference fallback, labelled extrapolated/cap reason; if no usable preceding time return counter-only with evidence. Timeout/EOF use the same release discipline, never silent dropping, a hidden queue, or an optional resource-error alternative in place of the accepted release rule. Reject invalid resource configuration separately. Do not interpolate across jump/reset/incompatible scale, nor revise emitted answers.
 
-**Source**: Architecture 6; ADR-0010/0011/0014; L1-STRM-001. Resource caps and discontinuity handling are proposed product rules; 106-24R1 §11.2.1.1 i supplies the session-continuity constraint.
+**Source**: "minimum frequency of 1 hertz" (106-24R1 Chapter 10 §10.6.2); "packet generation times shall be equal to or less than 100 milliseconds" (§10.6.1 b); "stream commit time equal to or less than 1000 ms" (§10.6.1 c), all printed 10-26 / PDF 32. The 100 ms hold tolerance, zero gap tolerance, explicit progress, caps and release rules are owner-selected policy (2026-11-12), not timing guarantees imposed on a reader. "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78); ADR-0010 (cited, selectable defaults). Owner decision 2026-11-12; policy/interpretation, not an added standard mandate.
 
-**Planned verification**: Fixed-rate long input, pathological data burst without reference, per-byte/per-packet limits, reference flood, duplicate counters, jump/reset during hold, and bounded exported findings with caller consumption.
+**Planned verification**: Packet/byte cap exactly at/one beyond limit, reference flood, data burst, timeout/EOF, no reference, invalid cap configuration and discontinuity; no state exceeds caller caps and release reason is retained.
 
 **L3-STRM-206** · Parent: L2-STRM-206 · Verification: T
 
 **L1 ancestor**: L1-STRM-001
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: On a requested mode change flush pending packets under their original mode and deadline/resource rules; then install a new policy snapshot at the declared effective input boundary. Never rewrite emitted answers or reuse references across a session boundary. Channel selection follows Q-STREAM-CHANNEL until the owner resolves prefix-vs-final ranking.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Mode-change flushing under the old snapshot remains a proposed transition rule, not a new owner decision. Whatever approved transition is used, retain old mode/deadline/cap/fallback basis on existing answers; never revise output or cross session boundaries. Channel selection follows accepted Option A (L3-COR-103), not the former unresolved Q-STREAM-CHANNEL question; source loss never implicitly chooses another channel.
 
-**Source**: Owner 2026-11-11 ROADMAP question 2 (both switchable); ADR-0010/0011; architecture 6. Transition flushing is a proposed implementation rule.
+**Source**: "it is incumbent on the programmer or data analyst to determine and select the best source of time" (RCC 123-20 §5.6, printed 5-44 / PDF 78); "TIMEIN" / "IRIG Time Input" (`R-x\CDT-n`, 106-24R1 Chapter 9 Table 9-4, printed 9-50 / PDF 56), "E" / "External" (`R-x\TSRC-n`, printed 9-72 / PDF 78). Option A ranking/commitment is owner policy (2026-11-12); the standard names attributes, not that ranking. "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78); ADR-0010 (cited, selectable defaults). Owner decision 2026-11-12; policy/interpretation, not an added standard mandate.
 
-**Planned verification**: Switch with empty/nonempty pending state, standard->interpolate->standard, two configurations, and reconstruction of each result from its retained policy snapshot.
+**Planned verification**: Mode change with pending data preserves old answer basis and resource bounds; explicit channel commitment and no count-based or lost-lock reassignment; no retroactive answer changes.
 
 ## ERR
 

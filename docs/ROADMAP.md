@@ -58,7 +58,9 @@ first option is the recommendation):
    preceding reference, labelled extrapolated, and a gap over 1 s is a
    finding. A packet before any time packet gets no absolute time and a
    finding; time source None (`0xF`) gives none. The standard gives no
-   guidance on these cases. Default mode still to be fixed in L2.
+   guidance on these cases. **Update, owner 2026-11-12:** default Standard;
+   100 ms hold tolerance/0 ns gap tolerance, explicit progress/caps and
+   committed Option A stream channel. See the accepted L2 decisions below.
    *(architecture section 13, point 5)*
 3. ~~Accept the 27 finding names and levels in `docs/architecture.md`
    section 8?~~ Yes (owner, 2026-11-11).
@@ -98,6 +100,32 @@ reporting.**
   prints `true` for each; the Security tab shows "Report a vulnerability".
 - *Also:* make sure the owner's GitHub notifications include security
   advisories, so a report is not missed.
+
+## L2 decisions accepted 2026-11-12
+
+The owner settled five of the nine L2 questions. Requirements and exact
+verbatim Source lines are recorded in
+[the decision/source audit](analysis/owner-decisions-2026-11-12.md).
+
+| Question | Decision |
+|---|---|
+| Q-DEFAULT | Standard/preceding reference is default (RCC 123-20 §5.6, printed 5-44; ADR-0010); interpolate explicitly selectable. |
+| Q-STREAM-BOUND | Hold1 s+100 ms policy tolerance, gap tolerance 0 ns; caller progress/caps, no hidden queue; cap/timeout/EOF releases extrapolated or counter-only without preceding time. Ch10 §10.6.2/§10.6.1b–c, printed 10-26, supplies 1 Hz/100 ms generation/1000 ms commit bases. |
+| Q-STREAM-CHANNEL | Option A before data: caller-fixed, else declared external TIMEIN (Ch9 Table 9-4 CDT/TSRC), else lowest ID; no offline count ranking. Undecidable -> counter-only until caller chooses; no revisions or lost-lock switches. |
+| Q-CH4 | Explicit binary origin or BCD year/full day, otherwise labelled partial; no nearest-time-packet option now. Ch4 §4.7/RCC 123-20 code supplies weights, not an origin; characters/bits wording stays unresolved. |
+| Q-NTP | Owner: "make this as correct as possible". New RDG-012 accepted: UTC-following NTP count, declared/pivot/labelled era0, zero sentinel, leap ambiguity and table currency; PTP UTC only inside table coverage, TAI retained outside. |
+
+**Still open:** Q-FLAGS, Q-CLI-EXIT, Q-EDITION and Q-TFMT-DEFAULT. NTP fraction
+rounding is a remaining proposal: recommend floor with raw fraction retained.
+Existing interpolation rounding/ties/mode-change flushing proposals are not
+silently accepted. Propose archiving RFC 1305/5905 in rcc-106-standards; they
+are external sources today, and this task does not archive them.
+
+**Next implementation work:** tests first against these revised requirements,
+including every RDG-012 analysis edge. The present source and slice-2
+NeedsContext tests are unchanged by the documentation PR; trace links do not
+prove the revised conversion semantics. No owner or human Review field was
+promoted by documentation work. The original initial sequence follows.
 
 **Next work, after the answers:**
 
