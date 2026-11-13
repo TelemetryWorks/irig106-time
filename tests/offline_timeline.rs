@@ -162,7 +162,10 @@ fn both_literal_examples_carry_reproducible_basis() {
         assert_eq!(r.input.raw_csdw, Some(0x3001));
         assert_eq!(r.input.format, TimeFormat::IrigB);
         assert_eq!(r.input.source, TimeF1Source::Source(TimeSource::External));
-        assert!(r.input.its.is_some());
+        assert_eq!(
+            r.input.its,
+            Some(irig106_time::IrigTimeSource::ExternalIrig)
+        );
         assert_eq!(r.input.precision_ns, 10_000_000);
         assert_eq!(r.input.year_origin, YearOrigin::Unknown);
         assert_eq!(r.input.scale.effective(), TimeScale::Utc);
@@ -567,4 +570,183 @@ fn bounded_wire_findings_survive_reference_admission() {
             .iter()
             .any(|f| f.code == 22 && f.severity == Severity::Information)
     );
+}
+
+/// Requirements: L1-COR-006, L2-COR-106, L3-COR-106
+#[test]
+fn review_literal_reserved_src_keeps_readable_time() {
+    // Ch11 11.2.3.2a, printed 11-25/PDF33: SRC 3 is reserved,
+    // a TF-006 warning; Format IRIG-B and its readable payload stay usable.
+    let payload = [3, 0x30, 0, 0, 0x35, 0x27, 0x45, 0x13, 0x87, 1];
+    let r = ReferenceInput::format1(
+        &payload,
+        10,
+        TimeF1Layout::SourceWithIts17,
+        ScalePolicy::default(),
+    )
+    .unwrap();
+    assert_eq!(r.source, TimeF1Source::Source(TimeSource::Reserved(3)));
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    let key = b.observe(packet(1, 1, 0, Some(r)), false).unwrap();
+    let t = b.finish();
+    assert!(t.lookup(key).unwrap().time.is_some());
+    assert!(t.sessions()[0].references[0].admitted);
+    assert!(
+        t.findings()
+            .iter()
+            .any(|f| f.code == 6 && f.severity == Severity::Warning)
+    );
+    // Reserved FMT still has no supported body and must not be admitted.
+    let r = ReferenceInput::format1(
+        &[0x91, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        10,
+        TimeF1Layout::SourceWithIts17,
+        ScalePolicy::default(),
+    )
+    .unwrap();
+    let mut b = TimelineBuilder::new(OfflinePolicy {
+        include_invalid: true,
+        ..Default::default()
+    })
+    .unwrap();
+    let key = b.observe(packet(1, 1, 0, Some(r)), false).unwrap();
+    let t = b.finish();
+    assert!(t.lookup(key).unwrap().time.is_none());
+    assert!(!t.sessions()[0].references[0].admitted);
+}
+
+/// Requirements: L1-COR-012, L2-COR-112, L3-COR-112, L1-ANS-005, L2-ANS-105, L3-ANS-105
+#[test]
+fn review_dynamic_before_time_has_tf002() {
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    let early = b.observe(packet(1, 3, 0, None), false).unwrap();
+    b.observe(packet(2, 1, 10_000_000, Some(reference(1))), false)
+        .unwrap();
+    let t = b.finish();
+    assert!(t.lookup(early).unwrap().time.is_none());
+    assert!(
+        t.findings()
+            .iter()
+            .any(|f| f.code == 2 && f.packet == 1 && f.severity == Severity::Warning)
+    );
+}
+
+/// Requirements: L1-COR-012, L2-COR-112, L3-COR-112
+#[test]
+fn review_session_without_time_has_tf001() {
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    let key = b.observe(packet(1, 3, 0, None), false).unwrap();
+    let t = b.finish();
+    assert!(t.lookup(key).unwrap().time.is_none());
+    assert!(
+        t.findings()
+            .iter()
+            .any(|f| f.code == 1 && f.session == 1 && f.severity == Severity::Warning)
+    );
+}
+
+/// Requirements: L1-COR-006, L2-COR-106, L3-COR-106
+#[test]
+fn review_readable_invalid_requires_opt_in() {
+    for include_invalid in [false, true] {
+        let mut b = TimelineBuilder::new(OfflinePolicy {
+            include_invalid,
+            ..Default::default()
+        })
+        .unwrap();
+        let mut r = reference(0);
+        r.value = ReferenceValue::Readable(AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(), false);
+        let key = b.observe(packet(1, 1, 0, Some(r)), false).unwrap();
+        let t = b.finish();
+        assert_eq!(t.sessions()[0].references[0].admitted, include_invalid);
+        assert_eq!(t.lookup(key).unwrap().time.is_some(), include_invalid);
+        assert!(
+            t.findings()
+                .iter()
+                .any(|f| f.code == 3 && f.severity == Severity::Warning)
+        );
+    }
+}
+
+/// Requirements: L1-ANS-005, L2-ANS-105, L3-ANS-105
+#[test]
+fn review_unknown_year_does_not_invent_day366() {
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    let mut r = reference(0);
+    r.value = ReferenceValue::Readable(AbsoluteTime::new(365, 23, 59, 59, 0).unwrap(), true);
+    b.observe(packet(1, 1, 0, Some(r)), false).unwrap();
+    let key = b.observe(packet(2, 3, 20_000_000, None), false).unwrap();
+    let a = b.finish().lookup(key).unwrap();
+    assert!(a.time.is_none());
+    assert_eq!(a.counter_ns, 2_000_000_000);
+    assert_eq!(
+        a.basis.unresolved,
+        Some("calendar/year boundary needs context")
+    );
+}
+
+/// Requirements: L1-COR-006, L2-COR-106, L3-COR-106
+#[test]
+fn review_nonleap_day366_is_malformed() {
+    let mut b = TimelineBuilder::new(OfflinePolicy {
+        include_invalid: true,
+        ..Default::default()
+    })
+    .unwrap();
+    // AbsoluteTime's year is metadata, so admission must validate this combination.
+    let mut r = reference(0);
+    r.value = ReferenceValue::Readable(
+        AbsoluteTime::new(366, 0, 0, 0, 0)
+            .unwrap()
+            .with_year(Some(2023))
+            .unwrap(),
+        true,
+    );
+    let key = b.observe(packet(1, 1, 0, Some(r)), false).unwrap();
+    let t = b.finish();
+    assert!(t.lookup(key).unwrap().time.is_none());
+    assert!(
+        t.sessions()[0].references[0]
+            .reasons
+            .contains(&Rejection::Malformed)
+    );
+    assert!(
+        t.findings()
+            .iter()
+            .any(|f| f.code == 4 && f.severity == Severity::Error)
+    );
+}
+
+/// Requirements: L1-FND-003, L2-FND-103, L3-FND-103
+#[test]
+fn review_rtc_sync_error_is_tf024_warning_value_kept() {
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    let mut p = packet(1, 1, 0, Some(reference(0)));
+    p.flags = 0x20;
+    let key = b.observe(p, false).unwrap();
+    let t = b.finish();
+    assert!(t.lookup(key).unwrap().time.is_some());
+    assert!(
+        t.findings()
+            .iter()
+            .any(|f| f.code == 24 && f.packet == 1 && f.severity == Severity::Warning)
+    );
+}
+
+/// Requirements: L1-POL-002, L2-POL-102, L3-POL-102
+#[test]
+fn review_duplicate_packet_identity_is_rejected() {
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    let first = b
+        .observe(packet(1, 1, 0, Some(reference(0))), false)
+        .unwrap();
+    assert_eq!(
+        b.observe(packet(1, 3, 1, None), false),
+        Err(irig106_time::TimeError::InvalidTimelineInput(
+            "duplicate packet identity"
+        ))
+    );
+    let t = b.finish();
+    assert!(t.lookup(first).unwrap().time.is_some());
+    assert_eq!(t.sessions()[0].references.len(), 1);
 }
