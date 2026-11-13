@@ -750,3 +750,16 @@ fn review_duplicate_packet_identity_is_rejected() {
     assert!(t.lookup(first).unwrap().time.is_some());
     assert_eq!(t.sessions()[0].references.len(), 1);
 }
+
+/// Requirements: L1-FND-003, L2-FND-103, L3-FND-103
+#[test]
+fn review_sync_finding_retains_counter_evidence() {
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    let mut p = packet(1, 1, 123, None);
+    p.flags = 0x20;
+    b.observe(p, false).unwrap();
+    let t = b.finish();
+    let f = t.findings().iter().find(|f| f.code == 24).unwrap();
+    // Existing API only: this is a behavioural failure before adding the field.
+    assert!(format!("{f:?}").contains("raw_rtc: Some"));
+}
