@@ -1,7 +1,8 @@
 # E2 bounded stream verification
 
 Base: main `ce78185` (merged E1); split recorded before code in working notes.
-One E2 core PR, about1,500 handwritten changed lines plus generated matrix.
+Initial E2 core: about1,500 handwritten changed lines plus generated matrix;
+review-requested tests and fixes are retained in the same PR.
 No human Design/Review fields or requirement statements changed.
 
 ## Executed evidence and honest provenance
