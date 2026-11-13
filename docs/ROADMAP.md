@@ -101,6 +101,21 @@ reporting.**
 - *Also:* make sure the owner's GitHub notifications include security
   advisories, so a report is not missed.
 
+## S00 decision/source and evidence audit (2026-11-13)
+
+[S00 audit](analysis/S00-decision-source-evidence-audit.md) inventories T-1
+through T-17, the recorded before/after limitations, and reading-analysis /
+human-review gaps at main `2b99624`. It corrects the stale covered-table-only
+PTP requirement and finding-catalog omissions using decisions already accepted
+on 2026-11-13; it implements no conversion or new finding producer.
+
+The coordinator's saved `coordination-work/irig106-time-0.8.0-plan.md` is a
+planning artifact, not a new release-scope approval. Its **plan Q1–Q6,
+Q3 deferrals and C1–C4 remain pending**. Those labels differ from the older,
+already answered roadmap questions below. No new IDs/levels, inverse bounds,
+JSON form, failure precedence, distribution mode, default policy or deferral
+is chosen by S00. No further code slice is started by this audit.
+
 ## L2 decisions accepted 2026-11-12/13
 
 The owner settled all nine L2 questions. Requirements and exact

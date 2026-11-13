@@ -734,7 +734,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL represent full network-time words separately from component-only words; use RDG-012 for full NTP era/UTC mapping and require missing components before constructing a complete time.
 
-**Source**: "PTP Time (64-bit)", "NTP Time (64-bit)" (106-24R1 Chapter 9 Table 9-11, `C-d\NTM`); "The NTP is referenced in UTC time with an epoch of January 1, 1900. The NTP time includes leap seconds." (106-24R1 §11.2.3.3, printed 11-26 / PDF 34); "the NTP timescale is in effect reset to UTC as each timecode is received" (RFC 1305 Appendix E.8, p.78). RDG-012, owner 2026-11-12; analysis: `docs/analysis/RDG-012-ntp-utc-era.md`. Retained earlier source: `C-d\NTM`: "PTP Time (64-bit)", "PTP Seconds (32-bit)", "PTP Nanoseconds (32-bit)", "NTP Time (64-bit)", "NTP Seconds (32-bit)", "NTP Fractions (32-bit)" (Chapter 9, Table 9-11); contract 3.8.
+**Source**: "PTP Time (64-bit)", "NTP Time (64-bit)" (106-24R1 Chapter 9 Table 9-11, `C-d\NTM`); "The NTP is referenced in UTC time with an epoch of January 1, 1900. The NTP time includes leap seconds." (106-24R1 §11.2.3.3, printed 11-26 / PDF 34); "the NTP timescale is in effect reset to UTC as each timecode is received" (RFC 1305 Appendix E.8, p.78). RDG-012, owner 2026-11-12; analysis: `docs/analysis/RDG-012-ntp-utc-era.md`. Retained earlier source: `C-d\NTM`: "PTP Time (64-bit)", "PTP Seconds (32-bit)", "PTP Nanoseconds (32-bit)", "NTP Time (64-bit)", "NTP Seconds (32-bit)", "NTP Fractions (32-bit)" (Chapter 9, Table 9-11); contract 3.8. "The PTP is referenced in International Atomic Time with an epoch of January 1, 1970. The PTP time does not include leap seconds." (106-24R1 §11.2.3.3, printed 11-26 / PDF 34). Owner 2026-11-13 confirms contract 6.8/6.9 and L1-TAI-004: outside leap-table coverage use the last known offset, label the UTC conversion possibly out of date, and raise TF-021 (warning); keep TAI and table/offset provenance. The contrary no-UTC rule came from the coordinator brief and was withdrawn, not an owner decision; RDG-012.
 
 **Verification Method**: Test (T)
 
@@ -1130,9 +1130,9 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-FND-001
 
-**Statement**: The library SHALL use the owner-accepted TF-001..TF-027 identities and severity defaults with structured evidence; caller severity overrides do not alter factual validity.
+**Statement**: The library SHALL use the owner-accepted TF-001..TF-028 identities and severity defaults with structured evidence; caller severity overrides do not alter factual validity.
 
-**Source**: Contract section 6; ADR-0013.
+**Source**: Contract section 6; ADR-0013. "Bits 3-2: Indicate the packet secondary header time format."; "11 = Reserved"; "1 = Packet secondary header time (bit 7 must be 1)." (106-24R1 §11.2.1.1 g, printed 11-8/11-9, PDF 16/17). The standard defines the flags, not finding IDs. Owner 2026-11-13, Q-FLAGS-ERROR accepts TF-028 "Secondary-derived time has an undefined format" at ERROR; architecture section 8. TF-001..TF-027 remain unchanged.
 
 **Verification Method**: Test (T)
 
@@ -1210,7 +1210,7 @@ does not settle it or replace its real-recording evidence.
 
 **Verification Method**: Inspection (I)
 
-**Planned verification**: Planned inspection: register-to-analysis-to-tests audit, including RDG-008 suspect dual checksum and unresolved human reviews. Do not mark page checks as the complete analysis.
+**Planned verification**: Planned inspection: register-to-analysis-to-tests audit, including RDG-008 suspect dual checksum and unresolved human reviews. Do not mark page checks as the complete analysis. Current inventory and remaining gaps: [S00 audit](analysis/S00-decision-source-evidence-audit.md). This audit is not satisfaction evidence and does not promote this obligation.
 
 #### L2-RDG-201
 
@@ -1826,7 +1826,7 @@ does not settle it or replace its real-recording evidence.
 
 **Verification Method**: Inspection (I)
 
-**Planned verification**: Planned inspection: finding/test inventory with prototype-fail/fix-pass results; an unrelated passing test cannot stand in for a missing regression.
+**Planned verification**: Planned inspection: finding/test inventory with prototype-fail/fix-pass results; an unrelated passing test cannot stand in for a missing regression. Current inventory and remaining gaps: [S00 audit](analysis/S00-decision-source-evidence-audit.md). This audit is not satisfaction evidence and does not promote this obligation.
 
 #### L2-TST-102
 
