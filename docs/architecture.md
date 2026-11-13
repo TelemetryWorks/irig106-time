@@ -382,7 +382,7 @@ nothing is wrong.
 | TF-025 | A packet's ERTC and RTC disagree ("RTC = ERTC/100") | warning | 6.6 |
 | TF-026 | A Format 2 time packet in a recording declared before 106-17 | warning | 3.9 |
 | TF-027 | Secondary headers satisfy only the other checksum reading (RDG-008) | information | 6.6 |
-| TF-028 | Secondary-derived time has an undefined format | error | §11.2.1.1 g; owner 2026-11-13 |
+| TF-028 | Secondary-derived time has an undefined format | error | 6.6; §11.2.1.1 g |
 
 TF-028 source: 106-24R1 §11.2.1.1 g, printed 11-8/11-9:
 "Bits 3-2: Indicate the packet secondary header time format."; "11 = Reserved";

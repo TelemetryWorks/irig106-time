@@ -163,3 +163,17 @@ No TFMT comparison implementation or findings-report emitter is introduced.
 PR9 already decodes RTC with independent warnings/errors; the error variant
 now documents its accepted TF-028 mapping. Independent truth-table and exact
 error-variant tests strengthen that existing behaviour.
+
+### PR D review: preserve the existing requirement limits
+
+L2/L3-FND-104 retain **only RDG-001..006** comparisons, the I inference
+warning (I ↔ 0x3 labelled inferred, owner Q1), and external->internal
+loss-of-lock information (TF-011), alongside the new TFMT default cases.
+All six requirements edited by PR D were compared with main. The audit also
+restored RDG-202's explicit Format 1 scope, separately recorded published
+default (including with comparison disabled), and visual-check citation.
+IPT-107's remaining changes are the accepted TF-028 mapping and strengthened
+verification; none of its existing flag/padding/length cases was removed.
+TF-028's Contract cell follows the existing style; its owner date remains
+in this decision record. TF-001..TF-027 and human Design/Review fields
+are unchanged.

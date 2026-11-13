@@ -1166,13 +1166,13 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-FND-004
 
-**Statement**: The library SHALL compare declarations and packets using RDG-001..006 mappings, keeping source changes informational and inferred I mappings labelled. For absent required TFMT always report the missing attribute; by default skip its comparison. Only caller opt-in enables comparison using A, labelled default-derived, retaining the missing finding and raw absence.
+**Statement**: The library SHALL compare declarations and packets only using RDG-001..006 mappings, keeping source changes informational and inferred I mappings labelled. For absent required TFMT always report the missing attribute; by default skip its comparison. Only caller opt-in enables comparison using A, labelled default-derived, retaining the missing finding and raw absence.
 
 **Source**: Contract 3.7, 6.4; the source may change legitimately (§11.2.3.2 a). "R/R Ch 10 Status: R"; "Default: A" (106-24R1 Chapter 9 Table 9-4 TFMT row, printed 9-72 / PDF 78). "A value of “R” requires that the attribute be specified in the TMATS file whenever the attribute is allowed." (§9.5.1 a, printed 9-5 / PDF 11). "If the R/R Ch10 Status field is “R”, then the attribute must be included in the TMATS file if all other conditions apply even if it has a default."; "Default: This identifies the default value required to process a TMATS file when the file itself does not contain the attribute." (printed 9-6 / PDF 12). RDG-002; owner 2026-11-13, Q-TFMT-DEFAULT = opt-in labelled default. TelemetryWorks/irig106-tmats `docs/adr/0023-validation-passes-and-effective-values.md`, commit `41030d54dfbd8a539c2810d023dd0670bfd3dc1f`: effective resolver "never writes to the document". Opt-in comparison and provenance are owner policy; no defaults are inserted.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Every accepted letter/FMT pair in both directions, all mismatches and unknown/non-TIMEIN cases. Explicit A compares as explicit. Absent TFMT without opt-in raises missing-required finding and performs no comparison. Absent TFMT with opt-in compares default A to FMT 0x1/mismatch, labels default-derived and still raises missing-required finding. Verify raw declaration remains absent; no default insertion. These comparison tests belong to the later declaration/report implementation, not this targeted flag-code change. Source changes remain informational and setup-range boundaries remain traceable.
+**Planned verification**: Each declared/observed mapping and mismatch, missing fields, configuration boundary, I inference warning (I ↔ 0x3 labelled inferred, owner Q1), and external->internal loss of lock information (TF-011). Every accepted letter/FMT pair in both directions, all mismatches and unknown/non-TIMEIN cases. Explicit A compares as explicit. Absent TFMT without opt-in raises missing-required finding and performs no comparison. Absent TFMT with opt-in compares default A to FMT 0x1/mismatch, labels default-derived and still raises missing-required finding. Verify raw declaration remains absent; no default insertion. These comparison tests belong to the later declaration/report implementation, not this targeted flag-code change. Source changes remain informational and setup-range boundaries remain traceable.
 
 #### L2-FND-105
 
@@ -1228,7 +1228,7 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-RDG-002
 
-**Statement**: The project SHALL specify and verify RDG-002: use its accepted TFMT letter/FMT mapping. Missing required TFMT SHALL always be reported; by default make no TFMT comparison when absent. Only on explicit caller opt-in use Table 9-4 default A for comparison, labelled default-derived, while preserving the missing-required-attribute finding and raw missing state. Explicit declarations remain explicit; never insert a default into TMATS.
+**Statement**: The project SHALL specify and verify RDG-002: use its accepted TFMT Format 1 named-letter/FMT mapping. Missing required TFMT SHALL always be reported; by default make no TFMT comparison when absent. Only on explicit caller opt-in use Table 9-4 default A for comparison, labelled default-derived, while preserving the missing-required-attribute finding and raw missing state. Explicit declarations remain explicit; never insert a default into TMATS. Record published default A separately from the explicit/missing declaration even when default comparison is disabled.
 
 **Source**: 106-24R1 Chapter 9 Table 9-4, printed9-72/PDF78; Chapter 11 §11.2.3.2 a; RDG-002.
 
@@ -1236,7 +1236,7 @@ does not settle it or replace its real-recording evidence.
 
 **Source supplement**: "R/R Ch 10 Status: R"; "Default: A" (106-24R1 Chapter 9 Table 9-4 TFMT row, printed 9-72 / PDF 78). "A value of “R” requires that the attribute be specified in the TMATS file whenever the attribute is allowed." (§9.5.1 a, printed 9-5 / PDF 11). "If the R/R Ch10 Status field is “R”, then the attribute must be included in the TMATS file if all other conditions apply even if it has a default."; "Default: This identifies the default value required to process a TMATS file when the file itself does not contain the attribute." (printed 9-6 / PDF 12). RDG-002; owner 2026-11-13, Q-TFMT-DEFAULT = opt-in labelled default. TelemetryWorks/irig106-tmats `docs/adr/0023-validation-passes-and-effective-values.md`, commit `41030d54dfbd8a539c2810d023dd0670bfd3dc1f`: effective resolver "never writes to the document". Opt-in comparison and provenance are owner policy; no defaults are inserted.
 
-**Planned verification**: Every accepted letter/FMT pair in both directions, all mismatches and unknown/non-TIMEIN cases. Explicit A compares as explicit. Absent TFMT without opt-in raises missing-required finding and performs no comparison. Absent TFMT with opt-in compares default A to FMT 0x1/mismatch, labels default-derived and still raises missing-required finding. Verify raw declaration remains absent; no default insertion. These comparison tests belong to the later declaration/report implementation, not this targeted flag-code change.
+**Planned verification**: Every accepted letter/FMT pair in both directions, all mismatches and unknown/non-TIMEIN cases. Explicit A compares as explicit. Absent TFMT without opt-in raises missing-required finding and performs no comparison. Absent TFMT with opt-in compares default A to FMT 0x1/mismatch, labels default-derived and still raises missing-required finding. Verify raw declaration remains absent; no default insertion. These comparison tests belong to the later declaration/report implementation, not this targeted flag-code change. Cite Table 9-4 printed 9-72/PDF 78 visual check.
 
 #### L2-RDG-203
 
