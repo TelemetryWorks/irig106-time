@@ -405,7 +405,9 @@ fn discontinuities_and_scale_never_bridge() {
         (ReleaseReason::IncompatibleScale, 10_000_000),
         (ReleaseReason::UnusableReference, 10_000_000),
     ] {
-        let mut s = held(policy(StreamMode::Interpolate));
+        let mut p = policy(StreamMode::Interpolate);
+        p.offline.stop_on_loss = reason == ReleaseReason::UnusableReference;
+        let mut s = held(p);
         let mut r = reference(1_000_000_000);
         if reason == ReleaseReason::Discontinuity {
             r = reference(2_000_000_000);
@@ -414,7 +416,7 @@ fn discontinuities_and_scale_never_bridge() {
             r.scale = ScaleEvidence::standard(TimeScale::Gps);
         }
         if reason == ReleaseReason::UnusableReference {
-            r.source = TimeF1Source::Source(TimeSource::None);
+            r.source = TimeF1Source::Source(TimeSource::Internal);
         }
         let b = s.observe(packet(3, ticks, Some(r)), 1, 100, false).unwrap();
         assert_eq!(b.answers[0].basis.release, reason);
@@ -637,4 +639,249 @@ fn reserved_leap_and_stop_on_loss_evidence() {
             .is_none()
     );
     assert_eq!(s.channel(), Some((1, StreamChannelChoice::Caller)));
+}
+
+/// Requirements: L1-STRM-001, L2-STRM-201, L3-STRM-201, L2-STRM-202, L3-STRM-202, L2-STRM-204, L3-STRM-204, L2-STRM-205, L3-STRM-205, L1-COR-006, L2-COR-106, L3-COR-106
+#[test]
+fn review_unusable_reference_keeps_eligible_predecessor() {
+    // Review probe: valid at0, data+.2s, source None at+.5s, data+.6s.
+    // None is one unusable reference, not a discontinuity in valid clock time.
+    for mode in [StreamMode::Standard, StreamMode::Interpolate] {
+        for invalid in 0..6 {
+            let mut s = stream(mode);
+            s.observe(packet(1, 0, Some(reference(0))), 0, 100, false)
+                .unwrap();
+            let first = s
+                .observe(packet(2, 2_000_000, None), 0, 100, false)
+                .unwrap();
+            let mut r = reference(500_000_000);
+            match invalid {
+                0 => r.source = TimeF1Source::Source(TimeSource::None),
+                1 => r.value = ReferenceValue::Invalid,
+                2 => r.value = ReferenceValue::Malformed,
+                4 => {
+                    r.value = ReferenceValue::Readable(
+                        AbsoluteTime::new(100, 12, 0, 0, 500_000_000).unwrap(),
+                        false,
+                    )
+                }
+                5 => r.format = TimeFormat::None,
+                _ => {}
+            }
+            let mut p = packet(3, 5_000_000, Some(r));
+            if invalid == 3 {
+                p.reference = None;
+            }
+            let bad = s.observe(p, 0, 100, false).unwrap();
+            finding(
+                &bad,
+                if invalid == 2 || invalid == 3 { 4 } else { 3 },
+                if invalid == 2 || invalid == 3 {
+                    Severity::Error
+                } else {
+                    Severity::Warning
+                },
+            );
+            assert!(
+                bad.answers.is_empty(),
+                "unusable reference must not drain pending answers"
+            );
+            assert_eq!(s.usage().references, 1);
+            let later = s
+                .observe(packet(4, 6_000_000, None), 0, 100, false)
+                .unwrap();
+            let answers = if mode == StreamMode::Standard {
+                assert_eq!(
+                    first.answers[0].time,
+                    Some(AbsoluteTime::new(100, 12, 0, 0, 200_000_000).unwrap())
+                );
+                assert_eq!(
+                    later.answers[0].time,
+                    Some(AbsoluteTime::new(100, 12, 0, 0, 600_000_000).unwrap())
+                );
+                later.answers
+            } else {
+                assert!(first.answers.is_empty() && later.answers.is_empty());
+                let b = s
+                    .observe(
+                        packet(5, 10_000_000, Some(reference(1_000_010_000))),
+                        900_000_000,
+                        100,
+                        false,
+                    )
+                    .unwrap();
+                assert_eq!(b.answers.len(), 2);
+                assert_eq!(
+                    b.answers[0].time,
+                    Some(AbsoluteTime::new(100, 12, 0, 0, 200_002_000).unwrap())
+                );
+                assert_eq!(
+                    b.answers[1].time,
+                    Some(AbsoluteTime::new(100, 12, 0, 0, 600_006_000).unwrap())
+                );
+                assert!(
+                    b.answers
+                        .iter()
+                        .all(|a| a.basis.release == ReleaseReason::Interpolated)
+                );
+                b.answers
+            };
+            for a in answers {
+                let r = a.basis.preceding.unwrap();
+                assert_eq!((r.key.packet, r.channel), (1, 1));
+            }
+        }
+    }
+}
+/// Requirements: L1-COR-003, L2-COR-103, L3-COR-103, L1-STRM-001, L2-STRM-206, L3-STRM-206
+#[test]
+fn review_inventory_external_precedes_lower_id() {
+    let mut p = policy(StreamMode::Standard);
+    p.offline.channel = None;
+    let candidates = [
+        StreamChannel {
+            id: 1,
+            timein: true,
+            external: false,
+        },
+        StreamChannel {
+            id: 7,
+            timein: true,
+            external: true,
+        },
+    ];
+    assert_eq!(
+        StreamTimeline::new(p, Some(&candidates)).unwrap().channel(),
+        Some((7, StreamChannelChoice::DeclaredExternal))
+    );
+}
+/// Requirements: L1-COR-003, L2-COR-103, L3-COR-103, L1-STRM-001, L2-STRM-206, L3-STRM-206
+#[test]
+fn review_inventory_lowest_id_excludes_non_timein() {
+    let mut p = policy(StreamMode::Standard);
+    p.offline.channel = None;
+    let candidates = [
+        StreamChannel {
+            id: 0,
+            timein: false,
+            external: false,
+        },
+        StreamChannel {
+            id: 7,
+            timein: true,
+            external: false,
+        },
+    ];
+    assert_eq!(
+        StreamTimeline::new(p, Some(&candidates)).unwrap().channel(),
+        Some((7, StreamChannelChoice::LowestId))
+    );
+}
+/// Requirements: L1-COR-003, L2-COR-103, L3-COR-103, L1-ANS-001, L2-ANS-101, L3-ANS-101, L1-STRM-001, L2-STRM-201, L3-STRM-201, L2-STRM-202, L3-STRM-202
+#[test]
+fn review_noncommitted_references_cannot_supply_answers() {
+    for mode in [StreamMode::Standard, StreamMode::Interpolate] {
+        let mut s = stream(mode);
+        s.observe(packet(1, 0, Some(reference(0))), 0, 100, false)
+            .unwrap();
+        let mut other = packet(2, 1_000_000, Some(reference(10_000_000_000)));
+        other.channel = 2;
+        s.observe(other, 0, 100, false).unwrap();
+        let b = s
+            .observe(packet(3, 6_000_000, None), 0, 100, false)
+            .unwrap();
+        let a = if mode == StreamMode::Standard {
+            assert_eq!(
+                b.answers[0].time,
+                Some(AbsoluteTime::new(100, 12, 0, 0, 600_000_000).unwrap())
+            );
+            b.answers.into_iter().next().unwrap()
+        } else {
+            assert!(b.answers.is_empty());
+            let b = s
+                .observe(
+                    packet(4, 10_000_000, Some(reference(1_000_010_000))),
+                    1,
+                    100,
+                    false,
+                )
+                .unwrap();
+            assert_eq!(
+                b.answers[0].time,
+                Some(AbsoluteTime::new(100, 12, 0, 0, 600_006_000).unwrap())
+            );
+            assert_eq!(b.answers[0].basis.following.as_ref().unwrap().channel, 1);
+            b.answers.into_iter().next().unwrap()
+        };
+        assert_eq!(a.basis.preceding.as_ref().unwrap().channel, 1);
+        assert_eq!(a.basis.preceding.unwrap().key.packet, 1);
+    }
+}
+/// Requirements: L1-STRM-001, L2-STRM-101, L3-STRM-101, L1-POL-002, L2-POL-102, L3-POL-102
+#[test]
+fn review_nonincreasing_packet_ids_rejected() {
+    let mut s = stream(StreamMode::Standard);
+    s.observe(packet(1, 0, Some(reference(0))), 0, 100, false)
+        .unwrap();
+    s.observe(packet(3, 2_000_000, None), 0, 100, false)
+        .unwrap();
+    for id in [3, 2] {
+        let err = s
+            .observe(packet(id, 4_000_000, None), 0, 100, false)
+            .unwrap_err();
+        assert_eq!(
+            err,
+            irig106_time::TimeError::InvalidTimelineInput(
+                "byte charge, identity order or non-time reference"
+            )
+        );
+    }
+    let b = s
+        .observe(packet(4, 6_000_000, None), 0, 100, false)
+        .unwrap();
+    assert_eq!(
+        b.answers[0].time,
+        Some(AbsoluteTime::new(100, 12, 0, 0, 600_000_000).unwrap())
+    );
+}
+
+/// Requirements: L1-STRM-001, L2-STRM-202, L3-STRM-202, L2-STRM-205, L3-STRM-205, L1-COR-006, L2-COR-106, L3-COR-106
+#[test]
+fn review_admitted_invalid_does_not_barrier_valid_interpolation() {
+    let mut p = policy(StreamMode::Interpolate);
+    p.offline.include_invalid = true;
+    let mut s = StreamTimeline::new(p, None).unwrap();
+    s.observe(packet(1, 0, Some(reference(0))), 0, 100, false)
+        .unwrap();
+    assert!(
+        s.observe(packet(2, 2_000_000, None), 0, 100, false)
+            .unwrap()
+            .answers
+            .is_empty()
+    );
+    let mut r = reference(500_000_000);
+    r.value = ReferenceValue::Readable(
+        AbsoluteTime::new(100, 12, 0, 0, 500_000_000).unwrap(),
+        false,
+    );
+    let b = s
+        .observe(packet(3, 5_000_000, Some(r)), 0, 100, false)
+        .unwrap();
+    finding(&b, 3, Severity::Warning);
+    assert!(b.answers.is_empty());
+    let b = s
+        .observe(
+            packet(4, 10_000_000, Some(reference(1_000_010_000))),
+            1,
+            100,
+            false,
+        )
+        .unwrap();
+    assert_eq!(
+        b.answers[0].time,
+        Some(AbsoluteTime::new(100, 12, 0, 0, 200_002_000).unwrap())
+    );
+    assert_eq!(b.answers[0].basis.preceding.as_ref().unwrap().key.packet, 1);
+    assert_eq!(b.answers[0].basis.following.as_ref().unwrap().key.packet, 4);
+    assert_eq!(b.answers[0].basis.release, ReleaseReason::Interpolated);
 }
