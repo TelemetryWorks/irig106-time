@@ -80,6 +80,10 @@ pub enum TimeError {
         flags: u8,
     },
 
+    /// Caller supplied an invalid offline timeline identity or policy.
+    /// **Traces:** L3-POL-102 ← L2-POL-102 ← L1-POL-002
+    InvalidTimelineInput(&'static str),
+
     /// Conversion cannot proceed without explicit, reviewed context.
     NeedsContext {
         /// Missing or unresolved conversion context.
@@ -160,6 +164,9 @@ impl fmt::Display for TimeError {
                     f,
                     "undefined packet secondary time format: flags {flags:#04x}"
                 )
+            }
+            TimeError::InvalidTimelineInput(context) => {
+                write!(f, "invalid timeline input: {context}")
             }
             TimeError::NeedsContext { context } => write!(f, "time needs context: {context}"),
             TimeError::InvalidTimeStatus { status } => {

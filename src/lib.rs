@@ -97,6 +97,8 @@ pub mod rtc;
 pub mod secondary;
 /// Streaming RTC-to-absolute-time correlator for live data.
 pub mod streaming;
+/// Session-aware offline correlation with explicit policy and answer basis.
+pub mod timeline;
 /// IRIG 106 standard version detection and version-aware dispatch.
 pub mod version;
 

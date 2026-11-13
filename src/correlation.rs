@@ -1,4 +1,5 @@
-//! RTC-to-absolute-time correlation engine.
+//! Compatibility RTC-to-absolute-time correlation engine.
+//! For session/policy/scale-aware answers with basis use [`crate::timeline`].
 //!
 //! Correlates 48-bit RTC values to absolute clock time using reference points
 //! from Time Data Format 1 packets that pair each RTC with an absolute time.
@@ -120,7 +121,7 @@ impl TimeCorrelator {
     ///
     /// Pre-105 files may have packets 5+ seconds out of order, so pass `None`
     /// for unbounded. Post-105 files are guaranteed within ~1.1 seconds
-    /// (100 ms buffer + 1 sec write deadline), so 2 seconds is a safe default.
+    /// (100 ms buffer + 1 sec write deadline), the accepted default is 1100 ms (contract 5.4; ADR-0010).
     ///
     /// **Traces:** P2-02
     pub fn with_ooo_window(window: Option<NanosDuration>) -> Self {
@@ -131,10 +132,10 @@ impl TimeCorrelator {
         }
     }
 
-    /// Default out-of-order window for post-105 files: 2 seconds.
-    pub const DEFAULT_OOO_WINDOW: NanosDuration = NanosDuration::from_secs(2);
+    /// Default out-of-order window: 1100 ms (1000 ms commit + 100 ms generation).
+    pub const DEFAULT_OOO_WINDOW: NanosDuration = NanosDuration::new(1_100_000_000);
 
-    /// Default out-of-order window for post-105 files: 2 seconds in nanoseconds.
+    /// Default out-of-order window: 1100 ms in nanoseconds.
     ///
     /// Raw-nanosecond form of [`Self::DEFAULT_OOO_WINDOW`], comparable with
     /// [`Self::ooo_window_ns`].
@@ -366,10 +367,12 @@ impl TimeCorrelator {
     /// on the given channel.
     ///
     /// Uses the per-channel index for direct iteration (no filtering).
+    /// Positive means the absolute clock advances faster than RTC:
+    /// 1e6 * (absolute_delta / rtc_duration - 1), L3-COR-113.
     ///
     /// Returns `None` if fewer than 2 reference points exist for the channel.
     ///
-    /// **Traces:** P4-02
+    /// **Traces:** L3-COR-113 ← L2-COR-113 ← L1-COR-013
     pub fn drift_ppm(&self, channel_id: u16) -> Option<f64> {
         let ch_refs = self.channel_index.get(&channel_id)?;
 
@@ -395,11 +398,7 @@ impl TimeCorrelator {
                 + r1.time.total_nanos_of_day();
             let abs_delta_ns = abs_ns_1 as f64 - abs_ns_0 as f64;
 
-            if abs_delta_ns == 0.0 {
-                continue;
-            }
-
-            let drift = (rtc_delta_ns - abs_delta_ns) / abs_delta_ns * 1_000_000.0;
+            let drift = (abs_delta_ns / rtc_delta_ns - 1.0) * 1_000_000.0;
             total_drift += drift;
             pair_count += 1;
         }

@@ -47,7 +47,11 @@ pub struct TimeQuality {
     pub rtc_span_ns: Option<u64>,
 }
 
-/// Compute quality metrics from a set of reference points.
+/// Compute compatibility quality metrics from unqualified reference points.
+/// Drift is 1e6 * (absolute_delta / RTC_duration - 1). This legacy shape has
+/// no session/scale evidence; use [`crate::timeline::OfflineTimeline::quality`]
+/// when those distinctions matter.
+/// **Traces:** L3-COR-113 ← L2-COR-113 ← L1-COR-013
 ///
 /// This function works with reference points from either
 /// [`TimeCorrelator::references()`](crate::correlation::TimeCorrelator::references)
@@ -137,10 +141,7 @@ pub fn compute_quality(refs: &[ReferencePoint]) -> TimeQuality {
             let abs_1 = ((r1.time.day_of_year() as u64).saturating_sub(1)) * 86_400_000_000_000
                 + r1.time.total_nanos_of_day();
             let abs_ns = abs_1 as f64 - abs_0 as f64;
-            if abs_ns == 0.0 {
-                continue;
-            }
-            total_drift += (rtc_ns - abs_ns) / abs_ns * 1_000_000.0;
+            total_drift += (abs_ns / rtc_ns - 1.0) * 1_000_000.0;
             count += 1;
         }
         if count > 0 {
