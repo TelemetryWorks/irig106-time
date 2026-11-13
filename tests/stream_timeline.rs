@@ -151,6 +151,18 @@ fn interpolation_drift_endpoints_and_floor_proposal() {
     assert_eq!(a.basis.precision_ns, Some(10_000_000));
     assert_eq!(a.basis.preceding.as_ref().unwrap().key.packet, 1);
     assert_eq!(a.basis.following.as_ref().unwrap().key.packet, 3);
+    // Separate synthetic arithmetic oracle: 302/3=100+2/3 ns, floor=100.
+    let mut f = stream(StreamMode::Interpolate);
+    f.observe(packet(1, 0, Some(reference(0))), 0, 100, false)
+        .unwrap();
+    f.observe(packet(2, 1, None), 0, 100, false).unwrap();
+    let b = f
+        .observe(packet(3, 3, Some(reference(302))), 1, 100, false)
+        .unwrap();
+    assert_eq!(
+        b.answers[0].time,
+        Some(AbsoluteTime::new(100, 12, 0, 0, 100).unwrap())
+    );
     // Exact known endpoint needs no look-ahead.
     let a = s
         .observe(packet(4, 10_000_000, None), 1_000_000_000, 100, false)
@@ -171,7 +183,9 @@ fn hold_gap_and_explicit_progress_boundaries() {
         1_050_000_000,
         1_100_000_000,
     ] {
-        let mut s = held(policy(StreamMode::Interpolate));
+        let mut p = policy(StreamMode::Interpolate);
+        p.raw_network_rate = true;
+        let mut s = held(p);
         let b = s
             .observe(
                 packet(3, spacing / 100, Some(reference(spacing))),
@@ -181,6 +195,7 @@ fn hold_gap_and_explicit_progress_boundaries() {
             )
             .unwrap();
         assert_eq!(b.answers[0].basis.release, ReleaseReason::Interpolated);
+        assert!(b.answers[0].basis.policy.raw_network_rate);
         assert_eq!(
             b.findings.iter().any(|f| f.code == 16),
             spacing > 1_000_000_000
@@ -192,6 +207,20 @@ fn hold_gap_and_explicit_progress_boundaries() {
     assert_eq!(b.answers[0].basis.release, ReleaseReason::Timeout);
     assert_eq!(b.answers[0].basis.deadline_ns, Some(1_100_000_000));
     assert!(s.advance(1).is_err());
+    let mut p = policy(StreamMode::Interpolate);
+    p.hold_tolerance_ns = 0;
+    p.offline.gap_tolerance_ns = 100_000_000;
+    let mut s = held(p);
+    let b = s
+        .observe(
+            packet(3, 10_500_000, Some(reference(1_050_000_000))),
+            1_000_000_001,
+            100,
+            false,
+        )
+        .unwrap();
+    assert_eq!(b.answers[0].basis.release, ReleaseReason::Timeout);
+    assert!(!b.findings.iter().any(|f| f.code == 16));
 }
 /// Requirements: L1-STRM-001, L2-STRM-203, L3-STRM-203, L2-STRM-205, L3-STRM-205, L2-STRM-206, L3-STRM-206, L1-POL-002, L2-POL-102, L3-POL-102
 #[test]
@@ -255,17 +284,19 @@ fn every_resource_and_lifecycle_fallback_is_labelled() {
             .find(|a| a.basis.release == reason)
             .expect("fallback reason missing");
         assert!(a.time.is_some());
+        assert!(a.basis.extrapolated);
         assert_eq!(a.basis.policy.id, 1);
         assert_eq!(a.basis.policy.mode, StreamMode::Interpolate);
         assert!(a.basis.following.is_none());
         assert_eq!(a.basis.drift_correction_ns, None);
         let u = s.usage();
-        assert!(u.packets <= 1.max(s.policy().caps.packets));
+        assert!(u.packets <= s.policy().caps.packets);
         assert!(u.bytes <= s.policy().caps.bytes);
         assert!(u.references <= s.policy().caps.references);
     }
 }
 /// Requirements: L1-STRM-001, L2-STRM-204, L3-STRM-204, L1-ANS-005, L2-ANS-105, L3-ANS-105, L1-COR-012, L2-COR-112, L3-COR-112
+/// Interpretations: RDG-011
 #[test]
 fn early_data_none_and_no_time_findings() {
     for mode in [StreamMode::Standard, StreamMode::Interpolate] {
@@ -357,15 +388,22 @@ fn commitment_inventory_loss_and_no_revision() {
         Some(AbsoluteTime::new(100, 12, 0, 0, 500_000_000).unwrap())
     );
     assert!(early.time.is_none());
-    assert!(s.choose_channel(2, 3, 4).is_err());
+    for id in 5..15 {
+        let mut p = packet(id, id * 10_000_000, Some(reference(id * 1_000_000_000)));
+        p.channel = 7;
+        s.observe(p, id, 100, false).unwrap();
+    }
+    assert_eq!(s.channel(), Some((1, StreamChannelChoice::Caller)));
+    assert!(s.choose_channel(2, 3, 15).is_err());
 }
 /// Requirements: L1-STRM-001, L2-STRM-202, L3-STRM-202, L2-STRM-205, L3-STRM-205, L1-COR-004, L2-COR-104, L3-COR-104, L1-COR-005, L2-COR-105, L3-COR-105
 #[test]
 fn discontinuities_and_scale_never_bridge() {
-    for reason in [
-        ReleaseReason::Discontinuity,
-        ReleaseReason::IncompatibleScale,
-        ReleaseReason::UnusableReference,
+    for (reason, ticks) in [
+        (ReleaseReason::Discontinuity, 0),
+        (ReleaseReason::Discontinuity, 10_000_000),
+        (ReleaseReason::IncompatibleScale, 10_000_000),
+        (ReleaseReason::UnusableReference, 10_000_000),
     ] {
         let mut s = held(policy(StreamMode::Interpolate));
         let mut r = reference(1_000_000_000);
@@ -378,9 +416,7 @@ fn discontinuities_and_scale_never_bridge() {
         if reason == ReleaseReason::UnusableReference {
             r.source = TimeF1Source::Source(TimeSource::None);
         }
-        let b = s
-            .observe(packet(3, 10_000_000, Some(r)), 1, 100, false)
-            .unwrap();
+        let b = s.observe(packet(3, ticks, Some(r)), 1, 100, false).unwrap();
         assert_eq!(b.answers[0].basis.release, reason);
         assert!(b.answers[0].basis.following.is_none());
         if reason == ReleaseReason::Discontinuity {
@@ -430,15 +466,29 @@ fn admission_findings_and_raw_sync_counter() {
             },
         );
     }
-    let mut s = stream(StreamMode::Standard);
-    let mut p = packet(1, 123, None);
-    p.flags = 0x20;
-    let b = s.observe(p, 0, 100, false).unwrap();
-    finding(&b, 24, Severity::Warning);
-    assert_eq!(
-        b.findings.iter().find(|f| f.code == 24).unwrap().raw_rtc,
-        Some(Rtc::from_raw(123))
-    );
+    let mut p = policy(StreamMode::Interpolate);
+    p.offline.include_invalid = true;
+    let mut s = StreamTimeline::new(p, None).unwrap();
+    let mut r = reference(0);
+    r.value = ReferenceValue::Readable(AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(), false);
+    s.observe(packet(1, 0, Some(r)), 0, 100, false).unwrap();
+    let b = s
+        .observe(packet(2, 5_000_000, None), 1, 100, false)
+        .unwrap();
+    assert_eq!(b.answers[0].basis.release, ReleaseReason::UnusableReference);
+    assert!(b.answers[0].basis.extrapolated);
+    for flags in 0..=255 {
+        let mut s = stream(StreamMode::Standard);
+        let mut p = packet(1, 123, None);
+        p.flags = flags;
+        let b = s.observe(p, 0, 100, false).unwrap();
+        let f = b.findings.iter().find(|f| f.code == 24);
+        assert_eq!(f.is_some(), flags & 0x20 != 0);
+        if let Some(f) = f {
+            assert_eq!(f.raw_rtc, Some(Rtc::from_raw(123)));
+            assert_eq!(f.severity, Severity::Warning);
+        }
+    }
 }
 /// Requirements: L1-STRM-001, L2-STRM-101, L3-STRM-101, L2-STRM-205, L3-STRM-205, L1-POL-001, L2-POL-101, L3-POL-101, L1-POL-002, L2-POL-102, L3-POL-102
 #[test]
@@ -479,4 +529,112 @@ fn bounded_burst_configuration_and_frozen_policy() {
         p.caps = caps;
         assert!(StreamTimeline::new(p.clone(), None).is_err());
     }
+}
+
+/// Requirements: L1-STRM-001, L2-STRM-201, L3-STRM-201, L2-STRM-202, L3-STRM-202, L2-STRM-203, L3-STRM-203, L2-STRM-205, L3-STRM-205, L2-STRM-206, L3-STRM-206
+#[test]
+fn late_endpoints_policy_transitions_and_oversized_data() {
+    let mut s = held(policy(StreamMode::Interpolate));
+    let b = s
+        .observe(
+            packet(3, 5_000_000, Some(reference(500_000_000))),
+            1,
+            100,
+            false,
+        )
+        .unwrap();
+    assert_eq!(
+        b.answers[0].time,
+        Some(AbsoluteTime::new(100, 12, 0, 0, 500_000_000).unwrap())
+    );
+    let mut s = held(policy(StreamMode::Interpolate));
+    let b = s
+        .observe(
+            packet(3, 10_000_000, Some(reference(1_000_000_000))),
+            1_100_000_001,
+            100,
+            false,
+        )
+        .unwrap();
+    assert_eq!(b.answers[0].basis.release, ReleaseReason::Timeout);
+    let mut s = stream(StreamMode::Standard);
+    s.observe(
+        packet(1, 10_000_000, Some(reference(1_000_000_000))),
+        0,
+        100,
+        false,
+    )
+    .unwrap();
+    assert!(
+        s.observe(packet(2, 5_000_000, None), 1, 100, false)
+            .unwrap()
+            .answers[0]
+            .time
+            .is_none()
+    );
+    let mut s = held(policy(StreamMode::Interpolate));
+    let old = s.set_policy(policy(StreamMode::Standard), 1);
+    assert!(old.is_err());
+    let mut p = policy(StreamMode::Standard);
+    p.id = 2;
+    let old = s.set_policy(p.clone(), 1).unwrap().answers.remove(0);
+    p.id = 3;
+    p.mode = StreamMode::Interpolate;
+    s.set_policy(p, 2).unwrap();
+    assert_eq!(old.basis.policy.id, 1);
+    assert_eq!(old.basis.release, ReleaseReason::ModeChange);
+    let b = s
+        .observe(packet(3, 6_000_000, None), 3, 801, false)
+        .unwrap();
+    assert_eq!(b.answers[0].basis.release, ReleaseReason::ByteCap);
+    assert_eq!(s.usage().packets, 0);
+}
+/// Requirements: L1-COR-001, L2-COR-101, L3-COR-101, L1-TAI-007, L2-TAI-107, L3-TAI-107, L1-COR-007, L2-COR-107, L3-COR-107
+/// Interpretations: RDG-009, RDG-010
+#[test]
+fn reserved_leap_and_stop_on_loss_evidence() {
+    // 106-24R1 Figure11-13 printed11-25/PDF33: word0 bit15 reserved;
+    // UTC second60 retains its label (RDG-010), never silently normalizes.
+    for (bytes, code, level) in [
+        (
+            [1, 0x30, 0, 0, 0x35, 0xa7, 0x45, 0x13, 0x87, 1],
+            5,
+            Severity::Warning,
+        ),
+        (
+            [0x41, 0, 0, 0, 0, 0x60, 0x59, 0x23, 0x65, 3],
+            22,
+            Severity::Information,
+        ),
+    ] {
+        let r = ReferenceInput::format1(
+            &bytes,
+            10,
+            TimeF1Layout::SourceWithIts17,
+            ScalePolicy::default(),
+        )
+        .unwrap();
+        let mut s = stream(StreamMode::Standard);
+        let b = s.observe(packet(1, 0, Some(r)), 0, 100, false).unwrap();
+        finding(&b, code, level);
+    }
+    let mut p = policy(StreamMode::Standard);
+    p.offline.stop_on_loss = true;
+    let mut s = StreamTimeline::new(p, None).unwrap();
+    s.observe(packet(1, 0, Some(reference(0))), 0, 100, false)
+        .unwrap();
+    let mut r = reference(1_000_000_000);
+    r.source = TimeF1Source::Source(TimeSource::Internal);
+    let b = s
+        .observe(packet(2, 10_000_000, Some(r)), 1, 100, false)
+        .unwrap();
+    finding(&b, 11, Severity::Information);
+    assert!(
+        s.observe(packet(3, 11_000_000, None), 2, 100, false)
+            .unwrap()
+            .answers[0]
+            .time
+            .is_none()
+    );
+    assert_eq!(s.channel(), Some((1, StreamChannelChoice::Caller)));
 }
