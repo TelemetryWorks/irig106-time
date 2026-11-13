@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- E1 offline core in `timeline`: recording-order session/reset/wrap/late
+  handling, caller-fixed or ranked time channels, bounded Format 1 decoding,
+  retained reference admission evidence, nearest/preceding lookup, counter-only
+  results, complete implemented-policy snapshots, source/format/ITS/scale/year
+  basis, and per-session/channel quality. TF severities follow architecture §8.
+  Existing correlator/streaming entry points remain compatibility APIs; use
+  the new builder for policy/session-aware answers. No automatic year inference,
+  inverse lookup, drift correction, Format 2 conversion, leap-label arithmetic,
+  snapshot serialization or streaming rebuild is claimed by this first part.
+  Unsupported calendar boundaries return a labelled counter-only answer.
+
+### ⚠️ E1 migration notes
+
+- `TimeCorrelator::DEFAULT_OOO_WINDOW{,_NS}` is now **1100 ms**, the accepted
+  1000 ms commit +100 ms generation policy, instead of 2 s. `new()` remains the
+  explicit legacy unbounded correlator; `TimelineBuilder` uses the bounded
+  default. Set an explicit window/policy to retain a different tolerance.
+- `compute_quality` and `TimeCorrelator::drift_ppm` now use
+  `1e6 * (absolute_delta / RTC_duration - 1)` consistently with L3-COR-113.
+  Positive means absolute time advances faster; a 1.001 s RTC interval over
+  1 s absolute is -999.000999 ppm. Previous RTC-fast-positive values used
+  the opposite sign and a different denominator. Update sign-based checks.
+- Add `TimeError::InvalidTimelineInput` for bad policy/identity/query bounds;
+  the error enum remains non_exhaustive. No CLI source/output-format changes.
+
 ### Changed
 
 - Owner decisions: absent required TFMT is reported and skipped in comparison

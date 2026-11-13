@@ -586,7 +586,8 @@ fn drift_ppm_zero_drift() {
     assert!(drift.abs() < 0.01, "expected ~0 ppm, got {:.6}", drift);
 }
 
-/// drift_ppm detects a fast-running RTC.
+/// Absolute-over-RTC drift is negative for a fast RTC (L3-COR-113).
+/// Requirements: L1-COR-013, L2-COR-113, L3-COR-113
 #[test]
 fn drift_ppm_fast_rtc() {
     let mut correlator = TimeCorrelator::new();
@@ -597,7 +598,7 @@ fn drift_ppm_fast_rtc() {
         AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(),
     );
     // RTC advanced 1.001 seconds (10,010,000 ticks) but absolute time advanced 1.000 seconds
-    // → RTC is running 1000 ppm fast
+    // → absolute-over-RTC drift = (1 / 1.001 - 1) * 1e6 = -999.000999 ppm
     correlator.add_reference(
         2,
         Rtc::from_raw(10_010_000),
@@ -606,8 +607,8 @@ fn drift_ppm_fast_rtc() {
 
     let drift = correlator.drift_ppm(2).unwrap();
     assert!(
-        (drift - 1000.0).abs() < 1.0,
-        "expected ~1000 ppm, got {:.2}",
+        (drift + 999.000999).abs() < 0.001,
+        "expected -999.000999 ppm, got {:.6}",
         drift
     );
 }
@@ -719,10 +720,11 @@ fn correlator_default_has_no_ooo_window() {
     assert!(c.ooo_window_ns().is_none());
 }
 
+/// Requirements: L1-COR-009, L2-COR-109, L3-COR-109
 #[test]
 fn correlator_with_ooo_window() {
     let c = TimeCorrelator::with_ooo_window(Some(TimeCorrelator::DEFAULT_OOO_WINDOW));
-    assert_eq!(c.ooo_window_ns(), Some(2_000_000_000));
+    assert_eq!(c.ooo_window_ns(), Some(1_100_000_000));
 }
 
 #[test]
