@@ -73,7 +73,7 @@ legacy differences qualify their L2/L3 decomposition without rewriting L1.
 
 ## Owner decisions recorded 2026-11-12
 
-These five decisions are accepted requirements for future implementation,
+These six decisions are accepted requirements for future implementation,
 not evidence that current Rust code implements them. Sources and the exact
 changed requirement/parent/Source lines are listed in
 [the decision record](analysis/owner-decisions-2026-11-12.md).
@@ -85,12 +85,12 @@ changed requirement/parent/Source lines are listed in
 | Q-STREAM-CHANNEL | **Option A** committed before data: caller-fixed, else TMATS external TIMEIN (`R-x\CDT-n=TIMEIN`, `R-x\TSRC-n=E`, Table 9-4), else lowest eligible ID; no stream future-reference-count ranking. If not decidable in advance, counter-only until caller chooses. No revisions or lost-lock switches (RCC 123-20 §5.6; §11.2.3.2 note). |
 | Q-CH4 | Explicit caller binary origin; BCD year and full day. Otherwise labelled partial, never invented day 1/year/origin. No nearest-time-packet option now. Chapter 4 §4.7's older characters/current bits wording remains unresolved and reported. |
 | Q-NTP | Owner: "make this as correct as possible". **RDG-012** records UTC-following reckoning, era declaration/pivot/labelled-era0 precedence, all-zero sentinel, leap ambiguity and table currency; PTP UTC only within table coverage. Fraction rounding remains proposed. |
+| Q-FLAGS | **Refine** (owner 2026-11-12): source=1 requires presence=1 and a defined secondary format; source=0/format=11 keeps RTC with TF-005 warning, separately reporting unreadable secondary time if present. [Page checks and truth table](analysis/Q-FLAGS-2026-11-12.md); L1-IPT-007 → L2-IPT-107 → L3-IPT-107. |
 
 ## Questions still requiring owner decisions
 
 | ID | Question | Recommended option and reason |
 |----|----------|-------------------------------|
-| Q-FLAGS | Must reserved secondary format 11 reject an RTC-form stamp even when bit 6 is clear? | Keep **L1-IPT-007's rejection for this draft**; recommend an owner-approved L1 refinement limiting reserved-format rejection to secondary-derived stamps (bit 6 set). §11.2.1.1 g and §11.2.1.3 b select RTC by bit 6; current L1 wording is stricter. No L1 change is made here. |
 | Q-CLI-EXIT | Accept the proposed numeric exit assignments? | **0 success, 1 findings threshold, 2 I/O/input failure, 3 usage**; document these before scripts depend on them. The four classes are L1; their numbers are a new interface proposal. |
 | Q-EDITION | What caller declaration may select EXT versus SRC at the 106-04/05 boundary? | Recommend **an explicit caller layout declaration/override**. Permit `G\106` as a labelled assumption only when the caller explicitly opts into that policy; its standard meaning dates the TMATS file, not packet layout. No setup version code exists in 106-04/05, and header 0x01 alone is insufficient. On absent/conflicting declaration evidence, leave the layout unresolved; later setup version evidence must not be invented for this boundary. |
 | Q-TFMT-DEFAULT | Should the declared TFMT default A feed packet comparisons when the attribute is absent? | Recommend **explicit opt-in default application**, labelled default-derived, while retaining the missing-required-attribute finding. Chapter 9 defines Default for processing absent values, but R status still requires the attribute. Keep the accepted no-silent-substitution behaviour until the owner decides. |
@@ -99,7 +99,7 @@ changed requirement/parent/Source lines are listed in
 fraction retained (L2/L3-NTP-103, RDG-012). This proposal is not approved by
 acceptance of the NTP interpretation. RFC 1305/5905 archiving is proposed,
 not performed. Existing interpolation rounding/ties and mode-change flushing
-remain proposed where marked; the five decisions do not silently approve them.
+remain proposed where marked; the six decisions do not silently approve them.
 
 Rounding (NTP fractions and interpolation), midpoint ties, mixed-resolution
 jump thresholds, and mode-change flushing are explicitly proposed design
@@ -237,13 +237,13 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-IPT-007
 
-**Statement**: The library SHALL return no stamp time and an evidenced finding for inconsistent flags or a reserved secondary format.
+**Statement**: The library SHALL return no time from a stamp and report an error when bit 6=1 with bit 7=0, or when bit 6=1 with bits 3–2=11 (undefined secondary format). When bit 6=0 with bits 3–2=11, it SHALL read the padded 48-bit RTC stamp normally and report TF-005 (warning, value kept). If bit 7=1 in that RTC case, the secondary header time itself remains unreadable and SHALL be reported separately without discarding the RTC stamp.
 
-**Source**: "(bit 7 must be 1)"; "11 = Reserved" (§11.2.1.1 g); contract 6.6.
+**Source**: "0 = Packet header 48-bit RTC."; "1 = Packet secondary header time (bit 7 must be 1)."; "Bits 3-2: Indicate the packet secondary header time format."; "11 = Reserved" (106-24R1 §11.2.1.1 g, printed 11-8/11-9, PDF 16/17); "48-bit RTC format (plus 16 high-order zero bits)" (§11.2.1.3 b, printed 11-11 / PDF 19). Error versus TF-005 warning/value-kept treatment is owner 2026-11-12, Q-FLAGS; page images and older equivalent wording: `docs/analysis/Q-FLAGS-2026-11-12.md`.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Bit 6 set with bit 7 clear for each format; format=11 with both sources; valid bit 6=0 stamps must remain RTC for formats 00/01/10.
+**Planned verification**: Exhaust all 256 flag bytes against the source/presence/format rule, independently of other flag findings. Literal cases 0x0C and 0x8C decode RTC with TF-005; 0x8C also reports unreadable secondary time separately. 0x4C and 0xCC return no stamp time/errors for undefined secondary format, with 0x4C also lacking the required header; 0x40 returns no stamp time/error for absent required header. Use hand-authored padded RTC bytes, short lengths and nonzero padding as separate validation cases. These are planned tests, not executed implementation evidence.
 
 ## SEC
 

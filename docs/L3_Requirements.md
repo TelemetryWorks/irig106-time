@@ -44,8 +44,8 @@ Human Review stays pending under the register's two-person rule.
 L3 states implementation obligations and planned verification cases, not
 Rust source changes. Each entry names its immediate L2 parent and its L1
 ancestor explicitly. Names are responsibility boundaries, not a commitment
-to a new public type or dependency. See L2 for the five accepted 2026-11-12 decisions and remaining
-Q-FLAGS/Q-CLI-EXIT/Q-EDITION/Q-TFMT-DEFAULT questions. NTP rounding remains
+to a new public type or dependency. See L2 for the six accepted 2026-11-12 decisions and remaining
+Q-CLI-EXIT/Q-EDITION/Q-TFMT-DEFAULT questions. NTP rounding remains
 proposed; Chapter 4 context is settled while characters/bits wording is not.
 
 ## Shared types and edition qualification
@@ -185,11 +185,11 @@ legacy differences qualify their L2/L3 decomposition without rewriting L1.
 
 **L1 ancestor**: L1-IPT-007
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Before conversion reject source=1/presence=0 as TF-015. Report format=11 as TF-006 and return no stamp time under this L1 even for source=0; flag the tension with the source-only dispatch rule for owner review (Q-FLAGS). Do not let a policy severity change turn a rejected stamp into a value.
+**Obligation**: The implementation SHALL extract source=(flags>>6)&1, presence=(flags>>7)&1 and format=(flags>>2)&3. Reject source=1/presence=0 as TF-015 (error), and source=1/format=3 as undefined-format error; return no stamp time for either, retaining evidence of both when both apply. For source=0 decode exactly the low 48 counter bits with 16 high-order padding bits; format=3 yields TF-005 warning and keeps the RTC value. If presence=1/format=3, report the secondary header time as unreadable separately; this error does not invalidate the RTC stamp. Other flags and reserved padding findings remain separate. Severity overrides must not create a time from an undefined format.
 
-**Source**: "(bit 7 must be 1)"; "11 = Reserved" (§11.2.1.1 g); contract 6.6.
+**Source**: "0 = Packet header 48-bit RTC."; "1 = Packet secondary header time (bit 7 must be 1)."; "Bits 3-2: Indicate the packet secondary header time format."; "11 = Reserved" (106-24R1 §11.2.1.1 g, printed 11-8/11-9, PDF 16/17); "48-bit RTC format (plus 16 high-order zero bits)" (§11.2.1.3 b, printed 11-11 / PDF 19). Error versus TF-005 warning/value-kept treatment is owner 2026-11-12, Q-FLAGS; page images and older equivalent wording: `docs/analysis/Q-FLAGS-2026-11-12.md`.
 
-**Planned verification**: Bit 6 set with bit 7 clear for each format; format=11 with both sources; valid bit 6=0 stamps must remain RTC for formats 00/01/10.
+**Planned verification**: Exhaust all 256 flag bytes against the source/presence/format rule, independently of other flag findings. Literal cases 0x0C and 0x8C decode RTC with TF-005; 0x8C also reports unreadable secondary time separately. 0x4C and 0xCC return no stamp time/errors for undefined secondary format, with 0x4C also lacking the required header; 0x40 returns no stamp time/error for absent required header. Use hand-authored padded RTC bytes, short lengths and nonzero padding as separate validation cases. These are planned tests, not executed implementation evidence.
 
 ## SEC
 
@@ -645,11 +645,11 @@ caller context with the unresolved wording reported.
 
 **L1 ancestor**: L1-ENC-003
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Secondary header writes 8 time bytes, two zero reserved bytes, byte-sum checksum in LE; stamps write 8 bytes without a header checksum, including zero RTC high bytes or Chapter 4 low reserved bytes. Reject source=1 without presence=1 and reserved format 11 under L1-IPT-007.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Secondary header writes 8 time bytes, two zero reserved bytes, byte-sum checksum in LE; stamps write 8 bytes without a header checksum, including zero RTC high bytes or Chapter 4 low reserved bytes. Reject source=1 without presence=1 and source=1 with reserved format 11 under L1-IPT-007. Source=0 stamps remain RTC even if observed format=11, with its separate TF-005 warning; this does not authorize encoding an undefined secondary-header time or nonzero reserved fields.
 
-**Source**: §11.2.1.1 g, §11.2.1.2, §11.2.1.3 b.
+**Source**: "0 = Packet header 48-bit RTC."; "1 = Packet secondary header time (bit 7 must be 1)."; "Bits 3-2: Indicate the packet secondary header time format."; "11 = Reserved" (106-24R1 §11.2.1.1 g, printed 11-8/11-9, PDF 16/17); "48-bit RTC format (plus 16 high-order zero bits)" (§11.2.1.3 b, printed 11-11 / PDF 19). Error versus TF-005 warning/value-kept treatment is owner 2026-11-12, Q-FLAGS; page images and older equivalent wording: `docs/analysis/Q-FLAGS-2026-11-12.md`. Secondary-header output layout: §11.2.1.2; stamp layout: §11.2.1.3 b.
 
-**Planned verification**: Golden header for all three formats, RTC-form stamp, invalid flags, byte-vs-word checksum distinction, and no writes past provided output capacity.
+**Planned verification**: Golden header for all three defined formats, RTC-form stamp including observed flags 0x0C/0x8C with separate findings, invalid secondary-derived flags 0x4C/0xCC/0x40, byte-vs-word checksum distinction, and no writes past provided output capacity.
 
 ## EDN
 

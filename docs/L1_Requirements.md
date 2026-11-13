@@ -186,9 +186,9 @@ Handbook, cited as support, never as the rule.
 
 ### L1-IPT-007
 
-**Statement**: The library SHALL NOT read a time from a time stamp whose packet has bit 6 set with bit 7 clear, or bits 3–2 equal to `11`, and SHALL report the packet.
+**Statement**: The library SHALL return no time from a stamp and report an error when bit 6=1 with bit 7=0, or when bit 6=1 with bits 3–2=11 (undefined secondary format). When bit 6=0 with bits 3–2=11, it SHALL read the padded 48-bit RTC stamp normally and report TF-005 (warning, value kept). If bit 7=1 in that RTC case, the secondary header time itself remains unreadable and SHALL be reported separately without discarding the RTC stamp.
 
-**Source**: "(bit 7 must be 1)"; "11 = Reserved" (§11.2.1.1 g); contract 6.6.
+**Source**: "0 = Packet header 48-bit RTC."; "1 = Packet secondary header time (bit 7 must be 1)."; "Bits 3-2: Indicate the packet secondary header time format."; "11 = Reserved" (106-24R1 §11.2.1.1 g, printed 11-8/11-9, PDF 16/17); "48-bit RTC format (plus 16 high-order zero bits)" (§11.2.1.3 b, printed 11-11 / PDF 19). Error versus TF-005 warning/value-kept treatment is owner 2026-11-12, Q-FLAGS; page images and older equivalent wording: `docs/analysis/Q-FLAGS-2026-11-12.md`.
 
 **Verification Method**: Test (T)
 

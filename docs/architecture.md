@@ -349,8 +349,8 @@ nothing is wrong.
 | TF-002 | A dynamic packet precedes the session's first time packet | warning | 6.2 |
 | TF-003 | A time packet is marked invalid (FMT `0xF` NONE; TS "Time Not Valid") | warning | 6.3 |
 | TF-004 | A time packet is malformed (a digit above 9, a field out of range, a short body) | error | 6.3 |
-| TF-005 | Reserved bits are set (data word, body, secondary header) | warning | 6.3 |
-| TF-006 | A reserved value is used (SRC `0x3`–`0xE`, FMT `0x6`–`0xE`, NTF `0x3`–`0xF`, TS `0x2`–`0xF`, ITS `1000`–`1111`, flags bits 3–2 `11`) | warning | 6.3, 6.6 |
+| TF-005 | Reserved bits are set (data word, body, secondary header; source=0/format=11 flags under Q-FLAGS) | warning | 6.3 |
+| TF-006 | A reserved value is used (SRC `0x3`–`0xE`, FMT `0x6`–`0xE`, NTF `0x3`–`0xF`, TS `0x2`–`0xF`, ITS `1000`–`1111`, undefined secondary-derived flags bits 3–2 `11`) | warning; undefined secondary-derived time is error | 6.3, 6.6 |
 | TF-007 | The leap-year bit disagrees with the day or the year | warning | 6.3, 6.8 |
 | TF-008 | Time packets on a channel the setup record does not declare TIMEIN | warning | 6.4 |
 | TF-009 | A declared time channel carries no time packets | information | 6.4 |
@@ -372,6 +372,15 @@ nothing is wrong.
 | TF-025 | A packet's ERTC and RTC disagree ("RTC = ERTC/100") | warning | 6.6 |
 | TF-026 | A Format 2 time packet in a recording declared before 106-17 | warning | 3.9 |
 | TF-027 | Secondary headers satisfy only the other checksum reading (RDG-008) | information | 6.6 |
+
+Q-FLAGS (owner 2026-11-12, refine): bit 6=1/bit 7=0 is an error with no
+stamp time. Bit 6=1/format 11 is undefined-format error with no stamp time.
+Bit 6=0/format 11 retains the padded RTC value with TF-005 warning; if bit 7=1,
+the secondary header time is unreadable and reported separately, without
+discarding the RTC stamp. These conditions are scoped to the affected value,
+not a reason to discard every time in the packet. Verbatim sources and
+page checks: [Q-FLAGS analysis](analysis/Q-FLAGS-2026-11-12.md);
+L1-IPT-007 → L2-IPT-107 → L3-IPT-107.
 
 Weak time (contract 6.5) is not a finding: every answer's basis carries
 it.

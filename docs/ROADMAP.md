@@ -103,7 +103,7 @@ reporting.**
 
 ## L2 decisions accepted 2026-11-12
 
-The owner settled five of the nine L2 questions. Requirements and exact
+The owner settled six of the nine L2 questions. Requirements and exact
 verbatim Source lines are recorded in
 [the decision/source audit](analysis/owner-decisions-2026-11-12.md).
 
@@ -114,12 +114,18 @@ verbatim Source lines are recorded in
 | Q-STREAM-CHANNEL | Option A before data: caller-fixed, else declared external TIMEIN (Ch9 Table 9-4 CDT/TSRC), else lowest ID; no offline count ranking. Undecidable -> counter-only until caller chooses; no revisions or lost-lock switches. |
 | Q-CH4 | Explicit binary origin or BCD year/full day, otherwise labelled partial; no nearest-time-packet option now. Ch4 §4.7/RCC 123-20 code supplies weights, not an origin; characters/bits wording stays unresolved. |
 | Q-NTP | Owner: "make this as correct as possible". New RDG-012 accepted: UTC-following NTP count, declared/pivot/labelled era0, zero sentinel, leap ambiguity and table currency; PTP UTC only inside table coverage, TAI retained outside. |
+| Q-FLAGS | Refine (owner 2026-11-12): RTC stamps survive reserved secondary format 11 with TF-005 warning; secondary-derived stamps require a present header and defined format. Separate unreadable secondary time never discards valid RTC stamps. [Verified pages and planned cases](analysis/Q-FLAGS-2026-11-12.md). |
 
-**Still open:** Q-FLAGS, Q-CLI-EXIT, Q-EDITION and Q-TFMT-DEFAULT. NTP fraction
+**Still open:** Q-CLI-EXIT, Q-EDITION and Q-TFMT-DEFAULT. NTP fraction
 rounding is a remaining proposal: recommend floor with raw fraction retained.
 Existing interpolation rounding/ties/mode-change flushing proposals are not
 silently accepted. Propose archiving RFC 1305/5905 in rcc-106-standards; they
 are external sources today, and this task does not archive them.
+
+Q-FLAGS implementation follows **only after this documentation PR merges**, in
+a separate tests-first code PR: all 256 flags and literal 0x0C/0x8C/0x4C/0xCC/0x40,
+requirement/code/test trace markers, CHANGELOG behaviour note and full CI equivalent.
+The present documentation update changes no Rust source or tests.
 
 **Next implementation work:** tests first against these revised requirements,
 including every RDG-012 analysis edge. The present source and slice-2
