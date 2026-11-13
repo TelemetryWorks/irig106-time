@@ -302,3 +302,25 @@ edge-case tests, and two-person review remain outstanding.
 **Test**: not yet written
 
 **Development**: intensive testing and deep analysis required · **Analysis**: not yet written
+
+### RDG-012
+
+**Title**: NTP follows UTC reckoning; era evidence, zero sentinel and leap ambiguity are explicit
+
+**Sources**:
+- 106-24R1 §11.2.3.3, printed 11-26 / PDF34: "The NTP is referenced in UTC time with an epoch of January 1, 1900. The NTP time includes leap seconds." / "The PTP is referenced in International Atomic Time with an epoch of January 1, 1970. The PTP time does not include leap seconds."
+- Figure 11-16, printed 11-27 / PDF35: "Time Unsigned Seconds", "Time Unsigned Seconds Fractions"; NTF0x0: "Network Time Protocol Version 3 (Request for Comment 1305)". Same text/body checked in 106-17/19/20/22/23/24; exact pages and older figure numbers in the analysis.
+- RFC 1305 Appendix E.8, pp.78–79: "the NTP timescale is in effect reset to UTC as each timecode is received"; "knowledge of all previous leap seconds is lost"; 1972 value "2,272,060,800". Figure 8 duplicates the leap/midnight coordinate; its example-date inconsistency is flagged in the analysis.
+- RFC 5905 §6, pp.12–15: "Eras cannot be produced by NTP directly"; "they can be derived from external means"; "0 h 1 January 1900 UTC"; "a value of zero is a special case representing unknown or unsynchronized time". Figure4 supplies the 1970/1972/1999/2036 fixtures; the pivot premise is "within 68 years of the server".
+
+**Behaviour**: Resolve era from caller declaration, else a labelled caller-date/same-session dated-reference pivot, else era0 labelled policy-assumed; never use host time. NTP UTC civil/Unix-style seconds are era*2^32+raw_seconds-2208988800: never apply cumulative TAI-UTC. Raw seconds/fraction both zero yields unknown/unsynchronized, no absolute time and a finding. Preserve raw fraction; floor-to-ns (round toward zero) is accepted owner 2026-11-13. With covered leap data, flag the duplicate insertion coordinate as leap-ambiguous and keep the mapped value; without coverage record uncertainty. Format 2 carries no leap indicator and cannot uniquely label second60. PTP retains TAI and subtracts the applicable offset for UTC; outside table coverage use the last known offset, label the UTC answer possibly out of date and raise TF-021 (warning), per contract 6.8/6.9 and owner 2026-11-13. The contrary no-UTC instruction from the coordinator brief is withdrawn; it was not an owner decision.
+
+**Reason**: The cited RFCs explain the Chapter 11 wording without double-counting leap offsets. Eras require external evidence or an explicit assumption, and the compact IRIG body loses native NTP leap indicators. Provenance and ambiguity must survive conversion.
+
+**Design**: accepted · **Review**: pending · **Origin**: Q-NTP, owner 2026-11-12: "make this as correct as possible"
+
+**Test**: not yet written for this new interpretation; future edge fixtures are enumerated in the analysis. Existing NeedsContext tests are not evidence for the new conversion behaviour.
+
+**Development**: intensive testing and deep analysis required · **Analysis**: [written all-edition/RFC analysis and planned edge cases](analysis/RDG-012-ntp-utc-era.md)
+
+**Rounding decision**: floor NTP fraction-to-ns conversion (round toward zero) accepted owner 2026-11-13; preserve the raw word and quantization basis. **Archive proposal**: RFC 1305/5905 are not in rcc-106-standards; propose archiving their publisher documents with hashes and provenance, but do not archive them in this task.

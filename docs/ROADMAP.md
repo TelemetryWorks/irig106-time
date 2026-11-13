@@ -58,7 +58,9 @@ first option is the recommendation):
    preceding reference, labelled extrapolated, and a gap over 1 s is a
    finding. A packet before any time packet gets no absolute time and a
    finding; time source None (`0xF`) gives none. The standard gives no
-   guidance on these cases. Default mode still to be fixed in L2.
+   guidance on these cases. **Update, owner 2026-11-12:** default Standard;
+   100 ms hold tolerance/0 ns gap tolerance, explicit progress/caps and
+   committed Option A stream channel. See the accepted L2 decisions below.
    *(architecture section 13, point 5)*
 3. ~~Accept the 27 finding names and levels in `docs/architecture.md`
    section 8?~~ Yes (owner, 2026-11-11).
@@ -98,6 +100,46 @@ reporting.**
   prints `true` for each; the Security tab shows "Report a vulnerability".
 - *Also:* make sure the owner's GitHub notifications include security
   advisories, so a report is not missed.
+
+## L2 decisions accepted 2026-11-12/13
+
+The owner settled eight of the nine L2 questions. Requirements and exact
+verbatim Source lines are recorded in
+[the decision/source audit](analysis/owner-decisions-2026-11-12.md).
+
+| Question | Decision |
+|---|---|
+| Q-DEFAULT | Standard/preceding reference is default (RCC 123-20 §5.6, printed 5-44; ADR-0010); interpolate explicitly selectable. |
+| Q-STREAM-BOUND | Hold1 s+100 ms policy tolerance, gap tolerance 0 ns; caller progress/caps, no hidden queue; cap/timeout/EOF releases extrapolated or counter-only without preceding time. Ch10 §10.6.2/§10.6.1b–c, printed 10-26, supplies 1 Hz/100 ms generation/1000 ms commit bases. |
+| Q-STREAM-CHANNEL | Option A before data: caller-fixed, else declared external TIMEIN (Ch9 Table 9-4 CDT/TSRC), else lowest ID; no offline count ranking. Undecidable -> counter-only until caller chooses; no revisions or lost-lock switches. |
+| Q-CH4 | Explicit binary origin or BCD year/full day, otherwise labelled partial; no nearest-time-packet option now. Ch4 §4.7/RCC 123-20 code supplies weights, not an origin; characters/bits wording stays unresolved. |
+| Q-NTP | Owner: "make this as correct as possible". New RDG-012 accepted: UTC-following NTP count, declared/pivot/labelled era0, zero sentinel, leap ambiguity and table currency; PTP last-known-offset fallback outside coverage, labelled possibly out of date with TF-021 (owner 2026-11-13). Floor rounding accepted. |
+| Q-FLAGS | Refine (owner 2026-11-12): RTC stamps survive reserved secondary format 11 with TF-006 warning; secondary-derived stamps require a present header and defined format. Separate unreadable secondary time never discards valid RTC stamps. [Verified pages and planned cases](analysis/Q-FLAGS-2026-11-12.md). |
+| Q-CLI-EXIT | Align with `irig106-tmats` (owner 2026-11-12): **0 success; 1 threshold findings; 2 usage; 3 unreadable/invalid Chapter 10/time input; 4 output-write failure**. Shared ecosystem convention, never renumber; IRIG 106 is silent. [Pinned draft source and planned checks](analysis/Q-CLI-EXIT-2026-11-12.md). |
+| Q-EDITION | Accepted owner 2026-11-13: explicit declaration/override **wins**, basis **override**, contradictory opted-in G\106/header evidence retained side by side; without override, caller opt-in G\106 packet edition → **declared, assumed from TMATS** only when uncontradicted by packet evidence, else unresolved/raw bits with evidence shown (and a finding for a no-override conflict), no SRC/None invention. TMATS ADR-0028 vocabulary; no fallback selects EXT. [Sources and planned fixtures](analysis/Q-EDITION-2026-11-13.md). |
+
+**Still open:** Q-TFMT-DEFAULT. NTP fraction floor is accepted (owner
+2026-11-13), with the raw fraction retained. Q-FLAGS-ERROR below remains a
+finding-assignment open item, not a reopening of the stamp-selection rule.
+Existing interpolation rounding/ties/mode-change flushing proposals are not
+silently accepted. Propose archiving RFC 1305/5905 in rcc-106-standards; they
+are external sources today, and this task does not archive them.
+
+Q-FLAGS implementation follows **only after this documentation PR merges**, in
+a separate tests-first code PR: all 256 flags and literal 0x0C/0x8C/0x4C/0xCC/0x40,
+requirement/code/test trace markers, CHANGELOG behaviour note and full CI equivalent.
+The present documentation update changes no Rust source or tests.
+
+Q-CLI-EXIT code/tests belong to the CLI restructure step (ADR-0008), with
+one test per code including output-write and parser usage failures,
+Requirements markers and code Traces tags. The numeric convention is now
+accepted; this docs PR does not implement it.
+
+**Next implementation work:** tests first against these revised requirements,
+including every RDG-012 analysis edge. The present source and slice-2
+NeedsContext tests are unchanged by the documentation PR; trace links do not
+prove the revised conversion semantics. No owner or human Review field was
+promoted by documentation work. The original initial sequence follows.
 
 **Next work, after the answers:**
 
@@ -528,3 +570,5 @@ No breaking changes without major version bump after this release.
 | **0.8.0** | Phase 6 | Ecosystem wiring: irig106-types migration (incl. epoch/duration newtypes), irig106-core/decode/reader integration, unwrap() audit | In progress (P6-01 done) |
 | **0.9.0** | Phase 7 | Validation: real-file testing, fuzz/benchmark on hardware, requirement trace validation, security analysis (SonarQube, cargo-audit, coverage), cyber security report | Planned |
 | **1.0.0** | Phase 8 | Stable API: complete rustdoc with architecture diagrams, VCRM with zero gaps, IRIG 106 primer, semver freeze | Planned |
+
+**Open implementation item Q-FLAGS-ERROR:** TF-006 remains the accepted reserved-VALUE warning (including flags format 11); TF-005 remains the reserved-BITS warning. Neither row nor default level changes. For source=1/format=11 with presence=1, no existing error-level finding fits: TF-004 is scoped to malformed time packets, TF-012 to checksum failure, and TF-015 to bit 6 without bit 7. Return no secondary-derived time and an error outcome, retain TF-006, and leave its numeric error-finding assignment open; recommend a separately reviewed explicit undefined-secondary-format error finding, with no numeric ID allocated here. The same assignment gap applies to an unreadable own secondary time in source=0/presence=1/format=11; keep the RTC value. Source=1/presence=0 already has TF-015. Owner 2026-11-13 explicitly preserves TF-005/TF-006.

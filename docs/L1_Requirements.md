@@ -186,9 +186,9 @@ Handbook, cited as support, never as the rule.
 
 ### L1-IPT-007
 
-**Statement**: The library SHALL NOT read a time from a time stamp whose packet has bit 6 set with bit 7 clear, or bits 3–2 equal to `11`, and SHALL report the packet.
+**Statement**: The library SHALL return no time from a stamp and report an error when bit 6=1 with bit 7=0, or when bit 6=1 with bits 3–2=11 (undefined secondary format). When bit 6=0 with bits 3–2=11, it SHALL read the padded 48-bit RTC stamp normally and report TF-006 (warning, value kept). If bit 7=1 in that RTC case, the secondary header time itself remains unreadable and SHALL be reported separately without discarding the RTC stamp.
 
-**Source**: "(bit 7 must be 1)"; "11 = Reserved" (§11.2.1.1 g); contract 6.6.
+**Source**: "0 = Packet header 48-bit RTC."; "1 = Packet secondary header time (bit 7 must be 1)."; "Bits 3-2: Indicate the packet secondary header time format."; "11 = Reserved" (106-24R1 §11.2.1.1 g, printed 11-8/11-9, PDF 16/17); "48-bit RTC format (plus 16 high-order zero bits)" (§11.2.1.3 b, printed 11-11 / PDF 19). Value retention is owner 2026-11-12, Q-FLAGS; TF-006 reserved-value warning and unchanged TF-005/TF-006 levels are confirmed owner 2026-11-13; page images and older equivalent wording: `docs/analysis/Q-FLAGS-2026-11-12.md`.
 
 **Verification Method**: Test (T)
 
@@ -536,9 +536,9 @@ Handbook, cited as support, never as the rule.
 
 ### L1-WORD-001
 
-**Statement**: The library SHALL turn a set of Chapter 4 time words — high order, low order, and microsecond — into absolute time, binary or BCD weighted as the caller states.
+**Statement**: The library SHALL reconstruct Chapter 4 binary or BCD weighted calendar time only with explicit caller context (binary origin; BCD year and full day); otherwise return a labelled partial time, without assuming day 1/year/origin or using a nearest-time-packet setting, and report unresolved characters-versus-bits day wording.
 
-**Source**: "High and low order time words shall be binary or binary coded decimal (BCD) weighted, and microsecond words shall be binary weighted"; resolutions of 1 µs (to 9999), 10 ms, and 655.36 s binary or one minute BCD; "For BCD, the days field shall contain the three least significant bits of the BCD Julian date" (Chapter 4 §4.7); `C-d\PTM`, `C-d\BTM` (Chapter 9); contract 3.8. Layout to be confirmed with T-10.
+**Source**: "resolution of 655.36 seconds", "10 milliseconds", "three least significant bits of the BCD Julian date", "at a rate necessary to resolve time ambiguities" (106-24R1 Chapter 4 §4.7, printed 4-11 / PDF 15); RCC 123-20 `enI106_Ch4Binary2IrigTime`, printed B-43 / PDF 149, applies word weights without an origin. Explicit caller context and partial results are owner policy (2026-11-12); historical characters/bits wording remains unresolved (T-10). Retained earlier source: "High and low order time words shall be binary or binary coded decimal (BCD) weighted, and microsecond words shall be binary weighted"; resolutions of 1 µs (to 9999), 10 ms, and 655.36 s binary or one minute BCD; "For BCD, the days field shall contain the three least significant bits of the BCD Julian date" (Chapter 4 §4.7); `C-d\PTM`, `C-d\BTM` (Chapter 9); contract 3.8. Layout confirmed 2026-11-12, T-10.
 
 **Verification Method**: Test (T)
 
@@ -640,17 +640,17 @@ Handbook, cited as support, never as the rule.
 
 ### L1-COR-002
 
-**Statement**: By default, the library SHALL take the reference of the chosen time channel nearest in counter value to the counter being converted.
+**Statement**: For offline queries by default, the library SHALL take the reference of the chosen time channel nearest in counter value to the counter being converted.
 
-**Source**: "It is better to use the clock and relative time values from a time packet that occurs near the current data packet as the data file is decoded since there is some drift in the RTC during a recording session" (RCC 123-09 §6.6; T-13); contract 5.2 rule 5; a policy setting (L1-POL-001). Prototype identifier kept.
+**Source**: "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78, supports the preceding-reference stream example); ADR-0010 (cited selectable defaults). The offline nearest-reference default remains contract 5.2 rule 5 / L1-POL-001 product policy; owner 2026-11-12 Q-DEFAULT selects standard for streaming, not a new offline algorithm. Retained earlier source: "It is better to use the clock and relative time values from a time packet that occurs near the current data packet as the data file is decoded since there is some drift in the RTC during a recording session" (RCC 123-09 §6.6; T-13); contract 5.2 rule 5; a policy setting (L1-POL-001). Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
 ### L1-COR-003
 
-**Statement**: The library SHALL use one time channel per session — the caller's choice; otherwise the channel the setup record declares with an external source; otherwise the channel with the most valid references; otherwise the lowest channel ID — and SHALL state which and why.
+**Statement**: The library SHALL use one time channel per session and state which and why: offline uses caller choice, declared external, most valid references, then lowest ID; streaming commits before data using caller-fixed, declared-external TIMEIN, then lowest ID without future counts, or gives counter-only until the caller chooses if not decidable.
 
-**Source**: "When multiple time channels are available, it is incumbent on the programmer or data analyst to determine and select the best source of time for a particular data set" (RCC 123-20 §5.6); "It is usually most correct to select one time channel only and to use this channel exclusively" (RCC 123-09 §6.6); contract 5.2 rule 4; a policy setting. Prototype identifier kept.
+**Source**: "it is incumbent on the programmer or data analyst to determine and select the best source of time" (RCC 123-20 §5.6, printed 5-44 / PDF 78); "TIMEIN" / "IRIG Time Input" (`R-x\CDT-n`, 106-24R1 Chapter 9 Table 9-4, printed 9-50 / PDF 56), "E" / "External" (`R-x\TSRC-n`, printed 9-72 / PDF 78). Option A ranking/commitment is owner policy (2026-11-12); the standard names attributes, not that ranking. Retained earlier source: "When multiple time channels are available, it is incumbent on the programmer or data analyst to determine and select the best source of time for a particular data set" (RCC 123-20 §5.6); "It is usually most correct to select one time channel only and to use this channel exclusively" (RCC 123-09 §6.6); contract 5.2 rule 4; a policy setting. Prototype identifier kept.
 
 **Verification Method**: Test (T)
 
@@ -880,9 +880,9 @@ Handbook, cited as support, never as the rule.
 
 ### L1-STRM-001
 
-**Statement**: The library SHALL provide a streaming form that applies the same policy and gives the same answers, with memory bounded by the late-packet bound and the spacing of references rather than by the length of the recording.
+**Statement**: The library SHALL provide bounded, irrevocable streaming with standard as the default preceding-reference mode and explicitly selectable interpolate, caller progress and buffer caps, separate accepted hold/gap defaults, and extrapolated release at cap/timeout/EOF (counter-only without a usable preceding reference). Stream channel commitment SHALL NOT depend on future offline reference counts.
 
-**Source**: Contract 4.8; architecture section 6.
+**Source**: "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78); ADR-0010 (cited, selectable defaults). Owner decision 2026-11-12; policy/interpretation, not an added standard mandate. "minimum frequency of 1 hertz" (106-24R1 Chapter 10 §10.6.2); "packet generation times shall be equal to or less than 100 milliseconds" (§10.6.1 b); "stream commit time equal to or less than 1000 ms" (§10.6.1 c), all printed 10-26 / PDF 32. The 100 ms hold tolerance, zero gap tolerance, explicit progress, caps and release rules are owner-selected policy (2026-11-12), not timing guarantees imposed on a reader.
 
 **Verification Method**: Test (T)
 
@@ -1111,9 +1111,9 @@ Handbook, cited as support, never as the rule.
 
 ### L1-CLI-007
 
-**Statement**: The CLI SHALL use documented exit codes that distinguish success, success with findings at or above a chosen severity, unreadable input, and usage errors.
+**Statement**: The CLI SHALL use five documented exit classes: 0 success; 1 findings at or above the chosen severity; 2 usage error; 3 input could not be read or is not valid Chapter 10/time input; 4 output could not be written. These shared ecosystem assignments SHALL agree with `irig106 tmats` and SHALL NOT be renumbered.
 
-**Source**: As `irig106-tmats` L1-CLI-006; findings and their severities (ADR-0013).
+**Source**: As `irig106-tmats` L1-CLI-006 (the existing L1 source); TelemetryWorks/irig106-tmats, `docs/CLI.md` §4, lines 88–91, commit `41030d54dfbd8a539c2810d023dd0670bfd3dc1f`: "`0` success; `1` the check failed (`verify` mismatch, `validate` findings at or above the failure threshold); `2` usage error; `3` input could not be read or is not TMATS/Chapter 10; `4` output could not be written. To be fixed before 0.1 and never renumbered." Owner 2026-11-12, Q-CLI-EXIT = align with irig106-tmats; findings/severities ADR-0013, hand-rolled parser ADR-0008. IRIG 106 is silent on tool exit codes: no standard source exists. This is a shared ecosystem convention so `irig106 tmats` and `irig106 time` agree; code 3 specializes the domain to Chapter 10/time input. See `docs/analysis/Q-CLI-EXIT-2026-11-12.md`.
 
 **Verification Method**: Test (T)
 ---

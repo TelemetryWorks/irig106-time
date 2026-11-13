@@ -128,9 +128,9 @@ lists — the packet header's data type version and the setup record's RCCVER
 | `stamp` | an 8-byte intra-packet time stamp: the 48-bit counter "plus 16 high-order zero bits", or the 64-bit secondary-header format when bit 6 is set | §11.2.1.3 b | T-1 |
 | `format1` | the Format 1 data word (SRC, FMT, leap year, date format, ITS, reserved bits) and bodies: day format, 3 words (6 bytes); day, month, and year, 4 words (8 bytes); decode and encode | §11.2.3.2, Figures 11-12 to 11-14, Table 11-16 | T-6, T-7, T-12 |
 | `format2` | the Format 2 data word (NTF bits 7–4, TS bits 3–0, reserved 31–8) and bodies: NTP seconds and fraction, PTP seconds and nanoseconds, 8 bytes each; decode and encode | §11.2.3.3, Figures 11-15 to 11-17 | T-2, T-3 |
-| `words` | time words from data: Chapter 4 high, low, and microsecond words, binary or BCD weighted; network time words | Chapter 4 §4.7; contract 3.8 | — (new) |
+| `words` | time words from data: Chapter 4 high/low/microseconds with explicit caller binary origin or BCD year/full day, otherwise labelled partial (no nearest-packet inference); network words use RDG-012 | Chapter 4 §4.7; contract 3.8 | — (new) |
 | `calendar` | absolute time: day of year and time of day to the nanosecond, with an optional year; calendar dates; leap years; the leap second 23:59:60 | Figures 11-13, 11-14; RCC 200-16 §3.6, A.2 | T-16 |
-| `scale` | time scales and epochs: UTC (FMT `0x4`, NTP from 1900, "includes leap seconds"), TAI (PTP from 1970, "does not include leap seconds"), GPS (FMT `0x5`, TAI − 19 s), unknown (FMT `0x3`), and IRIG-A, B, G as UTC by assumption; Unix time; conversions between them through the leap-second table, which states the date it is known to be current to | §11.2.3.2 a, §11.2.3.3; RCC 200-16 §1, A.2; RDG-009 | T-17 |
+| `scale` | time scales and epochs: UTC (FMT `0x4`, NTP from 1900, "includes leap seconds"), TAI (PTP from 1970, "does not include leap seconds"), GPS (FMT `0x5`, TAI − 19 s), unknown (FMT `0x3`), and IRIG-A, B, G as UTC by assumption; NTP UTC/Unix reckoning and labelled era evidence under RDG-012, without cumulative TAI-UTC; PTP UTC with last-known-offset fallback outside coverage, possibly out of date with TF-021; raw TAI retained; fraction floor accepted owner 2026-11-13 | §11.2.3.2 a, §11.2.3.3; RCC 200-16 §1, A.2; RFC 1305 Appendix E.8 pp.78–79, RFC 5905 §6 pp.12–15; RDG-009/012 | T-17 |
 | `edition` | what exists in which edition: Format 2 from 106-17; Chapter 10 section numbers before 106-17, Chapter 11 after | §11.2.1.1 e | T-4 |
 
 Every reader in this layer takes a byte slice bounded by the caller —
@@ -160,6 +160,14 @@ A library — `args` (hand-rolled, ADR-0008), `input` (the packet reader until
 output format), `render` (text, CSV, JSON), `run` — and the binary
 `irigtime`; `irig106-cli` mounts `run` as `irig106 time` (ADR-0007). It
 writes the joining loop of section 6 once, for every command.
+
+Q-CLI-EXIT (owner 2026-11-12) adopts the shared ecosystem convention so
+`irig106 tmats` and `irig106 time` agree: **0 success; 1 findings at or above
+the chosen severity; 2 usage error; 3 unreadable or invalid Chapter 10/time
+input; 4 output could not be written**. Never renumber. IRIG 106 is silent
+on tool exit codes; no standard source exists. The pinned TMATS draft,
+L1-CLI-007 → L2-CLI-107 → L3-CLI-107, and planned restructure-step tests
+are recorded in [the Q-CLI-EXIT analysis](analysis/Q-CLI-EXIT-2026-11-12.md).
 
 ---
 
@@ -198,7 +206,8 @@ reference of the chosen channel, and it records the policy.
 | **scale** | the time scale of the answer — UTC, TAI, GPS, or unknown — and whether it is stated by the standard or assumed by the policy |
 | **precision** | the resolution of the reference's format (10 ms for Format 1; 1 ns for PTP), so a time is not read as more precise than its reference |
 | **year** | known or not, and from where: a day-month-year packet, the caller, `R-x\RI4` |
-| **corrections** | drift correction applied or not; leap-second offset applied, and whether the table reaches the date |
+| **corrections** | drift correction applied or not; PTP offset and table coverage/currency; NTP leap ambiguity (never a cumulative offset correction) |
+| **era (NTP)** | raw seconds/fraction; declared, pivot-derived or era0-policy-assumed era; pivot/reference identity, rounding and leap-ambiguity findings (RDG-012) |
 | **own time** | for a packet with a secondary header: its own time, and its difference from the counter-derived time when beyond the policy's tolerance |
 | **policy** | the policy used, or the settings that differ from the defaults |
 
@@ -212,11 +221,12 @@ UTC, assumed; precision 10 ms; year unknown; defaults.
 
 The settings and defaults are contract section 5.6: session boundaries;
 which time channels count (declared TIMEIN); which time counts (valid only);
-choosing the time channel (the caller's, then the declared external, then
-the most valid references, then the lowest ID); the reference within the
-channel (nearest); after a lost lock (keep, labelled); the year (day-month-
-year packet, caller, `R-x\RI4`); reference gap (more than 1 s plus a
-tolerance); time jump (the format's resolution, 10 ms for Format 1); the
+choosing the **offline** time channel (caller, declared external, most valid
+references, lowest ID); offline reference nearest; stream default Standard
+(preceding reference) or explicit Interpolate, with channel commitment
+described below; after a lost lock (keep, labelled); the year (day-month-
+year packet, caller, `R-x\RI4`); reference gap (more than 1 s, default gap
+tolerance 0 ns, independent of the hold tolerance); time jump (the format's resolution, 10 ms for Format 1); the
 late-packet bound (1100 ms = the 1000 ms stream commit time plus the 100 ms
 packet generation time of Chapter 10 §10.6.1 b–c); counter wrap (arithmetic,
 fixed); before the first reference (counter time only); secondary header
@@ -252,7 +262,7 @@ section 4.2 — and feeds the builder three kinds of input.
 
 ![Which reference governs a packet](diagrams/reference-selection.svg)
 
-*Which reference governs a packet* (contract section 5.2): sessions first,
+*Offline: which reference governs a packet* (contract section 5.2): sessions first,
 declared time channels, valid time, one channel per session, then the
 nearest reference — each rule a setting of the policy.
 
@@ -262,15 +272,54 @@ year, gaps, jumps, findings. Lookups against it give answers: for a counter
 (bit 6 decides whether it is a counter or the secondary-header format), for
 a set of time words (from `irig106-decode`).
 
-**One pass or two.** The whole-recording timeline sees every reference
-before answering, so "nearest" can look ahead. A caller that must answer as
-it reads (`irig106-decode` streaming, `irig106-studio`) uses `stream`: it
-holds a packet until the next reference of its channel arrives or the
-policy's bound passes, then answers, interpolating between the two
-references to correct for drift (mode `interpolate`); with mode `standard`
-(RCC 123-20 §5.6, preceding reference only), it answers at once. The owner
-requires both, switchable (2026-11-11). Memory is bounded by the late-packet bound and
-the reference spacing, not by the recording.
+**One pass or two.** Offline sees all references and retains nearest/count
+ranking. Stream defaults to **standard**, answering immediately from the
+preceding reference; **interpolate** remains explicitly selectable (owner,
+2026-11-12; RCC 123-20 §5.6, printed 5-44, "clock time of a subsequent data
+packet"; cited defaults under ADR-0010). In interpolate, hold is the 1 s
+reference interval plus 100 ms policy tolerance, with explicit caller progress
+and caps. At cap/timeout/EOF release as extrapolated from a usable preceding
+reference, or counter-only without one. A gap>1 s is a finding even inside
+that 1.1 s allowance. Chapter 10 §10.6.2 says "minimum frequency of 1 hertz";
+§10.6.1b says "packet generation times shall be equal to or less than 100
+milliseconds"; §10.6.1c says "stream commit time equal to or less than 1000 ms"
+(all printed 10-26/PDF32). The commit allowance explains late-written time
+packets; the tolerance is selected reader policy, not an IRIG reader mandate.
+No hidden unbounded queue or host-clock progress is allowed.
+
+**Stream channel commitment (Option A).** Before data choose caller-fixed,
+else declared external TIMEIN (`R-x\CDT-n=TIMEIN`, `R-x\TSRC-n=E`, Table 9-4,
+printed 9-50/9-72), else lowest eligible ID; lowest ID breaks equal preference
+ties. If the inventory/declarations cannot settle the choice in advance,
+return counter-only until the caller chooses. Do not use the offline most-valid-
+references step, change channel on lost lock, or revise emitted answers.
+RCC 123-20 §5.6 says "it is incumbent on the programmer or data analyst to
+determine and select the best source of time"; §11.2.3.2's note says "the time
+source shall indicate Internal (0x0)" on lost lock. Those source changes stay
+labelled on the committed channel. This ranking is owner policy, not a
+ranking prescribed by Table 9-4.
+
+**Calendar/era reconstruction.** Chapter 4 requires explicit caller binary
+origin or BCD year/full day; otherwise return labelled partial time. Never
+invent day 1/year/origin or use a nearest-time-packet option now. Its §4.7
+phrases "resolution of 655.36 seconds", "10 milliseconds", "three least
+significant bits of the BCD Julian date" and "at a rate necessary to resolve
+time ambiguities" (printed 4-11/PDF15) establish weights and ambiguity, not an
+origin; RCC 123-20 `enI106_Ch4Binary2IrigTime` applies no origin (B-43/PDF149).
+Older characters/current bits wording stays unresolved and reported.
+
+NTP follows UTC reckoning under **RDG-012**: extend seconds by declared era,
+else caller-date/same-session independently dated-reference pivot, else labelled
+era0 policy assumption; subtract2208988800, never cumulative TAI-UTC. Never
+use the host clock. All-zero seconds/fraction is unknown/unsynchronized, no
+absolute answer. Format 2 lacks NTP leap bits: retain mapped values with
+leap-ambiguous findings at covered insertion coordinates, and record uncertain
+coverage when the table does not reach the date. NTP fraction floor rounding
+is accepted (floor/round toward zero, owner 2026-11-13). PTP retains TAI;
+UTC uses the applicable offset, or the last known offset outside coverage
+with a possibly-out-of-date label and TF-021 warning. The contrary no-UTC
+coordinator instruction is withdrawn. See
+[the RFC/all-edition analysis](analysis/RDG-012-ntp-utc-era.md).
 
 ---
 
@@ -333,6 +382,17 @@ nothing is wrong.
 | TF-025 | A packet's ERTC and RTC disagree ("RTC = ERTC/100") | warning | 6.6 |
 | TF-026 | A Format 2 time packet in a recording declared before 106-17 | warning | 3.9 |
 | TF-027 | Secondary headers satisfy only the other checksum reading (RDG-008) | information | 6.6 |
+
+Q-FLAGS (owner 2026-11-12, refine): bit 6=1/bit 7=0 is an error with no
+stamp time. Bit 6=1/format 11 is undefined-format error with no stamp time.
+Bit 6=0/format 11 retains the padded RTC value with TF-006 warning; if bit 7=1,
+the secondary header time is unreadable and reported separately, without
+discarding the RTC stamp. These conditions are scoped to the affected value,
+not a reason to discard every time in the packet. Verbatim sources and
+page checks: [Q-FLAGS analysis](analysis/Q-FLAGS-2026-11-12.md);
+L1-IPT-007 → L2-IPT-107 → L3-IPT-107.
+
+**Open implementation item Q-FLAGS-ERROR:** TF-006 remains the accepted reserved-VALUE warning (including flags format 11); TF-005 remains the reserved-BITS warning. Neither row nor default level changes. For source=1/format=11 with presence=1, no existing error-level finding fits: TF-004 is scoped to malformed time packets, TF-012 to checksum failure, and TF-015 to bit 6 without bit 7. Return no secondary-derived time and an error outcome, retain TF-006, and leave its numeric error-finding assignment open; recommend a separately reviewed explicit undefined-secondary-format error finding, with no numeric ID allocated here. The same assignment gap applies to an unreadable own secondary time in source=0/presence=1/format=11; keep the RTC value. Source=1/presence=0 already has TF-015. Owner 2026-11-13 explicitly preserves TF-005/TF-006.
 
 Weak time (contract 6.5) is not a finding: every answer's basis carries
 it.
@@ -430,15 +490,20 @@ wrong are retired and never reused (L1, section "Prototype requirements").
 4. ~~**T-10**, the Chapter 4 binary layout~~ — page images checked
    2026-11-12: Figure 11-4 (printed 11-10 / PDF 18) and Figure 4-4
    (printed 4-10 / PDF 14). See `STANDARD-REVIEW.md` T-10. Calendar origin
-   and reconstruction of the truncated BCD day remain explicit context,
-   not facts supplied by those figures.
+   and reconstruction require explicit caller context (owner 2026-11-12);
+   missing context means labelled partial, no invented day/year/origin or
+   nearest-packet option. Historical characters/bits wording remains unresolved.
 5. ~~The one-pass answer (section 6)~~ — **both, a policy setting** (owner,
    2026-11-11): `standard` answers at once from the preceding reference;
    `interpolate` holds until the next reference and corrects for drift,
    bounded by the 1 Hz time-packet rate; see `docs/ROADMAP.md` question 2.
-   The default is proposed in L2 for owner decision (Q-DEFAULT).
-6. **The reading register** (`docs/INTERPRETATIONS.md`, RDG-001 to RDG-011):
-   design accepted by the owner (2026-11-11), two-person review pending.
+   Owner2026-11-12 accepted Standard as default, 100 ms hold/0 ns gap
+   tolerances, explicit progress/caps and Option A channel commitment; see
+   L2/L3 for accepted behaviour and remaining rounding proposals.
+6. **The reading register** (`docs/INTERPRETATIONS.md`, RDG-001 to RDG-012):
+   prior Design states remain unchanged; RDG-012 is accepted (owner 2026-11-12),
+   with written RFC/all-edition analysis and floor rounding accepted, owner 2026-11-13.
+   Two-person review remains pending.
    RDG-003 (`TFMT` I "Internal") is accepted as an inference;
    RDG-007 (ITS before 106-17, T-14) and RDG-008 (the checksum, T-15,
    suspect) change what L2 specifies; RDG-009 (time scales, T-17) and

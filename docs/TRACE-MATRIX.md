@@ -424,7 +424,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
 | L1-RDG-001 | L2-RDG-101 | _(none)_ | Draft |
-| L1-RDG-002 | L2-RDG-102, L2-RDG-201, L2-RDG-202, L2-RDG-203, L2-RDG-204, L2-RDG-205, L2-RDG-206, L2-RDG-207, L2-RDG-208, L2-RDG-209, L2-RDG-210, L2-RDG-211 | _(none)_ | Implemented (I) |
+| L1-RDG-002 | L2-RDG-102, L2-RDG-201, L2-RDG-202, L2-RDG-203, L2-RDG-204, L2-RDG-205, L2-RDG-206, L2-RDG-207, L2-RDG-208, L2-RDG-209, L2-RDG-210, L2-RDG-211, L2-RDG-212 | _(none)_ | Implemented (I) |
 
 **L2 -> L3 -> Verification Artifacts**
 
@@ -443,6 +443,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L2-RDG-209 | L3-RDG-209 | _(TBD)_ | Draft |
 | L2-RDG-210 | L3-RDG-210 | _(TBD)_ | Draft |
 | L2-RDG-211 | L3-RDG-211 | _(TBD)_ | Draft |
+| L2-RDG-212 | L3-RDG-212 | _(TBD)_ | Draft |
 
 ### L1-STRM: Streaming
 
@@ -636,7 +637,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | ANS | 5 | 5 | 5 | 0 | 0 | 0 | 0 |
 | POL | 3 | 4 | 4 | 0 | 0 | 0 | 0 |
 | FND | 5 | 5 | 5 | 0 | 0 | 0 | 0 |
-| RDG | 2 | 13 | 13 | 0 | 0 | 0 | 0 |
+| RDG | 2 | 14 | 14 | 0 | 0 | 0 | 0 |
 | STRM | 1 | 7 | 7 | 0 | 0 | 0 | 0 |
 | ERR | 5 | 5 | 5 | 2 | 2 | 2 | 2 |
 | API | 11 | 11 | 11 | 0 | 0 | 0 | 0 |
@@ -644,13 +645,13 @@ This matrix is the single source of truth for live status; the requirement docum
 | CLI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
 | REL | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
 | TST | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
-| **Total** | **124** | **143** | **143** | **29** | **29** | **29** | **29** |
+| **Total** | **124** | **144** | **144** | **29** | **29** | **29** | **29** |
 
 The countable requirement set is every L2 and L3 requirement plus the 0 L1 *leaf* requirement(s) (L1s with no L2 decomposition yet). Composite L1s are verified through their children.
 
-**Tested by at least one test marker**: 58 of 286 (20.3%).
+**Tested by at least one test marker**: 58 of 288 (20.1%).
 
-**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 58 of 286 (20.3%).
+**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 58 of 288 (20.1%).
 
 ### Orphan check
 
@@ -674,9 +675,10 @@ Every entry of `docs/INTERPRETATIONS.md` with its written analysis and the tests
 | RDG-009 | The time scale of each time format; IRIG time is UTC by assumption | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-009) | `tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance`<br>`tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value` |
 | RDG-010 | Second 60 is a leap second on a day that can be 30 June or 31 December | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-010) | `tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates` |
 | RDG-011 | "The first dynamic data packet" is checked per session | accepted | not yet written | _(none)_ |
+| RDG-012 | NTP follows UTC reckoning; era evidence, zero sentinel and leap ambiguity are explicit | accepted | [written all-edition/RFC analysis and planned edge cases](analysis/RDG-012-ntp-utc-era.md) | _(none)_ |
 
-* Entries without a written analysis: **8** of 11
-* Entries without a test: **7** of 11
+* Entries without a written analysis: **8** of 12
+* Entries without a test: **8** of 12
 * Entries missing the development mark: **0**
 
 ### Marker reference check
