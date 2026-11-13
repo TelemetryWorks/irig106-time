@@ -58,15 +58,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `IntraPacketTimeFormat::from_packet_flags` now uses bit 7 for secondary
   presence, bit 6 for stamp source, and bits 3–2 for format; the former bit-2
   presence interpretation was wrong. Bit 6 clear selects RTC; inconsistent
-  secondary-source flags or reserved format 11 yield `InvalidFlags(raw)`.
-  Current L1-IPT-007 strictness rejects format 11 even with RTC source, pending
-  Q-FLAGS. `parse_intra_packet_time` returns the new
-  `TimeError::InvalidPacketFlags { flags }` for this case instead of falling
-  back to RTC. Add match arms for `IntraPacketTimeFormat::InvalidFlags` and
+  secondary-source flags yield `InvalidFlags(raw)`. Under accepted Q-FLAGS,
+  reserved format 11 invalidates only secondary-derived stamps; RTC stamps
+  still decode (see migration below). `parse_intra_packet_time` returns
+  `TimeError::InvalidPacketFlags { flags }` for a missing required header
+  instead of falling back to RTC. Add match arms for `IntraPacketTimeFormat::InvalidFlags` and
   `PacketStandard::Unknown`: these two enums are **not** `non_exhaustive`, so
   existing exhaustive matches break. `PacketStandard::from_version(Unknown(_))`
   now returns `Unknown`, not `Ch11`; both `is_ch10()` and `is_ch11()` return
   false, and Display emits `Unknown`. `TimeError` remains `non_exhaustive`.
+
+- **Q-FLAGS reserved-value refinement** — flags `0x0C`/`0x8C` now select
+  `Rtc48` and decode the stamp instead of returning `InvalidPacketFlags`.
+  Call `intra_packet::validate_reserved_time_format(flags)` separately: its
+  `TimeError::ReservedPacketTimeFormat { flags }` is a **TF-006 warning**,
+  with the RTC value kept; it is not TF-005 reserved padding. Call
+  `validate_secondary_time_format(flags)` separately for selected/present
+  secondary time: `0x8C` is unreadable there despite its usable RTC stamp;
+  `0x4C` reports undefined format independently of its missing-header error.
+  For `0xCC`, stamp parsing now returns the distinct
+  `TimeError::UndefinedSecondaryTimeFormat { flags }` rather than
+  `InvalidPacketFlags`; no time is returned. `0x4C` and `0x40` retain the
+  missing-header error (`InvalidPacketFlags`, TF-015), with raw flags and
+  separate reserved-format validation preserving simultaneous evidence.
+  Update error handling for the new variants and invoke separate validation
+  when reporting findings. `TimeError` remains `non_exhaustive`.
+  `TODO(Q-FLAGS-ERROR)`: the undefined-format numeric error finding ID remains
+  an owner decision; no new numeric finding or TF-006 severity change.
+  No CLI behaviour/output changes in this slice.
 
 - **Corrected shared types at `48f1834`** — replace `TimeSource::InternalRtc`
   with `InternalFromRmm` (SRC 2) and `TimeSource::Gps` with `Reserved(3)`;

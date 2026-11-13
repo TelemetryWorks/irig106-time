@@ -412,3 +412,79 @@ fn qflags_literal_secondary_errors_are_distinct() {
         );
     }
 }
+
+/// Requirements: L1-IPT-007, L2-IPT-107, L3-IPT-107
+#[test]
+fn qflags_reserved_value_and_own_time_findings_are_independent() {
+    use irig106_time::TimeError;
+    use irig106_time::intra_packet::{
+        parse_intra_packet_time, validate_reserved_time_format, validate_secondary_time_format,
+    };
+    // §11.2.1.1 g, printed 11-8/11-9: bits 3-2 describe the secondary
+    // format independently of the bit-6 stamp source. 11 is a reserved VALUE.
+    for flags in 0..=255u8 {
+        let reserved = (flags >> 2) & 3 == 3;
+        let secondary_time_undefined = flags & 0xc0 != 0 && reserved;
+        assert_eq!(
+            validate_reserved_time_format(flags),
+            if reserved {
+                Err(TimeError::ReservedPacketTimeFormat { flags })
+            } else {
+                Ok(())
+            },
+            "reserved-value finding: {flags:#04x}"
+        );
+        assert_eq!(
+            validate_secondary_time_format(flags),
+            if secondary_time_undefined {
+                Err(TimeError::UndefinedSecondaryTimeFormat { flags })
+            } else {
+                Ok(())
+            },
+            "selected or own secondary time: {flags:#04x}"
+        );
+    }
+    // Literal RTC cases retain a value despite the separate TF-006 warning.
+    for flags in [0x0c, 0x8c] {
+        assert!(
+            parse_intra_packet_time(
+                &[1, 2, 3, 4, 5, 6, 0, 0],
+                IntraPacketTimeFormat::from_packet_flags(flags)
+            )
+            .is_ok()
+        );
+        assert_eq!(
+            validate_reserved_time_format(flags),
+            Err(TimeError::ReservedPacketTimeFormat { flags })
+        );
+    }
+    assert_eq!(validate_secondary_time_format(0x0c), Ok(()));
+    assert_eq!(
+        validate_secondary_time_format(0x8c),
+        Err(TimeError::UndefinedSecondaryTimeFormat { flags: 0x8c })
+    );
+    // 0x4c preserves both missing-header and reserved-format evidence.
+    assert_eq!(
+        validate_reserved_time_format(0x4c),
+        Err(TimeError::ReservedPacketTimeFormat { flags: 0x4c })
+    );
+    assert_eq!(
+        validate_secondary_time_format(0x4c),
+        Err(TimeError::UndefinedSecondaryTimeFormat { flags: 0x4c })
+    );
+    assert_eq!(validate_reserved_time_format(0x40), Ok(()));
+}
+
+/// Requirements: L1-IPT-007, L2-IPT-107, L3-IPT-107
+#[test]
+fn qflags_diagnostics_name_warning_and_preserve_raw_flags() {
+    use irig106_time::TimeError;
+    assert_eq!(
+        TimeError::ReservedPacketTimeFormat { flags: 0x8c }.to_string(),
+        "reserved packet secondary time format (TF-006 warning): flags 0x8c"
+    );
+    assert_eq!(
+        TimeError::UndefinedSecondaryTimeFormat { flags: 0xcc }.to_string(),
+        "undefined packet secondary time format: flags 0xcc"
+    );
+}
