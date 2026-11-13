@@ -65,7 +65,7 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L1-IPT-005 | L2-IPT-105 | `tests/rebuild_wire.rs::t1_all_flag_combinations_are_checked`<br>`tests/rebuild_wire.rs::t1_secondary_ch4_selected_by_bit_six` | Implemented |
 | L1-IPT-006 | L2-IPT-106 | `src/intra_packet_tests.rs::format_ch4_binary`<br>`src/intra_packet_tests.rs::format_no_secondary_is_rtc`<br>`src/intra_packet_tests.rs::intra_packet_time_is_enum`<br>`src/intra_packet_tests.rs::parse_buffer_too_short`<br>`src/intra_packet_tests.rs::parse_ertc64_known`<br>`src/intra_packet_tests.rs::parse_ieee1588_known`<br>`src/intra_packet_tests.rs::parse_rtc48_known`<br>`tests/rebuild_wire.rs::t1_all_flag_combinations_are_checked`<br>`tests/rebuild_wire.rs::t1_bit_two_alone_does_not_select_secondary` | Implemented |
-| L1-IPT-007 | L2-IPT-107 | `tests/rebuild_wire.rs::qflags_diagnostics_name_warning_and_preserve_raw_flags`<br>`tests/rebuild_wire.rs::qflags_literal_rtc_reserved_format_keeps_value`<br>`tests/rebuild_wire.rs::qflags_literal_secondary_errors_are_distinct`<br>`tests/rebuild_wire.rs::qflags_reserved_value_and_own_time_findings_are_independent`<br>`tests/rebuild_wire.rs::t1_all_flag_combinations_are_checked` | Implemented |
+| L1-IPT-007 | L2-IPT-107 | `tests/rebuild_wire.rs::qflags_diagnostics_name_warning_and_preserve_raw_flags`<br>`tests/rebuild_wire.rs::qflags_literal_error_variants`<br>`tests/rebuild_wire.rs::qflags_literal_rtc_reserved_format_keeps_value`<br>`tests/rebuild_wire.rs::qflags_literal_secondary_errors_are_distinct`<br>`tests/rebuild_wire.rs::qflags_reserved_value_and_own_time_findings_are_independent`<br>`tests/rebuild_wire.rs::t1_all_flag_combinations_are_checked` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
@@ -73,7 +73,7 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L2-IPT-105 | L3-IPT-105 | `tests/rebuild_wire.rs::t1_secondary_ch4_selected_by_bit_six` | Implemented |
 | L2-IPT-106 | L3-IPT-106 | `tests/rebuild_wire.rs::t1_bit_two_alone_does_not_select_secondary` | Implemented |
-| L2-IPT-107 | L3-IPT-107 | `tests/rebuild_wire.rs::qflags_diagnostics_name_warning_and_preserve_raw_flags`<br>`tests/rebuild_wire.rs::qflags_literal_rtc_reserved_format_keeps_value`<br>`tests/rebuild_wire.rs::qflags_literal_secondary_errors_are_distinct`<br>`tests/rebuild_wire.rs::qflags_reserved_value_and_own_time_findings_are_independent`<br>`tests/rebuild_wire.rs::t1_all_flag_combinations_are_checked` | Implemented |
+| L2-IPT-107 | L3-IPT-107 | `tests/rebuild_wire.rs::qflags_diagnostics_name_warning_and_preserve_raw_flags`<br>`tests/rebuild_wire.rs::qflags_literal_error_variants`<br>`tests/rebuild_wire.rs::qflags_literal_rtc_reserved_format_keeps_value`<br>`tests/rebuild_wire.rs::qflags_literal_secondary_errors_are_distinct`<br>`tests/rebuild_wire.rs::qflags_reserved_value_and_own_time_findings_are_independent`<br>`tests/rebuild_wire.rs::t1_all_flag_combinations_are_checked` | Implemented |
 
 ### L1-SEC: The secondary header
 

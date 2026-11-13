@@ -171,7 +171,7 @@ pub fn validate_reserved_time_format(flags: u8) -> Result<()> {
 /// Check whether selected or present secondary time has a defined format.
 ///
 /// This is independent of the stamp source. With flags `0x8c`, this returns
-/// `UndefinedSecondaryTimeFormat` while the RTC stamp remains readable.
+/// `UndefinedSecondaryTimeFormat` (TF-028 error) while the RTC stamp remains readable.
 /// With flags `0x4c`, the stamp parser reports the missing required header
 /// (TF-015), while this check independently reports the undefined selected
 /// format. If neither a stamp nor a present header uses secondary time, there

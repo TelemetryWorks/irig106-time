@@ -3,7 +3,7 @@
 > **Status: requirements updated for owner decisions, 2026-11-13; independent review pending.**
 > Rebuild requirements, not implementation evidence. Replaces the prototype
 > document. Derives from the current L1, the contract, accepted ADRs, the
-> architecture, the owner's 2026-11-11 answers, and the eight L2 decisions
+> architecture, the owner's 2026-11-11 answers, and the nine L2 decisions
 > of 2026-11-12/13 (see L2's accepted-decision table).
 > No Review field or owner-set Design status is changed by this draft.
 
@@ -73,7 +73,7 @@ legacy differences qualify their L2/L3 decomposition without rewriting L1.
 
 ## Owner decisions recorded 2026-11-12/13
 
-These eight decisions are accepted requirements for future implementation,
+These nine decisions are accepted requirements for future implementation,
 not evidence that current Rust code implements them. Sources and the exact
 changed requirement/parent/Source lines are listed in
 [the decision record](analysis/owner-decisions-2026-11-12.md).
@@ -88,12 +88,10 @@ changed requirement/parent/Source lines are listed in
 | Q-FLAGS | **Refine** (owner 2026-11-12): source=1 requires presence=1 and a defined secondary format; source=0/format=11 keeps RTC with TF-006 warning, separately reporting unreadable secondary time if present. [Page checks and truth table](analysis/Q-FLAGS-2026-11-12.md); L1-IPT-007 → L2-IPT-107 → L3-IPT-107. |
 | Q-CLI-EXIT | Align with `irig106-tmats` (owner 2026-11-12): **0 success; 1 threshold findings; 2 usage; 3 unreadable/invalid Chapter 10/time input; 4 output-write failure**. Shared ecosystem convention, never renumber; IRIG 106 is silent. [Pinned draft source and planned checks](analysis/Q-CLI-EXIT-2026-11-12.md). |
 | Q-EDITION | Accepted owner 2026-11-13: explicit declaration/override **wins**, basis **override**, contradictory opted-in G\106/header evidence retained side by side; without override, caller opt-in G\106 packet edition → **declared, assumed from TMATS** only when uncontradicted by packet evidence, else unresolved/raw bits with evidence shown (and a finding for a no-override conflict), no SRC/None invention. TMATS ADR-0028 vocabulary; no fallback selects EXT. [Sources and planned fixtures](analysis/Q-EDITION-2026-11-13.md). |
+| Q-TFMT-DEFAULT | Accepted owner 2026-11-13: by default missing required TFMT is reported and no comparison made; caller opt-in compares default A with default-derived basis, retaining the missing finding and raw absence. RDG-002 / Table 9-4 / Ch9 §9.5.1 a / TMATS ADR-0023. |
 
-## Questions still requiring owner decisions
-
-| ID | Question | Recommended option and reason |
-|----|----------|-------------------------------|
-| Q-TFMT-DEFAULT | Should the declared TFMT default A feed packet comparisons when the attribute is absent? | Recommend **explicit opt-in default application**, labelled default-derived, while retaining the missing-required-attribute finding. Chapter 9 defines Default for processing absent values, but R status still requires the attribute. Keep the accepted no-silent-substitution behaviour until the owner decides. |
+All nine original L2 questions are decided. Q-FLAGS-ERROR is also resolved
+as TF-028 (owner 2026-11-13). Other explicitly marked proposals remain.
 
 **NTP fraction floor (round toward zero) is accepted**, owner 2026-11-13;
 retain the raw fraction and quantization basis. RFC 1305/5905 archiving is
@@ -236,13 +234,13 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-IPT-007
 
-**Statement**: The library SHALL return no time from a stamp and report an error when bit 6=1 with bit 7=0, or when bit 6=1 with bits 3–2=11 (undefined secondary format). When bit 6=0 with bits 3–2=11, it SHALL read the padded 48-bit RTC stamp normally and report TF-006 (warning, value kept). If bit 7=1 in that RTC case, the secondary header time itself remains unreadable and SHALL be reported separately without discarding the RTC stamp.
+**Statement**: The library SHALL return no time from a stamp and report TF-015 (error) when bit 6=1 with bit 7=0, or TF-028 (error) when bit 6=1 with bits 3–2=11 (undefined secondary format). When bit 6=0 with bits 3–2=11, it SHALL read the padded 48-bit RTC stamp normally and report TF-006 (warning, value kept). If bit 7=1 in that RTC case, the secondary header time itself remains unreadable and SHALL be reported separately as TF-028 without discarding the RTC stamp.
 
-**Source**: "0 = Packet header 48-bit RTC."; "1 = Packet secondary header time (bit 7 must be 1)."; "Bits 3-2: Indicate the packet secondary header time format."; "11 = Reserved" (106-24R1 §11.2.1.1 g, printed 11-8/11-9, PDF 16/17); "48-bit RTC format (plus 16 high-order zero bits)" (§11.2.1.3 b, printed 11-11 / PDF 19). Value retention is owner 2026-11-12, Q-FLAGS; TF-006 reserved-value warning and unchanged TF-005/TF-006 levels are confirmed owner 2026-11-13; page images and older equivalent wording: `docs/analysis/Q-FLAGS-2026-11-12.md`.
+**Source**: "0 = Packet header 48-bit RTC."; "1 = Packet secondary header time (bit 7 must be 1)."; "Bits 3-2: Indicate the packet secondary header time format."; "11 = Reserved" (106-24R1 §11.2.1.1 g, printed 11-8/11-9, PDF 16/17); "48-bit RTC format (plus 16 high-order zero bits)" (§11.2.1.3 b, printed 11-11 / PDF 19). Value retention is owner 2026-11-12, Q-FLAGS; TF-006 reserved-value warning and unchanged TF-005/TF-006 levels are confirmed owner 2026-11-13; page images and older equivalent wording: `docs/analysis/Q-FLAGS-2026-11-12.md`. Owner 2026-11-13, Q-FLAGS-ERROR accepts TF-028 "Secondary-derived time has an undefined format" at error level, architecture section 8; UndefinedSecondaryTimeFormat maps to TF-028. TF-001..TF-027 remain unchanged.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Exhaust all 256 flag bytes against the source/presence/format rule, independently of other flag findings. Literal cases 0x0C and 0x8C decode RTC with TF-006; 0x8C also reports unreadable secondary time separately; its numeric error-finding assignment is open (Q-FLAGS-ERROR). 0x4C and 0xCC return no stamp time/errors for undefined secondary format, with 0x4C also lacking the required header; 0x40 returns no stamp time/error for absent required header. Use hand-authored padded RTC bytes, short lengths and nonzero padding as separate validation cases. These are planned tests, not executed implementation evidence.
+**Planned verification**: Exhaust all 256 flag bytes against the source/presence/format rule, independently of other flag findings. Literal cases 0x0C and 0x8C decode RTC with TF-006; 0x8C also reports unreadable secondary time separately; it is TF-028 (error). 0x4C and 0xCC return no stamp time/errors for undefined secondary format, with 0x4C also lacking the required header; 0x40 returns no stamp time/error for absent required header. Use hand-authored padded RTC bytes, short lengths and nonzero padding as separate validation cases. Use an independent hand-transcribed truth table for diagnostics and exact literal error-variant assertions. Flag decoding tests are implemented; future findings emission/report integration remains separate.
 
 ## SEC
 
@@ -1168,13 +1166,13 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-FND-004
 
-**Statement**: The library SHALL compare declarations and packets only using RDG-001..006 mappings, keeping source changes informational and inferred I mappings labelled.
+**Statement**: The library SHALL compare declarations and packets only using RDG-001..006 mappings, keeping source changes informational and inferred I mappings labelled. For absent required TFMT always report the missing attribute; by default skip its comparison. Only caller opt-in enables comparison using A, labelled default-derived, retaining the missing finding and raw absence.
 
-**Source**: Contract 3.7, 6.4; the source may change legitimately (§11.2.3.2 a).
+**Source**: Contract 3.7, 6.4; the source may change legitimately (§11.2.3.2 a). "R/R Ch 10 Status: R"; "Default: A" (106-24R1 Chapter 9 Table 9-4 TFMT row, printed 9-72 / PDF 78). "A value of “R” requires that the attribute be specified in the TMATS file whenever the attribute is allowed." (§9.5.1 a, printed 9-5 / PDF 11). "If the R/R Ch10 Status field is “R”, then the attribute must be included in the TMATS file if all other conditions apply even if it has a default."; "Default: This identifies the default value required to process a TMATS file when the file itself does not contain the attribute." (printed 9-6 / PDF 12). RDG-002; owner 2026-11-13, Q-TFMT-DEFAULT = opt-in labelled default. TelemetryWorks/irig106-tmats `docs/adr/0023-validation-passes-and-effective-values.md`, commit `41030d54dfbd8a539c2810d023dd0670bfd3dc1f`: effective resolver "never writes to the document". Opt-in comparison and provenance are owner policy; no defaults are inserted.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Each declared/observed mapping and mismatch, missing fields, configuration boundary, I inference warning, and external->internal loss of lock information.
+**Planned verification**: Each declared/observed mapping and mismatch, missing fields, configuration boundary, I inference warning (I ↔ 0x3 labelled inferred, owner Q1), and external->internal loss of lock information (TF-011). Every accepted letter/FMT pair in both directions, all mismatches and unknown/non-TIMEIN cases. Explicit A compares as explicit. Absent TFMT without opt-in raises missing-required finding and performs no comparison. Absent TFMT with opt-in compares default A to FMT 0x1/mismatch, labels default-derived and still raises missing-required finding. Verify raw declaration remains absent; no default insertion. These comparison tests belong to the later declaration/report implementation, not this targeted flag-code change. Source changes remain informational and setup-range boundaries remain traceable.
 
 #### L2-FND-105
 
@@ -1230,15 +1228,15 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-RDG-002
 
-**Statement**: The project SHALL specify and verify RDG-002: TFMT Format 1 named letters are compared through the accepted RDG-002 mapping; retain the page-confirmed A default separately from a missing explicit value.
+**Statement**: The project SHALL specify and verify RDG-002: use its accepted TFMT Format 1 named-letter/FMT mapping. Missing required TFMT SHALL always be reported; by default make no TFMT comparison when absent. Only on explicit caller opt-in use Table 9-4 default A for comparison, labelled default-derived, while preserving the missing-required-attribute finding and raw missing state. Explicit declarations remain explicit; never insert a default into TMATS. Record published default A separately from the explicit/missing declaration even when default comparison is disabled.
 
 **Source**: 106-24R1 Chapter 9 Table 9-4, printed9-72/PDF78; Chapter 11 §11.2.3.2 a; RDG-002.
 
 **Verification Method**: Inspection (I)
 
-**Source supplement**: 106-24R1 Chapter 9 §9.5.1 a, printed 9-5–6 / PDF 11–12, defines R and Default, including the requirement to include R attributes even if they have defaults; Table 9-4 TFMT is R. Q-TFMT-DEFAULT is pending owner decision.
+**Source supplement**: "R/R Ch 10 Status: R"; "Default: A" (106-24R1 Chapter 9 Table 9-4 TFMT row, printed 9-72 / PDF 78). "A value of “R” requires that the attribute be specified in the TMATS file whenever the attribute is allowed." (§9.5.1 a, printed 9-5 / PDF 11). "If the R/R Ch10 Status field is “R”, then the attribute must be included in the TMATS file if all other conditions apply even if it has a default."; "Default: This identifies the default value required to process a TMATS file when the file itself does not contain the attribute." (printed 9-6 / PDF 12). RDG-002; owner 2026-11-13, Q-TFMT-DEFAULT = opt-in labelled default. TelemetryWorks/irig106-tmats `docs/adr/0023-validation-passes-and-effective-values.md`, commit `41030d54dfbd8a539c2810d023dd0670bfd3dc1f`: effective resolver "never writes to the document". Opt-in comparison and provenance are owner policy; no defaults are inserted.
 
-**Planned verification**: Each pair in both directions, all mismatches, missing/unknown and a non-TIMEIN channel. Cite Table 9-4 printed 9-72/PDF 78 visual check. Explicit TFMT A versus absent TFMT with default processing disabled/enabled: preserve the missing-required finding and label any approved default-derived comparison.
+**Planned verification**: Every accepted letter/FMT pair in both directions, all mismatches and unknown/non-TIMEIN cases. Explicit A compares as explicit. Absent TFMT without opt-in raises missing-required finding and performs no comparison. Absent TFMT with opt-in compares default A to FMT 0x1/mismatch, labels default-derived and still raises missing-required finding. Verify raw declaration remains absent; no default insertion. These comparison tests belong to the later declaration/report implementation, not this targeted flag-code change. Cite Table 9-4 printed 9-72/PDF 78 visual check.
 
 #### L2-RDG-203
 
@@ -1899,4 +1897,4 @@ the tests-first rebuild, not mechanically relabelled.
 
 `L2-ABS-001`, `L2-ABS-002`, `L2-ABS-003`, `L2-ABS-004`, `L2-ABS-005`, `L2-ABS-006`, `L2-ABS-007`, `L2-ABS-008`, `L2-API-001`, `L2-API-002`, `L2-API-003`, `L2-API-004`, `L2-BCD-001`, `L2-BCD-002`, `L2-BCD-003`, `L2-BCD-004`, `L2-BCD-005`, `L2-BCD-006`, `L2-BCD-007`, `L2-BCD-008`, `L2-BCD-009`, `L2-BCD-010`, `L2-COR-001`, `L2-COR-002`, `L2-COR-003`, `L2-COR-004`, `L2-COR-005`, `L2-COR-006`, `L2-COR-007`, `L2-CSDW-001`, `L2-CSDW-002`, `L2-CSDW-003`, `L2-CSDW-004`, `L2-CSDW-005`, `L2-CSDW-006`, `L2-CSDW-007`, `L2-CSDW-008`, `L2-ERR-001`, `L2-ERR-002`, `L2-ERR-003`, `L2-F2COR-001`, `L2-F2COR-002`, `L2-F2COR-003`, `L2-F2CSDW-001`, `L2-F2CSDW-002`, `L2-F2CSDW-003`, `L2-F2CSDW-004`, `L2-IPT-001`, `L2-IPT-002`, `L2-IPT-003`, `L2-IPT-004`, `L2-IPT-005`, `L2-NTP-001`, `L2-NTP-002`, `L2-NTP-003`, `L2-NTP-004`, `L2-NTP-005`, `L2-PTP-001`, `L2-PTP-002`, `L2-PTP-003`, `L2-PTP-004`, `L2-PTP-005`, `L2-RTC-001`, `L2-RTC-002`, `L2-RTC-003`, `L2-RTC-004`, `L2-RTC-005`, `L2-RTC-006`, `L2-RTC-007`, `L2-RTC-008`, `L2-RTC-009`, `L2-RTC-010`, `L2-RTC-011`, `L2-SEC-001`, `L2-SEC-002`, `L2-SEC-003`, `L2-SEC-004`, `L2-SEC-005`, `L2-TAI-001`, `L2-TAI-002`, `L2-TAI-003`, `L2-TAI-004`.
 
-**Open implementation item Q-FLAGS-ERROR:** TF-006 remains the accepted reserved-VALUE warning (including flags format 11); TF-005 remains the reserved-BITS warning. Neither row nor default level changes. For source=1/format=11 with presence=1, no existing error-level finding fits: TF-004 is scoped to malformed time packets, TF-012 to checksum failure, and TF-015 to bit 6 without bit 7. Return no secondary-derived time and an error outcome, retain TF-006, and leave its numeric error-finding assignment open; recommend a separately reviewed explicit undefined-secondary-format error finding, with no numeric ID allocated here. The same assignment gap applies to an unreadable own secondary time in source=0/presence=1/format=11; keep the RTC value. Source=1/presence=0 already has TF-015. Owner 2026-11-13 explicitly preserves TF-005/TF-006.
+**Accepted Q-FLAGS-ERROR, owner 2026-11-13:** TF-028 "Secondary-derived time has an undefined format" is ERROR and maps from UndefinedSecondaryTimeFormat. It reports selected or present secondary time with format 11; RTC stamps remain usable. TF-006 remains the separate reserved-VALUE warning, TF-005 reserved-BITS warning, and TF-015 missing-required-header error. With 0x4C, TF-015/TF-028/TF-006 evidence can coexist. TF-001..TF-027 are unchanged; the former numeric finding-assignment open item is resolved.

@@ -382,6 +382,12 @@ nothing is wrong.
 | TF-025 | A packet's ERTC and RTC disagree ("RTC = ERTC/100") | warning | 6.6 |
 | TF-026 | A Format 2 time packet in a recording declared before 106-17 | warning | 3.9 |
 | TF-027 | Secondary headers satisfy only the other checksum reading (RDG-008) | information | 6.6 |
+| TF-028 | Secondary-derived time has an undefined format | error | 6.6; §11.2.1.1 g |
+
+TF-028 source: 106-24R1 §11.2.1.1 g, printed 11-8/11-9:
+"Bits 3-2: Indicate the packet secondary header time format."; "11 = Reserved";
+"1 = Packet secondary header time (bit 7 must be 1)." Owner 2026-11-13
+approves the error-level addition; TF-001..TF-027 are unchanged.
 
 Q-FLAGS (owner 2026-11-12, refine): bit 6=1/bit 7=0 is an error with no
 stamp time. Bit 6=1/format 11 is undefined-format error with no stamp time.
@@ -392,7 +398,7 @@ not a reason to discard every time in the packet. Verbatim sources and
 page checks: [Q-FLAGS analysis](analysis/Q-FLAGS-2026-11-12.md);
 L1-IPT-007 → L2-IPT-107 → L3-IPT-107.
 
-**Open implementation item Q-FLAGS-ERROR:** TF-006 remains the accepted reserved-VALUE warning (including flags format 11); TF-005 remains the reserved-BITS warning. Neither row nor default level changes. For source=1/format=11 with presence=1, no existing error-level finding fits: TF-004 is scoped to malformed time packets, TF-012 to checksum failure, and TF-015 to bit 6 without bit 7. Return no secondary-derived time and an error outcome, retain TF-006, and leave its numeric error-finding assignment open; recommend a separately reviewed explicit undefined-secondary-format error finding, with no numeric ID allocated here. The same assignment gap applies to an unreadable own secondary time in source=0/presence=1/format=11; keep the RTC value. Source=1/presence=0 already has TF-015. Owner 2026-11-13 explicitly preserves TF-005/TF-006.
+**Accepted Q-FLAGS-ERROR, owner 2026-11-13:** TF-028 "Secondary-derived time has an undefined format" is ERROR and maps from UndefinedSecondaryTimeFormat. It reports selected or present secondary time with format 11; RTC stamps remain usable. TF-006 remains the separate reserved-VALUE warning, TF-005 reserved-BITS warning, and TF-015 missing-required-header error. With 0x4C, TF-015/TF-028/TF-006 evidence can coexist. TF-001..TF-027 are unchanged; the former numeric finding-assignment open item is resolved.
 
 Weak time (contract 6.5) is not a finding: every answer's basis carries
 it.

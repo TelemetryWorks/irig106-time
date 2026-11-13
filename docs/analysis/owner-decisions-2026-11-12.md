@@ -8,6 +8,9 @@ Before checkout changes, origin was verified as
 that current origin/main. No source/configuration/dependency changes,
 installation, merge, publication or archive modification is part of this PR.
 
+The detailed Source-line audit below is the historical PR8 snapshot at
+`48001e3c60faef4b74daef4f49b5adc13340f1c8`; later requirements supersede it.
+
 ## Decisions and their source limits
 
 | Decision | Accepted result | Verbatim support / policy distinction |
@@ -56,7 +59,7 @@ Changed requirement IDs in this review round (relative to 091ae3e):
 - PTP last-known-offset/TF-021 fallback restored; coordinator-brief refusal withdrawn, never attributed to the owner. Contract 6.8/6.9 and L1-TAI-004 remain authoritative.
 - Every Source line edited by this PR was compared with origin/main for lost quotations. Restored original quotations, alongside the new sources, in: `L1-WORD-001`, `L1-COR-002`, `L1-COR-003`, `L2-ABS-102`, `L2-TAI-104`, `L2-WORD-101`, `L2-WORD-102`, `L2-COR-103`, `L2-COR-107`, `L2-COR-108`, `L2-ANS-101`, `L3-ABS-102`, `L3-TAI-104`, `L3-WORD-101`, `L3-WORD-102`, `L3-COR-103`, `L3-COR-107`, `L3-COR-108`, `L3-ANS-101`. No original quotation remains dropped; confirmed layout prose replaces obsolete page-check TODO text.
 - **Architecture revert:** `architecture.md` TF-005 and TF-006 rows restored byte-for-byte to origin/main, including warning defaults and the flags reserved-value listing. This reverts PR edits to both finding IDs; no new finding ID or level is introduced. RTC with format 11 retains its value with TF-006, not TF-005. Undefined secondary-derived time has no fitting existing numeric error finding; Q-FLAGS-ERROR is explicitly open.
-- Q-EDITION accepted with TMATS ADR-0028 basis vocabulary and conflict/raw-value fixtures; removed from the nine-question open table. Q-TFMT-DEFAULT remains open.
+- Q-EDITION accepted with TMATS ADR-0028 basis vocabulary and conflict/raw-value fixtures; removed from the nine-question open table. At that PR8 review point Q-TFMT-DEFAULT was open; it is now accepted (owner 2026-11-13), opt-in labelled default.
 - NTP fraction floor/round toward zero accepted; removed from open proposals. Interpolation rounding and RFC archiving remain proposals.
 
 ## Final Q-EDITION review clarification
@@ -114,8 +117,8 @@ Line references are to the accompanying requirements files in this PR.
 - **RFC archive:** propose publisher RFC1305/5905 artifacts with provenance,
   hashes and pagination notes in rcc-106-standards; not performed. The RFCs
   remain externally cited primary sources.
-- Q-TFMT-DEFAULT remains as previously
-  proposed in L2. Chapter4 characters/bits wording remains unresolved and
+- Q-TFMT-DEFAULT is accepted (owner 2026-11-13): opt-in labelled default,
+  always retain the missing-required finding. Chapter4 characters/bits wording remains unresolved and
   reported; accepting explicit context did not settle that textual ambiguity.
 
 Executed local checks: trace matrix regenerated and `--check` passed;
@@ -144,4 +147,33 @@ Q-CLI-EXIT is accepted and removed from the open table. Its implementation
 and per-code tests (including output failure and ADR-0008 parser usage)
 belong to the CLI restructure step, with Requirements/Traces markers.
 
-**Open implementation item Q-FLAGS-ERROR:** TF-006 remains the accepted reserved-VALUE warning (including flags format 11); TF-005 remains the reserved-BITS warning. Neither row nor default level changes. For source=1/format=11 with presence=1, no existing error-level finding fits: TF-004 is scoped to malformed time packets, TF-012 to checksum failure, and TF-015 to bit 6 without bit 7. Return no secondary-derived time and an error outcome, retain TF-006, and leave its numeric error-finding assignment open; recommend a separately reviewed explicit undefined-secondary-format error finding, with no numeric ID allocated here. The same assignment gap applies to an unreadable own secondary time in source=0/presence=1/format=11; keep the RTC value. Source=1/presence=0 already has TF-015. Owner 2026-11-13 explicitly preserves TF-005/TF-006.
+**Accepted Q-FLAGS-ERROR, owner 2026-11-13:** TF-028 "Secondary-derived time has an undefined format" is ERROR and maps from UndefinedSecondaryTimeFormat. It reports selected or present secondary time with format 11; RTC stamps remain usable. TF-006 remains the separate reserved-VALUE warning, TF-005 reserved-BITS warning, and TF-015 missing-required-header error. With 0x4C, TF-015/TF-028/TF-006 evidence can coexist. TF-001..TF-027 are unchanged; the former numeric finding-assignment open item is resolved.
+
+## Final owner decisions: PR D
+
+Owner 2026-11-13 resolves Q-TFMT-DEFAULT as opt-in labelled default and
+Q-FLAGS-ERROR as TF-028 ERROR. Changed requirement IDs are
+L2/L3-RDG-202, L2/L3-FND-104 and L2/L3-IPT-107; every parent remains unchanged.
+Their updated Source/supplement quotes the primary definitions and pins
+TMATS ADR-0023. The RDG-002 register change is confined to Behaviour;
+its earlier question records the prior discussion, now explicitly resolved
+by that Behaviour decision. Design/Review fields are unchanged.
+
+No TFMT comparison implementation or findings-report emitter is introduced.
+PR9 already decodes RTC with independent warnings/errors; the error variant
+now documents its accepted TF-028 mapping. Independent truth-table and exact
+error-variant tests strengthen that existing behaviour.
+
+### PR D review: preserve the existing requirement limits
+
+L2/L3-FND-104 retain **only RDG-001..006** comparisons, the I inference
+warning (I ↔ 0x3 labelled inferred, owner Q1), and external->internal
+loss-of-lock information (TF-011), alongside the new TFMT default cases.
+All six requirements edited by PR D were compared with main. The audit also
+restored RDG-202's explicit Format 1 scope, separately recorded published
+default (including with comparison disabled), and visual-check citation.
+IPT-107's remaining changes are the accepted TF-028 mapping and strengthened
+verification; none of its existing flag/padding/length cases was removed.
+TF-028's Contract cell follows the existing style; its owner date remains
+in this decision record. TF-001..TF-027 and human Design/Review fields
+are unchanged.
