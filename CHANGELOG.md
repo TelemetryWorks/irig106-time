@@ -22,6 +22,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   snapshot serialization or streaming rebuild is claimed by this first part.
   Unsupported calendar boundaries return a labelled counter-only answer.
 
+- E1 reserved SRC values now retain readable valid time with TF-006 warning;
+  reserved FMT remains unreadable and excluded. SRC 3 is not GPS.
+- E1 verification is **partial at clause level**. The generated trace matrix
+  counts test markers and cannot express partially verified clauses within a
+  linked L2/L3 requirement; an Implemented row does not mean full compliance.
+  See `docs/verification-e1.md` for covered/deferred clauses and mutation evidence.
+- The preceding midpoint tie and coarser-resolution jump threshold are **L3
+  PROPOSALS used as labelled, selectable defaults**, pending owner confirmation;
+  E1 does not promote them to accepted owner decisions.
+
 ### ⚠️ E1 migration notes
 
 - `TimeCorrelator::DEFAULT_OOO_WINDOW{,_NS}` is now **1100 ms**, the accepted

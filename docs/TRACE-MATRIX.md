@@ -327,13 +327,13 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1-COR-003 | L2-COR-103 | `tests/offline_timeline.rs::channel_rank_admission_none_and_caller_no_fallback`<br>`tests/offline_timeline.rs::valid_count_id_and_caller_preference_are_ordered` | Implemented |
 | L1-COR-004 | L2-COR-104 | `tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons` | Implemented |
 | L1-COR-005 | L2-COR-105 | `tests/offline_timeline.rs::sessions_high_water_wrap_and_exact_late_boundary` | Implemented |
-| L1-COR-006 | L2-COR-106 | `tests/offline_timeline.rs::channel_rank_admission_none_and_caller_no_fallback`<br>`tests/offline_timeline.rs::none_format_never_supplies_a_readable_body` | Implemented |
+| L1-COR-006 | L2-COR-106 | `tests/offline_timeline.rs::channel_rank_admission_none_and_caller_no_fallback`<br>`tests/offline_timeline.rs::none_format_never_supplies_a_readable_body`<br>`tests/offline_timeline.rs::review_literal_reserved_src_keeps_readable_time`<br>`tests/offline_timeline.rs::review_nonleap_day366_is_malformed`<br>`tests/offline_timeline.rs::review_readable_invalid_requires_opt_in` | Implemented |
 | L1-COR-007 | L2-COR-107 | `tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons` | Implemented |
 | L1-COR-008 | L2-COR-108 | `tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons` | Implemented |
 | L1-COR-009 | L2-COR-109 | `tests/offline_timeline.rs::accepted_late_default_is_1100_ms`<br>`tests/offline_timeline.rs::sessions_high_water_wrap_and_exact_late_boundary`<br>`tests/pipeline.rs::correlator_with_ooo_window` | Implemented |
 | L1-COR-010 | L2-COR-110 | _(none)_ | Draft |
 | L1-COR-011 | L2-COR-111 | _(none)_ | Draft |
-| L1-COR-012 | L2-COR-112 | `tests/offline_timeline.rs::first_time_presence_scale_boundaries_and_invalid_queries` | Implemented |
+| L1-COR-012 | L2-COR-112 | `tests/offline_timeline.rs::first_time_presence_scale_boundaries_and_invalid_queries`<br>`tests/offline_timeline.rs::review_dynamic_before_time_has_tf002`<br>`tests/offline_timeline.rs::review_session_without_time_has_tf001` | Implemented |
 | L1-COR-013 | L2-COR-113 | `tests/offline_timeline.rs::quality_drift_uses_absolute_over_rtc_sign`<br>`tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons`<br>`tests/pipeline.rs::drift_ppm_fast_rtc` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
@@ -345,13 +345,13 @@ This matrix is the single source of truth for live status; the requirement docum
 | L2-COR-103 | L3-COR-103 | `tests/offline_timeline.rs::channel_rank_admission_none_and_caller_no_fallback`<br>`tests/offline_timeline.rs::valid_count_id_and_caller_preference_are_ordered` | Implemented |
 | L2-COR-104 | L3-COR-104 | `tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons` | Implemented |
 | L2-COR-105 | L3-COR-105 | `tests/offline_timeline.rs::sessions_high_water_wrap_and_exact_late_boundary` | Implemented |
-| L2-COR-106 | L3-COR-106 | `tests/offline_timeline.rs::channel_rank_admission_none_and_caller_no_fallback`<br>`tests/offline_timeline.rs::none_format_never_supplies_a_readable_body` | Implemented |
+| L2-COR-106 | L3-COR-106 | `tests/offline_timeline.rs::channel_rank_admission_none_and_caller_no_fallback`<br>`tests/offline_timeline.rs::none_format_never_supplies_a_readable_body`<br>`tests/offline_timeline.rs::review_literal_reserved_src_keeps_readable_time`<br>`tests/offline_timeline.rs::review_nonleap_day366_is_malformed`<br>`tests/offline_timeline.rs::review_readable_invalid_requires_opt_in` | Implemented |
 | L2-COR-107 | L3-COR-107 | `tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons` | Implemented |
 | L2-COR-108 | L3-COR-108 | `tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons` | Implemented |
 | L2-COR-109 | L3-COR-109 | `tests/offline_timeline.rs::accepted_late_default_is_1100_ms`<br>`tests/offline_timeline.rs::sessions_high_water_wrap_and_exact_late_boundary`<br>`tests/pipeline.rs::correlator_with_ooo_window` | Implemented |
 | L2-COR-110 | L3-COR-110 | _(TBD)_ | Draft |
 | L2-COR-111 | L3-COR-111 | _(TBD)_ | Draft |
-| L2-COR-112 | L3-COR-112 | `tests/offline_timeline.rs::first_time_presence_scale_boundaries_and_invalid_queries` | Implemented |
+| L2-COR-112 | L3-COR-112 | `tests/offline_timeline.rs::first_time_presence_scale_boundaries_and_invalid_queries`<br>`tests/offline_timeline.rs::review_dynamic_before_time_has_tf002`<br>`tests/offline_timeline.rs::review_session_without_time_has_tf001` | Implemented |
 | L2-COR-113 | L3-COR-113 | `tests/offline_timeline.rs::quality_drift_uses_absolute_over_rtc_sign`<br>`tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons`<br>`tests/pipeline.rs::drift_ppm_fast_rtc` | Implemented |
 
 ### L1-ANS: Answers and their basis
@@ -364,7 +364,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1-ANS-002 | L2-ANS-102 | _(none)_ | Draft |
 | L1-ANS-003 | L2-ANS-103 | _(none)_ | Draft |
 | L1-ANS-004 | L2-ANS-104 | _(none)_ | Draft |
-| L1-ANS-005 | L2-ANS-105 | `tests/offline_timeline.rs::nearest_preceding_ties_counter_only_and_policy_snapshots` | Implemented |
+| L1-ANS-005 | L2-ANS-105 | `tests/offline_timeline.rs::nearest_preceding_ties_counter_only_and_policy_snapshots`<br>`tests/offline_timeline.rs::review_dynamic_before_time_has_tf002`<br>`tests/offline_timeline.rs::review_unknown_year_does_not_invent_day366` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
@@ -374,7 +374,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L2-ANS-102 | L3-ANS-102 | _(TBD)_ | Draft |
 | L2-ANS-103 | L3-ANS-103 | _(TBD)_ | Draft |
 | L2-ANS-104 | L3-ANS-104 | _(TBD)_ | Draft |
-| L2-ANS-105 | L3-ANS-105 | `tests/offline_timeline.rs::nearest_preceding_ties_counter_only_and_policy_snapshots` | Implemented |
+| L2-ANS-105 | L3-ANS-105 | `tests/offline_timeline.rs::nearest_preceding_ties_counter_only_and_policy_snapshots`<br>`tests/offline_timeline.rs::review_dynamic_before_time_has_tf002`<br>`tests/offline_timeline.rs::review_unknown_year_does_not_invent_day366` | Implemented |
 
 ### L1-POL: The time policy
 
@@ -383,7 +383,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
 | L1-POL-001 | L2-POL-101, L2-POL-201 | `tests/offline_timeline.rs::nearest_preceding_ties_counter_only_and_policy_snapshots` | Partially Implemented |
-| L1-POL-002 | L2-POL-102 | `tests/offline_timeline.rs::first_time_presence_scale_boundaries_and_invalid_queries` | Implemented |
+| L1-POL-002 | L2-POL-102 | `tests/offline_timeline.rs::first_time_presence_scale_boundaries_and_invalid_queries`<br>`tests/offline_timeline.rs::review_duplicate_packet_identity_is_rejected` | Implemented |
 | L1-POL-003 | L2-POL-103 | _(none)_ | Draft |
 
 **L2 -> L3 -> Verification Artifacts**
@@ -391,7 +391,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
 | L2-POL-101 | L3-POL-101 | `tests/offline_timeline.rs::nearest_preceding_ties_counter_only_and_policy_snapshots` | Implemented |
-| L2-POL-102 | L3-POL-102 | `tests/offline_timeline.rs::first_time_presence_scale_boundaries_and_invalid_queries` | Implemented |
+| L2-POL-102 | L3-POL-102 | `tests/offline_timeline.rs::first_time_presence_scale_boundaries_and_invalid_queries`<br>`tests/offline_timeline.rs::review_duplicate_packet_identity_is_rejected` | Implemented |
 | L2-POL-103 | L3-POL-103 | _(TBD)_ | Draft |
 | L2-POL-201 | L3-POL-201 | _(TBD)_ | Draft |
 
@@ -403,7 +403,7 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L1-FND-001 | L2-FND-101 | _(none)_ | Draft |
 | L1-FND-002 | L2-FND-102 | _(none)_ | Draft |
-| L1-FND-003 | L2-FND-103 | _(none)_ | Draft |
+| L1-FND-003 | L2-FND-103 | `tests/offline_timeline.rs::review_rtc_sync_error_is_tf024_warning_value_kept` | Implemented |
 | L1-FND-004 | L2-FND-104 | _(none)_ | Draft |
 | L1-FND-005 | L2-FND-105 | _(none)_ | Draft |
 
@@ -413,7 +413,7 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L2-FND-101 | L3-FND-101 | _(TBD)_ | Draft |
 | L2-FND-102 | L3-FND-102 | _(TBD)_ | Draft |
-| L2-FND-103 | L3-FND-103 | _(TBD)_ | Draft |
+| L2-FND-103 | L3-FND-103 | `tests/offline_timeline.rs::review_rtc_sync_error_is_tf024_warning_value_kept` | Implemented |
 | L2-FND-104 | L3-FND-104 | _(TBD)_ | Draft |
 | L2-FND-105 | L3-FND-105 | _(TBD)_ | Draft |
 
@@ -636,7 +636,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | COR | 13 | 13 | 13 | 11 | 11 | 11 | 11 |
 | ANS | 5 | 5 | 5 | 2 | 2 | 2 | 2 |
 | POL | 3 | 4 | 4 | 2 | 2 | 2 | 2 |
-| FND | 5 | 5 | 5 | 0 | 0 | 0 | 0 |
+| FND | 5 | 5 | 5 | 1 | 1 | 1 | 1 |
 | RDG | 2 | 14 | 14 | 0 | 0 | 0 | 0 |
 | STRM | 1 | 7 | 7 | 0 | 0 | 0 | 0 |
 | ERR | 5 | 5 | 5 | 2 | 2 | 2 | 2 |
@@ -645,13 +645,13 @@ This matrix is the single source of truth for live status; the requirement docum
 | CLI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
 | REL | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
 | TST | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
-| **Total** | **124** | **144** | **144** | **44** | **44** | **44** | **44** |
+| **Total** | **124** | **144** | **144** | **45** | **45** | **45** | **45** |
 
 The countable requirement set is every L2 and L3 requirement plus the 0 L1 *leaf* requirement(s) (L1s with no L2 decomposition yet). Composite L1s are verified through their children.
 
-**Tested by at least one test marker**: 88 of 288 (30.6%).
+**Tested by at least one test marker**: 90 of 288 (31.2%).
 
-**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 88 of 288 (30.6%).
+**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 90 of 288 (31.2%).
 
 ### Orphan check
 

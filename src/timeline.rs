@@ -282,9 +282,11 @@ pub enum Rejection {
     Undeclared,
     /// Readable or unreadable invalid payload.
     Invalid,
-    /// Source None never produces time.
+    /// Source None never produces a reference. E1 classifies this unusable
+    /// reference as TF-003 warning; it is not an assertion that SRC None
+    /// equals FMT NONE. See verification-e1.md for the policy/source basis.
     NoneSource,
-    /// Reserved source or format.
+    /// Unsupported reserved format; reserved SRC is only a TF-006 warning.
     Reserved,
     /// Malformed/unreadable value or zero precision.
     Malformed,
@@ -432,9 +434,12 @@ impl TimelineBuilder {
                 if matches!(input.source, TimeF1Source::Source(TimeSource::None)) {
                     reasons.push(Rejection::NoneSource);
                 }
-                if matches!(input.source, TimeF1Source::Source(TimeSource::Reserved(_)))
-                    || matches!(input.format, TimeFormat::Reserved(_))
-                {
+                if matches!(input.source, TimeF1Source::Source(TimeSource::Reserved(_))) {
+                    // SRC is a reserved VALUE, not an unreadable payload.
+                    // TF-006 warning keeps the admitted time and raw source.
+                    self.finding(6, key, Some(packet.channel), None, None);
+                }
+                if matches!(input.format, TimeFormat::Reserved(_)) {
                     reasons.push(Rejection::Reserved);
                 }
                 match input.value {
@@ -456,6 +461,10 @@ impl TimelineBuilder {
                 }
                 for reason in &reasons {
                     let code = match reason {
+                        // §11.2.3.2 requires a time packet even for source None:
+                        // count its presence, but owner Q2 forbids using its time.
+                        // TF-003 is E1's unusable-reference warning classification;
+                        // do not call it malformed or claim no time packet existed.
                         Rejection::Invalid | Rejection::NoneSource => Some(3),
                         Rejection::Reserved => Some(6),
                         Rejection::Malformed => Some(4),
