@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- E2 `stream::StreamTimeline`: Standard preceding-reference default and explicit
+  Interpolate, caller progress, fixed advance channel commitment, mandatory
+  packet/byte/reference caps, incremental findings and immutable answer basis.
+  Hold defaults to1 s+100 ms, gap tolerance to0 ns; every resource/timeout/EOF
+  fallback is labelled extrapolated or counter-only. No session/jump/scale bridge.
+  Floor interpolation and old-policy mode-change flushing remain L3 proposals.
+  See `docs/verification-e2.md`: ordinary Format1 projections only; matrix links
+  cannot express partial clauses. Network adapters/year inference/serialization
+  remain deferred; legacy `streaming` is a separate compatibility API.
+
 - E1 offline core in `timeline`: recording-order session/reset/wrap/late
   handling, caller-fixed or ranked time channels, bounded Format 1 decoding,
   retained reference admission evidence, nearest/preceding lookup, counter-only
@@ -48,6 +58,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- E2 skips non-admitted/missing time references without draining pending data or
+  clearing still-eligible predecessors. SRC None/invalid/malformed observations
+  keep their findings; both stream modes can continue from earlier valid time.
+  Invalid payloads are never interpolation endpoints, even under opt-in admission.
+  Only the accepted opt-in stop-on-loss setting adds its source-loss barrier.
+- Correct E2 coverage: `raw_network_rate` is inert snapshot metadata and does not
+  qualify TF-016. COR-108's raw-network exception remains deferred with Format2.
+
 - Owner decisions: absent required TFMT is reported and skipped in comparison
   by default; only caller opt-in permits default A, labelled default-derived,
   with the missing finding preserved. Requirements only: declaration comparison
@@ -59,6 +77,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   flags and exact literal error-variant assertions.
 
 ### ⚠️ BREAKING CHANGES
+
+- `timeline::TimelineFinding` adds `raw_rtc: Option<Rtc>` (including TF-024
+  without a decoded timestamp). Supply the field in struct literals; use `..`
+  in destructuring if unneeded. No CLI/output-format changes.
 
 - **Edition 2024 and MSRV 1.85** (was edition 2021 and 1.60), the same across the IRIG 106 ecosystem (owner, 2026-09-27; `docs/adr/0003`). CI checks 1.85; formatting follows the 2024 style edition.
 

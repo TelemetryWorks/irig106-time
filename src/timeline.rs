@@ -136,6 +136,9 @@ pub struct TimelineFinding {
     pub channel: Option<u16>,
     /// Previous/reference packet if applicable.
     pub related: Option<u64>,
+    /// Raw packet counter, including TF-024 when no timestamp is readable.
+    /// **Traces:** L3-FND-103 ← L2-FND-103 ← L1-FND-003
+    pub raw_rtc: Option<Rtc>,
     /// Signed counter displacement or jump residual, in ns.
     pub delta_ns: Option<i128>,
 }
@@ -531,6 +534,7 @@ impl TimelineBuilder {
             packet: key.packet,
             channel,
             related,
+            raw_rtc: Some(Rtc::from_raw((key.ticks & MASK) as u64)),
             delta_ns,
         });
     }
@@ -893,7 +897,7 @@ fn year_days(year: u16) -> i128 {
         365
     }
 }
-fn absolute_delta(a: &TimelineReference, b: &TimelineReference) -> Option<i128> {
+pub(crate) fn absolute_delta(a: &TimelineReference, b: &TimelineReference) -> Option<i128> {
     if a.input.scale.effective() == TimeScale::Unknown
         || a.input.scale.effective() != b.input.scale.effective()
     {
@@ -918,7 +922,7 @@ fn absolute_delta(a: &TimelineReference, b: &TimelineReference) -> Option<i128> 
         _ => None,
     }
 }
-fn shift(time: AbsoluteTime, delta: i128) -> Result<AbsoluteTime> {
+pub(crate) fn shift(time: AbsoluteTime, delta: i128) -> Result<AbsoluteTime> {
     let mut ns = i128::from(time.as_total_ns()).checked_add(delta).ok_or(
         TimeError::InvalidTimelineInput("calendar arithmetic overflow"),
     )?;
@@ -971,4 +975,25 @@ fn distance_ns(a: i128, b: i128) -> Result<i128> {
         .ok_or(TimeError::InvalidTimelineInput(
             "counter arithmetic overflow",
         ))
+}
+
+// Bounded one-packet admission adapter shared by E1/E2. Never accumulates
+// recording history; stream owns session/source/presence and gap state.
+pub(crate) fn stream_observation(
+    packet: PacketObservation,
+    policy: &OfflinePolicy,
+    key: PacketKey,
+) -> Result<(Option<TimelineReference>, Vec<TimelineFinding>)> {
+    let mut b = TimelineBuilder::new(policy.clone())?;
+    b.observe(packet, false)?;
+    let mut reference = b.sessions.pop().and_then(|mut s| s.references.pop());
+    if let Some(r) = &mut reference {
+        r.key = key;
+    }
+    b.findings.retain(|f| f.code != 2);
+    for f in &mut b.findings {
+        f.session = key.session;
+        f.packet = key.packet;
+    }
+    Ok((reference, b.findings))
 }

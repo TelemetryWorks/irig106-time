@@ -233,7 +233,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1-TAI-004 | L2-TAI-104 | _(none)_ | Draft |
 | L1-TAI-005 | L2-TAI-105 | `tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance`<br>`tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value` | Implemented |
 | L1-TAI-006 | L2-TAI-106 | `tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance` | Implemented |
-| L1-TAI-007 | L2-TAI-107 | `tests/offline_timeline.rs::bounded_wire_findings_survive_reference_admission`<br>`tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates` | Implemented |
+| L1-TAI-007 | L2-TAI-107 | `tests/offline_timeline.rs::bounded_wire_findings_survive_reference_admission`<br>`tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
@@ -245,7 +245,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L2-TAI-104 | L3-TAI-104 | _(TBD)_ | Draft |
 | L2-TAI-105 | L3-TAI-105 | `tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance`<br>`tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value` | Implemented |
 | L2-TAI-106 | L3-TAI-106 | `tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance` | Implemented |
-| L2-TAI-107 | L3-TAI-107 | `tests/offline_timeline.rs::bounded_wire_findings_survive_reference_admission`<br>`tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates` | Implemented |
+| L2-TAI-107 | L3-TAI-107 | `tests/offline_timeline.rs::bounded_wire_findings_survive_reference_admission`<br>`tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` | Implemented |
 
 ### L1-WORD: Time words inside data
 
@@ -322,36 +322,36 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-COR-001 | L2-COR-101 | `tests/offline_timeline.rs::bounded_wire_findings_survive_reference_admission` | Implemented |
+| L1-COR-001 | L2-COR-101 | `tests/offline_timeline.rs::bounded_wire_findings_survive_reference_admission`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` | Implemented |
 | L1-COR-002 | L2-COR-102 | `tests/offline_timeline.rs::both_literal_examples_carry_reproducible_basis`<br>`tests/offline_timeline.rs::contract_example_literal_wire_baseline`<br>`tests/offline_timeline.rs::handbook_example_literal_wire_baseline`<br>`tests/offline_timeline.rs::nearest_preceding_ties_counter_only_and_policy_snapshots` | Implemented |
-| L1-COR-003 | L2-COR-103 | `tests/offline_timeline.rs::channel_rank_admission_none_and_caller_no_fallback`<br>`tests/offline_timeline.rs::valid_count_id_and_caller_preference_are_ordered` | Implemented |
-| L1-COR-004 | L2-COR-104 | `tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons` | Implemented |
-| L1-COR-005 | L2-COR-105 | `tests/offline_timeline.rs::sessions_high_water_wrap_and_exact_late_boundary` | Implemented |
-| L1-COR-006 | L2-COR-106 | `tests/offline_timeline.rs::channel_rank_admission_none_and_caller_no_fallback`<br>`tests/offline_timeline.rs::none_format_never_supplies_a_readable_body`<br>`tests/offline_timeline.rs::review_literal_reserved_src_keeps_readable_time`<br>`tests/offline_timeline.rs::review_nonleap_day366_is_malformed`<br>`tests/offline_timeline.rs::review_readable_invalid_requires_opt_in` | Implemented |
-| L1-COR-007 | L2-COR-107 | `tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons` | Implemented |
-| L1-COR-008 | L2-COR-108 | `tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons` | Implemented |
+| L1-COR-003 | L2-COR-103 | `tests/offline_timeline.rs::channel_rank_admission_none_and_caller_no_fallback`<br>`tests/offline_timeline.rs::valid_count_id_and_caller_preference_are_ordered`<br>`tests/stream_timeline.rs::commitment_inventory_loss_and_no_revision`<br>`tests/stream_timeline.rs::review_inventory_external_precedes_lower_id`<br>`tests/stream_timeline.rs::review_inventory_lowest_id_excludes_non_timein`<br>`tests/stream_timeline.rs::review_noncommitted_references_cannot_supply_answers` | Implemented |
+| L1-COR-004 | L2-COR-104 | `tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons`<br>`tests/stream_timeline.rs::discontinuities_and_scale_never_bridge` | Implemented |
+| L1-COR-005 | L2-COR-105 | `tests/offline_timeline.rs::sessions_high_water_wrap_and_exact_late_boundary`<br>`tests/stream_timeline.rs::discontinuities_and_scale_never_bridge` | Implemented |
+| L1-COR-006 | L2-COR-106 | `tests/offline_timeline.rs::channel_rank_admission_none_and_caller_no_fallback`<br>`tests/offline_timeline.rs::none_format_never_supplies_a_readable_body`<br>`tests/offline_timeline.rs::review_literal_reserved_src_keeps_readable_time`<br>`tests/offline_timeline.rs::review_nonleap_day366_is_malformed`<br>`tests/offline_timeline.rs::review_readable_invalid_requires_opt_in`<br>`tests/stream_timeline.rs::admission_findings_and_raw_sync_counter`<br>`tests/stream_timeline.rs::review_admitted_invalid_does_not_barrier_valid_interpolation`<br>`tests/stream_timeline.rs::review_unusable_reference_keeps_eligible_predecessor` | Implemented |
+| L1-COR-007 | L2-COR-107 | `tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons`<br>`tests/stream_timeline.rs::commitment_inventory_loss_and_no_revision`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` | Implemented |
+| L1-COR-008 | L2-COR-108 | `tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons`<br>`tests/stream_timeline.rs::hold_gap_and_explicit_progress_boundaries` | Implemented |
 | L1-COR-009 | L2-COR-109 | `tests/offline_timeline.rs::accepted_late_default_is_1100_ms`<br>`tests/offline_timeline.rs::sessions_high_water_wrap_and_exact_late_boundary`<br>`tests/pipeline.rs::correlator_with_ooo_window` | Implemented |
 | L1-COR-010 | L2-COR-110 | _(none)_ | Draft |
 | L1-COR-011 | L2-COR-111 | _(none)_ | Draft |
-| L1-COR-012 | L2-COR-112 | `tests/offline_timeline.rs::first_time_presence_scale_boundaries_and_invalid_queries`<br>`tests/offline_timeline.rs::review_dynamic_before_time_has_tf002`<br>`tests/offline_timeline.rs::review_session_without_time_has_tf001` | Implemented |
+| L1-COR-012 | L2-COR-112 | `tests/offline_timeline.rs::first_time_presence_scale_boundaries_and_invalid_queries`<br>`tests/offline_timeline.rs::review_dynamic_before_time_has_tf002`<br>`tests/offline_timeline.rs::review_session_without_time_has_tf001`<br>`tests/stream_timeline.rs::early_data_none_and_no_time_findings` | Implemented |
 | L1-COR-013 | L2-COR-113 | `tests/offline_timeline.rs::quality_drift_uses_absolute_over_rtc_sign`<br>`tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons`<br>`tests/pipeline.rs::drift_ppm_fast_rtc` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L2-COR-101 | L3-COR-101 | `tests/offline_timeline.rs::bounded_wire_findings_survive_reference_admission` | Implemented |
+| L2-COR-101 | L3-COR-101 | `tests/offline_timeline.rs::bounded_wire_findings_survive_reference_admission`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` | Implemented |
 | L2-COR-102 | L3-COR-102 | `tests/offline_timeline.rs::both_literal_examples_carry_reproducible_basis`<br>`tests/offline_timeline.rs::contract_example_literal_wire_baseline`<br>`tests/offline_timeline.rs::handbook_example_literal_wire_baseline`<br>`tests/offline_timeline.rs::nearest_preceding_ties_counter_only_and_policy_snapshots` | Implemented |
-| L2-COR-103 | L3-COR-103 | `tests/offline_timeline.rs::channel_rank_admission_none_and_caller_no_fallback`<br>`tests/offline_timeline.rs::valid_count_id_and_caller_preference_are_ordered` | Implemented |
-| L2-COR-104 | L3-COR-104 | `tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons` | Implemented |
-| L2-COR-105 | L3-COR-105 | `tests/offline_timeline.rs::sessions_high_water_wrap_and_exact_late_boundary` | Implemented |
-| L2-COR-106 | L3-COR-106 | `tests/offline_timeline.rs::channel_rank_admission_none_and_caller_no_fallback`<br>`tests/offline_timeline.rs::none_format_never_supplies_a_readable_body`<br>`tests/offline_timeline.rs::review_literal_reserved_src_keeps_readable_time`<br>`tests/offline_timeline.rs::review_nonleap_day366_is_malformed`<br>`tests/offline_timeline.rs::review_readable_invalid_requires_opt_in` | Implemented |
-| L2-COR-107 | L3-COR-107 | `tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons` | Implemented |
-| L2-COR-108 | L3-COR-108 | `tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons` | Implemented |
+| L2-COR-103 | L3-COR-103 | `tests/offline_timeline.rs::channel_rank_admission_none_and_caller_no_fallback`<br>`tests/offline_timeline.rs::valid_count_id_and_caller_preference_are_ordered`<br>`tests/stream_timeline.rs::commitment_inventory_loss_and_no_revision`<br>`tests/stream_timeline.rs::review_inventory_external_precedes_lower_id`<br>`tests/stream_timeline.rs::review_inventory_lowest_id_excludes_non_timein`<br>`tests/stream_timeline.rs::review_noncommitted_references_cannot_supply_answers` | Implemented |
+| L2-COR-104 | L3-COR-104 | `tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons`<br>`tests/stream_timeline.rs::discontinuities_and_scale_never_bridge` | Implemented |
+| L2-COR-105 | L3-COR-105 | `tests/offline_timeline.rs::sessions_high_water_wrap_and_exact_late_boundary`<br>`tests/stream_timeline.rs::discontinuities_and_scale_never_bridge` | Implemented |
+| L2-COR-106 | L3-COR-106 | `tests/offline_timeline.rs::channel_rank_admission_none_and_caller_no_fallback`<br>`tests/offline_timeline.rs::none_format_never_supplies_a_readable_body`<br>`tests/offline_timeline.rs::review_literal_reserved_src_keeps_readable_time`<br>`tests/offline_timeline.rs::review_nonleap_day366_is_malformed`<br>`tests/offline_timeline.rs::review_readable_invalid_requires_opt_in`<br>`tests/stream_timeline.rs::admission_findings_and_raw_sync_counter`<br>`tests/stream_timeline.rs::review_admitted_invalid_does_not_barrier_valid_interpolation`<br>`tests/stream_timeline.rs::review_unusable_reference_keeps_eligible_predecessor` | Implemented |
+| L2-COR-107 | L3-COR-107 | `tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons`<br>`tests/stream_timeline.rs::commitment_inventory_loss_and_no_revision`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` | Implemented |
+| L2-COR-108 | L3-COR-108 | `tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons`<br>`tests/stream_timeline.rs::hold_gap_and_explicit_progress_boundaries` | Implemented |
 | L2-COR-109 | L3-COR-109 | `tests/offline_timeline.rs::accepted_late_default_is_1100_ms`<br>`tests/offline_timeline.rs::sessions_high_water_wrap_and_exact_late_boundary`<br>`tests/pipeline.rs::correlator_with_ooo_window` | Implemented |
 | L2-COR-110 | L3-COR-110 | _(TBD)_ | Draft |
 | L2-COR-111 | L3-COR-111 | _(TBD)_ | Draft |
-| L2-COR-112 | L3-COR-112 | `tests/offline_timeline.rs::first_time_presence_scale_boundaries_and_invalid_queries`<br>`tests/offline_timeline.rs::review_dynamic_before_time_has_tf002`<br>`tests/offline_timeline.rs::review_session_without_time_has_tf001` | Implemented |
+| L2-COR-112 | L3-COR-112 | `tests/offline_timeline.rs::first_time_presence_scale_boundaries_and_invalid_queries`<br>`tests/offline_timeline.rs::review_dynamic_before_time_has_tf002`<br>`tests/offline_timeline.rs::review_session_without_time_has_tf001`<br>`tests/stream_timeline.rs::early_data_none_and_no_time_findings` | Implemented |
 | L2-COR-113 | L3-COR-113 | `tests/offline_timeline.rs::quality_drift_uses_absolute_over_rtc_sign`<br>`tests/offline_timeline.rs::quality_gap_jump_source_loss_and_duplicate_reasons`<br>`tests/pipeline.rs::drift_ppm_fast_rtc` | Implemented |
 
 ### L1-ANS: Answers and their basis
@@ -360,21 +360,21 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-ANS-001 | L2-ANS-101 | `tests/offline_timeline.rs::both_literal_examples_carry_reproducible_basis`<br>`tests/offline_timeline.rs::contract_example_literal_wire_baseline`<br>`tests/offline_timeline.rs::first_time_presence_scale_boundaries_and_invalid_queries` | Implemented |
+| L1-ANS-001 | L2-ANS-101 | `tests/offline_timeline.rs::both_literal_examples_carry_reproducible_basis`<br>`tests/offline_timeline.rs::contract_example_literal_wire_baseline`<br>`tests/offline_timeline.rs::first_time_presence_scale_boundaries_and_invalid_queries`<br>`tests/stream_timeline.rs::handbook_standard_and_contract_basis`<br>`tests/stream_timeline.rs::interpolation_drift_endpoints_and_floor_proposal`<br>`tests/stream_timeline.rs::review_noncommitted_references_cannot_supply_answers` | Implemented |
 | L1-ANS-002 | L2-ANS-102 | _(none)_ | Draft |
 | L1-ANS-003 | L2-ANS-103 | _(none)_ | Draft |
 | L1-ANS-004 | L2-ANS-104 | _(none)_ | Draft |
-| L1-ANS-005 | L2-ANS-105 | `tests/offline_timeline.rs::nearest_preceding_ties_counter_only_and_policy_snapshots`<br>`tests/offline_timeline.rs::review_dynamic_before_time_has_tf002`<br>`tests/offline_timeline.rs::review_unknown_year_does_not_invent_day366` | Implemented |
+| L1-ANS-005 | L2-ANS-105 | `tests/offline_timeline.rs::nearest_preceding_ties_counter_only_and_policy_snapshots`<br>`tests/offline_timeline.rs::review_dynamic_before_time_has_tf002`<br>`tests/offline_timeline.rs::review_unknown_year_does_not_invent_day366`<br>`tests/stream_timeline.rs::early_data_none_and_no_time_findings` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L2-ANS-101 | L3-ANS-101 | `tests/offline_timeline.rs::both_literal_examples_carry_reproducible_basis`<br>`tests/offline_timeline.rs::contract_example_literal_wire_baseline`<br>`tests/offline_timeline.rs::first_time_presence_scale_boundaries_and_invalid_queries` | Implemented |
+| L2-ANS-101 | L3-ANS-101 | `tests/offline_timeline.rs::both_literal_examples_carry_reproducible_basis`<br>`tests/offline_timeline.rs::contract_example_literal_wire_baseline`<br>`tests/offline_timeline.rs::first_time_presence_scale_boundaries_and_invalid_queries`<br>`tests/stream_timeline.rs::handbook_standard_and_contract_basis`<br>`tests/stream_timeline.rs::interpolation_drift_endpoints_and_floor_proposal`<br>`tests/stream_timeline.rs::review_noncommitted_references_cannot_supply_answers` | Implemented |
 | L2-ANS-102 | L3-ANS-102 | _(TBD)_ | Draft |
 | L2-ANS-103 | L3-ANS-103 | _(TBD)_ | Draft |
 | L2-ANS-104 | L3-ANS-104 | _(TBD)_ | Draft |
-| L2-ANS-105 | L3-ANS-105 | `tests/offline_timeline.rs::nearest_preceding_ties_counter_only_and_policy_snapshots`<br>`tests/offline_timeline.rs::review_dynamic_before_time_has_tf002`<br>`tests/offline_timeline.rs::review_unknown_year_does_not_invent_day366` | Implemented |
+| L2-ANS-105 | L3-ANS-105 | `tests/offline_timeline.rs::nearest_preceding_ties_counter_only_and_policy_snapshots`<br>`tests/offline_timeline.rs::review_dynamic_before_time_has_tf002`<br>`tests/offline_timeline.rs::review_unknown_year_does_not_invent_day366`<br>`tests/stream_timeline.rs::early_data_none_and_no_time_findings` | Implemented |
 
 ### L1-POL: The time policy
 
@@ -382,18 +382,18 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-POL-001 | L2-POL-101, L2-POL-201 | `tests/offline_timeline.rs::nearest_preceding_ties_counter_only_and_policy_snapshots` | Partially Implemented |
-| L1-POL-002 | L2-POL-102 | `tests/offline_timeline.rs::first_time_presence_scale_boundaries_and_invalid_queries`<br>`tests/offline_timeline.rs::review_duplicate_packet_identity_is_rejected` | Implemented |
+| L1-POL-001 | L2-POL-101, L2-POL-201 | `tests/offline_timeline.rs::nearest_preceding_ties_counter_only_and_policy_snapshots`<br>`tests/stream_timeline.rs::bounded_burst_configuration_and_frozen_policy`<br>`tests/stream_timeline.rs::handbook_standard_and_contract_basis` | Implemented |
+| L1-POL-002 | L2-POL-102 | `tests/offline_timeline.rs::first_time_presence_scale_boundaries_and_invalid_queries`<br>`tests/offline_timeline.rs::review_duplicate_packet_identity_is_rejected`<br>`tests/stream_timeline.rs::bounded_burst_configuration_and_frozen_policy`<br>`tests/stream_timeline.rs::every_resource_and_lifecycle_fallback_is_labelled`<br>`tests/stream_timeline.rs::review_nonincreasing_packet_ids_rejected` | Implemented |
 | L1-POL-003 | L2-POL-103 | _(none)_ | Draft |
 
 **L2 -> L3 -> Verification Artifacts**
 
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L2-POL-101 | L3-POL-101 | `tests/offline_timeline.rs::nearest_preceding_ties_counter_only_and_policy_snapshots` | Implemented |
-| L2-POL-102 | L3-POL-102 | `tests/offline_timeline.rs::first_time_presence_scale_boundaries_and_invalid_queries`<br>`tests/offline_timeline.rs::review_duplicate_packet_identity_is_rejected` | Implemented |
+| L2-POL-101 | L3-POL-101 | `tests/offline_timeline.rs::nearest_preceding_ties_counter_only_and_policy_snapshots`<br>`tests/stream_timeline.rs::bounded_burst_configuration_and_frozen_policy` | Implemented |
+| L2-POL-102 | L3-POL-102 | `tests/offline_timeline.rs::first_time_presence_scale_boundaries_and_invalid_queries`<br>`tests/offline_timeline.rs::review_duplicate_packet_identity_is_rejected`<br>`tests/stream_timeline.rs::bounded_burst_configuration_and_frozen_policy`<br>`tests/stream_timeline.rs::every_resource_and_lifecycle_fallback_is_labelled`<br>`tests/stream_timeline.rs::review_nonincreasing_packet_ids_rejected` | Implemented |
 | L2-POL-103 | L3-POL-103 | _(TBD)_ | Draft |
-| L2-POL-201 | L3-POL-201 | _(TBD)_ | Draft |
+| L2-POL-201 | L3-POL-201 | `tests/stream_timeline.rs::handbook_standard_and_contract_basis` | Implemented |
 
 ### L1-FND: Findings
 
@@ -403,7 +403,7 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L1-FND-001 | L2-FND-101 | _(none)_ | Draft |
 | L1-FND-002 | L2-FND-102 | _(none)_ | Draft |
-| L1-FND-003 | L2-FND-103 | `tests/offline_timeline.rs::review_rtc_sync_error_is_tf024_warning_value_kept` | Implemented |
+| L1-FND-003 | L2-FND-103 | `tests/offline_timeline.rs::review_rtc_sync_error_is_tf024_warning_value_kept`<br>`tests/offline_timeline.rs::review_sync_finding_retains_counter_evidence`<br>`tests/stream_timeline.rs::admission_findings_and_raw_sync_counter` | Implemented |
 | L1-FND-004 | L2-FND-104 | _(none)_ | Draft |
 | L1-FND-005 | L2-FND-105 | _(none)_ | Draft |
 
@@ -413,7 +413,7 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L2-FND-101 | L3-FND-101 | _(TBD)_ | Draft |
 | L2-FND-102 | L3-FND-102 | _(TBD)_ | Draft |
-| L2-FND-103 | L3-FND-103 | `tests/offline_timeline.rs::review_rtc_sync_error_is_tf024_warning_value_kept` | Implemented |
+| L2-FND-103 | L3-FND-103 | `tests/offline_timeline.rs::review_rtc_sync_error_is_tf024_warning_value_kept`<br>`tests/offline_timeline.rs::review_sync_finding_retains_counter_evidence`<br>`tests/stream_timeline.rs::admission_findings_and_raw_sync_counter` | Implemented |
 | L2-FND-104 | L3-FND-104 | _(TBD)_ | Draft |
 | L2-FND-105 | L3-FND-105 | _(TBD)_ | Draft |
 
@@ -451,19 +451,19 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-STRM-001 | L2-STRM-101, L2-STRM-201, L2-STRM-202, L2-STRM-203, L2-STRM-204, L2-STRM-205, L2-STRM-206 | _(none)_ | Draft |
+| L1-STRM-001 | L2-STRM-101, L2-STRM-201, L2-STRM-202, L2-STRM-203, L2-STRM-204, L2-STRM-205, L2-STRM-206 | `tests/stream_timeline.rs::bounded_burst_configuration_and_frozen_policy`<br>`tests/stream_timeline.rs::commitment_inventory_loss_and_no_revision`<br>`tests/stream_timeline.rs::discontinuities_and_scale_never_bridge`<br>`tests/stream_timeline.rs::early_data_none_and_no_time_findings`<br>`tests/stream_timeline.rs::every_resource_and_lifecycle_fallback_is_labelled`<br>`tests/stream_timeline.rs::handbook_standard_and_contract_basis`<br>`tests/stream_timeline.rs::hold_gap_and_explicit_progress_boundaries`<br>`tests/stream_timeline.rs::interpolation_drift_endpoints_and_floor_proposal`<br>`tests/stream_timeline.rs::late_endpoints_policy_transitions_and_oversized_data`<br>`tests/stream_timeline.rs::review_admitted_invalid_does_not_barrier_valid_interpolation`<br>`tests/stream_timeline.rs::review_inventory_external_precedes_lower_id`<br>`tests/stream_timeline.rs::review_inventory_lowest_id_excludes_non_timein`<br>`tests/stream_timeline.rs::review_noncommitted_references_cannot_supply_answers`<br>`tests/stream_timeline.rs::review_nonincreasing_packet_ids_rejected`<br>`tests/stream_timeline.rs::review_unusable_reference_keeps_eligible_predecessor` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L2-STRM-101 | L3-STRM-101 | _(TBD)_ | Draft |
-| L2-STRM-201 | L3-STRM-201 | _(TBD)_ | Draft |
-| L2-STRM-202 | L3-STRM-202 | _(TBD)_ | Draft |
-| L2-STRM-203 | L3-STRM-203 | _(TBD)_ | Draft |
-| L2-STRM-204 | L3-STRM-204 | _(TBD)_ | Draft |
-| L2-STRM-205 | L3-STRM-205 | _(TBD)_ | Draft |
-| L2-STRM-206 | L3-STRM-206 | _(TBD)_ | Draft |
+| L2-STRM-101 | L3-STRM-101 | `tests/stream_timeline.rs::bounded_burst_configuration_and_frozen_policy`<br>`tests/stream_timeline.rs::review_nonincreasing_packet_ids_rejected` | Implemented |
+| L2-STRM-201 | L3-STRM-201 | `tests/stream_timeline.rs::handbook_standard_and_contract_basis`<br>`tests/stream_timeline.rs::late_endpoints_policy_transitions_and_oversized_data`<br>`tests/stream_timeline.rs::review_noncommitted_references_cannot_supply_answers`<br>`tests/stream_timeline.rs::review_unusable_reference_keeps_eligible_predecessor` | Implemented |
+| L2-STRM-202 | L3-STRM-202 | `tests/stream_timeline.rs::discontinuities_and_scale_never_bridge`<br>`tests/stream_timeline.rs::interpolation_drift_endpoints_and_floor_proposal`<br>`tests/stream_timeline.rs::late_endpoints_policy_transitions_and_oversized_data`<br>`tests/stream_timeline.rs::review_admitted_invalid_does_not_barrier_valid_interpolation`<br>`tests/stream_timeline.rs::review_noncommitted_references_cannot_supply_answers`<br>`tests/stream_timeline.rs::review_unusable_reference_keeps_eligible_predecessor` | Implemented |
+| L2-STRM-203 | L3-STRM-203 | `tests/stream_timeline.rs::every_resource_and_lifecycle_fallback_is_labelled`<br>`tests/stream_timeline.rs::hold_gap_and_explicit_progress_boundaries`<br>`tests/stream_timeline.rs::late_endpoints_policy_transitions_and_oversized_data` | Implemented |
+| L2-STRM-204 | L3-STRM-204 | `tests/stream_timeline.rs::early_data_none_and_no_time_findings`<br>`tests/stream_timeline.rs::review_unusable_reference_keeps_eligible_predecessor` | Implemented |
+| L2-STRM-205 | L3-STRM-205 | `tests/stream_timeline.rs::bounded_burst_configuration_and_frozen_policy`<br>`tests/stream_timeline.rs::discontinuities_and_scale_never_bridge`<br>`tests/stream_timeline.rs::every_resource_and_lifecycle_fallback_is_labelled`<br>`tests/stream_timeline.rs::late_endpoints_policy_transitions_and_oversized_data`<br>`tests/stream_timeline.rs::review_admitted_invalid_does_not_barrier_valid_interpolation`<br>`tests/stream_timeline.rs::review_unusable_reference_keeps_eligible_predecessor` | Implemented |
+| L2-STRM-206 | L3-STRM-206 | `tests/stream_timeline.rs::commitment_inventory_loss_and_no_revision`<br>`tests/stream_timeline.rs::every_resource_and_lifecycle_fallback_is_labelled`<br>`tests/stream_timeline.rs::late_endpoints_policy_transitions_and_oversized_data`<br>`tests/stream_timeline.rs::review_inventory_external_precedes_lower_id`<br>`tests/stream_timeline.rs::review_inventory_lowest_id_excludes_non_timein` | Implemented |
 
 ### L1-ERR: Errors and robustness
 
@@ -635,23 +635,23 @@ This matrix is the single source of truth for live status; the requirement docum
 | DECL | 2 | 2 | 2 | 0 | 0 | 0 | 0 |
 | COR | 13 | 13 | 13 | 11 | 11 | 11 | 11 |
 | ANS | 5 | 5 | 5 | 2 | 2 | 2 | 2 |
-| POL | 3 | 4 | 4 | 2 | 2 | 2 | 2 |
+| POL | 3 | 4 | 4 | 3 | 3 | 3 | 3 |
 | FND | 5 | 5 | 5 | 1 | 1 | 1 | 1 |
 | RDG | 2 | 14 | 14 | 0 | 0 | 0 | 0 |
-| STRM | 1 | 7 | 7 | 0 | 0 | 0 | 0 |
+| STRM | 1 | 7 | 7 | 7 | 7 | 7 | 7 |
 | ERR | 5 | 5 | 5 | 2 | 2 | 2 | 2 |
 | API | 11 | 11 | 11 | 0 | 0 | 0 | 0 |
 | PERF | 1 | 1 | 1 | 0 | 0 | 0 | 0 |
 | CLI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
 | REL | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
 | TST | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
-| **Total** | **124** | **144** | **144** | **45** | **45** | **45** | **45** |
+| **Total** | **124** | **144** | **144** | **53** | **53** | **53** | **53** |
 
 The countable requirement set is every L2 and L3 requirement plus the 0 L1 *leaf* requirement(s) (L1s with no L2 decomposition yet). Composite L1s are verified through their children.
 
-**Tested by at least one test marker**: 90 of 288 (31.2%).
+**Tested by at least one test marker**: 106 of 288 (36.8%).
 
-**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 90 of 288 (31.2%).
+**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 106 of 288 (36.8%).
 
 ### Orphan check
 
@@ -672,13 +672,13 @@ Every entry of `docs/INTERPRETATIONS.md` with its written analysis and the tests
 | RDG-006 | `R-x\SHTF-n` 0 "Chapter 4 BCD" names packet flags `00`, "Chapter 4 binary weighted" | accepted | not yet written | _(none)_ |
 | RDG-007 | ITS (Format 1 bits 15–12) is read only for recordings declared 106-17 or later | accepted | not yet written | `tests/rebuild_layout.rs::t7_its_requires_explicit_applicable_layout` |
 | RDG-008 | The secondary header checksum sums bytes, not 16-bit words | suspect | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-008) | `tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither`<br>`tests/slice2_wire.rs::rdg008_byte_only_checksum_is_valid`<br>`tests/slice2_wire.rs::rdg008_word_only_checksum_is_not_trusted` |
-| RDG-009 | The time scale of each time format; IRIG time is UTC by assumption | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-009) | `tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance`<br>`tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value` |
-| RDG-010 | Second 60 is a leap second on a day that can be 30 June or 31 December | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-010) | `tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates` |
-| RDG-011 | "The first dynamic data packet" is checked per session | accepted | not yet written | _(none)_ |
+| RDG-009 | The time scale of each time format; IRIG time is UTC by assumption | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-009) | `tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance`<br>`tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` |
+| RDG-010 | Second 60 is a leap second on a day that can be 30 June or 31 December | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-010) | `tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` |
+| RDG-011 | "The first dynamic data packet" is checked per session | accepted | not yet written | `tests/stream_timeline.rs::early_data_none_and_no_time_findings` |
 | RDG-012 | NTP follows UTC reckoning; era evidence, zero sentinel and leap ambiguity are explicit | accepted | [written all-edition/RFC analysis and planned edge cases](analysis/RDG-012-ntp-utc-era.md) | _(none)_ |
 
 * Entries without a written analysis: **8** of 12
-* Entries without a test: **8** of 12
+* Entries without a test: **7** of 12
 * Entries missing the development mark: **0**
 
 ### Marker reference check

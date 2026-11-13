@@ -95,6 +95,8 @@ pub mod recording_event;
 pub mod rtc;
 /// Secondary header time extraction and checksum validation.
 pub mod secondary;
+/// Bounded policy-driven stream answers with explicit caller progress.
+pub mod stream;
 /// Streaming RTC-to-absolute-time correlator for live data.
 pub mod streaming;
 /// Session-aware offline correlation with explicit policy and answer basis.
