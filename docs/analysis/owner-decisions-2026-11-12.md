@@ -18,6 +18,7 @@ installation, merge, publication or archive modification is part of this PR.
 | Q-CH4 | Explicit binary origin or BCD year/full day; otherwise labelled partial; no invented day1/year/origin and no nearest-packet option now. Characters/bits wording remains unresolved | Ch4 §4.7, printed4-11/PDF15: “resolution of 655.36 seconds”, “10 milliseconds”, “three least significant bits of the BCD Julian date”, “at a rate necessary to resolve time ambiguities”. RCC123-20 B-43/PDF149 `enI106_Ch4Binary2IrigTime` applies weights, no origin. Missing-origin policy is the owner's boundary, not a new inferred standard origin. |
 | Q-NTP | RDG-012 accepted: UTC-following reckoning, evidenced/assumed eras, zero sentinel, leap ambiguity/currency; PTP UTC only in coverage, TAI retained outside | Full verbatim sources, seven-edition page checks, RFC numbers/sections/pages, hand arithmetic and planned test cases in [RDG-012 analysis](RDG-012-ntp-utc-era.md). Fraction rounding remains proposed. |
 | Q-FLAGS | Refine: source=1 requires a present header and defined format; source=0/format=11 retains RTC with TF-005 warning, separately reporting an unreadable secondary time if present | [Verbatim flag/RTC sources and all-edition page checks](Q-FLAGS-2026-11-12.md); owner 2026-11-12, Q-FLAGS. The finding severity/value-retention rules are owner policy. |
+| Q-CLI-EXIT | Align with TMATS: 0 success, 1 threshold findings, 2 usage, 3 unreadable/invalid Chapter 10/time input, 4 output-write failure; never renumber | [Pinned repo/path/commit, verbatim draft and planned tests](Q-CLI-EXIT-2026-11-12.md). Owner 2026-11-12; shared ecosystem convention, IRIG 106 is silent and no standard source exists. |
 
 The handbook, Ch10/Ch4/Ch9 and all seven Ch11 edition pages were rendered
 with pdftoppm and inspected visually. Existing T-10 documentation supplies
@@ -26,13 +27,14 @@ silently resolved by accepting the caller-context boundary.
 
 ## Why L1 changed, and why NTP L1 did not
 
-Five L1 statements needed correction: L1-COR-002's blanket nearest
+Six L1 statements needed correction: L1-COR-002's blanket nearest
 default is explicitly offline; L1-COR-003's blanket offline
 count ranking conflicts with a committed stream channel; L1-STRM-001's
 blanket same-answer promise conflicts with the distinct stream modes;
 L1-WORD-001's unconditional complete calendar result conflicts with required
 partial output without reconstruction context; L1-IPT-007 now retains RTC stamps
-with reserved secondary-format bits under the owner Q-FLAGS refinement.
+with reserved secondary-format bits under the owner Q-FLAGS refinement;
+L1-CLI-007 adds output-write failure as the fifth shared ecosystem exit class.
 No L1 IDs were added/retired.
 
 L1-NTP-001..004 do not require a caller-declared era or cumulative offset;
@@ -58,6 +60,7 @@ Line references are to the accompanying requirements files in this PR.
 | L1-COR-002 ← top-level owner/product requirement | `docs/L1_Requirements.md:645` | "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78, supports the preceding-reference stream example); ADR-0010 (cited selectable defaults). The offline nearest-reference default remains contract 5.2 rule 5 / L1-POL-001 product policy; owner 2026-11-12 Q-DEFAULT selects standard for streaming, not a new offline algorithm. |
 | L1-COR-003 ← top-level owner/product requirement<br>L2-COR-103 ← L1-COR-003<br>L3-COR-103 ← L2-COR-103 | `docs/L1_Requirements.md:653`<br>`docs/L2_Requirements.md:892`<br>`docs/L3_Requirements.md:746` | "it is incumbent on the programmer or data analyst to determine and select the best source of time" (RCC 123-20 §5.6, printed 5-44 / PDF 78); "TIMEIN" / "IRIG Time Input" (`R-x\CDT-n`, 106-24R1 Chapter 9 Table 9-4, printed 9-50 / PDF 56), "E" / "External" (`R-x\TSRC-n`, printed 9-72 / PDF 78). Option A ranking/commitment is owner policy (2026-11-12); the standard names attributes, not that ranking. |
 | L1-STRM-001 ← top-level owner/product requirement<br>L2-POL-101 ← L1-POL-001<br>L3-POL-101 ← L2-POL-101 | `docs/L1_Requirements.md:885`<br>`docs/L2_Requirements.md:1088`<br>`docs/L3_Requirements.md:910` | "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78); ADR-0010 (cited, selectable defaults). Owner decision 2026-11-12; policy/interpretation, not an added standard mandate. "minimum frequency of 1 hertz" (106-24R1 Chapter 10 §10.6.2); "packet generation times shall be equal to or less than 100 milliseconds" (§10.6.1 b); "stream commit time equal to or less than 1000 ms" (§10.6.1 c), all printed 10-26 / PDF 32. The 100 ms hold tolerance, zero gap tolerance, explicit progress, caps and release rules are owner-selected policy (2026-11-12), not timing guarantees imposed on a reader. |
+| L1-CLI-007 ← top-level owner/product requirement<br>L2-CLI-107 ← L1-CLI-007<br>L3-CLI-107 ← L2-CLI-107 | `docs/L1_Requirements.md:1116`<br>`docs/L2_Requirements.md:1740`<br>`docs/L3_Requirements.md:1456` | As `irig106-tmats` L1-CLI-006 (the existing L1 source); TelemetryWorks/irig106-tmats, `docs/CLI.md` §4, lines 88–91, commit `41030d54dfbd8a539c2810d023dd0670bfd3dc1f`: "`0` success; `1` the check failed (`verify` mismatch, `validate` findings at or above the failure threshold); `2` usage error; `3` input could not be read or is not TMATS/Chapter 10; `4` output could not be written. To be fixed before 0.1 and never renumbered." Owner 2026-11-12, Q-CLI-EXIT = align with irig106-tmats; findings/severities ADR-0013, hand-rolled parser ADR-0008. IRIG 106 is silent on tool exit codes: no standard source exists. This is a shared ecosystem convention so `irig106 tmats` and `irig106 time` agree; code 3 specializes the domain to Chapter 10/time input. See `docs/analysis/Q-CLI-EXIT-2026-11-12.md`. |
 | L2-ABS-102 ← L1-ABS-002<br>L3-ABS-102 ← L2-ABS-102 | `docs/L2_Requirements.md:180`<br>`docs/L3_Requirements.md:138` | "resolution of 655.36 seconds", "10 milliseconds", "three least significant bits of the BCD Julian date", "at a rate necessary to resolve time ambiguities" (106-24R1 Chapter 4 §4.7, printed 4-11 / PDF 15); RCC 123-20 `enI106_Ch4Binary2IrigTime`, printed B-43 / PDF 149, applies word weights without an origin. Explicit caller context and partial results are owner policy (2026-11-12); historical characters/bits wording remains unresolved (T-10). Figure 11-4, printed 11-10 / PDF 18; raw layout already confirmed in T-10 and adopted from types 48f1834. |
 | L2-NTP-102 ← L1-NTP-002<br>L3-NTP-102 ← L2-NTP-102 | `docs/L2_Requirements.md:528`<br>`docs/L3_Requirements.md:430` | "The NTP is referenced in UTC time with an epoch of January 1, 1900. The NTP time includes leap seconds." (106-24R1 §11.2.3.3, printed 11-26 / PDF 34); "the NTP timescale is in effect reset to UTC as each timecode is received" (RFC 1305 Appendix E.8, p.78). RDG-012, owner 2026-11-12; analysis: `docs/analysis/RDG-012-ntp-utc-era.md`. "Eras cannot be produced by NTP directly" and "they can be derived from external means" (RFC 5905 §6, p.12); "if the client is set within 68 years of the server" (§6, p.15); "0 h 1 January 1900 UTC" (§6, p.13). Evidence precedence and labelled era-0 fallback are owner policy (2026-11-12), specified in RDG-012. |
 | L2-NTP-103 ← L1-NTP-003<br>L3-NTP-103 ← L2-NTP-103 | `docs/L2_Requirements.md:540`<br>`docs/L3_Requirements.md:440` | "32-bit fraction field" (RFC 5905 §6, p.13); "Time Unsigned Seconds Fractions" (106-24R1 Figure 11-16, printed 11-27 / PDF 35). Floor rounding is a remaining proposal for the owner, not standard wording (RDG-012). |
@@ -86,7 +89,7 @@ Line references are to the accompanying requirements files in this PR.
 - **RFC archive:** propose publisher RFC1305/5905 artifacts with provenance,
   hashes and pagination notes in rcc-106-standards; not performed. The RFCs
   remain externally cited primary sources.
-- Q-CLI-EXIT, Q-EDITION and Q-TFMT-DEFAULT remain as previously
+- Q-EDITION and Q-TFMT-DEFAULT remain as previously
   proposed in L2. Chapter4 characters/bits wording remains unresolved and
   reported; accepting explicit context did not settle that textual ambiguity.
 
@@ -110,3 +113,7 @@ claim is inferred from the generated matrix.
 Q-FLAGS code work is conditional on this docs PR merging, in a separate
 tests-first PR; all 256 flags and five literal cases are planned, not executed.
 The current Rust implementation still rejects the newly accepted RTC cases.
+
+Q-CLI-EXIT is accepted and removed from the open table. Its implementation
+and per-code tests (including output failure and ADR-0008 parser usage)
+belong to the CLI restructure step, with Requirements/Traces markers.

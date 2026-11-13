@@ -3,7 +3,7 @@
 > **Status: requirements updated for owner decisions, 2026-11-13; independent review pending.**
 > Rebuild requirements, not implementation evidence. Replaces the prototype
 > document. Derives from the current L1, the contract, accepted ADRs, the
-> architecture, the owner's 2026-11-11 answers, and the five L2 decisions
+> architecture, the owner's 2026-11-11 answers, and the seven L2 decisions
 > of 2026-11-12 (see L2's accepted-decision table).
 > No Review field or owner-set Design status is changed by this draft.
 
@@ -44,8 +44,8 @@ Human Review stays pending under the register's two-person rule.
 L3 states implementation obligations and planned verification cases, not
 Rust source changes. Each entry names its immediate L2 parent and its L1
 ancestor explicitly. Names are responsibility boundaries, not a commitment
-to a new public type or dependency. See L2 for the six accepted 2026-11-12 decisions and remaining
-Q-CLI-EXIT/Q-EDITION/Q-TFMT-DEFAULT questions. NTP rounding remains
+to a new public type or dependency. See L2 for the seven accepted 2026-11-12 decisions and remaining
+Q-EDITION/Q-TFMT-DEFAULT questions. NTP rounding remains
 proposed; Chapter 4 context is settled while characters/bits wording is not.
 
 ## Shared types and edition qualification
@@ -1451,11 +1451,11 @@ caller context with the unresolved wording reported.
 
 **L1 ancestor**: L1-CLI-007
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Propose 0=success below threshold, 1=completed with findings at/above threshold, 2=unreadable input or output failure, 3=usage error. Usage validation precedes input access; an I/O failure dominates incomplete finding output. Numeric assignments are proposed interface choices, not standard rules.
+**Obligation**: The implementation SHALL map the shared runner outcome to 0=success, 1=findings at/above chosen severity, 2=usage error, 3=unreadable or invalid Chapter 10/time input, 4=output-write failure. Validate usage in the hand-rolled parser before input access. Keep input and output failures distinct and do not turn failed or incomplete I/O into success or a finding-only outcome. Return classifications from the runner; only main maps them to process exit. These are accepted ecosystem assignments, not proposed numbers or IRIG 106 rules; never renumber them.
 
-**Source**: As `irig106-tmats` L1-CLI-006; findings and their severities (ADR-0013).
+**Source**: As `irig106-tmats` L1-CLI-006 (the existing L1 source); TelemetryWorks/irig106-tmats, `docs/CLI.md` §4, lines 88–91, commit `41030d54dfbd8a539c2810d023dd0670bfd3dc1f`: "`0` success; `1` the check failed (`verify` mismatch, `validate` findings at or above the failure threshold); `2` usage error; `3` input could not be read or is not TMATS/Chapter 10; `4` output could not be written. To be fixed before 0.1 and never renumbered." Owner 2026-11-12, Q-CLI-EXIT = align with irig106-tmats; findings/severities ADR-0013, hand-rolled parser ADR-0008. IRIG 106 is silent on tool exit codes: no standard source exists. This is a shared ecosystem convention so `irig106 tmats` and `irig106 time` agree; code 3 specializes the domain to Chapter 10/time input. See `docs/analysis/Q-CLI-EXIT-2026-11-12.md`.
 
-**Planned verification**: Every exit class, severity threshold changes, malformed input with findings, usage error with a nonexistent file, and host invocation returning a classification.
+**Planned verification**: One test per numeric code: 0 successful output with no threshold findings; 1 finding at/above the chosen severity, including threshold changes; 2 hand-rolled parser usage errors (ADR-0008), including unknown options, missing arguments and usage error before opening a nonexistent input; 3 unreadable input and invalid Chapter 10/time input; 4 injected output-write failure. Verify the shared runner returns the classification for host invocation without exiting the process; input/output failure must not be reported as success or only findings. Code/tests belong to the CLI restructure step, with /// Requirements: markers for L1-CLI-007, L2-CLI-107 and L3-CLI-107, correct Traces tags and regenerated matrix linking requirement → code → test; these are planned checks, not executed tests.
 
 ## REL
 

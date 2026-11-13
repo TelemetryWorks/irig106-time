@@ -161,6 +161,14 @@ output format), `render` (text, CSV, JSON), `run` — and the binary
 `irigtime`; `irig106-cli` mounts `run` as `irig106 time` (ADR-0007). It
 writes the joining loop of section 6 once, for every command.
 
+Q-CLI-EXIT (owner 2026-11-12) adopts the shared ecosystem convention so
+`irig106 tmats` and `irig106 time` agree: **0 success; 1 findings at or above
+the chosen severity; 2 usage error; 3 unreadable or invalid Chapter 10/time
+input; 4 output could not be written**. Never renumber. IRIG 106 is silent
+on tool exit codes; no standard source exists. The pinned TMATS draft,
+L1-CLI-007 → L2-CLI-107 → L3-CLI-107, and planned restructure-step tests
+are recorded in [the Q-CLI-EXIT analysis](analysis/Q-CLI-EXIT-2026-11-12.md).
+
 ---
 
 ## 5. The data model

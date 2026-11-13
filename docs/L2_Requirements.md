@@ -3,7 +3,7 @@
 > **Status: requirements updated for owner decisions, 2026-11-13; independent review pending.**
 > Rebuild requirements, not implementation evidence. Replaces the prototype
 > document. Derives from the current L1, the contract, accepted ADRs, the
-> architecture, the owner's 2026-11-11 answers, and the five L2 decisions
+> architecture, the owner's 2026-11-11 answers, and the seven L2 decisions
 > of 2026-11-12 (see L2's accepted-decision table).
 > No Review field or owner-set Design status is changed by this draft.
 
@@ -73,7 +73,7 @@ legacy differences qualify their L2/L3 decomposition without rewriting L1.
 
 ## Owner decisions recorded 2026-11-12
 
-These six decisions are accepted requirements for future implementation,
+These seven decisions are accepted requirements for future implementation,
 not evidence that current Rust code implements them. Sources and the exact
 changed requirement/parent/Source lines are listed in
 [the decision record](analysis/owner-decisions-2026-11-12.md).
@@ -86,12 +86,12 @@ changed requirement/parent/Source lines are listed in
 | Q-CH4 | Explicit caller binary origin; BCD year and full day. Otherwise labelled partial, never invented day 1/year/origin. No nearest-time-packet option now. Chapter 4 §4.7's older characters/current bits wording remains unresolved and reported. |
 | Q-NTP | Owner: "make this as correct as possible". **RDG-012** records UTC-following reckoning, era declaration/pivot/labelled-era0 precedence, all-zero sentinel, leap ambiguity and table currency; PTP UTC only within table coverage. Fraction rounding remains proposed. |
 | Q-FLAGS | **Refine** (owner 2026-11-12): source=1 requires presence=1 and a defined secondary format; source=0/format=11 keeps RTC with TF-005 warning, separately reporting unreadable secondary time if present. [Page checks and truth table](analysis/Q-FLAGS-2026-11-12.md); L1-IPT-007 → L2-IPT-107 → L3-IPT-107. |
+| Q-CLI-EXIT | Align with `irig106-tmats` (owner 2026-11-12): **0 success; 1 threshold findings; 2 usage; 3 unreadable/invalid Chapter 10/time input; 4 output-write failure**. Shared ecosystem convention, never renumber; IRIG 106 is silent. [Pinned draft source and planned checks](analysis/Q-CLI-EXIT-2026-11-12.md). |
 
 ## Questions still requiring owner decisions
 
 | ID | Question | Recommended option and reason |
 |----|----------|-------------------------------|
-| Q-CLI-EXIT | Accept the proposed numeric exit assignments? | **0 success, 1 findings threshold, 2 I/O/input failure, 3 usage**; document these before scripts depend on them. The four classes are L1; their numbers are a new interface proposal. |
 | Q-EDITION | What caller declaration may select EXT versus SRC at the 106-04/05 boundary? | Recommend **an explicit caller layout declaration/override**. Permit `G\106` as a labelled assumption only when the caller explicitly opts into that policy; its standard meaning dates the TMATS file, not packet layout. No setup version code exists in 106-04/05, and header 0x01 alone is insufficient. On absent/conflicting declaration evidence, leave the layout unresolved; later setup version evidence must not be invented for this boundary. |
 | Q-TFMT-DEFAULT | Should the declared TFMT default A feed packet comparisons when the attribute is absent? | Recommend **explicit opt-in default application**, labelled default-derived, while retaining the missing-required-attribute finding. Chapter 9 defines Default for processing absent values, but R status still requires the attribute. Keep the accepted no-silent-substitution behaviour until the owner decides. |
 
@@ -99,7 +99,7 @@ changed requirement/parent/Source lines are listed in
 fraction retained (L2/L3-NTP-103, RDG-012). This proposal is not approved by
 acceptance of the NTP interpretation. RFC 1305/5905 archiving is proposed,
 not performed. Existing interpolation rounding/ties and mode-change flushing
-remain proposed where marked; the six decisions do not silently approve them.
+remain proposed where marked; the seven decisions do not silently approve them.
 
 Rounding (NTP fractions and interpolation), midpoint ties, mixed-resolution
 jump thresholds, and mode-change flushing are explicitly proposed design
@@ -1735,13 +1735,13 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-CLI-007
 
-**Statement**: The CLI SHALL document exit classifications and their precedence so scripts can distinguish findings, bad input and usage errors.
+**Statement**: The CLI SHALL use five documented exit classes: 0 success; 1 findings at or above the chosen severity; 2 usage error; 3 input could not be read or is not valid Chapter 10/time input; 4 output could not be written. These shared ecosystem assignments SHALL agree with `irig106 tmats` and SHALL NOT be renumbered. Document classification precedence; usage validation precedes input access and input/output failures take precedence over finding-only outcomes.
 
-**Source**: As `irig106-tmats` L1-CLI-006; findings and their severities (ADR-0013).
+**Source**: As `irig106-tmats` L1-CLI-006 (the existing L1 source); TelemetryWorks/irig106-tmats, `docs/CLI.md` §4, lines 88–91, commit `41030d54dfbd8a539c2810d023dd0670bfd3dc1f`: "`0` success; `1` the check failed (`verify` mismatch, `validate` findings at or above the failure threshold); `2` usage error; `3` input could not be read or is not TMATS/Chapter 10; `4` output could not be written. To be fixed before 0.1 and never renumbered." Owner 2026-11-12, Q-CLI-EXIT = align with irig106-tmats; findings/severities ADR-0013, hand-rolled parser ADR-0008. IRIG 106 is silent on tool exit codes: no standard source exists. This is a shared ecosystem convention so `irig106 tmats` and `irig106 time` agree; code 3 specializes the domain to Chapter 10/time input. See `docs/analysis/Q-CLI-EXIT-2026-11-12.md`.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Every exit class, severity threshold changes, malformed input with findings, usage error with a nonexistent file, and host invocation returning a classification.
+**Planned verification**: One test per numeric code: 0 successful output with no threshold findings; 1 finding at/above the chosen severity, including threshold changes; 2 hand-rolled parser usage errors (ADR-0008), including unknown options, missing arguments and usage error before opening a nonexistent input; 3 unreadable input and invalid Chapter 10/time input; 4 injected output-write failure. Verify the shared runner returns the classification for host invocation without exiting the process; input/output failure must not be reported as success or only findings. Code/tests belong to the CLI restructure step, with /// Requirements: markers for L1-CLI-007, L2-CLI-107 and L3-CLI-107, correct Traces tags and regenerated matrix linking requirement → code → test; these are planned checks, not executed tests.
 
 ## REL
 
