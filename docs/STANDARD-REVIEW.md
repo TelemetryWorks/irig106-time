@@ -9,6 +9,17 @@
 > crate (2026-09-27, `docs/adr/0001`); each finding becomes a failing test
 > before the rebuilt code fixes it (`docs/adr/0016`).
 
+## Audit navigation (S00, 2026-11-13)
+
+This document retains the prototype-era findings and their original code
+references; the opening "Nothing in the code has been changed" describes
+that historical review, not current main. Existing page-check notes remain
+their dated evidence, not newly executed inspection. For the current
+finding-by-finding scope and honest tests-first provenance, see the
+[S00 decision/source and evidence audit](analysis/S00-decision-source-evidence-audit.md).
+It distinguishes caption/documentation findings, raw-reader fixes, derived
+or unresolved readings, and remaining reconstruction/integration work.
+
 ## Confirmed disagreements with the standard
 
 ### T-1 Intra-packet time format is taken from the wrong packet-flag bits

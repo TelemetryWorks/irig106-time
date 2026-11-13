@@ -612,9 +612,9 @@ caller context with the unresolved wording reported.
 
 **L1 ancestor**: L1-WORD-002
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Accept caller-extracted C-d\NTM kind and raw values. Full NTP uses RDG-012 era evidence/assumption, zero sentinel, UTC mapping and leap ambiguity; full PTP retains TAI and requires a covered table for UTC. Component-only seconds/fraction/ns need their matching components and applicable explicit context; do not invent zero components. An NTP era is resolved by RDG-012, not always required as an explicit caller declaration.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Accept caller-extracted C-d\NTM kind and raw values. Full NTP uses RDG-012 era evidence/assumption, zero sentinel, UTC mapping and leap ambiguity; full PTP retains raw TAI and converts to UTC using the applicable TAI-UTC offset. After table coverage ends use the last known offset, label UTC possibly out of date and raise TF-021 (warning), retaining table identity, coverage, offset and currency. If no known applicable offset exists, retain TAI and report missing context rather than inventing an offset; this does not change the stale-table fallback. Component-only seconds/fraction/ns need their matching components and applicable explicit context; do not invent zero components. An NTP era is resolved by RDG-012, not always required as an explicit caller declaration.
 
-**Source**: "PTP Time (64-bit)", "NTP Time (64-bit)" (106-24R1 Chapter 9 Table 9-11, `C-d\NTM`); "The NTP is referenced in UTC time with an epoch of January 1, 1900. The NTP time includes leap seconds." (106-24R1 §11.2.3.3, printed 11-26 / PDF 34); "the NTP timescale is in effect reset to UTC as each timecode is received" (RFC 1305 Appendix E.8, p.78). RDG-012, owner 2026-11-12; analysis: `docs/analysis/RDG-012-ntp-utc-era.md`. Retained earlier source: `C-d\NTM`: "PTP Time (64-bit)", "PTP Seconds (32-bit)", "PTP Nanoseconds (32-bit)", "NTP Time (64-bit)", "NTP Seconds (32-bit)", "NTP Fractions (32-bit)" (Chapter 9, Table 9-11); contract 3.8.
+**Source**: "PTP Time (64-bit)", "NTP Time (64-bit)" (106-24R1 Chapter 9 Table 9-11, `C-d\NTM`); "The NTP is referenced in UTC time with an epoch of January 1, 1900. The NTP time includes leap seconds." (106-24R1 §11.2.3.3, printed 11-26 / PDF 34); "the NTP timescale is in effect reset to UTC as each timecode is received" (RFC 1305 Appendix E.8, p.78). RDG-012, owner 2026-11-12; analysis: `docs/analysis/RDG-012-ntp-utc-era.md`. Retained earlier source: `C-d\NTM`: "PTP Time (64-bit)", "PTP Seconds (32-bit)", "PTP Nanoseconds (32-bit)", "NTP Time (64-bit)", "NTP Seconds (32-bit)", "NTP Fractions (32-bit)" (Chapter 9, Table 9-11); contract 3.8. "The PTP is referenced in International Atomic Time with an epoch of January 1, 1970. The PTP time does not include leap seconds." (106-24R1 §11.2.3.3, printed 11-26 / PDF 34). Owner 2026-11-13 confirms contract 6.8/6.9 and L1-TAI-004: outside leap-table coverage use the last known offset, label the UTC conversion possibly out of date, and raise TF-021 (warning); keep TAI and table/offset provenance. The contrary no-UTC rule came from the coordinator brief and was withdrawn, not an owner decision; RDG-012.
 
 **Planned verification**: All six Table 9-11 kinds; full NTP with declared/pivot/assumed era and zero sentinel; component words missing seconds/fraction/ns stay partial; full PTP outside table retains TAI and converts UTC with the last known offset, possibly out of date with TF-021.
 
@@ -948,7 +948,7 @@ caller context with the unresolved wording reported.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Finding holds stable ID, effective/default severity, packet identity/offset if available, channel, raw RTC and relevant observed/expected values. Preserve IDs across releases; absent caller offsets remain absent. Never turn malformed bytes into valid time merely by lowering severity.
 
-**Source**: Contract section 6; ADR-0013.
+**Source**: Contract section 6; ADR-0013. "Bits 3-2: Indicate the packet secondary header time format."; "11 = Reserved"; "1 = Packet secondary header time (bit 7 must be 1)." (106-24R1 §11.2.1.1 g, printed 11-8/11-9, PDF 16/17). The standard defines the flags, not finding IDs. Owner 2026-11-13, Q-FLAGS-ERROR accepts TF-028 "Secondary-derived time has an undefined format" at ERROR; architecture section 8. TF-001..TF-027 remain unchanged.
 
 **Planned verification**: Each ID and severity override, absent offset, serialization, duplicate findings with distinct evidence, and an immutable identifier list matching architecture 8.
 
@@ -956,9 +956,9 @@ caller context with the unresolved wording reported.
 
 **L1 ancestor**: L1-FND-002
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Maintain a dispatch table mapping no-time TF-001, early-data 002, invalid 003, malformed 004, reserved 005/006, LY 007, undeclared 008, unused-declared 009, mismatch 010/011, checksum 012/027, mixed-format 013, own-time 014, flags 015, gap 016, jump 017, reset 018, late 019, year 020, stale-table 021, leap 022, scale 023, sync 024, ERTC 025, old-edition Format 2 026. Weak time alone stays basis information.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Maintain a dispatch table mapping no-time TF-001, early-data 002, invalid 003, malformed 004, reserved 005/006, LY 007, undeclared 008, unused-declared 009, mismatch 010/011, checksum 012/027, mixed-format 013, own-time 014, flags 015, gap 016, jump 017, reset 018, late 019, year 020, stale-table 021, leap 022, scale 023, sync 024, ERTC 025, old-edition Format 2 026, undefined secondary-derived time 028 (error). Weak time alone stays basis information.
 
-**Source**: Contract 6.1 to 6.9.
+**Source**: Contract 6.1 to 6.9. "Bits 3-2: Indicate the packet secondary header time format."; "11 = Reserved"; "1 = Packet secondary header time (bit 7 must be 1)." (106-24R1 §11.2.1.1 g, printed 11-8/11-9, PDF 16/17). The standard defines the flags, not finding IDs. Owner 2026-11-13, Q-FLAGS-ERROR accepts TF-028 "Secondary-derived time has an undefined format" at ERROR; architecture section 8. TF-001..TF-027 remain unchanged.
 
 **Planned verification**: At least one synthesized case per TF identifier, including simultaneous causes; exact error/warning/information defaults from architecture 8 without renaming or changing owner choices.
 
@@ -1012,7 +1012,7 @@ caller context with the unresolved wording reported.
 
 **Source**: ADR-0012; `docs/INTERPRETATIONS.md`, "Development" ("intensive testing and deep analysis required", owner, 2026-09-26).
 
-**Planned verification**: Planned inspection: register-to-analysis-to-tests audit, including RDG-008 suspect dual checksum and unresolved human reviews. Do not mark page checks as the complete analysis.
+**Planned verification**: Planned inspection: register-to-analysis-to-tests audit, including RDG-008 suspect dual checksum and unresolved human reviews. Do not mark page checks as the complete analysis. Current inventory and remaining gaps: [S00 audit](analysis/S00-decision-source-evidence-audit.md). This audit is not satisfaction evidence and does not promote this obligation.
 
 **L3-RDG-201** · Parent: L2-RDG-201 · Verification: I
 
@@ -1528,7 +1528,7 @@ caller context with the unresolved wording reported.
 
 **Source**: ADR-0016.
 
-**Planned verification**: Planned inspection: finding/test inventory with prototype-fail/fix-pass results; an unrelated passing test cannot stand in for a missing regression.
+**Planned verification**: Planned inspection: finding/test inventory with prototype-fail/fix-pass results; an unrelated passing test cannot stand in for a missing regression. Current inventory and remaining gaps: [S00 audit](analysis/S00-decision-source-evidence-audit.md). This audit is not satisfaction evidence and does not promote this obligation.
 
 **L3-TST-102** · Parent: L2-TST-102 · Verification: T
 
