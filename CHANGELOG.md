@@ -58,6 +58,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- E2 skips non-admitted/missing time references without draining pending data or
+  clearing still-eligible predecessors. SRC None/invalid/malformed observations
+  keep their findings; both stream modes can continue from earlier valid time.
+  Invalid payloads are never interpolation endpoints, even under opt-in admission.
+  Only the accepted opt-in stop-on-loss setting adds its source-loss barrier.
+- Correct E2 coverage: `raw_network_rate` is inert snapshot metadata and does not
+  qualify TF-016. COR-108's raw-network exception remains deferred with Format2.
+
 - Owner decisions: absent required TFMT is reported and skipped in comparison
   by default; only caller opt-in permits default A, labelled default-derived,
   with the missing finding preserved. Requirements only: declaration comparison

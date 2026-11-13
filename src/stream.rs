@@ -42,8 +42,9 @@ pub struct StreamPolicy {
     pub offline: OfflinePolicy,
     /// Added to the 1 s interval; default 100 ms, independently of gap/late.
     pub hold_tolerance_ns: u64,
-    /// Caller declares raw-network-rate input: a gap is policy evidence, not
-    /// a 1 Hz standard violation (§11.2.3.3). Full Format2 adapters are separate.
+    /// Reserved metadata for a future Format2 adapter; copied into the basis
+    /// only. Currently has no effect on TF-016. The §11.2.3.3 raw-network
+    /// exception is deferred; this ordinary Format1 core does not implement it.
     pub raw_network_rate: bool,
     /// Caller resource bounds, never implicit unbounded defaults.
     pub caps: BufferCaps,
@@ -128,7 +129,8 @@ pub enum ReleaseReason {
     Discontinuity,
     /// Scale/year context does not establish a compatible bracket.
     IncompatibleScale,
-    /// None/invalid/unreadable reference or stop-on-loss barrier.
+    /// Opt-in stop-on-loss barrier, or an explicitly included invalid time
+    /// used without interpolation. Rejected references do not cause a barrier.
     UnusableReference,
 }
 /// Stream-specific reproducible basis. Endpoint metadata retain source, scale,
@@ -508,7 +510,14 @@ impl StreamTimeline {
                 .refs
                 .iter()
                 .filter(|r| r.key.ticks <= ticks)
-                .max_by_key(|r| (r.key.ticks, r.key.packet))
+                .max_by_key(|r| {
+                    (
+                        self.policy.mode == StreamMode::Interpolate
+                            && matches!(r.input.value, ReferenceValue::Readable(_, true)),
+                        r.key.ticks,
+                        r.key.packet,
+                    )
+                })
                 .cloned();
             let first = self
                 .first
@@ -554,6 +563,9 @@ impl StreamTimeline {
         }
         Ok(b)
     }
+    /// **Traces:** L3-STRM-201 ← L2-STRM-201 ← L1-STRM-001
+    /// **Traces:** L3-STRM-204 ← L2-STRM-204 ← L1-STRM-001
+    /// **Traces:** L3-STRM-205 ← L2-STRM-205 ← L1-STRM-001
     /// **Traces:** L3-COR-104 ← L2-COR-104 ← L1-COR-004
     /// **Traces:** L3-COR-108 ← L2-COR-108 ← L1-COR-008
     fn add_reference(
@@ -562,11 +574,9 @@ impl StreamTimeline {
         key: PacketKey,
         b: &mut StreamBatch,
     ) {
-        let Some(r) = reference else {
-            self.flush(b, ReleaseReason::UnusableReference);
-            self.refs.clear();
-            return;
-        };
+        // Missing/unreadable input already has its finding; it does not
+        // invalidate an earlier eligible reference or drain held queries.
+        let Some(r) = reference else { return };
         if self.source.is_some_and(|s| s != r.input.source) {
             self.emit(
                 b,
@@ -582,9 +592,12 @@ impl StreamTimeline {
         let stopped = self.policy.offline.stop_on_loss
             && self.external_seen
             && matches!(r.input.source, TimeF1Source::Source(TimeSource::Internal));
-        if !r.admitted || stopped {
+        if stopped {
             self.flush(b, ReleaseReason::UnusableReference);
             self.refs.clear();
+            return;
+        }
+        if !r.admitted {
             return;
         }
         let mut barrier = None;
@@ -592,17 +605,27 @@ impl StreamTimeline {
         let left = self
             .refs
             .iter()
-            .filter(|p| p.key.ticks <= r.key.ticks)
+            .filter(|p| {
+                p.key.ticks <= r.key.ticks
+                    && matches!(p.input.value, ReferenceValue::Readable(_, true))
+            })
             .max_by_key(|p| p.key.ticks);
         let right = self
             .refs
             .iter()
-            .filter(|p| p.key.ticks > r.key.ticks)
+            .filter(|p| {
+                p.key.ticks > r.key.ticks
+                    && matches!(p.input.value, ReferenceValue::Readable(_, true))
+            })
             .min_by_key(|p| p.key.ticks);
         for (a, z) in left
             .map(|a| (a, &r))
             .into_iter()
             .chain(right.map(|z| (&r, z)))
+            .filter(|(a, z)| {
+                matches!(a.input.value, ReferenceValue::Readable(_, true))
+                    && matches!(z.input.value, ReferenceValue::Readable(_, true))
+            })
         {
             let elapsed = (z.key.ticks - a.key.ticks) * 100;
             if elapsed > 1_000_000_000 + i128::from(self.policy.offline.gap_tolerance_ns) {
@@ -614,12 +637,6 @@ impl StreamTimeline {
                     Some(a.key.packet),
                     Some(elapsed),
                 );
-            }
-            if matches!(a.input.value, ReferenceValue::Readable(_, false))
-                || matches!(z.input.value, ReferenceValue::Readable(_, false))
-            {
-                barrier = Some(ReleaseReason::UnusableReference);
-                continue;
             }
             match crate::timeline::absolute_delta(a, z) {
                 Some(d) => {
@@ -662,12 +679,18 @@ impl StreamTimeline {
             let a = self
                 .refs
                 .iter()
-                .filter(|r| r.key.ticks <= p.key.ticks)
+                .filter(|r| {
+                    r.key.ticks <= p.key.ticks
+                        && matches!(r.input.value, ReferenceValue::Readable(_, true))
+                })
                 .max_by_key(|r| (r.key.ticks, r.key.packet));
             let z = self
                 .refs
                 .iter()
-                .filter(|r| r.key.ticks > p.key.ticks)
+                .filter(|r| {
+                    r.key.ticks > p.key.ticks
+                        && matches!(r.input.value, ReferenceValue::Readable(_, true))
+                })
                 .min_by_key(|r| (r.key.ticks, r.key.packet));
             if let Some(a) = a {
                 p.preceding = Some(a.clone());

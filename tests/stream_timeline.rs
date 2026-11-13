@@ -184,6 +184,7 @@ fn hold_gap_and_explicit_progress_boundaries() {
         1_100_000_000,
     ] {
         let mut p = policy(StreamMode::Interpolate);
+        // Storage round-trip only; the Format2 rate exception is deferred.
         p.raw_network_rate = true;
         let mut s = held(p);
         let b = s
