@@ -18,7 +18,7 @@ use super::*;
 /// Requirements: L1-IPT-006
 #[test]
 fn format_no_secondary_is_rtc() {
-    // Bit 6 clear selects RTC; secondary format 11 remains invalid.
+    // Bit 6 clear selects RTC independently of the secondary format.
     assert_eq!(
         IntraPacketTimeFormat::from_packet_flags(0x00),
         IntraPacketTimeFormat::Rtc48,

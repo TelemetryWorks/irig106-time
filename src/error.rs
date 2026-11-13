@@ -60,6 +60,26 @@ pub enum TimeError {
         flags: u8,
     },
 
+    /// Reserved packet secondary time format 11 (TF-006 warning).
+    ///
+    /// Separate validation finding: an RTC stamp value remains usable.
+    /// **Traces:** L3-IPT-107 ← L2-IPT-107 ← L1-IPT-007
+    ReservedPacketTimeFormat {
+        /// Original flags, including the reserved format value.
+        flags: u8,
+    },
+
+    /// A secondary-derived time has no defined wire format.
+    ///
+    /// No time is returned for the affected secondary time; an independent
+    /// RTC stamp remains usable. TODO(Q-FLAGS-ERROR): the numeric error-level
+    /// finding ID awaits an owner decision; TF-006 remains a warning.
+    /// **Traces:** L3-IPT-107 ← L2-IPT-107 ← L1-IPT-007
+    UndefinedSecondaryTimeFormat {
+        /// Original flags, retained beside any other flag findings.
+        flags: u8,
+    },
+
     /// Conversion cannot proceed without explicit, reviewed context.
     NeedsContext {
         /// Missing or unresolved conversion context.
@@ -128,6 +148,18 @@ impl fmt::Display for TimeError {
             }
             TimeError::InvalidPacketFlags { flags } => {
                 write!(f, "invalid intra-packet time flags {flags:#04x}")
+            }
+            TimeError::ReservedPacketTimeFormat { flags } => {
+                write!(
+                    f,
+                    "reserved packet secondary time format (TF-006 warning): flags {flags:#04x}"
+                )
+            }
+            TimeError::UndefinedSecondaryTimeFormat { flags } => {
+                write!(
+                    f,
+                    "undefined packet secondary time format: flags {flags:#04x}"
+                )
             }
             TimeError::NeedsContext { context } => write!(f, "time needs context: {context}"),
             TimeError::InvalidTimeStatus { status } => {
