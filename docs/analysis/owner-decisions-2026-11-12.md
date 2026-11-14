@@ -200,3 +200,24 @@ clarifications; ADR-0018 and plan-decisions-2026-11-13.md remain dated records
 and are not edited. No Design or Review field changes; TF-001..030 and TF-032
 rows retain their prior values. The exact TF-031 title assertion is restored.
 Matrix marker links remain 136/288; no new coverage claim or release deferral.
+
+## Subsequent owner decision — TF-032, 2026-11-14 (S08)
+
+Coordinator relays owner: TF-032 "Year evidence is contradictory" = WARNING
+("highest-priority year used, contradicting candidates kept as evidence,
+time value still produced"). All32 finding levels are now owner-approved.
+The standard supplies evidence, not these product severities: Figures11-13/14
+(106-24R1 printed11-25/PDF33); "Bit 8: Indicates if this is a leap year"
+(§11.2.3.2a); "Date and time original recording was created" (R-x\RI4, Ch9).
+Contract5.3/D9 defines DMY→caller→RI4 priority, never G\OD. No Review field changes.
+
+S08 updates architecture§8 TF-032 only (TF-001..031 unchanged), L2/L3 header
+notes, COR-110 and FND-101/102 (including repeated Source-line acceptance notes),
+contract header, ROADMAP, CHANGELOG and findings catalog. Source quotes retained.
+Old ADR/plan/verification records remain dated evidence, with subsequent-decision
+banners where they describe the former pending status. FND-102 remains clause
+coverage only; no test here claims all contract6 degraded cases.
+
+Exact changed requirement blocks (including Source-note-only changes): L2-NTP-104, L2-TAI-107, L2-EDN-201, L2-COR-110, L2-FND-101, L2-FND-102, L2-RDG-212, L3-NTP-104, L3-TAI-107, L3-EDN-201, L3-COR-110, L3-FND-101, L3-FND-102, L3-RDG-212.
+A source-quote subset check retained every earlier quoted Source excerpt;
+architecture TF-001..031 rows compare byte-for-byte unchanged.

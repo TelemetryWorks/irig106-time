@@ -104,3 +104,7 @@ The exact TF-031 catalog-title assertion dropped during the earlier test update
 is restored. A local isolated title-drift mutation fails that assertion; original
 source restored. This governance update changes no runtime code or Review field.
 Full CI equivalent rerun; matrix links remain 136/288.
+
+> Subsequent owner decision2026-11-14 (S08): TF-032 WARNING, highest-priority
+> year used, contradictory candidates retained, time kept. All32 levels are now
+> approved; any pending TF-032 text above describes the historical slice only.

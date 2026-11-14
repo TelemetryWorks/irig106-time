@@ -38,7 +38,11 @@ impl Normalization {
     pub fn table(&self) -> &LeapSecondTable {
         &self.table
     }
-    fn new(time: AbsoluteTime, scale: ScaleEvidence, table: LeapSecondTable) -> Result<Self> {
+    pub(crate) fn new(
+        time: AbsoluteTime,
+        scale: ScaleEvidence,
+        table: LeapSecondTable,
+    ) -> Result<Self> {
         let year = time.year().ok_or(TimeError::NeedsContext {
             context: "dated scale normalization",
         })?;
@@ -220,6 +224,7 @@ impl ReferenceInput {
             qualified: None,
             raw_csdw: Some(observation.csdw().as_raw()),
             year_origin: YearOrigin::NetworkEvidence,
+            year_basis: crate::years::YearBasis::default(),
             network: Some(Box::new(NetworkReference {
                 reference,
                 context,
@@ -263,6 +268,11 @@ pub(crate) fn legacy_calendar(t: CalendarReading) -> Result<AbsoluteTime> {
 pub(crate) fn shifted_reference(r: &TimelineReference, delta: i128) -> Result<CalendarReading> {
     if let Some(n) = &r.input.normalization {
         return n.shifted(delta);
+    }
+    if delta != 0 {
+        if let Some(error) = r.input.year_basis.normalization_issue() {
+            return Err(error.clone());
+        }
     }
     if r.input.network.is_some() && delta != 0 {
         return Err(r

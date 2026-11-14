@@ -255,3 +255,7 @@ coverage, and changes no requirement or human Design/Review field.
 After the fuzz correction, **18/18 local checks passed**: the prior 17-check
 suite plus the locked all-fuzz-bin check. No warnings remained in that check.
 The new CI job runs the same command; matrix links remain 116/288, delta0.
+
+> Subsequent owner decision2026-11-14 (S08): TF-032 WARNING, highest-priority
+> year used, contradictory candidates retained, time kept. All32 levels are now
+> approved; any pending TF-032 text above describes the historical slice only.

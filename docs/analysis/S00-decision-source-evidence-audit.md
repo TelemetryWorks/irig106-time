@@ -224,3 +224,7 @@ protected Design/Review fields and TF-001..TF-028 rows, unchanged non-document
 paths, and `git diff --check`. The PR reports the hosted CI result at its
 actual head. No Rust suite, compilation, mutation campaign, build, page render,
 dependency install or publish dry-run is claimed as newly run locally by S00.
+
+> Subsequent owner decision2026-11-14 (S08): TF-032 WARNING, highest-priority
+> year used, contradictory candidates retained, time kept. All32 levels are now
+> approved; any pending TF-032 text above describes the historical slice only.

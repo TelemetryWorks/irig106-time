@@ -121,3 +121,7 @@ covered clauses within one linked requirement. Its Implemented rows and coverage
 percentage are **not full compliance**. Full local CI equivalent uses two build
 jobs, MSRV1.85/no_std+alloc, feature suites, CLI, WASM, clippy/docs/fmt, trace
 freshness and cargo-deny; actual head and hosted CI results are reported in PR.
+
+> Subsequent owner decision2026-11-14 (S08): TF-032 WARNING, highest-priority
+> year used, contradictory candidates retained, time kept. All32 levels are now
+> approved; any pending TF-032 text above describes the historical slice only.

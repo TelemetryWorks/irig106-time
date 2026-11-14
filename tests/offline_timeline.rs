@@ -114,6 +114,7 @@ fn reference(second: u8) -> ReferenceInput {
         qualified: None,
         raw_csdw: None,
         year_origin: YearOrigin::Unknown,
+        year_basis: irig106_time::years::YearBasis::default(),
         network: None,
         normalization: None,
     }

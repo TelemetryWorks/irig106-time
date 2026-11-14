@@ -351,9 +351,8 @@ change, and its evidence: the packet (file position when the caller gives
 it), the channel, the counter. Identifiers are never reused. Nothing panics
 on any input (L1-ERR-001).
 
-**The findings** (owner-accepted identifiers; default levels accepted except
-TF-032 (level pending owner in S08); TF-031 WARNING is owner-accepted
-2026-11-14). *Error*: the value cannot be trusted and is not used; *warning*: the
+**The findings** (all32 identifiers and default levels owner-accepted;
+TF-031 and TF-032 WARNING accepted2026-11-14). *Error*: the value cannot be trusted and is not used; *warning*: the
 recording breaks a rule of the standard; *information*: worth knowing,
 nothing is wrong.
 
@@ -390,7 +389,7 @@ nothing is wrong.
 | TF-029 | NTP time is zero (unknown or unsynchronized) | warning | 6.3; RFC 5905 §6 |
 | TF-030 | NTP time falls in a leap-second ambiguity window | warning | 6.8; RFC 1305 E.8; RDG-012/RDG-010 |
 | TF-031 | Packet-layout edition evidence is contradictory | warning | 3.9; §11.2.1.1 e; Ch9 G\106 |
-| TF-032 | Year evidence is contradictory | level pending owner (S08) | 5.3; Figures 11-13/14 |
+| TF-032 | Year evidence is contradictory | warning | 5.3; Figures 11-13/14 |
 
 Owner 2026-11-13, plan Q1: TF-029 retains raw seconds/fraction but produces
 no absolute value; TF-030 keeps the mapped value labelled leap-ambiguous.
@@ -408,8 +407,9 @@ version of the standard applied to the data types"; 106-04 Table 9-1, printed
 not necessarily the packet layout. TF-032 retains contradictory year evidence;
 Figures 11-13/14 and contract 5.3 distinguish year-bearing and day-only evidence.
 Owner 2026-11-14 accepts TF-031 WARNING: the readable time body is kept;
-only EXT/SRC qualification is withheld. TF-032
-remains without a default pending S08. IDs/titles are permanent. TF-001..028
+only EXT/SRC qualification is withheld. Owner2026-11-14 also accepts TF-032
+WARNING: highest-priority year used, contradicting candidates kept as evidence,
+time value still produced. All32 levels are approved. IDs/titles are permanent. TF-001..028
 are unchanged. The standards supply evidence, not these product finding IDs.
 See [accepted plan decisions](analysis/plan-decisions-2026-11-13.md).
 

@@ -189,3 +189,7 @@ This table describes changed obligations, not implemented coverage. The matrix
 remains a link checklist; partial clauses and release deferrals are recorded
 in requirements and verification records. S01 needs a separate go after PR F
 merges and is not started here.
+
+> Subsequent owner decision2026-11-14 (S08): TF-032 WARNING, highest-priority
+> year used, contradictory candidates retained, time kept. All32 levels are now
+> approved; any pending TF-032 text above describes the historical slice only.

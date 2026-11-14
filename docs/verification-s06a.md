@@ -150,3 +150,7 @@ TF-006 validity mutant is equivalent and is not counted as killed.
 
 Regenerated matrix links remain **156/288**; clause boundaries and S06b deferrals
 are unchanged. Full bounded CI equivalent rerun for this tests-only revision.
+
+> Subsequent owner decision2026-11-14 (S08): TF-032 WARNING, highest-priority
+> year used, contradictory candidates retained, time kept. All32 levels are now
+> approved; any pending TF-032 text above describes the historical slice only.

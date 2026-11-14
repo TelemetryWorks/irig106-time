@@ -34,3 +34,7 @@ usable, EXT/SRC qualification is
 withheld. Override wins even against a newer header; evidence stays side by side
 without an automatic conflict finding. This neither changes TF-001..028 nor
 assigns a default to TF-032. See verification-s03 for clause limits and evidence.
+
+> Subsequent owner decision2026-11-14 (S08): TF-032 WARNING, highest-priority
+> year used, contradictory candidates retained, time kept. All32 levels are now
+> approved; any pending TF-032 text above describes the historical slice only.
