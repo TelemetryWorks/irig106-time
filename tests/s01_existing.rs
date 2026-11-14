@@ -1,0 +1,73 @@
+//! S01 existing-API regressions. Ch11 §11.2.1.1 i: 48 bits at 10 MHz.
+use irig106_time::{Rtc, stream::*, timeline::*};
+fn packet(id: u64, rtc: Rtc) -> PacketObservation {
+    PacketObservation {
+        id,
+        channel: 1,
+        rtc,
+        kind: PacketKind::Data,
+        declared_timein: true,
+        declared_external: false,
+        flags: 0,
+        reference: None,
+    }
+}
+/// Requirements: L1-FND-001, L2-FND-101, L3-FND-101
+#[test]
+fn approved_ntp_levels_are_configurable_but_pending_levels_are_not() {
+    let mut p = OfflinePolicy::default();
+    for id in [29, 30] {
+        p.finding_levels.insert(id, Severity::Information);
+        assert!(p.validate().is_ok(), "approved TF-{id:03}");
+    }
+    for id in [0, 31, 32, 33, 255] {
+        let mut bad = p.clone();
+        bad.finding_levels.insert(id, Severity::Error);
+        assert!(bad.validate().is_err(), "pending/unknown TF-{id:03}");
+    }
+}
+/// Requirements: L1-RTC-003, L2-RTC-103, L3-RTC-103
+#[test]
+fn offline_half_range_requires_ordering_context() {
+    // 2^48 modular ticks: 2^47 is equally far forward and backward.
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    b.observe(packet(1, Rtc::ZERO), false).unwrap();
+    assert!(b.observe(packet(2, Rtc::from_raw(1 << 47)), false).is_err());
+    // Rejected input must not consume its identity; caller can name a boundary.
+    let key = b.observe(packet(2, Rtc::from_raw(1 << 47)), true).unwrap();
+    assert_eq!(key.session, 2);
+}
+/// Requirements: L1-RTC-003, L2-RTC-103, L3-RTC-103
+#[test]
+fn stream_half_range_requires_ordering_context() {
+    let mut s = StreamTimeline::new(
+        StreamPolicy::new(
+            1,
+            BufferCaps {
+                packets: 2,
+                bytes: 128,
+                references: 2,
+            },
+        ),
+        None,
+    )
+    .unwrap();
+    s.observe(packet(1, Rtc::ZERO), 0, 24, false).unwrap();
+    assert!(
+        s.observe(packet(2, Rtc::from_raw(1 << 47)), 0, 24, false)
+            .is_err()
+    );
+    let b = s
+        .observe(packet(2, Rtc::from_raw(1 << 47)), 0, 24, true)
+        .unwrap();
+    assert_eq!(b.answers[0].basis.key.session, 2);
+}
+/// Requirements: L1-RTC-001, L2-RTC-101, L3-RTC-101, L1-API-004, L2-API-104, L3-API-104
+#[test]
+fn shared_values_keep_width_and_unit_contracts() {
+    let r: irig106_types::Rtc = Rtc::from_le_bytes([0xff; 6]);
+    assert_eq!(r.as_raw(), (1 << 48) - 1);
+    assert_eq!(Rtc::from_raw(1 << 48), Rtc::ZERO); // Explicitly named masking API.
+    assert_eq!(Rtc::from_raw(1).to_nanos(), 100);
+    assert_eq!(irig106_time::Ertc::from_raw(1).to_nanos(), 1);
+}
