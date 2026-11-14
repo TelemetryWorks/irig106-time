@@ -279,8 +279,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   | Before | After |
   |--------|-------|
   | `TimeCorrelator::with_ooo_window(Option<u64>)` | `with_ooo_window(Option<NanosDuration>)` |
-  | `detect_time_jump(ch, 1_000_000_000)` | `detect_time_jump(ch, NanosDuration::from_secs(1))` |
-  | `StreamingTimeCorrelator::new(60_000_000_000)` | `StreamingTimeCorrelator::new(NanosDuration::from_secs(60))` |
+  | `detect_time_jump(ch, 1_000_000_000)` | `detect_time_jump(ch, NanosDuration::new(1_000_000_000))` |
+  | `StreamingTimeCorrelator::new(60_000_000_000)` | `StreamingTimeCorrelator::new(NanosDuration::new(60_000_000_000))` |
   | `PtpTime::to_utc_seconds(37)` / `to_absolute(37)` | `to_utc_seconds(TaiUtcOffset::new(37))` / `to_absolute(TaiUtcOffset::new(37))` |
   | `LeapSecondTable::offset_at_unix(u64) -> i32` | `offset_at_unix(UnixSeconds) -> TaiUtcOffset` |
   | `LeapSecondTable::offset_at_tai(u64) -> i32` | `offset_at_tai(TaiSeconds) -> TaiUtcOffset` |
