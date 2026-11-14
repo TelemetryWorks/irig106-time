@@ -131,7 +131,7 @@ fn independent_edition_rule_boundaries_and_its_evidence() {
             for fmt in [0, 1, 2, 3, 4, 5, 15] {
                 let q = TimeF1Csdw::from_raw(1 | (fmt << 4) | (raw << 12))
                     .qualify(resolve_edition(declared(e)));
-                let expected = if e.rules().layout != TimeF1Layout::SourceWithIts17 {
+                let expected = if layout != TimeF1Layout::SourceWithIts17 {
                     ItsQualification::NotReported
                 } else if fmt <= 2 {
                     ItsQualification::Reported(IrigTimeSource::from_raw(raw as u8))
@@ -141,6 +141,10 @@ fn independent_edition_rule_boundaries_and_its_evidence() {
                 assert_eq!(q.its(), expected, "{e:?} fmt{fmt} ITS{raw}");
             }
         }
+    }
+    for fmt in 3..16 {
+        let q = TimeF1Csdw::from_raw(fmt << 4).qualify(resolve_edition(EditionEvidence::default()));
+        assert_eq!(q.its(), ItsQualification::NotApplicable);
     }
     let q = TimeF1Csdw::from_raw(3).qualify(resolve_edition(EditionEvidence::default()));
     assert_eq!(q.its(), ItsQualification::FreewheelingOrNotReported);
@@ -266,6 +270,23 @@ fn contradiction_keeps_body_and_evidence_through_both_engines() {
         let batch = stream
             .observe(observation(1, reading), 0, 32, false)
             .unwrap();
+        let stream_answer = &batch.answers[0];
+        assert_eq!(stream_answer.time, answer.time);
+        assert_eq!(
+            stream_answer
+                .basis
+                .preceding
+                .as_ref()
+                .unwrap()
+                .input
+                .qualified
+                .as_ref()
+                .unwrap()
+                .csdw
+                .resolution()
+                .evidence(),
+            &e
+        );
         for findings in [t.findings(), batch.findings.as_slice()] {
             assert_eq!(findings.iter().any(|f| f.code == 31), conflict);
             assert_eq!(
@@ -315,6 +336,10 @@ fn qualified_data_length_and_unresolved_fmt15_never_invent_none() {
     assert!(r.time.is_none());
     assert_eq!(r.csdw.format(), None);
     assert_eq!(r.consumed, 10);
+    assert!(matches!(
+        ReferenceInput::qualified_format1(r),
+        Err(TimeError::NeedsContext { .. })
+    ));
     for (e, fmt) in [
         (PacketEdition::V04, TimeFormat::Reserved(15)),
         (PacketEdition::V05, TimeFormat::None),
