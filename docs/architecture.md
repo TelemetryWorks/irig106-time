@@ -352,8 +352,8 @@ it), the channel, the counter. Identifiers are never reused. Nothing panics
 on any input (L1-ERR-001).
 
 **The findings** (owner-accepted identifiers; default levels accepted except
-TF-031 (proposed WARNING, pending owner confirmation in S03) and TF-032
-(level pending owner in S08)). *Error*: the value cannot be trusted and is not used; *warning*: the
+TF-032 (level pending owner in S08); TF-031 WARNING is owner-accepted
+2026-11-14). *Error*: the value cannot be trusted and is not used; *warning*: the
 recording breaks a rule of the standard; *information*: worth knowing,
 nothing is wrong.
 
@@ -389,7 +389,7 @@ nothing is wrong.
 | TF-028 | Secondary-derived time has an undefined format | error | 6.6; §11.2.1.1 g |
 | TF-029 | NTP time is zero (unknown or unsynchronized) | warning | 6.3; RFC 5905 §6 |
 | TF-030 | NTP time falls in a leap-second ambiguity window | warning | 6.8; RFC 1305 E.8; RDG-012/RDG-010 |
-| TF-031 | Packet-layout edition evidence is contradictory | warning (proposed, pending owner confirmation; S03) | 3.9; §11.2.1.1 e; Ch9 G\106 |
+| TF-031 | Packet-layout edition evidence is contradictory | warning | 3.9; §11.2.1.1 e; Ch9 G\106 |
 | TF-032 | Year evidence is contradictory | level pending owner (S08) | 5.3; Figures 11-13/14 |
 
 Owner 2026-11-13, plan Q1: TF-029 retains raw seconds/fraction but produces
@@ -407,9 +407,8 @@ version of the standard applied to the data types"; 106-04 Table 9-1, printed
 9-8, G\106 is "VERSION OF IRIG 106 STANDARD USED TO GENERATE THIS TMATS FILE",
 not necessarily the packet layout. TF-032 retains contradictory year evidence;
 Figures 11-13/14 and contract 5.3 distinguish year-bearing and day-only evidence.
-No owner severity approval for TF-031/032 is recorded here. S03 implements
-TF-031 as proposed WARNING at coordinator direction, pending owner confirmation:
-the readable time body is kept; only EXT/SRC qualification is withheld. TF-032
+Owner 2026-11-14 accepts TF-031 WARNING: the readable time body is kept;
+only EXT/SRC qualification is withheld. TF-032
 remains without a default pending S08. IDs/titles are permanent. TF-001..028
 are unchanged. The standards supply evidence, not these product finding IDs.
 See [accepted plan decisions](analysis/plan-decisions-2026-11-13.md).

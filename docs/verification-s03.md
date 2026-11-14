@@ -3,14 +3,15 @@
 Baseline main `15ee379666442a86dab55c2d32781143462e2f5e` (S02 merged).
 Scope: the eight S03 L2/L3 pairs in the saved plan. No dependency, CLI,
 Design/Review field, TF-001..028 row or TF-032 default changes. TF-031 WARNING
-is **proposed, pending owner confirmation**, implemented at coordinator direction;
-it is not an owner-approved severity. Confirm it before the release audit.
+is **owner-accepted (2026-11-14)**: time body kept, EXT/SRC qualification
+withheld. Only TF-032 remains level pending owner (S08).
 
 ## Tests-first provenance
 
 - Tests-only `ed7a647`: TF-031 policy availability **failed by assertion on main**
   (the S01 catalog deliberately refused its then-pending level). The test was
-  subsequently renamed to distinguish provisional availability from approval.
+  subsequently renamed as its initially provisional level became owner-accepted
+  WARNING (2026-11-14); the baseline failure remains historical evidence.
 - Tests-only `662d5bb`: seven new resolver/qualified-reading tests could not
   compile on main: APIs did not exist. This is missing-API evidence, not seven
   executed failing tests. Existing explicit-layout source/FMT/mask tests already
@@ -70,7 +71,7 @@ Q-EDITION analysis; **no fresh page image was inspected in S03**.
 | CSDW-106 | Every ITS value with A/B/G and other FMT across rule rows; explicit not-reported/not-applicable/unknown states; reserved ITS value warning with usable body kept. | No edition inference from a setup/header code alone. |
 | CSDW-107 | All bits of three masks; selected intersection or unconditional common-mask violation; raw alternatives retained when unresolved; exact TF-005 operands, separate TF-006. | Alternative-only violations remain competing interpretations, not certain TF-005. Existing legacy layout APIs retain their documented strict validation entry point. |
 | EDN-103 | Cited rule boundaries for EXT/SRC/ITS, Chapter10/11 and Format2 availability; independent edition row fixtures and missing/unknown evidence. | **Partial historical scheduling evidence:** no historical late-packet guarantee is invented from code-list names. Existing cited 1100ms policy remains unchanged; per-edition scheduling/legacy archive qualification remains a release evidence audit item, not a new release-scoped waiver. |
-| EDN-201 | Every accepted resolver case, override precedence, opt-in G\106, known above-release contradiction, lower permitted hint, distinct setup/header domains, raw side-by-side evidence in both answer bases; provisional TF-031 only without override. | TF-031 level needs owner confirmation. Validated serialized schema/report adapters remain S12/S17; no host-clock/fallback selection. |
+| EDN-201 | Every accepted resolver case, override precedence, opt-in G\106, known above-release contradiction, lower permitted hint, distinct setup/header domains, raw side-by-side evidence in both answer bases; owner-accepted TF-031 WARNING only without override (2026-11-14). | Only TF-032 level remains pending owner (S08). Validated serialized schema/report adapters remain S12/S17; no host-clock/fallback selection. |
 | RDG-207 | Written analysis, source inventory, historical/current/unknown ITS fixtures and reserved meanings. | Human Review stays pending. No claim of new page-image inspection or independent human reading review. |
 
 No new release-scoped deferral. Matrix links cannot express partial clauses or
@@ -91,3 +92,15 @@ evidence. Additional assertions after implementation are labelled above.
 Full bounded CI equivalent: feature tests, MSRV1.85, no_std wasm ±serde,
 clippy/fmt/docs, CLI build/clippy, benches build, locked all-fuzz-target check,
 trace freshness and cargo-deny; worker cap2. No publishing or merge performed.
+
+## Owner acceptance follow-up — 2026-11-14
+
+The coordinator relayed owner acceptance of TF-031 WARNING: time body kept,
+EXT/SRC qualification withheld. Architecture/contract/requirements/source
+comments now record approval rather than a proposal. Only TF-032 remains
+pending (S08). The reviewer reported code verified and 24/24 reviewer mutants
+killed; that is reviewer-reported evidence, not an additional local run.
+The exact TF-031 catalog-title assertion dropped during the earlier test update
+is restored. A local isolated title-drift mutation fails that assertion; original
+source restored. This governance update changes no runtime code or Review field.
+Full CI equivalent rerun; matrix links remain 136/288.

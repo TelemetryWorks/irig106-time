@@ -21,8 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   caller-layout boundary, or qualified_format1 for retained resolver evidence).
   Existing explicit-layout helpers/CLI output paths are not automatically changed.
 - TF-031 now emits WARNING only for the accepted no-override contradiction
-  case: **proposed, pending owner confirmation**, coordinator-directed S03.
-  Catalog/policy can configure this available provisional level; TF-032 still
+  case: **owner-accepted WARNING (2026-11-14)**, time body kept and EXT/SRC
+  qualification withheld. Catalog/policy can configure this approved level; TF-032 still
   has no default. Reserved ITS yields TF-006; reserved bits yield TF-005.
   No TF-001..028 row or Design/Review status changes.
 - Eight S03 tests, 20 assertion-killed mutations, 128→136/288 matrix links.
@@ -92,8 +92,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   optional actual byte offset, related identities, exact raw fields/counter,
   factual value effect independent of severity. TF-029/030 evidence retains
   raw NTP words and sentinel-no-value / ambiguity-value-kept effects; conversion
-  and leap-window detection remain S05. TF-031/032 levels stay pending owner;
-  neither default nor explicit override can emit them yet.
+  and leap-window detection remain S05. TF-031 is owner-accepted WARNING
+  (2026-11-14), configurable/emittable in S03; only TF-032 remains pending
+  and cannot be emitted by a default or explicit override.
 - S01 verification: 15 focused tests, unit/epoch/privacy compile-fail controls and
   12 initial + 10 reviewer assertion-killed mutations; see `docs/verification-s01.md` for honest
   failing-first history and clause-level limits. Matrix links rise 106→116/288;
@@ -116,16 +117,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cross-session subtraction and quantity overflow. Legacy `Rtc::from_raw`
   still explicitly masks; use `checked_rtc` to reject high bits. Signed
   conversion refuses overflow/negative-to-unsigned rather than truncating.
-- Policies now accept approved TF-029/030 severity overrides; TF-031/032 and
-  unknown IDs remain rejected. Shared catalog defaults follow architecture §8;
+- Policies accept approved TF-029/030/031 severity overrides; TF-031 WARNING
+  is owner-accepted (2026-11-14). Only TF-032 and unknown IDs remain rejected. Shared catalog defaults follow architecture §8;
   level selection never repairs malformed input. No CLI/schema/dependency or
   published version change is made. The Q-CH4 warning now cites the accepted
   2026-11-12 caller-context decision; the unsafe prototype conversion is not fixed here.
 
 
 - Owner 2026-11-13 plan decisions (ADR-0018): permanent TF-029 zero-NTP and
-  TF-030 NTP ambiguity WARNING findings; TF-031 packet-layout conflict and
-  TF-032 year conflict IDs/titles accepted, levels pending owner S03/S08.
+  TF-030 NTP ambiguity WARNING findings. TF-031 packet-layout conflict is
+  owner-accepted WARNING (2026-11-14, time body kept/EXT-SRC qualification
+  withheld); only TF-032 year-conflict level remains pending owner (S08).
   Catalog/requirements only; no new producer is implemented by this docs PR.
 - 0.8.0 release scope: defer only COR-111 inverse queries (half-open semantics
   accepted), the new complete ENC-103 secondary/stamp API, complex API-110

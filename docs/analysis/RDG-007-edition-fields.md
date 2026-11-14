@@ -29,8 +29,8 @@ when layout is unresolved; possible-only violations remain labelled alternatives
 Legacy EXT is never relabelled as modern SRC; nibble3 is never GPS or None.
 
 TF-031 is emitted only for the no-override contradictory adopted packet edition.
-WARNING is **proposed, pending owner confirmation**, implemented at coordinator
-direction: common readable time fields stay usable, EXT/SRC qualification is
+WARNING is **owner-accepted (2026-11-14)**: common readable time fields stay
+usable, EXT/SRC qualification is
 withheld. Override wins even against a newer header; evidence stays side by side
 without an automatic conflict finding. This neither changes TF-001..028 nor
 assigns a default to TF-032. See verification-s03 for clause limits and evidence.

@@ -1,4 +1,4 @@
-# Owner decisions of 2026-11-12/13 — requirement and source audit
+# Owner decisions of 2026-11-12/13/14 — requirement and source audit
 
 Documentation-only update based on origin/main
 `b839c4343cd8bddc7509ce0462cc86923a3f2737` (merged PR7).
@@ -177,3 +177,26 @@ verification; none of its existing flag/padding/length cases was removed.
 TF-028's Contract cell follows the existing style; its owner date remains
 in this decision record. TF-001..TF-027 and human Design/Review fields
 are unchanged.
+
+## 2026-11-14 — TF-031 severity accepted (PR #19 governance follow-up)
+
+Owner decision relayed by the coordinator: TF-031 "Packet-layout edition evidence is contradictory" = WARNING (time body kept, EXT/SRC qualification
+withheld). TF-032 stays level pending owner (S08). The catalog's exact title is tested unchanged.
+
+This accepts S03's existing WARNING implementation; no runtime behaviour changes.
+Override precedence and the no-override conflict condition remain unchanged.
+IRIG 106 supplies the packet/TMATS evidence (§11.2.1.1 e, "a value at or below
+the release version of the standard applied to the data types"; G\106 describes
+the TMATS file); the owner assigns the finding severity. No standard-defined
+finding ID or severity is claimed.
+
+Changed requirement IDs: L2/L3-EDN-201 and FND-101/102 (approved WARNING and
+only TF-032 pending); L2/L3-NTP-104, TAI-107, COR-110 and RDG-212 (repeated
+source-decision status updated, their domain behaviour unchanged). Every parent
+and existing verbatim standard/RFC quotation is preserved. L2/L3 header notes,
+contract, architecture §8, ROADMAP, CHANGELOG, S03 record/RDG-007 analysis and
+source doc comments now agree. Historical S00/S01 records carry current-status
+clarifications; ADR-0018 and plan-decisions-2026-11-13.md remain dated records
+and are not edited. No Design or Review field changes; TF-001..030 and TF-032
+rows retain their prior values. The exact TF-031 title assertion is restored.
+Matrix marker links remain 136/288; no new coverage claim or release deferral.

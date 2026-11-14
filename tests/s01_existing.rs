@@ -14,9 +14,9 @@ fn packet(id: u64, rtc: Rtc) -> PacketObservation {
 }
 /// Requirements: L1-FND-001, L2-FND-101, L3-FND-101
 #[test]
-fn available_ntp_and_provisional_edition_levels_keep_year_pending() {
+fn available_ntp_and_edition_levels_keep_year_pending() {
     let mut p = OfflinePolicy::default();
-    // TF-031 WARNING is provisional in S03, pending owner confirmation.
+    // TF-031 WARNING is owner-accepted (2026-11-14); only TF-032 is pending.
     for id in [29, 30, 31] {
         p.finding_levels.insert(id, Severity::Information);
         assert!(p.validate().is_ok(), "available TF-{id:03}");

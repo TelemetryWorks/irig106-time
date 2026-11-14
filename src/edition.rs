@@ -183,7 +183,7 @@ impl EditionResolution {
         &self.evidence
     }
     /// Only the no-override, opted-in declaration contradicted by packet case.
-    /// TF-031 WARNING is proposed, pending owner confirmation.
+    /// TF-031 WARNING is owner-accepted (2026-11-14): body kept, EXT/SRC withheld.
     pub fn contradiction(&self) -> bool {
         self.contradiction
     }
