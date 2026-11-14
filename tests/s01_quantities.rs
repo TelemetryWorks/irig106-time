@@ -1,5 +1,5 @@
 //! Hand arithmetic: 106-24R1 §11.2.1.1 i (10 MHz, 48-bit free-running RTC),
-//! printed 11-7/11-8; §g ERTC is 1 ns. No encoder-generated oracle.
+//! §11.2.1.1 g: ERTC is 1 ns. No encoder-generated oracle.
 use irig106_time::{NanosDuration, Rtc, TimeError, rtc::*, timeline::PacketKey};
 /// Requirements: L1-RTC-001, L2-RTC-101, L3-RTC-101
 #[test]
