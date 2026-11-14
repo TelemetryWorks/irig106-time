@@ -290,6 +290,10 @@ fn all_error_variants_display() {
         TimeError::InvalidBcdDigit {
             nibble: 0xB,
             position: "test",
+            word: 0,
+            digit: 0,
+            bit_offset: 0,
+            raw_word: 0x000b,
         },
         TimeError::ReservedBitSet { position: "test" },
         TimeError::OutOfRange {
@@ -1005,7 +1009,7 @@ fn sub_nanos_crosses_year_boundary() {
 
     // Subtract 1 second — should roll back to day 366, 23:59:59 of 2024
     // (2024 is a leap year → 366 days)
-    let result = t.sub_nanos(1_000_000_000);
+    let result = t.sub_nanos(1_000_000_000).unwrap();
     assert_eq!(result.year(), Some(2024));
     assert_eq!(result.day_of_year(), 366);
     assert_eq!(result.hours(), 23);
@@ -1021,21 +1025,19 @@ fn sub_nanos_same_day_no_year_change() {
         .unwrap();
 
     // Subtract 1 hour — same day
-    let result = t.sub_nanos(3_600_000_000_000);
+    let result = t.sub_nanos(3_600_000_000_000).unwrap();
     assert_eq!(result.year(), Some(2025));
     assert_eq!(result.day_of_year(), 100);
     assert_eq!(result.hours(), 11);
 }
 
 #[test]
-fn sub_nanos_no_year_info_wraps_gracefully() {
-    // Without year info, should still compute days correctly (assumes 365)
-    let t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap(); // Day 1, no year
-    let result = t.sub_nanos(1_000_000_000); // 1 second back
-    assert_eq!(result.day_of_year(), 365); // wraps to 365 (no year = non-leap assumed)
-    assert_eq!(result.hours(), 23);
-    assert_eq!(result.minutes(), 59);
-    assert_eq!(result.seconds(), 59);
+fn sub_nanos_no_year_info_requires_context() {
+    let t = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
+    assert!(matches!(
+        t.sub_nanos(1_000_000_000),
+        Err(TimeError::NeedsContext { .. })
+    ));
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1205,7 +1207,7 @@ fn sub_nanos_leap_year_rollover_366_days() {
         .unwrap()
         .with_year(Some(2025))
         .unwrap();
-    let result = t.sub_nanos(86_400_000_000_000); // exactly 1 day
+    let result = t.sub_nanos(86_400_000_000_000).unwrap(); // exactly 1 day
     assert_eq!(result.year(), Some(2024));
     assert_eq!(result.day_of_year(), 366); // 2024 is leap
     assert_eq!(result.hours(), 0);
@@ -1219,7 +1221,7 @@ fn sub_nanos_non_leap_year_rollover_365_days() {
         .unwrap()
         .with_year(Some(2024))
         .unwrap();
-    let result = t.sub_nanos(86_400_000_000_000); // exactly 1 day
+    let result = t.sub_nanos(86_400_000_000_000).unwrap(); // exactly 1 day
     assert_eq!(result.year(), Some(2023));
     assert_eq!(result.day_of_year(), 365); // 2023 is not leap
 }
@@ -1231,7 +1233,7 @@ fn sub_nanos_century_non_leap_year() {
         .unwrap()
         .with_year(Some(1901))
         .unwrap();
-    let result = t.sub_nanos(86_400_000_000_000);
+    let result = t.sub_nanos(86_400_000_000_000).unwrap();
     assert_eq!(result.year(), Some(1900));
     assert_eq!(result.day_of_year(), 365); // 1900 NOT leap
 }
@@ -1243,7 +1245,7 @@ fn sub_nanos_quad_century_leap_year() {
         .unwrap()
         .with_year(Some(2001))
         .unwrap();
-    let result = t.sub_nanos(86_400_000_000_000);
+    let result = t.sub_nanos(86_400_000_000_000).unwrap();
     assert_eq!(result.year(), Some(2000));
     assert_eq!(result.day_of_year(), 366); // 2000 IS leap
 }

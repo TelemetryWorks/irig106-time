@@ -43,7 +43,7 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-ABS-001 | L2-ABS-101 | _(none)_ | Draft |
+| L1-ABS-001 | L2-ABS-101 | `tests/s02_existing.rs::nominal_add_advances_the_known_year`<br>`tests/s02_existing.rs::year_attachment_validates_gregorian_day`<br>`tests/s02_readings.rs::checked_calendar_bounds_never_invent_a_year`<br>`tests/s02_readings.rs::gregorian_dates_not_ly_bits_and_field_boundaries_govern_validation`<br>`tests/s02_readings.rs::leap_label_is_distinct_and_arithmetic_refuses_missing_context` | Implemented |
 | L1-ABS-002 | L2-ABS-102 | `tests/rebuild_wire.rs::ch4_invalid_microseconds_still_reject_both_paths`<br>`tests/rebuild_wire.rs::t10_secondary_ch4_has_usec_low_high_words` | Implemented |
 | L1-ABS-003 | L2-ABS-103 | _(none)_ | Draft |
 | L1-ABS-004 | L2-ABS-104 | `tests/rebuild_wire.rs::t5_shared_ertc_tick_is_one_nanosecond` | Implemented |
@@ -52,7 +52,7 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L2-ABS-101 | L3-ABS-101 | _(TBD)_ | Draft |
+| L2-ABS-101 | L3-ABS-101 | `tests/s02_existing.rs::nominal_add_advances_the_known_year`<br>`tests/s02_existing.rs::year_attachment_validates_gregorian_day`<br>`tests/s02_readings.rs::checked_calendar_bounds_never_invent_a_year`<br>`tests/s02_readings.rs::gregorian_dates_not_ly_bits_and_field_boundaries_govern_validation`<br>`tests/s02_readings.rs::leap_label_is_distinct_and_arithmetic_refuses_missing_context` | Implemented |
 | L2-ABS-102 | L3-ABS-102 | `tests/rebuild_wire.rs::ch4_invalid_microseconds_still_reject_both_paths`<br>`tests/rebuild_wire.rs::t10_secondary_ch4_has_usec_low_high_words` | Implemented |
 | L2-ABS-103 | L3-ABS-103 | _(TBD)_ | Draft |
 | L2-ABS-104 | L3-ABS-104 | `tests/rebuild_wire.rs::t5_shared_ertc_tick_is_one_nanosecond` | Implemented |
@@ -109,7 +109,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1-CSDW-002 | L2-CSDW-102 | `tests/pipeline.rs::csdw_explicit_legacy_layout`<br>`tests/pipeline.rs::full_day_format_pipeline`<br>`tests/rebuild_layout.rs::t6_legacy_ext_is_not_src`<br>`tests/rebuild_wire.rs::t6_source_three_is_reserved`<br>`tests/rebuild_wire.rs::t6_source_two_is_rmm` | Implemented |
 | L1-CSDW-003 | L2-CSDW-103 | `tests/rebuild_layout.rs::t7_none_only_in_modern_layout`<br>`tests/rebuild_wire.rs::t7_none_format_is_distinct` | Implemented |
 | L1-CSDW-004 | L2-CSDW-104 | _(none)_ | Draft |
-| L1-CSDW-005 | L2-CSDW-105 | _(none)_ | Draft |
+| L1-CSDW-005 | L2-CSDW-105 | `tests/s02_existing.rs::date_bit_alone_selects_the_bounded_body`<br>`tests/s02_readings.rs::every_zero_bit_is_a_warning_with_exact_operands_and_kept_value` | Implemented |
 | L1-CSDW-006 | L2-CSDW-106 | `tests/rebuild_layout.rs::t7_its_requires_explicit_applicable_layout` | Implemented |
 | L1-CSDW-007 | L2-CSDW-107 | `tests/rebuild_layout.rs::t7_reserved_masks_are_layout_specific` | Implemented |
 
@@ -121,7 +121,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L2-CSDW-102 | L3-CSDW-102 | `tests/rebuild_layout.rs::t6_legacy_ext_is_not_src`<br>`tests/rebuild_wire.rs::t6_source_three_is_reserved`<br>`tests/rebuild_wire.rs::t6_source_two_is_rmm` | Implemented |
 | L2-CSDW-103 | L3-CSDW-103 | `tests/rebuild_layout.rs::t7_none_only_in_modern_layout`<br>`tests/rebuild_wire.rs::t7_none_format_is_distinct` | Implemented |
 | L2-CSDW-104 | L3-CSDW-104 | _(TBD)_ | Draft |
-| L2-CSDW-105 | L3-CSDW-105 | _(TBD)_ | Draft |
+| L2-CSDW-105 | L3-CSDW-105 | `tests/s02_existing.rs::date_bit_alone_selects_the_bounded_body`<br>`tests/s02_readings.rs::every_zero_bit_is_a_warning_with_exact_operands_and_kept_value` | Implemented |
 | L2-CSDW-106 | L3-CSDW-106 | `tests/rebuild_layout.rs::t7_its_requires_explicit_applicable_layout` | Implemented |
 | L2-CSDW-107 | L3-CSDW-107 | `tests/rebuild_layout.rs::t7_reserved_masks_are_layout_specific` | Implemented |
 
@@ -131,8 +131,8 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-BCD-003 | L2-BCD-103 | _(none)_ | Draft |
-| L1-BCD-004 | L2-BCD-104 | _(none)_ | Draft |
+| L1-BCD-003 | L2-BCD-103 | `tests/s02_readings.rs::every_zero_bit_is_a_warning_with_exact_operands_and_kept_value`<br>`tests/s02_readings.rs::malformed_digit_does_not_hide_an_independent_zero_bit_warning` | Implemented |
+| L1-BCD-004 | L2-BCD-104 | `tests/s02_existing.rs::canonical_digit_error_names_the_field`<br>`tests/s02_existing.rs::valid_decimal_tens_six_is_a_range_error_without_scale_context`<br>`tests/s02_readings.rs::every_digit_pattern_has_field_word_digit_and_raw_evidence` | Implemented |
 | L1-BCD-005 | L2-BCD-105 | `irig106-time-cli/src/main_tests.rs::t12_cli_accepts_six_byte_day_body_at_end`<br>`src/bcd_tests.rs::day_fmt_buffer_too_short`<br>`src/bcd_tests.rs::day_fmt_day_zero_rejected`<br>`src/bcd_tests.rs::day_fmt_decode_known`<br>`src/bcd_tests.rs::day_fmt_invalid_bcd_digit`<br>`src/bcd_tests.rs::day_fmt_max_day`<br>`src/bcd_tests.rs::day_fmt_midnight_day1`<br>`src/bcd_tests.rs::day_fmt_reserved_bit_set`<br>`src/bcd_tests.rs::day_fmt_to_absolute`<br>`src/bcd_tests.rs::dmy_fmt_buffer_too_short`<br>`src/bcd_tests.rs::dmy_fmt_decode_known`<br>`src/bcd_tests.rs::dmy_fmt_invalid_month_zero`<br>`src/bcd_tests.rs::dmy_fmt_to_absolute_with_date`<br>`src/bcd_tests.rs::millisecond_resolution_10ms`<br>`tests/rebuild_wire.rs::t12_day_body_is_six_bytes` | Implemented |
 | L1-BCD-006 | L2-BCD-106 | `irig106-time-cli/src/main_tests.rs::t12_cli_accepts_eight_byte_calendar_body_at_end`<br>`src/bcd_tests.rs::day_fmt_buffer_too_short`<br>`src/bcd_tests.rs::day_fmt_day_zero_rejected`<br>`src/bcd_tests.rs::day_fmt_decode_known`<br>`src/bcd_tests.rs::day_fmt_invalid_bcd_digit`<br>`src/bcd_tests.rs::day_fmt_max_day`<br>`src/bcd_tests.rs::day_fmt_midnight_day1`<br>`src/bcd_tests.rs::day_fmt_reserved_bit_set`<br>`src/bcd_tests.rs::day_fmt_to_absolute`<br>`src/bcd_tests.rs::dmy_fmt_buffer_too_short`<br>`src/bcd_tests.rs::dmy_fmt_decode_known`<br>`src/bcd_tests.rs::dmy_fmt_invalid_month_zero`<br>`src/bcd_tests.rs::dmy_fmt_to_absolute_with_date`<br>`src/bcd_tests.rs::millisecond_resolution_10ms`<br>`tests/rebuild_wire.rs::t12_calendar_body_is_eight_bytes` | Implemented |
 
@@ -140,8 +140,8 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L2-BCD-103 | L3-BCD-103 | _(TBD)_ | Draft |
-| L2-BCD-104 | L3-BCD-104 | _(TBD)_ | Draft |
+| L2-BCD-103 | L3-BCD-103 | `tests/s02_readings.rs::every_zero_bit_is_a_warning_with_exact_operands_and_kept_value`<br>`tests/s02_readings.rs::malformed_digit_does_not_hide_an_independent_zero_bit_warning` | Implemented |
+| L2-BCD-104 | L3-BCD-104 | `tests/s02_existing.rs::canonical_digit_error_names_the_field`<br>`tests/s02_existing.rs::valid_decimal_tens_six_is_a_range_error_without_scale_context`<br>`tests/s02_readings.rs::every_digit_pattern_has_field_word_digit_and_raw_evidence` | Implemented |
 | L2-BCD-105 | L3-BCD-105 | `irig106-time-cli/src/main_tests.rs::t12_cli_accepts_six_byte_day_body_at_end`<br>`tests/rebuild_wire.rs::t12_day_body_is_six_bytes` | Implemented |
 | L2-BCD-106 | L3-BCD-106 | `irig106-time-cli/src/main_tests.rs::t12_cli_accepts_eight_byte_calendar_body_at_end`<br>`tests/rebuild_wire.rs::t12_calendar_body_is_eight_bytes` | Implemented |
 
@@ -472,8 +472,8 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
 | L1-ERR-001 | L2-ERR-101 | _(none)_ | Draft |
-| L1-ERR-002 | L2-ERR-102 | _(none)_ | Draft |
-| L1-ERR-003 | L2-ERR-103 | _(none)_ | Draft |
+| L1-ERR-002 | L2-ERR-102 | `tests/s02_existing.rs::canonical_digit_error_names_the_field`<br>`tests/s02_readings.rs::both_engines_retain_the_original_parse_error_and_packet_context`<br>`tests/s02_readings.rs::every_digit_pattern_has_field_word_digit_and_raw_evidence`<br>`tests/s02_readings.rs::malformed_digit_does_not_hide_an_independent_zero_bit_warning` | Implemented |
+| L1-ERR-003 | L2-ERR-103 | `tests/s02_existing.rs::valid_decimal_tens_six_is_a_range_error_without_scale_context`<br>`tests/s02_existing.rs::year_attachment_validates_gregorian_day`<br>`tests/s02_readings.rs::both_engines_retain_the_original_parse_error_and_packet_context`<br>`tests/s02_readings.rs::gregorian_dates_not_ly_bits_and_field_boundaries_govern_validation`<br>`tests/s02_readings.rs::leap_label_is_distinct_and_arithmetic_refuses_missing_context` | Implemented |
 | L1-ERR-004 | L2-ERR-104 | `tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither` | Implemented |
 | L1-ERR-005 | L2-ERR-105 | `tests/rebuild_wire.rs::t12_calendar_body_is_eight_bytes`<br>`tests/rebuild_wire.rs::t12_day_body_is_six_bytes`<br>`tests/slice2_readings.rs::f2_data_length_bounds_and_nanosecond_boundaries`<br>`tests/slice2_wire.rs::t3_ptp_never_reads_following_filler` | Implemented |
 
@@ -482,8 +482,8 @@ This matrix is the single source of truth for live status; the requirement docum
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
 | L2-ERR-101 | L3-ERR-101 | _(TBD)_ | Draft |
-| L2-ERR-102 | L3-ERR-102 | _(TBD)_ | Draft |
-| L2-ERR-103 | L3-ERR-103 | _(TBD)_ | Draft |
+| L2-ERR-102 | L3-ERR-102 | `tests/s02_existing.rs::canonical_digit_error_names_the_field`<br>`tests/s02_readings.rs::both_engines_retain_the_original_parse_error_and_packet_context`<br>`tests/s02_readings.rs::every_digit_pattern_has_field_word_digit_and_raw_evidence`<br>`tests/s02_readings.rs::malformed_digit_does_not_hide_an_independent_zero_bit_warning` | Implemented |
+| L2-ERR-103 | L3-ERR-103 | `tests/s02_existing.rs::valid_decimal_tens_six_is_a_range_error_without_scale_context`<br>`tests/s02_existing.rs::year_attachment_validates_gregorian_day`<br>`tests/s02_readings.rs::both_engines_retain_the_original_parse_error_and_packet_context`<br>`tests/s02_readings.rs::gregorian_dates_not_ly_bits_and_field_boundaries_govern_validation`<br>`tests/s02_readings.rs::leap_label_is_distinct_and_arithmetic_refuses_missing_context` | Implemented |
 | L2-ERR-104 | L3-ERR-104 | `tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither` | Implemented |
 | L2-ERR-105 | L3-ERR-105 | `tests/slice2_readings.rs::f2_data_length_bounds_and_nanosecond_boundaries`<br>`tests/slice2_wire.rs::t3_ptp_never_reads_following_filler` | Implemented |
 
@@ -619,11 +619,11 @@ This matrix is the single source of truth for live status; the requirement docum
 | Category | L1 | L2 | L3 | L2 tested | L3 tested | L2 verified | L3 verified |
 |----------|----|----|----|-----------|-----------|-------------|-------------|
 | RTC | 4 | 4 | 4 | 4 | 4 | 4 | 4 |
-| ABS | 4 | 4 | 4 | 2 | 2 | 2 | 2 |
+| ABS | 4 | 4 | 4 | 3 | 3 | 3 | 3 |
 | IPT | 3 | 3 | 3 | 3 | 3 | 3 | 3 |
 | SEC | 6 | 6 | 6 | 3 | 3 | 3 | 3 |
-| CSDW | 7 | 7 | 7 | 4 | 4 | 4 | 4 |
-| BCD | 4 | 4 | 4 | 2 | 2 | 2 | 2 |
+| CSDW | 7 | 7 | 7 | 5 | 5 | 5 | 5 |
+| BCD | 4 | 4 | 4 | 4 | 4 | 4 | 4 |
 | F2CSDW | 4 | 4 | 4 | 3 | 3 | 3 | 3 |
 | NTP | 4 | 4 | 4 | 2 | 2 | 2 | 2 |
 | PTP | 4 | 4 | 4 | 2 | 2 | 2 | 2 |
@@ -639,19 +639,19 @@ This matrix is the single source of truth for live status; the requirement docum
 | FND | 5 | 5 | 5 | 2 | 2 | 2 | 2 |
 | RDG | 2 | 14 | 14 | 0 | 0 | 0 | 0 |
 | STRM | 1 | 7 | 7 | 7 | 7 | 7 | 7 |
-| ERR | 5 | 5 | 5 | 2 | 2 | 2 | 2 |
+| ERR | 5 | 5 | 5 | 4 | 4 | 4 | 4 |
 | API | 11 | 11 | 11 | 1 | 1 | 1 | 1 |
 | PERF | 1 | 1 | 1 | 0 | 0 | 0 | 0 |
 | CLI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
 | REL | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
 | TST | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
-| **Total** | **124** | **144** | **144** | **58** | **58** | **58** | **58** |
+| **Total** | **124** | **144** | **144** | **64** | **64** | **64** | **64** |
 
 The countable requirement set is every L2 and L3 requirement plus the 0 L1 *leaf* requirement(s) (L1s with no L2 decomposition yet). Composite L1s are verified through their children.
 
-**Tested by at least one test marker**: 116 of 288 (40.3%).
+**Tested by at least one test marker**: 128 of 288 (44.4%).
 
-**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 116 of 288 (40.3%).
+**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 128 of 288 (44.4%).
 
 ### Orphan check
 
@@ -673,7 +673,7 @@ Every entry of `docs/INTERPRETATIONS.md` with its written analysis and the tests
 | RDG-007 | ITS (Format 1 bits 15–12) is read only for recordings declared 106-17 or later | accepted | not yet written | `tests/rebuild_layout.rs::t7_its_requires_explicit_applicable_layout` |
 | RDG-008 | The secondary header checksum sums bytes, not 16-bit words | suspect | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-008) | `tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither`<br>`tests/slice2_wire.rs::rdg008_byte_only_checksum_is_valid`<br>`tests/slice2_wire.rs::rdg008_word_only_checksum_is_not_trusted` |
 | RDG-009 | The time scale of each time format; IRIG time is UTC by assumption | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-009) | `tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance`<br>`tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` |
-| RDG-010 | Second 60 is a leap second on a day that can be 30 June or 31 December | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-010) | `tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` |
+| RDG-010 | Second 60 is a leap second on a day that can be 30 June or 31 December | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-010) | `tests/s02_readings.rs::leap_label_is_distinct_and_arithmetic_refuses_missing_context`<br>`tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` |
 | RDG-011 | "The first dynamic data packet" is checked per session | accepted | not yet written | `tests/stream_timeline.rs::early_data_none_and_no_time_findings` |
 | RDG-012 | NTP follows UTC reckoning; era evidence, zero sentinel and leap ambiguity are explicit | accepted | [written all-edition/RFC analysis and planned edge cases](analysis/RDG-012-ntp-utc-era.md) | `tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value` |
 

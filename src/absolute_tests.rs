@@ -220,7 +220,7 @@ fn with_year_10000_rejected() {
 #[test]
 fn add_nanos_subsecond() {
     let t = AbsoluteTime::new(1, 0, 0, 0, 100_000_000).unwrap();
-    let t2 = t.add_nanos(200_000_000);
+    let t2 = t.add_nanos(200_000_000).unwrap();
     assert_eq!(t2.seconds(), 0);
     assert_eq!(t2.nanoseconds(), 300_000_000);
 }
@@ -228,7 +228,7 @@ fn add_nanos_subsecond() {
 #[test]
 fn add_nanos_carry_to_seconds() {
     let t = AbsoluteTime::new(1, 0, 0, 0, 900_000_000).unwrap();
-    let t2 = t.add_nanos(200_000_000); // 1.1 seconds total
+    let t2 = t.add_nanos(200_000_000).unwrap(); // 1.1 seconds total
     assert_eq!(t2.seconds(), 1);
     assert_eq!(t2.nanoseconds(), 100_000_000);
 }
@@ -236,7 +236,7 @@ fn add_nanos_carry_to_seconds() {
 #[test]
 fn add_nanos_carry_to_minutes() {
     let t = AbsoluteTime::new(1, 0, 0, 59, 0).unwrap();
-    let t2 = t.add_nanos(1_000_000_000); // +1 second → 60 secs → 1 min
+    let t2 = t.add_nanos(1_000_000_000).unwrap(); // +1 second → 60 secs → 1 min
     assert_eq!(t2.minutes(), 1);
     assert_eq!(t2.seconds(), 0);
 }
@@ -244,7 +244,7 @@ fn add_nanos_carry_to_minutes() {
 #[test]
 fn add_nanos_carry_to_hours() {
     let t = AbsoluteTime::new(1, 0, 59, 59, 0).unwrap();
-    let t2 = t.add_nanos(1_000_000_000); // +1 sec → 1:00:00
+    let t2 = t.add_nanos(1_000_000_000).unwrap(); // +1 sec → 1:00:00
     assert_eq!(t2.hours(), 1);
     assert_eq!(t2.minutes(), 0);
     assert_eq!(t2.seconds(), 0);
@@ -253,7 +253,7 @@ fn add_nanos_carry_to_hours() {
 #[test]
 fn add_nanos_carry_to_days() {
     let t = AbsoluteTime::new(1, 23, 59, 59, 0).unwrap();
-    let t2 = t.add_nanos(1_000_000_000); // +1 sec → next day
+    let t2 = t.add_nanos(1_000_000_000).unwrap(); // +1 sec → next day
     assert_eq!(t2.day_of_year(), 2);
     assert_eq!(t2.hours(), 0);
     assert_eq!(t2.minutes(), 0);

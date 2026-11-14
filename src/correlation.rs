@@ -219,10 +219,10 @@ impl TimeCorrelator {
 
         if target_rtc >= nearest.rtc {
             let delta_nanos = nearest.rtc.elapsed_nanos(target_rtc);
-            Ok(nearest.time.add_nanos(delta_nanos))
+            nearest.time.add_nanos(delta_nanos)
         } else {
             let delta_nanos = target_rtc.elapsed_nanos(nearest.rtc);
-            Ok(nearest.time.sub_nanos(delta_nanos))
+            nearest.time.sub_nanos(delta_nanos)
         }
     }
 

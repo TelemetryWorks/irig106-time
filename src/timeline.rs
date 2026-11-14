@@ -510,6 +510,12 @@ impl TimelineBuilder {
                         || wire.reserved_body_bits.iter().any(|bits| *bits != 0)
                     {
                         self.finding(5, key, Some(packet.channel), None, None)?;
+                        if let Some(finding) = self.findings.last_mut() {
+                            finding.evidence = body_reserved_evidence(
+                                finding.evidence.clone(),
+                                wire.reserved_body_bits,
+                            );
+                        }
                     }
                     if wire.time.is_some_and(|t| t.is_leap_second()) {
                         self.finding(22, key, Some(packet.channel), None, None)?;
@@ -612,6 +618,29 @@ impl TimelineBuilder {
             delta_ns,
         )?);
         Ok(())
+    }
+    /// Ingest a bounded Format1 packet, preserving a parse error in TF-004.
+    /// Decoder failure affects this value, never an earlier eligible reference.
+    /// **Traces:** L3-ERR-102 ← L2-ERR-102 ← L1-ERR-002
+    pub fn observe_format1(
+        &mut self,
+        packet: PacketObservation,
+        input: crate::format1::Format1Input<'_>,
+        boundary: bool,
+    ) -> Result<PacketKey> {
+        let id = packet.id;
+        let (packet, error) = decode_observation(packet, input)?;
+        let key = self.observe(packet, boundary)?;
+        if let Some(error) = error {
+            retain_decode_error(
+                &mut self.findings,
+                id,
+                error,
+                input.reserved_body_bits().ok(),
+                self.policy.finding_levels.get(&5).copied(),
+            )?;
+        }
+        Ok(key)
     }
     /// Finalize immutable sessions and per-channel sorted reference indexes.
     /// Gap/jump checks use only valid admitted same-scale references.
@@ -998,50 +1027,7 @@ pub(crate) fn absolute_delta(a: &TimelineReference, b: &TimelineReference) -> Op
     }
 }
 pub(crate) fn shift(time: AbsoluteTime, delta: i128) -> Result<AbsoluteTime> {
-    let mut ns = i128::from(time.as_total_ns()).checked_add(delta).ok_or(
-        TimeError::InvalidTimelineInput("calendar arithmetic overflow"),
-    )?;
-    if delta == 0 {
-        return Ok(time);
-    }
-    if !(-10000 * 366 * DAY..=10000 * 366 * DAY).contains(&delta) {
-        return Err(TimeError::InvalidTimelineInput(
-            "calendar displacement out of range",
-        ));
-    }
-    let mut year = time.year();
-    if let Some(mut y) = year {
-        while ns < 0 {
-            y = y
-                .checked_sub(1)
-                .ok_or(TimeError::InvalidTimelineInput("calendar underflow"))?;
-            ns += year_days(y) * DAY;
-        }
-        while ns >= year_days(y) * DAY {
-            ns -= year_days(y) * DAY;
-            y = y
-                .checked_add(1)
-                .filter(|y| *y <= 9999)
-                .ok_or(TimeError::InvalidTimelineInput("calendar overflow"))?;
-        }
-        year = Some(y);
-    } else if !(0..365 * DAY).contains(&ns)
-        && !(time.day_of_year() == 366 && (365 * DAY..366 * DAY).contains(&ns))
-    {
-        return Err(TimeError::NeedsContext {
-            context: "unknown year at calendar boundary",
-        });
-    }
-    let day = (ns / DAY + 1) as u16;
-    let n = (ns % DAY) as u64;
-    AbsoluteTime::new(
-        day,
-        (n / 3_600_000_000_000) as u8,
-        ((n / 60_000_000_000) % 60) as u8,
-        ((n / 1_000_000_000) % 60) as u8,
-        (n % 1_000_000_000) as u32,
-    )?
-    .with_year(year)
+    time.checked_shift(crate::SignedNanos::new(delta))
 }
 
 fn distance_ns(a: i128, b: i128) -> Result<i128> {
@@ -1050,6 +1036,81 @@ fn distance_ns(a: i128, b: i128) -> Result<i128> {
         .ok_or(TimeError::InvalidTimelineInput(
             "counter arithmetic overflow",
         ))
+}
+
+// Both engines share decoder-error retention rather than inventing source/format
+// labels when a data word/body is missing or malformed.
+pub(crate) fn decode_observation(
+    mut packet: PacketObservation,
+    input: crate::format1::Format1Input<'_>,
+) -> Result<(PacketObservation, Option<TimeError>)> {
+    if packet.kind != PacketKind::Time || packet.reference.is_some() {
+        return Err(TimeError::InvalidTimelineInput(
+            "Format1 ingestion needs an undecoded time packet",
+        ));
+    }
+    match ReferenceInput::format1(input.payload, input.data_length, input.layout, input.scales) {
+        Ok(reference) => {
+            packet.reference = Some(reference);
+            Ok((packet, None))
+        }
+        Err(error) => Ok((packet, Some(error))),
+    }
+}
+pub(crate) fn retain_decode_error(
+    findings: &mut Vec<TimelineFinding>,
+    id: u64,
+    error: TimeError,
+    masks: Option<[u16; 4]>,
+    level: Option<Severity>,
+) -> Result<()> {
+    let f = findings
+        .iter_mut()
+        .rev()
+        .find(|f| f.packet == id && f.code == 4)
+        .ok_or(TimeError::InvalidTimelineInput(
+            "missing malformed-input finding",
+        ))?;
+    f.evidence = f.evidence.clone().with_decode_error(error);
+    if let Some(bits) = masks.filter(|bits| bits.iter().any(|b| *b != 0)) {
+        // A supplementary finding stores only raw RTC, not an unwrapped query.
+        let raw = f.raw_rtc.ok_or(TimeError::InvalidTimelineInput(
+            "missing raw decoder counter",
+        ))?;
+        let mut warning = TimelineFinding::observed(
+            5,
+            level,
+            PacketKey {
+                session: f.session,
+                packet: f.packet,
+                ticks: i128::from(raw.as_raw()),
+            },
+            f.channel,
+            None,
+            None,
+        )?;
+        warning.evidence = body_reserved_evidence(warning.evidence, bits);
+        findings.push(warning);
+    }
+    Ok(())
+}
+fn body_reserved_evidence(mut evidence: FindingEvidence, bits: [u16; 4]) -> FindingEvidence {
+    let names = [
+        "format1.word0.reserved",
+        "format1.word1.reserved",
+        "format1.word2.reserved",
+        "format1.word3.reserved",
+    ];
+    for (word, mask) in bits.into_iter().enumerate() {
+        if mask != 0 {
+            evidence = evidence.with_raw_field(RawField {
+                name: names[word],
+                observed: RawValue::Unsigned(mask.into()),
+                expected: Some(RawValue::Unsigned(0)),
+            });
+        }
+    }
+    evidence
 }
 
 // Bounded one-packet admission adapter shared by E1/E2. Never accumulates

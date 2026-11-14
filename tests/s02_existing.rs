@@ -24,7 +24,7 @@ fn nominal_add_advances_the_known_year() {
             .unwrap()
             .with_year(Some(year))
             .unwrap();
-        let next = t.add_nanos(1_000_000_000);
+        let next = t.add_nanos(1_000_000_000).unwrap();
         assert_eq!(
             (next.year(), next.day_of_year(), next.seconds()),
             (Some(year + 1), 1, 0)

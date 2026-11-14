@@ -225,6 +225,34 @@ fn leap_label_is_distinct_and_arithmetic_refuses_missing_context() {
         ordinary.checked_shift(SignedNanos::new(1)).unwrap().seconds,
         59
     );
+    for scale in [TimeScale::Tai, TimeScale::Gps] {
+        let ordinary = CalendarReading {
+            scale: ScaleEvidence::standard(scale),
+            seconds: 59,
+            ..reading
+        };
+        let shifted = ordinary
+            .checked_shift(SignedNanos::new(1_000_000_000))
+            .unwrap();
+        assert_eq!(
+            (
+                shifted.year,
+                shifted.day_of_year,
+                shifted.seconds,
+                shifted.scale
+            ),
+            (Some(2017), 1, 0, ordinary.scale)
+        );
+    }
+    let unknown = CalendarReading {
+        scale: ScaleEvidence::standard(TimeScale::Unknown),
+        seconds: 59,
+        ..reading
+    };
+    assert!(matches!(
+        unknown.checked_shift(SignedNanos::new(1)),
+        Err(TimeError::NeedsContext { .. })
+    ));
     for scale in [TimeScale::Tai, TimeScale::Gps, TimeScale::Unknown] {
         assert!(
             CalendarReading {

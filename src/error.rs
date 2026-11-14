@@ -40,11 +40,20 @@ pub enum TimeError {
         quantity: &'static str,
     },
     /// A BCD nibble contained a value greater than 9.
+    /// **Traces:** L3-ERR-102 ← L2-ERR-102 ← L1-ERR-002
     InvalidBcdDigit {
         /// The invalid nibble value (10–15).
         nibble: u8,
         /// Human-readable description of where the nibble was found.
         position: &'static str,
+        /// Zero-based body word index (Figures 11-13/14).
+        word: u8,
+        /// Decimal digit index: units=0, tens=1, hundreds=2, thousands=3.
+        digit: u8,
+        /// Least significant bit of the digit within that word.
+        bit_offset: u8,
+        /// Entire original little-endian word, including any reserved bits.
+        raw_word: u16,
     },
 
     /// A reserved bit field was non-zero.
@@ -162,8 +171,18 @@ impl fmt::Display for TimeError {
             TimeError::QuantityOverflow { quantity } => {
                 write!(f, "quantity out of range: {quantity}")
             }
-            TimeError::InvalidBcdDigit { nibble, position } => {
-                write!(f, "invalid BCD digit {nibble} at {position}")
+            TimeError::InvalidBcdDigit {
+                nibble,
+                position,
+                word,
+                digit,
+                raw_word,
+                ..
+            } => {
+                write!(
+                    f,
+                    "invalid BCD digit {nibble} at {position} (word {word}, digit {digit}, raw {raw_word:#06x})"
+                )
             }
             TimeError::ReservedBitSet { position } => {
                 write!(f, "reserved bit set at {position}")

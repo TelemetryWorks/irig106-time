@@ -73,31 +73,11 @@ const NANOS_PER_DAY: u64 = 86_400 * NANOS_PER_SECOND;
 /// - NTP/PTP conversion (`NtpTime::to_absolute`, `PtpTime::to_absolute`)
 /// - The correlation engine (`TimeCorrelator::correlate`)
 ///
-/// # Year as Metadata, Not Proof
-///
-/// The `year` field is **metadata, not a calendar invariant**. When present,
-/// it indicates which year the DOY belongs to (e.g., year=2025, DOY=100),
-/// but `AbsoluteTime` does not validate that DOY 100 is meaningful for
-/// year 2025 (it always is — every year has 100 days — but DOY 366 is only
-/// valid in leap years, and `AbsoluteTime` does not enforce this).
-///
-/// This is intentional: IRIG 106 time sources often provide DOY and year
-/// from different packets at different times. The correlation engine may
-/// attach a year to a DOY timestamp after the fact. Validating DOY against
-/// year at this level would reject legitimate intermediate states.
-///
-/// For **fully validated calendar dates** (year + month + day, all consistent
-/// with each other and with DOY), use [`CalendarTime`].
-///
-/// # Type Hierarchy
-///
-/// ```text
-/// AbsoluteTime     = DOY + time + optional year (metadata only)
-/// CalendarTime     = AbsoluteTime + validated month + day (full calendar proof)
-/// ```
-///
-/// A future `YearDoyTime` type (DOY + year, validated that DOY fits the year)
-/// may be added if year-sensitive logic grows. See ROADMAP.md.
+/// A supplied year must agree with the day-of-year (including Gregorian
+/// century rules). Without a year, the value remains explicitly partial.
+/// This ordinary calendar type cannot encode second 60; scale-qualified
+/// [`crate::format1::CalendarReading`] retains that label and refuses arithmetic
+/// without the required leap context. No scale or leap table is inferred here.
 ///
 /// **This type cannot hold month or day-of-month.** If you need calendar
 /// date fields, use [`CalendarTime`].
@@ -171,7 +151,7 @@ mod serde_impl {
 impl AbsoluteTime {
     /// Create a new `AbsoluteTime` with day-of-year format, validating ranges.
     ///
-    /// **Traces:** L3-ABS-002
+    /// **Traces:** L3-ABS-101 ← L2-ABS-101 ← L1-ABS-001
     pub fn new(
         day_of_year: u16,
         hours: u8,
@@ -267,11 +247,10 @@ impl AbsoluteTime {
 
     // ── Year mutator ────────────────────────────────────────────────
 
-    /// Attach a year annotation to this DOY timestamp.
+    /// Attach a year and validate its Gregorian day-of-year range.
     ///
-    /// This enriches the timestamp with year metadata — it does **not** turn
-    /// it into a full calendar date (use [`CalendarTime`] for that). The year
-    /// must be 0–9999 or `None` to clear.
+    /// The year must be 0–9999 or None to clear; day 366 requires a leap year.
+    /// Unknown year remains unknown, never inferred from day or an LY bit.
     ///
     /// Returns `self` for chaining:
     /// ```
@@ -281,7 +260,7 @@ impl AbsoluteTime {
     /// assert_eq!(t.year(), Some(2025));
     /// ```
     ///
-    /// **Traces:** L3-ABS-002
+    /// **Traces:** L3-ABS-101 ← L2-ABS-101 ← L1-ABS-001
     #[inline]
     pub fn with_year(mut self, year: Option<u16>) -> Result<Self> {
         if let Some(y) = year {
@@ -293,70 +272,97 @@ impl AbsoluteTime {
                 });
             }
         }
+        if year.is_some_and(|y| !crate::util::is_leap_year(y)) && self.day_of_year() == 366 {
+            return Err(TimeError::OutOfRange {
+                field: "day_of_year",
+                value: 366,
+                max: 365,
+            });
+        }
         self.year = year;
         Ok(self)
     }
 
     // ── Arithmetic ──────────────────────────────────────────────────
 
-    /// Add `nanos` nanoseconds. Single `u64` add on the common path.
-    ///
-    /// **Traces:** L3-ABS-004, P4-04
-    #[inline]
-    pub fn add_nanos(&self, nanos: u64) -> Self {
-        let new_total = self.total_ns + nanos;
-        let max_year_ns = 366 * NANOS_PER_DAY;
-
-        Self {
-            total_ns: if new_total >= max_year_ns {
-                new_total % max_year_ns
-            } else {
-                new_total
-            },
-            year: self.year,
-        }
+    /// Add nominal calendar nanoseconds with checked year/context boundaries.
+    /// This unscaled type does not claim elapsed UTC leap-second arithmetic.
+    /// **Traces:** L3-ABS-101 ← L2-ABS-101 ← L1-ABS-001
+    pub fn add_nanos(&self, nanos: u64) -> Result<Self> {
+        self.checked_shift(crate::SignedNanos::new(i128::from(nanos)))
     }
-
-    /// Subtract `nanos` nanoseconds. Single `u64` sub on the common path.
-    ///
-    /// Handles year rollover when subtracting past day 1 (GAP-05).
-    ///
-    /// **Traces:** L3-ABS-004, P4-04
-    #[inline]
-    pub fn sub_nanos(&self, nanos: u64) -> Self {
-        if nanos <= self.total_ns {
-            Self {
-                total_ns: self.total_ns - nanos,
-                year: self.year,
-            }
-        } else {
-            self.sub_nanos_year_rollover(nanos)
-        }
+    /// Subtract nominal calendar nanoseconds without assuming an unknown year.
+    /// **Traces:** L3-ABS-101 ← L2-ABS-101 ← L1-ABS-001
+    pub fn sub_nanos(&self, nanos: u64) -> Result<Self> {
+        self.checked_shift(crate::SignedNanos::new(-i128::from(nanos)))
     }
-
-    /// Slow path for sub_nanos when crossing year boundary.
-    fn sub_nanos_year_rollover(&self, nanos: u64) -> Self {
-        let deficit = nanos - self.total_ns;
-        let mut new_year = self.year;
-
-        let mut remaining = deficit;
-        loop {
-            let prev_year = new_year.map(|y| y.saturating_sub(1));
-            let days_in_prev_year = match prev_year {
-                // Uses crate::util::is_leap_year — see MSRV note in util.rs
-                Some(y) if crate::util::is_leap_year(y) => 366u64,
-                _ => 365,
-            };
-            let prev_year_ns = days_in_prev_year * NANOS_PER_DAY;
-            new_year = prev_year;
-            if remaining <= prev_year_ns {
-                return Self {
-                    total_ns: prev_year_ns - remaining,
-                    year: new_year,
-                };
-            }
-            remaining -= prev_year_ns;
+    /// Checked nominal 86400-second calendar arithmetic, not a UTC conversion.
+    /// Known years advance/retreat correctly; ambiguous unknown-year boundaries
+    /// and supported-year overflow fail without a repaired/saturated value.
+    /// **Traces:** L3-ABS-101 ← L2-ABS-101 ← L1-ABS-001
+    pub fn checked_shift(&self, nanos: crate::SignedNanos) -> Result<Self> {
+        let delta = nanos.get();
+        let mut ns = i128::from(self.as_total_ns()).checked_add(delta).ok_or(
+            TimeError::InvalidTimelineInput("calendar arithmetic overflow"),
+        )?;
+        if delta == 0 {
+            return Ok(*self);
         }
+        if !(-10000 * 366 * i128::from(NANOS_PER_DAY)..=10000 * 366 * i128::from(NANOS_PER_DAY))
+            .contains(&delta)
+        {
+            return Err(TimeError::InvalidTimelineInput(
+                "calendar displacement out of range",
+            ));
+        }
+        let mut year = self.year();
+        if let Some(mut y) = year {
+            while ns < 0 {
+                y = y
+                    .checked_sub(1)
+                    .ok_or(TimeError::InvalidTimelineInput("calendar underflow"))?;
+                ns += (if crate::util::is_leap_year(y) {
+                    366
+                } else {
+                    365
+                }) * i128::from(NANOS_PER_DAY);
+            }
+            while ns
+                >= (if crate::util::is_leap_year(y) {
+                    366
+                } else {
+                    365
+                }) * i128::from(NANOS_PER_DAY)
+            {
+                ns -= (if crate::util::is_leap_year(y) {
+                    366
+                } else {
+                    365
+                }) * i128::from(NANOS_PER_DAY);
+                y = y
+                    .checked_add(1)
+                    .filter(|y| *y <= 9999)
+                    .ok_or(TimeError::InvalidTimelineInput("calendar overflow"))?;
+            }
+            year = Some(y);
+        } else if !(0..365 * i128::from(NANOS_PER_DAY)).contains(&ns)
+            && !(self.day_of_year() == 366
+                && (365 * i128::from(NANOS_PER_DAY)..366 * i128::from(NANOS_PER_DAY)).contains(&ns))
+        {
+            return Err(TimeError::NeedsContext {
+                context: "unknown year at calendar boundary",
+            });
+        }
+        let day = (ns / i128::from(NANOS_PER_DAY) + 1) as u16;
+        let n = (ns % i128::from(NANOS_PER_DAY)) as u64;
+        AbsoluteTime::new(
+            day,
+            (n / 3_600_000_000_000) as u8,
+            ((n / 60_000_000_000) % 60) as u8,
+            ((n / 1_000_000_000) % 60) as u8,
+            (n % 1_000_000_000) as u32,
+        )?
+        .with_year(year)
     }
 
     /// Nanoseconds elapsed since midnight of the current day.
@@ -374,6 +380,21 @@ impl AbsoluteTime {
     #[inline]
     pub fn as_total_ns(&self) -> u64 {
         self.total_ns
+    }
+}
+
+/// Ordinary, unscaled DOY projection of an already validated body value.
+/// **Traces:** L3-ABS-101 ← L2-ABS-101 ← L1-ABS-001
+impl From<crate::bcd::DayFormatTime> for AbsoluteTime {
+    fn from(t: crate::bcd::DayFormatTime) -> Self {
+        Self {
+            total_ns: (u64::from(t.day_of_year()) - 1) * NANOS_PER_DAY
+                + u64::from(t.hours()) * NANOS_PER_HOUR
+                + u64::from(t.minutes()) * NANOS_PER_MINUTE
+                + u64::from(t.seconds()) * NANOS_PER_SECOND
+                + u64::from(t.milliseconds()) * 1_000_000,
+            year: None,
+        }
     }
 }
 

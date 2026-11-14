@@ -72,7 +72,11 @@ fn quality_drift_uses_absolute_over_rtc_sign() {
     let mut c = TimeCorrelator::new();
     let t = AbsoluteTime::new(100, 0, 0, 0, 0).unwrap();
     c.add_reference(1, Rtc::from_raw(0), t);
-    c.add_reference(1, Rtc::from_raw(10_000_000), t.add_nanos(1_000_100_000));
+    c.add_reference(
+        1,
+        Rtc::from_raw(10_000_000),
+        t.add_nanos(1_000_100_000).unwrap(),
+    );
     let q = irig106_time::quality::compute_quality(c.references());
     assert!((q.drift_ppm_per_channel[0].1 - 100.0).abs() < 0.001);
     assert!((c.drift_ppm(1).unwrap() - 100.0).abs() < 0.001);
@@ -700,32 +704,12 @@ fn review_unknown_year_does_not_invent_day366() {
 /// Requirements: L1-COR-006, L2-COR-106, L3-COR-106
 #[test]
 fn review_nonleap_day366_is_malformed() {
-    let mut b = TimelineBuilder::new(OfflinePolicy {
-        include_invalid: true,
-        ..Default::default()
-    })
-    .unwrap();
-    // AbsoluteTime's year is metadata, so admission must validate this combination.
-    let mut r = reference(0);
-    r.value = ReferenceValue::Readable(
+    // Calendar validation now rejects this before an invalid reference can exist.
+    assert!(
         AbsoluteTime::new(366, 0, 0, 0, 0)
             .unwrap()
             .with_year(Some(2023))
-            .unwrap(),
-        true,
-    );
-    let key = b.observe(packet(1, 1, 0, Some(r)), false).unwrap();
-    let t = b.finish().unwrap();
-    assert!(t.lookup(key).unwrap().time.is_none());
-    assert!(
-        t.sessions()[0].references[0]
-            .reasons
-            .contains(&Rejection::Malformed)
-    );
-    assert!(
-        t.findings()
-            .iter()
-            .any(|f| f.code == 4 && f.severity == Severity::Error)
+            .is_err()
     );
 }
 
