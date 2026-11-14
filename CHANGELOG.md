@@ -17,8 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reuse S04 PTP table conversion (D7 last-known offset/TF-021; no offset keeps TAI)
   and S05 NTP era/UTC/TF-029/030 evidence. Keep native scale/raw and full basis.
   Explicit pre17 declarations attach TF-026; header versions never select edition.
-- verification-s06a records ten focused tests, missing-API tests-first evidence
-  and24 assertion-killed mutations. Matrix152→156/288 counts links, not complete
+- verification-s06a records fourteen focused tests, missing-API tests-first evidence
+  and24 initial +8 review assertion-killed mutations. Matrix152→156/288 counts links, not complete
   clauses. Engine integration and COR-108 raw-network exception remain S06b;
   schema remains S12. No new release deferral or finding-level change.
 

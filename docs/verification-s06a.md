@@ -119,3 +119,34 @@ Full bounded CI equivalent: all feature tests, MSRV1.85 default/no_std/serde,
 clippy/fmt/rustdoc, wasm no_std±serde, CLI build/clippy, benches, locked all-fuzz
 compile, trace freshness and cargo-deny; worker/test-thread caps2. Compile
 checks are not a fuzz campaign. No merge or publish performed.
+
+## Review follow-up at 8da5588 — tests only
+
+Add four focused tests against unchanged reviewed code: **14 focused tests**
+now pass. These are review coverage additions, not new main-first failures.
+Total executed local negative checks: **24 initial + 8 review = 32** isolated
+assertion-killed mutations. No production change or newly discovered bug.
+
+Each review mutant was applied alone to `src/format2.rs`, compiled, and run with
+`cargo test --test s06a_format2 review_` (worker/test-thread caps2). Every mutant
+failed a new assertion; the original file was restored and its diff checked empty.
+
+| Isolated mutation | New assertion that fails |
+|---|---|
+| Declaration gate consults include_invalid instead of include_undeclared | Valid TS/undeclared channel with only include_invalid remains ineligible |
+| admission.undeclared records the raw undeclared flag on rejection | Rejected reference's undeclared-use label must be false |
+| Known-format malformed body classified UnsupportedFormat | PTP nanos1000000000 with NTF2 must match NetworkConversion::Malformed |
+| Readable TS0 TF-003 evidence marked Unusable | Both NTP and PTP fixtures retain ValueValidity::Kept despite default admission rejection |
+| Converted TF-021 override alone ignored | Stale PTP must report Information, not default Warning |
+| Converted TF-022 override alone ignored | Explicit inserted PTP second must report Warning, not default Information |
+| Converted TF-029 override alone ignored | Zero NTP must report Information, not default Warning |
+| Converted TF-030 override alone ignored | Ambiguous NTP must report Information, not default Warning |
+
+Override fixtures reuse the hand-derived coordinates above. Each separately
+asserts unchanged conversion, factual evidence and admission, with the actual
+policy snapshot retained. The PTP inserted-second case still asserts second60;
+zero NTP stays unusable and ambiguity keeps its mapped value. The reserved-NTF
+TF-006 validity mutant is equivalent and is not counted as killed.
+
+Regenerated matrix links remain **156/288**; clause boundaries and S06b deferrals
+are unchanged. Full bounded CI equivalent rerun for this tests-only revision.

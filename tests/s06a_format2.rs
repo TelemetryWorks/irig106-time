@@ -481,3 +481,98 @@ fn ptp_inserted_second_survives_the_boundary_with_its_own_finding() {
         _ => panic!("PTP"),
     }
 }
+
+/// Requirements: L1-COR-006, L2-COR-106, L3-COR-106
+/// Requirements: L1-F2CSDW-005, L2-F2CSDW-105, L3-F2CSDW-105
+#[test]
+fn review_invalid_opt_in_does_not_bypass_declaration_or_label_rejection() {
+    // Figure11-15: NTF1 / TS1, readable PTP, but no TIMEIN declaration.
+    let o = decode(&bytes(0x11, 1, 0), false, None);
+    let r = converted(
+        &o,
+        AdmissionPolicy {
+            include_invalid: true,
+            ..Default::default()
+        },
+        &LeapSecondTable::empty(),
+    );
+    assert!(
+        !r.is_eligible(),
+        "include_invalid is not include_undeclared"
+    );
+    assert!(
+        !r.admission().undeclared,
+        "rejected reference has no opt-in-use label"
+    );
+    assert_eq!(ids(&r), vec![8]);
+    assert_eq!(o.csdw().time_status(), TimeStatus::Valid);
+}
+
+/// Requirements: L1-PTP-003, L2-PTP-103, L3-PTP-103
+/// Requirements: L1-COR-006, L2-COR-106, L3-COR-106
+#[test]
+fn review_supported_ntf_with_bad_nanos_is_malformed_not_unsupported() {
+    // Figure11-17: LE nanos=0x3b9aca00=1000000000 is out of range;
+    // NTF2 still identifies a supported PTP format, not a reserved NTF.
+    let o = decode(&bytes(0x21, 1, 1_000_000_000), true, None);
+    let r = converted(&o, AdmissionPolicy::default(), &LeapSecondTable::empty());
+    assert!(matches!(r.conversion(), NetworkConversion::Malformed));
+    assert!(!r.is_eligible());
+    assert_eq!(ids(&r), vec![4]);
+}
+
+/// Requirements: L1-F2CSDW-005, L2-F2CSDW-105, L3-F2CSDW-105
+/// Requirements: L1-FND-001, L2-FND-101, L3-FND-101
+#[test]
+fn review_invalid_status_retains_readable_diagnostic_value() {
+    // Figure11-15: TS0; Figs11-16/17 keep readable NTP/PTP bodies separate
+    // from admission. NTP1970=2208988800 maps to Unix0 (RFC5905 Fig4 p14).
+    for (word, seconds) in [(0x00, 2_208_988_800), (0x10, 1)] {
+        let o = decode(&bytes(word, seconds, 0), true, None);
+        let r = converted(&o, AdmissionPolicy::default(), &LeapSecondTable::empty());
+        assert!(!r.is_eligible());
+        assert_eq!(ids(&r), vec![3]);
+        assert_eq!(r.findings()[0].evidence().validity(), ValueValidity::Kept);
+        assert!(o.reading().unwrap().time.is_some());
+    }
+}
+
+/// Requirements: L1-FND-001, L2-FND-101, L3-FND-101
+/// Requirements: L1-PTP-004, L2-PTP-104, L3-PTP-104
+/// Requirements: L1-NTP-004, L2-NTP-104, L3-NTP-104
+/// Requirements: L1-TAI-007, L2-TAI-107, L3-TAI-107
+/// Interpretations: RDG-010, RDG-012
+#[test]
+fn review_each_converted_finding_uses_policy_level_without_changing_value() {
+    let table = LeapSecondTable::builtin();
+    // Reuse hand-derived S04/S05 coordinates:
+    // TF21: TAI2000000037 minus last offset37 => UTC2000000000, stale.
+    // TF22: insertion TAI=B+36=1483228836, B=2017 midnight1483228800.
+    // TF29: both NTP words zero => unsynchronized.
+    // TF30: NTP B+epoch=3692217600, fraction2^31 => B+0.5s ambiguous.
+    for (id, word, seconds, fraction, level) in [
+        (21, 0x21, 2_000_000_037, 0, Severity::Information),
+        (22, 0x21, 1_483_228_836, 500_000_000, Severity::Warning),
+        (29, 0x01, 0, 0, Severity::Information),
+        (30, 0x01, 3_692_217_600, 0x8000_0000, Severity::Information),
+    ] {
+        let o = decode(&bytes(word, seconds, fraction), true, None);
+        let base = converted(&o, AdmissionPolicy::default(), &table);
+        assert_eq!(ids(&base), vec![id]);
+        assert_ne!(base.findings()[0].severity(), level);
+        let mut p = AdmissionPolicy::default();
+        p.finding_levels.insert(id, level);
+        let r = converted(&o, p.clone(), &table);
+        assert_eq!(ids(&r), vec![id]);
+        assert_eq!(r.findings()[0].severity(), level, "TF-{id:03}");
+        assert_eq!(r.conversion(), base.conversion());
+        assert_eq!(r.admission(), base.admission());
+        assert_eq!(r.findings()[0].evidence(), base.findings()[0].evidence());
+        assert_eq!(r.policy(), &p);
+        if id == 22 {
+            assert!(
+                matches!(r.conversion(), NetworkConversion::Ptp(c) if c.utc().unwrap().seconds == 60)
+            );
+        }
+    }
+}
