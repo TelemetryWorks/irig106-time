@@ -109,6 +109,13 @@ fn labelled_default_and_declared_override_keep_all_input_evidence() {
     assert_eq!(r.basis().era_basis, Some(EraBasis::Declared));
     assert_eq!(r.basis().context, c);
     assert_eq!(r.basis().rejected_pivot, None);
+    assert_eq!(
+        r.as_pivot("declared-over-ignored")
+            .unwrap()
+            .scale()
+            .origin(),
+        ScaleOrigin::Standard
+    );
     c.pivots.clear();
     assert_eq!(r.basis().context.pivots.len(), 2);
 }
@@ -376,22 +383,17 @@ fn invalid_evidence_and_range_limits_are_explicit_not_guessed() {
         )
         .is_err()
     );
-    assert!(
-        NtpPivot::dated(
-            1,
-            "explicit-leap",
-            1,
-            CalendarReading {
-                year: Some(2016),
-                day_of_year: 366,
-                hours: 23,
-                minutes: 59,
-                seconds: 60,
-                ..ordinary
-            }
-        )
-        .is_err()
-    );
+    let leap_date = CalendarReading {
+        year: Some(2016),
+        day_of_year: 366,
+        hours: 23,
+        minutes: 59,
+        seconds: 60,
+        ..ordinary
+    };
+    let leap_pivot = NtpPivot::dated(1, "explicit-leap", 1, leap_date).unwrap();
+    assert_eq!(leap_pivot.seconds().get(), 1483228800);
+    assert_eq!(leap_pivot.calendar(), Some(leap_date));
     assert!(NtpPivot::approximate(1, "bad-nanos", SignedUnixSeconds::new(0), 1000000000).is_err());
     assert!(NtpPivot::approximate(0, "no-session", SignedUnixSeconds::new(0), 0).is_err());
     assert_eq!(
