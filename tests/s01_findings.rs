@@ -14,6 +14,7 @@ fn location() -> FindingLocation {
 fn every_catalog_level_and_pending_identity_is_explicit() {
     // Independent table copied from accepted architecture rows, not code logic.
     use Severity::{Error as E, Information as I, Warning as W};
+    // Last row TF-031 is proposed WARNING, not owner-confirmed.
     let levels = [
         W, W, W, E, W, W, W, W, I, W, I, E, W, W, E, W, W, I, W, I, W, I, I, W, W, W, I, E, W, W, W,
     ];
@@ -23,9 +24,7 @@ fn every_catalog_level_and_pending_identity_is_explicit() {
         assert_eq!(id.resolve_level(None).unwrap(), level);
         assert!(!id.title().is_empty());
     }
-    for (id, title) in [
-        (32, "Year evidence is contradictory"),
-    ] {
+    for (id, title) in [(32, "Year evidence is contradictory")] {
         let code = FindingCode::from_number(id).unwrap();
         assert_eq!(code.title(), title);
         assert_eq!(code.default_severity(), None);

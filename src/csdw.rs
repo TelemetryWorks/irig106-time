@@ -12,7 +12,7 @@ pub use irig106_types::{DateFormat, IrigTimeSource, TimeFormat, TimeSource};
 /// Caller-declared Format 1 layout, never inferred from header version hints.
 ///
 /// 106-04 Figure 10-15; 106-05 Figure 10-16a; 106-24R1 Figure 11-12.
-/// Automatic edition resolution and TMATS comparisons are deferred (Q-EDITION).
+/// Use qualify with resolved caller evidence; TMATS comparisons remain separate.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TimeF1Layout {
@@ -28,6 +28,8 @@ pub enum TimeF1Layout {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TimeF1Source {
+    /// No packet layout established; retain raw nibble without a SRC/EXT label.
+    Unresolved(u8),
     /// 106-04 EXT, retaining nonzero reserved bits for diagnostics.
     ExternalTime {
         /// Whether an external time source is present (bit 0).
@@ -160,7 +162,7 @@ impl TimeF1Csdw {
 
     /// ITS only for a caller-declared 106-17+ layout and IRIG-A/B/G FMT.
     /// Raw reserved ITS values remain Reserved; absent/inapplicable means None.
-    /// This exposes explicit layout facts, not an automatic RDG-007 resolver.
+    /// For not-reported/unresolved provenance use QualifiedCsdw::its.
     ///
     /// **Traces:** L3-CSDW-106
     pub fn irig_time_source_for_layout(self, layout: TimeF1Layout) -> Option<IrigTimeSource> {
@@ -201,3 +203,110 @@ impl TimeF1Csdw {
 #[cfg(test)]
 #[path = "csdw_tests.rs"]
 mod csdw_tests;
+
+/// Applicability is separate from a numeric ITS value (RDG-007).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ItsQualification {
+    /// Applicable 106-17+ A/B/G, including Reserved(raw).
+    Reported(IrigTimeSource),
+    /// Pre-106-17 field was reserved; zero is not freewheeling.
+    NotReported,
+    /// Resolved non-A/B/G format has no applicable ITS meaning.
+    NotApplicable,
+    /// Unknown edition and zero cannot distinguish old reserved from freewheel.
+    FreewheelingOrNotReported,
+    /// Unknown applicability; raw ITS nibble retained.
+    Unresolved(u8),
+}
+/// Raw CSDW plus immutable edition basis; unknown layout keeps alternatives.
+/// **Traces:** L3-CSDW-101 ← L2-CSDW-101 ← L1-CSDW-001
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QualifiedCsdw {
+    raw: TimeF1Csdw,
+    resolution: crate::edition::EditionResolution,
+}
+impl TimeF1Csdw {
+    /// Qualify fields only after resolving layout evidence.
+    /// **Traces:** L3-CSDW-101 ← L2-CSDW-101 ← L1-CSDW-001
+    pub fn qualify(self, resolution: crate::edition::EditionResolution) -> QualifiedCsdw {
+        QualifiedCsdw {
+            raw: self,
+            resolution,
+        }
+    }
+}
+impl QualifiedCsdw {
+    /// Original word, never repaired.
+    pub fn raw(&self) -> TimeF1Csdw {
+        self.raw
+    }
+    /// Original edition evidence and policy basis.
+    pub fn resolution(&self) -> &crate::edition::EditionResolution {
+        &self.resolution
+    }
+    /// Selected layout only, never a best guess.
+    pub fn layout(&self) -> Option<TimeF1Layout> {
+        self.resolution.edition().map(|e| e.rules().layout)
+    }
+    /// Unknown layout assigns neither SRC nor EXT; nibble remains in raw.
+    /// **Traces:** L3-CSDW-102 ← L2-CSDW-102 ← L1-CSDW-002
+    pub fn source(&self) -> Option<TimeF1Source> {
+        self.layout().map(|l| self.raw.time_source_for_layout(l))
+    }
+    /// Candidate EXT and SRC readings, never an adopted source by themselves.
+    pub fn source_alternatives(&self) -> [TimeF1Source; 2] {
+        [
+            self.raw.time_source_for_layout(TimeF1Layout::Legacy04),
+            self.raw.time_source_for_layout(TimeF1Layout::Source05),
+        ]
+    }
+    /// Candidate 106-04 and 106-05+ FMT readings; 15 retains both meanings.
+    pub fn format_alternatives(&self) -> [TimeFormat; 2] {
+        [
+            self.raw.time_format_for_layout(TimeF1Layout::Legacy04),
+            self.raw.time_format_for_layout(TimeF1Layout::Source05),
+        ]
+    }
+    /// FMT0..14 have common meaning, except 15 which is reserved in04/None05+.
+    /// **Traces:** L3-CSDW-103 ← L2-CSDW-103 ← L1-CSDW-003
+    pub fn format(&self) -> Option<TimeFormat> {
+        self.layout()
+            .map(|l| self.raw.time_format_for_layout(l))
+            .or_else(|| {
+                let raw = ((self.raw.as_raw() >> 4) & 15) as u8;
+                (raw != 15).then(|| TimeFormat::from_raw(raw))
+            })
+    }
+    /// Applicable current ITS, not-reported legacy ITS, or explicit ambiguity.
+    /// **Traces:** L3-CSDW-106 ← L2-CSDW-106 ← L1-CSDW-006
+    /// **Traces:** L3-RDG-207 ← L2-RDG-207 ← L1-RDG-002
+    pub fn its(&self) -> ItsQualification {
+        let raw = ((self.raw.as_raw() >> 12) & 15) as u8;
+        match self.layout() {
+            Some(TimeF1Layout::Legacy04 | TimeF1Layout::Source05) => ItsQualification::NotReported,
+            Some(TimeF1Layout::SourceWithIts17) => self
+                .raw
+                .irig_time_source_for_layout(TimeF1Layout::SourceWithIts17)
+                .map_or(ItsQualification::NotApplicable, ItsQualification::Reported),
+            None if ((self.raw.as_raw() >> 4) & 15) > 2 => ItsQualification::NotApplicable,
+            None if raw == 0 => ItsQualification::FreewheelingOrNotReported,
+            None => ItsQualification::Unresolved(raw),
+        }
+    }
+    /// Raw intersections ordered as Legacy04, Source05, SourceWithIts17.
+    pub fn reserved_alternatives(&self) -> [u32; 3] {
+        let raw = self.raw.as_raw();
+        [raw & 0xfffffc0e, raw & 0xfffffc00, raw & 0xffff0c00]
+    }
+    /// Selected intersection or only bits reserved under EVERY unresolved layout.
+    /// Alternative-only intersections stay labelled, not automatic TF-005.
+    /// **Traces:** L3-CSDW-107 ← L2-CSDW-107 ← L1-CSDW-007
+    pub fn reserved_bits(&self) -> u32 {
+        let a = self.reserved_alternatives();
+        match self.layout() {
+            Some(TimeF1Layout::Legacy04) => a[0],
+            Some(TimeF1Layout::Source05) => a[1],
+            _ => a[2],
+        }
+    }
+}

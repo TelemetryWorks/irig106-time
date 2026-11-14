@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ⚠️ S03 edition-qualified Format 1
+
+- Add caller-first edition evidence resolution: explicit override wins; G\106
+  selects packet layout only by opt-in and without contradictory known packet
+  evidence. Header/setup version mappings alone never select legacy EXT.
+  Original declarations and hints stay side by side in qualified answer bases.
+- Add qualified SRC/EXT/FMT/ITS and all reserved-mask alternatives. Unknown
+  nibble3 has no GPS/None label; legacy FMT15 stays reserved, modern15 None,
+  unresolved15 needs context. Common readable body values remain usable.
+- BREAKING: TimeF1Source gains Unresolved(raw); exhaustive matches must handle
+  it. ReferenceInput literals gain qualified (use None at the existing explicit
+  caller-layout boundary, or qualified_format1 for retained resolver evidence).
+  Existing explicit-layout helpers/CLI output paths are not automatically changed.
+- TF-031 now emits WARNING only for the accepted no-override contradiction
+  case: **proposed, pending owner confirmation**, coordinator-directed S03.
+  Catalog/policy can configure this available provisional level; TF-032 still
+  has no default. Reserved ITS yields TF-006; reserved bits yield TF-005.
+  No TF-001..028 row or Design/Review status changes.
+- Eight S03 tests, 20 assertion-killed mutations, 128→136/288 matrix links.
+  verification-s03 distinguishes one main-first assertion failure, missing-API
+  compile evidence, later assertions and partial historical scheduling evidence.
+
 ### ⚠️ S02 calendar and raw Format 1 closure
 
 - BREAKING: `AbsoluteTime::add_nanos` / `sub_nanos` now return Result.

@@ -71,19 +71,20 @@ impl FindingCode {
         self.1
     }
 
-    /// None means level pending owner in S03 (31) / S08 (32), not WARNING.
+    /// TF-031 WARNING is proposed, pending owner confirmation (S03).
+    /// None remains level pending owner for TF-032 (S08).
     pub fn default_severity(self) -> Option<Severity> {
         match self.0 {
             4 | 12 | 15 | 28 => Some(Severity::Error),
             9 | 11 | 18 | 20 | 22 | 23 | 27 => Some(Severity::Information),
-            1..=30 => Some(Severity::Warning),
+            1..=31 => Some(Severity::Warning),
             _ => None,
         }
     }
-    /// Apply a caller override only after a default level has owner approval.
+    /// Apply a caller override to an available default, including provisional TF-031.
     pub fn resolve_level(self, level: Option<Severity>) -> Result<Severity> {
         let default = self.default_severity().ok_or(TimeError::NeedsContext {
-            context: "finding level pending owner (TF-031 S03 / TF-032 S08)",
+            context: "finding level pending owner (TF-032 S08)",
         })?;
         Ok(level.unwrap_or(default))
     }

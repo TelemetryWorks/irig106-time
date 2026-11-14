@@ -253,12 +253,66 @@ pub struct ReferenceInput {
     /// Original bounded wire reading and explicit layout, including reserved
     /// bits and leap labels which cannot be projected into this core calendar.
     pub wire: Option<(TimeF1Layout, crate::format1::Format1Reading)>,
+    /// S03 qualified reading; retains unresolved alternatives through answer basis.
+    pub qualified: Option<crate::format1::QualifiedFormat1Reading>,
     /// Original channel-specific word where available.
     pub raw_csdw: Option<u32>,
     /// Basis of a resolved year; unknown remains unknown.
     pub year_origin: YearOrigin,
 }
 impl ReferenceInput {
+    /// Adapt an evidence-qualified reading without inventing SRC or ITS.
+    /// Unresolved FMT15 cannot become a modern None label: retain the original
+    /// reading and request context instead. Ordinary body values remain usable.
+    /// **Traces:** L3-EDN-201 ← L2-EDN-201 ← L1-EDN-002
+    pub fn qualified_format1(reading: crate::format1::QualifiedFormat1Reading) -> Result<Self> {
+        let format = reading.csdw.format().ok_or(TimeError::NeedsContext {
+            context: "unresolved Format1 FMT15 meaning",
+        })?;
+        let source = reading.csdw.source().unwrap_or(TimeF1Source::Unresolved(
+            (reading.csdw.raw().as_raw() & 15) as u8,
+        ));
+        let scale = reading.time.map_or(ScaleEvidence::unknown(), |t| t.scale);
+        let its = match reading.csdw.its() {
+            crate::csdw::ItsQualification::Reported(value) => Some(value),
+            _ => None,
+        };
+        let (value, year_origin) = match reading.time {
+            Some(t) if !t.is_leap_second() => (
+                ReferenceValue::Readable(
+                    AbsoluteTime::new(t.day_of_year, t.hours, t.minutes, t.seconds, t.nanoseconds)?
+                        .with_year(t.year)?,
+                    true,
+                ),
+                if t.year.is_some() {
+                    YearOrigin::Packet
+                } else {
+                    YearOrigin::Unknown
+                },
+            ),
+            Some(_) => (ReferenceValue::NeedsContext, YearOrigin::Unknown),
+            None => (
+                if matches!(format, TimeFormat::Reserved(_)) {
+                    ReferenceValue::NeedsContext
+                } else {
+                    ReferenceValue::Invalid
+                },
+                YearOrigin::Unknown,
+            ),
+        };
+        Ok(Self {
+            value,
+            scale,
+            source,
+            format,
+            its,
+            precision_ns: 10_000_000,
+            raw_csdw: Some(reading.csdw.raw().as_raw()),
+            year_origin,
+            wire: None,
+            qualified: Some(reading),
+        })
+    }
     /// Decode only within caller Data Length, with explicitly selected layout.
     /// Leap labels are retained as NeedsContext, not normalized by this core.
     /// **Traces:** L3-COR-101 ← L2-COR-101 ← L1-COR-001
@@ -302,6 +356,7 @@ impl ReferenceInput {
             its: reading.csdw.irig_time_source_for_layout(layout),
             precision_ns: 10_000_000,
             wire: Some((layout, reading)),
+            qualified: None,
             raw_csdw: Some(reading.csdw.as_raw()),
             year_origin,
         })
@@ -518,6 +573,41 @@ impl TimelineBuilder {
                         }
                     }
                     if wire.time.is_some_and(|t| t.is_leap_second()) {
+                        self.finding(22, key, Some(packet.channel), None, None)?;
+                    }
+                }
+                if let Some(q) = &input.qualified {
+                    if q.csdw.resolution().contradiction() {
+                        self.finding(31, key, Some(packet.channel), None, None)?;
+                        if let Some(f) = self.findings.last_mut() {
+                            if let Some(raw) = q.csdw.resolution().evidence().data_type_version {
+                                f.evidence = f.evidence.clone().with_raw_field(RawField {
+                                    name: "data_type_version",
+                                    observed: RawValue::Unsigned(raw.into()),
+                                    expected: None,
+                                });
+                            }
+                        }
+                    }
+                    if q.csdw.reserved_bits() != 0 || q.reserved_body_bits.iter().any(|b| *b != 0) {
+                        self.finding(5, key, Some(packet.channel), None, None)?;
+                        if let Some(f) = self.findings.last_mut() {
+                            f.evidence =
+                                body_reserved_evidence(f.evidence.clone(), q.reserved_body_bits)
+                                    .with_raw_field(RawField {
+                                        name: "csdw.reserved",
+                                        observed: RawValue::Unsigned(q.csdw.reserved_bits().into()),
+                                        expected: Some(RawValue::Unsigned(0)),
+                                    });
+                        }
+                    }
+                    if matches!(
+                        q.csdw.its(),
+                        crate::csdw::ItsQualification::Reported(IrigTimeSource::Reserved(_))
+                    ) {
+                        self.finding(6, key, Some(packet.channel), None, None)?;
+                    }
+                    if q.time.is_some_and(|t| t.is_leap_second()) {
                         self.finding(22, key, Some(packet.channel), None, None)?;
                     }
                 }
