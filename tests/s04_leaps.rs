@@ -268,3 +268,26 @@ fn extensions_and_replacements_are_validated_and_previous_basis_is_immutable() {
         assert!(!r.basis().leap_second);
     }
 }
+
+/// Requirements: L1-TAI-001, L2-TAI-101, L3-TAI-101, L1-TAI-004, L2-TAI-104, L3-TAI-104
+#[test]
+fn narrowed_start_uses_tai_boundary_not_repeated_unix_coordinate() {
+    let builtin = LeapSecondTable::builtin();
+    let mut info = builtin.metadata().clone();
+    info.id = "starts2017".into();
+    info.supported_start = UnixSeconds::new(1_483_228_800);
+    let t = LeapSecondTable::try_new(builtin.entries().to_vec(), info).unwrap();
+    assert_eq!(
+        t.convert_ptp(raw(1_483_228_836, 999_999_999))
+            .unwrap()
+            .status(),
+        PtpConversionStatus::MissingOffset
+    );
+    assert_eq!(
+        t.convert_ptp(raw(1_483_228_837, 0)).unwrap().status(),
+        PtpConversionStatus::Covered
+    );
+    let mut info = builtin.metadata().clone();
+    info.source.clear();
+    assert!(LeapSecondTable::try_new(vec![], info).is_err());
+}
