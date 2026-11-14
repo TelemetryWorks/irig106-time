@@ -300,7 +300,7 @@ impl StreamTimeline {
         channel: Option<u16>,
         related: Option<u64>,
         delta: Option<i128>,
-    ) {
+    ) -> Result<()> {
         b.findings.push(TimelineFinding::observed(
             code,
             self.policy.offline.finding_levels.get(&code).copied(),
@@ -308,7 +308,8 @@ impl StreamTimeline {
             channel,
             related,
             delta,
-        ));
+        )?);
+        Ok(())
     }
     fn answer(
         &self,
@@ -449,7 +450,7 @@ impl StreamTimeline {
         let mut b = self.advance(progress)?;
         if self.first.is_none() || boundary || reset {
             self.flush(&mut b, ReleaseReason::SessionBoundary);
-            self.end_session(&mut b);
+            self.end_session(&mut b)?;
             self.session += 1;
             self.high = ticks;
             self.time_seen = false;
@@ -475,7 +476,7 @@ impl StreamTimeline {
                 Some(packet.channel),
                 None,
                 Some(delta * 100),
-            );
+            )?;
             if reset {
                 self.emit(
                     &mut b,
@@ -484,7 +485,7 @@ impl StreamTimeline {
                     Some(packet.channel),
                     None,
                     Some(delta * 100),
-                );
+                )?;
             }
         }
         self.high = self.high.max(ticks);
@@ -497,11 +498,11 @@ impl StreamTimeline {
         if kind == PacketKind::Time {
             self.time_seen = true;
             if self.channel.is_some_and(|(id, _)| id == ch) {
-                self.add_reference(reference, key, &mut b);
+                self.add_reference(reference, key, &mut b)?;
             }
         } else if kind == PacketKind::Data {
             if !self.time_seen {
-                self.emit(&mut b, 2, key, Some(ch), None, None);
+                self.emit(&mut b, 2, key, Some(ch), None, None)?;
             }
             let preceding = self
                 .refs
@@ -570,10 +571,10 @@ impl StreamTimeline {
         reference: Option<TimelineReference>,
         key: PacketKey,
         b: &mut StreamBatch,
-    ) {
+    ) -> Result<()> {
         // Missing/unreadable input already has its finding; it does not
         // invalidate an earlier eligible reference or drain held queries.
-        let Some(r) = reference else { return };
+        let Some(r) = reference else { return Ok(()) };
         if self.source.is_some_and(|s| s != r.input.source) {
             self.emit(
                 b,
@@ -582,7 +583,7 @@ impl StreamTimeline {
                 Some(r.channel),
                 self.refs.last().map(|r| r.key.packet),
                 None,
-            );
+            )?;
         }
         self.source = Some(r.input.source);
         self.external_seen |= matches!(r.input.source, TimeF1Source::Source(TimeSource::External));
@@ -592,10 +593,10 @@ impl StreamTimeline {
         if stopped {
             self.flush(b, ReleaseReason::UnusableReference);
             self.refs.clear();
-            return;
+            return Ok(());
         }
         if !r.admitted {
-            return;
+            return Ok(());
         }
         let mut barrier = None;
         // Compare both immediate neighbours for late reference insertion.
@@ -633,7 +634,7 @@ impl StreamTimeline {
                     Some(r.channel),
                     Some(a.key.packet),
                     Some(elapsed),
-                );
+                )?;
             }
             match crate::timeline::absolute_delta(a, z) {
                 Some(d) => {
@@ -651,7 +652,7 @@ impl StreamTimeline {
                             Some(r.channel),
                             Some(a.key.packet),
                             Some(residual),
-                        );
+                        )?;
                         barrier = Some(ReleaseReason::Discontinuity);
                     }
                 }
@@ -669,6 +670,7 @@ impl StreamTimeline {
         self.refs.push(r);
         self.refs.sort_by_key(|r| (r.key.ticks, r.key.packet));
         self.resolve(b);
+        Ok(())
     }
     fn resolve(&mut self, b: &mut StreamBatch) {
         let mut remaining = VecDeque::new();
@@ -710,19 +712,20 @@ impl StreamTimeline {
         }
         self.pending = remaining;
     }
-    fn end_session(&self, b: &mut StreamBatch) {
+    fn end_session(&self, b: &mut StreamBatch) -> Result<()> {
         if !self.time_seen {
             if let Some(key) = self.first {
-                self.emit(b, 1, key, None, None, None);
+                self.emit(b, 1, key, None, None, None)?;
             }
         }
+        Ok(())
     }
     /// Explicit EOF releases as extrapolated (or counter-only), then closes.
     /// **Traces:** L3-STRM-203 ← L2-STRM-203 ← L1-STRM-001
     pub fn finish(&mut self, progress: u64) -> Result<StreamBatch> {
         let mut b = self.advance(progress)?;
         self.flush(&mut b, ReleaseReason::Eof);
-        self.end_session(&mut b);
+        self.end_session(&mut b)?;
         self.refs.clear();
         self.finished = true;
         Ok(b)

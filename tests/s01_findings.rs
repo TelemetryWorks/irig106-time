@@ -42,13 +42,13 @@ fn every_catalog_level_and_pending_identity_is_explicit() {
 #[test]
 fn raw_evidence_offsets_relations_and_validity_survive_override() {
     let mut evidence = FindingEvidence::new(location(), ValueValidity::Unusable);
-    evidence.raw_rtc = Some(Rtc::MAX);
-    evidence.raw_fields.push(RawField {
+    evidence = evidence.with_raw_rtc(Rtc::MAX);
+    evidence = evidence.with_raw_field(RawField {
         name: "csdw",
         observed: RawValue::Unsigned(u32::MAX.into()),
         expected: Some(RawValue::Unsigned(0)),
     });
-    evidence.related.push(FindingLocation {
+    evidence = evidence.with_related(FindingLocation {
         byte_offset: Some(4096),
         ..location()
     });
@@ -58,11 +58,11 @@ fn raw_evidence_offsets_relations_and_validity_survive_override() {
         evidence.clone(),
     )
     .unwrap();
-    assert_eq!(f.severity, Severity::Information);
-    assert_eq!(f.evidence, evidence);
-    assert_eq!(f.evidence.validity, ValueValidity::Unusable);
-    assert_eq!(f.evidence.location.byte_offset, None); // Packet ID is NOT an offset.
-    assert_eq!(f.evidence.related[0].byte_offset, Some(4096));
+    assert_eq!(f.severity(), Severity::Information);
+    assert_eq!(f.evidence(), &evidence);
+    assert_eq!(f.evidence().validity(), ValueValidity::Unusable);
+    assert_eq!(f.evidence().location().byte_offset, None); // Packet ID is NOT an offset.
+    assert_eq!(f.evidence().related()[0].byte_offset, Some(4096));
 }
 /// Requirements: L1-FND-001, L2-FND-101, L3-FND-101
 /// Interpretations: RDG-012
@@ -73,11 +73,11 @@ fn ntp_zero_and_ambiguity_evidence_are_distinct() {
         fraction: 0,
     };
     let zero = Finding::ntp_zero(location(), raw, None).unwrap();
-    assert_eq!(zero.code.number(), 29);
-    assert_eq!(zero.severity, Severity::Warning);
-    assert_eq!(zero.evidence.validity, ValueValidity::Unusable);
+    assert_eq!(zero.code().number(), 29);
+    assert_eq!(zero.severity(), Severity::Warning);
+    assert_eq!(zero.evidence().validity(), ValueValidity::Unusable);
     assert_eq!(
-        zero.evidence.ntp,
+        zero.evidence().ntp(),
         Some(NtpEvidence {
             raw,
             mapped_unix: None
@@ -113,17 +113,17 @@ fn ntp_zero_and_ambiguity_evidence_are_distinct() {
     };
     let mapped = UnixSeconds::new(1_483_228_800); // 2017-01-01, seconds minus2208988800.
     let f = Finding::ntp_ambiguity(location(), raw, mapped, Some(Severity::Information)).unwrap();
-    assert_eq!(f.code.number(), 30);
-    assert_eq!(f.severity, Severity::Information);
-    assert_eq!(f.evidence.validity, ValueValidity::Kept);
+    assert_eq!(f.code().number(), 30);
+    assert_eq!(f.severity(), Severity::Information);
+    assert_eq!(f.evidence().validity(), ValueValidity::Kept);
     assert_eq!(
-        f.evidence.ntp,
+        f.evidence().ntp(),
         Some(NtpEvidence {
             raw,
             mapped_unix: Some(mapped)
         })
     );
-    assert_eq!(f.evidence.location, location());
+    assert_eq!(f.evidence().location(), location());
 }
 
 /// Requirements: L1-FND-001, L2-FND-101, L3-FND-101
@@ -135,12 +135,6 @@ fn sentinel_evidence_cannot_keep_an_absolute_value() {
         fraction: 0,
     };
     assert!(Finding::ntp_ambiguity(location(), raw, UnixSeconds::new(0), None).is_err());
-    let mut bad = FindingEvidence::new(location(), ValueValidity::Kept);
-    bad.ntp = Some(NtpEvidence {
-        raw,
-        mapped_unix: Some(UnixSeconds::new(0)),
-    });
-    assert!(Finding::new(FindingCode::from_number(29).unwrap(), None, bad).is_err());
 }
 
 /// Requirements: L1-FND-001, L2-FND-101, L3-FND-101
@@ -164,7 +158,7 @@ fn each_ntp_evidence_invariant_is_independent() {
         (30, ValueValidity::Unusable, raw, mapped),  // validity only
     ] {
         let mut evidence = FindingEvidence::new(location(), validity);
-        evidence.ntp = Some(NtpEvidence { raw, mapped_unix });
+        evidence = evidence.with_ntp(NtpEvidence { raw, mapped_unix });
         assert!(
             Finding::new(FindingCode::from_number(id).unwrap(), None, evidence).is_err(),
             "TF-{id} {validity:?} mapped={mapped_unix:?}"

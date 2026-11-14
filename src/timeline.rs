@@ -154,7 +154,7 @@ impl TimelineFinding {
         channel: Option<u16>,
         related: Option<u64>,
         delta_ns: Option<i128>,
-    ) -> Self {
+    ) -> Result<Self> {
         let location = FindingLocation {
             session: Some(key.session),
             packet: Some(key.packet),
@@ -171,39 +171,34 @@ impl TimelineFinding {
                 ValueValidity::Undetermined
             },
         );
-        evidence.raw_rtc = Some(Rtc::from_raw((key.ticks & MASK) as u64));
+        evidence = evidence.with_raw_rtc(Rtc::from_raw((key.ticks & MASK) as u64));
         if let Some(packet) = related {
-            evidence.related.push(FindingLocation {
+            evidence = evidence.with_related(FindingLocation {
                 packet: Some(packet),
                 ..location
             });
         }
         if let Some(delta) = delta_ns {
-            evidence.raw_fields.push(RawField {
+            evidence = evidence.with_raw_field(RawField {
                 name: "delta_ns",
                 observed: RawValue::Signed(delta),
                 expected: None,
             });
         }
-        // Call sites are internal literal IDs with approved levels. A future
-        // producer cannot silently default a pending TF-031/032 to WARNING.
-        let finding = Finding::new(
-            FindingCode::from_number(code).expect("internal catalog identity"),
-            level,
-            evidence,
-        )
-        .expect("internal owner-approved finding level");
-        Self {
+        let finding = Finding::new(FindingCode::from_number(code)?, level, evidence)?;
+        let severity = finding.severity();
+        let evidence = finding.into_evidence();
+        Ok(Self {
             code,
-            severity: finding.severity,
+            severity,
             session: key.session,
             packet: key.packet,
             channel,
             related,
-            raw_rtc: finding.evidence.raw_rtc,
+            raw_rtc: evidence.raw_rtc(),
             delta_ns,
-            evidence: finding.evidence,
-        }
+            evidence,
+        })
     }
 }
 /// Caller labels; static setup packets may precede the first time packet.
@@ -492,17 +487,17 @@ impl TimelineBuilder {
         };
         if !boundary {
             if let Some(delta) = late {
-                self.finding(19, key, Some(packet.channel), None, Some(delta));
+                self.finding(19, key, Some(packet.channel), None, Some(delta))?;
                 if reset {
-                    self.finding(18, key, Some(packet.channel), None, Some(delta));
+                    self.finding(18, key, Some(packet.channel), None, Some(delta))?;
                 }
             }
         }
         if packet.flags & 0x20 != 0 {
-            self.finding(24, key, Some(packet.channel), None, None);
+            self.finding(24, key, Some(packet.channel), None, None)?;
         }
         if packet.kind == PacketKind::Data && self.sessions[index].first_time_packet.is_none() {
-            self.finding(2, key, Some(packet.channel), None, None);
+            self.finding(2, key, Some(packet.channel), None, None)?;
         }
         self.sessions[index].high_ticks = self.sessions[index].high_ticks.max(ticks);
         if packet.kind == PacketKind::Time {
@@ -514,16 +509,16 @@ impl TimelineBuilder {
                     if wire.csdw.validate_reserved(layout).is_err()
                         || wire.reserved_body_bits.iter().any(|bits| *bits != 0)
                     {
-                        self.finding(5, key, Some(packet.channel), None, None);
+                        self.finding(5, key, Some(packet.channel), None, None)?;
                     }
                     if wire.time.is_some_and(|t| t.is_leap_second()) {
-                        self.finding(22, key, Some(packet.channel), None, None);
+                        self.finding(22, key, Some(packet.channel), None, None)?;
                     }
                 }
                 let mut reasons = Vec::new();
                 if !packet.declared_timein {
                     reasons.push(Rejection::Undeclared);
-                    self.finding(8, key, Some(packet.channel), None, None);
+                    self.finding(8, key, Some(packet.channel), None, None)?;
                 }
                 if matches!(input.source, TimeF1Source::Source(TimeSource::None)) {
                     reasons.push(Rejection::NoneSource);
@@ -531,7 +526,7 @@ impl TimelineBuilder {
                 if matches!(input.source, TimeF1Source::Source(TimeSource::Reserved(_))) {
                     // SRC is a reserved VALUE, not an unreadable payload.
                     // TF-006 warning keeps the admitted time and raw source.
-                    self.finding(6, key, Some(packet.channel), None, None);
+                    self.finding(6, key, Some(packet.channel), None, None)?;
                 }
                 if matches!(input.format, TimeFormat::Reserved(_)) {
                     reasons.push(Rejection::Reserved);
@@ -565,7 +560,7 @@ impl TimelineBuilder {
                         _ => None,
                     };
                     if let Some(code) = code {
-                        self.finding(code, key, Some(packet.channel), None, None);
+                        self.finding(code, key, Some(packet.channel), None, None)?;
                     }
                 }
                 let admitted = matches!(input.value, ReferenceValue::Readable(..))
@@ -582,7 +577,7 @@ impl TimelineBuilder {
                     .find(|r| r.channel == packet.channel)
                 {
                     if prev.input.source != input.source {
-                        self.finding(11, key, Some(packet.channel), Some(prev.key.packet), None);
+                        self.finding(11, key, Some(packet.channel), Some(prev.key.packet), None)?;
                     }
                 }
                 self.sessions[index].references.push(TimelineReference {
@@ -595,7 +590,7 @@ impl TimelineBuilder {
                     reasons,
                 });
             } else {
-                self.finding(4, key, Some(packet.channel), None, None);
+                self.finding(4, key, Some(packet.channel), None, None)?;
             }
         }
         Ok(key)
@@ -607,7 +602,7 @@ impl TimelineBuilder {
         channel: Option<u16>,
         related: Option<u64>,
         delta_ns: Option<i128>,
-    ) {
+    ) -> Result<()> {
         self.findings.push(TimelineFinding::observed(
             code,
             self.policy.finding_levels.get(&code).copied(),
@@ -615,13 +610,14 @@ impl TimelineBuilder {
             channel,
             related,
             delta_ns,
-        ));
+        )?);
+        Ok(())
     }
     /// Finalize immutable sessions and per-channel sorted reference indexes.
     /// Gap/jump checks use only valid admitted same-scale references.
     /// **Traces:** L3-COR-104 ← L2-COR-104 ← L1-COR-004
     /// **Traces:** L3-COR-108 ← L2-COR-108 ← L1-COR-008
-    pub fn finish(mut self) -> OfflineTimeline {
+    pub fn finish(mut self) -> Result<OfflineTimeline> {
         let mut indexes = BTreeMap::<(usize, u16), Vec<usize>>::new();
         let mut events = Vec::new();
         for s in &self.sessions {
@@ -669,14 +665,14 @@ impl TimelineBuilder {
             }
         }
         for (code, key, ch, related, delta) in events {
-            self.finding(code, key, ch, related, delta);
+            self.finding(code, key, ch, related, delta)?;
         }
-        OfflineTimeline {
+        Ok(OfflineTimeline {
             policy: self.policy,
             sessions: self.sessions,
             findings: self.findings,
             indexes,
-        }
+        })
     }
 }
 /// Position relative to admitted same-channel references.

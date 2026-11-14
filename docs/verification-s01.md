@@ -20,8 +20,8 @@ No Design/Review fields, requirement statements or accepted finding rows change.
   first implementation and **failed by assertion** before its guard fix. It
   was not an executed failure against main. The engine-evidence assertion
   arrived after the first implementation; no original failing-first claim.
-- Final focused suite: **13 tests**, with three additional rustdoc cases
-  (one successful unit/epoch example and two compile-fail separations).
+- Final focused suite after review: **15 tests**, with five rustdoc cases
+  (one successful duration example and four compile-fail unit/epoch/privacy cases).
   Compile-fail examples test unit/epoch mismatch; they do not count as runtime
   failures. Explicit successful imports/conversions are the positive control.
 
@@ -70,7 +70,7 @@ Source inspection reuses existing cited requirements and archived-page records;
 | RTC-101 | Shared Rtc identity; 48-bit extrema and bit48; explicit masking vs checked construction; no implicit calendar epoch. | Existing serde/value-load validation is audited in S12; no shared dependency source is changed here. |
 | RTC-103 | Named nonzero session; checked modular signed difference; half-range refusal with explicit directional context; checked unwrapped PacketKey subtraction; offline/stream half-range refusal and explicit-boundary retry. | No inference of multiple wraps. Compatibility correlator APIs do not gain missing session metadata; later API/compatibility audits must not treat them as equivalent to the new checked boundary. |
 | RTC-104 | Checked i128 ticks×100; both signs; typed overflow; checked unsigned shared magnitude; no negative-to-unsigned truncation. | Legacy calendar and network conversion arithmetic is not certified by these scalar tests; S02/S04/S05 remain blockers. |
-| API-104 | New public quantity boundaries distinguish raw Rtc, signed ticks, signed nanos and shared NanosDuration. Shared epoch types retained; unit/epoch compile-fail examples with successful controls. | **Partial:** legacy public primitive epoch/duration APIs and future conversion adapters still need the planned S02/S04/S05/S10/API audits. No blanket all-signatures compliance or schema freeze. |
+| API-104 | New public quantity boundaries distinguish raw Rtc, signed ticks, signed nanos and shared NanosDuration. Shared epoch types retained; unit/epoch compile-fail examples; duration conversion has a successful control. | **Partial:** shared NanosDuration is u64, so SignedNanos/SignedRtcTicks are local by necessity and should move to irig106-types. Shared UnixSeconds is u64 (cannot hold pre-1970), and TaiSeconds::to_unix clamps rather than returning a checked result. The coordinator assigned signed nanoseconds and signed/checked Unix + TAI→Unix to the types maintainer before types 0.1.0 publication. Later adoption and S02/S04/S05/S10/API audits remain; no blanket signature compliance or schema freeze. |
 | FND-101 | Reusable stable catalog; approved defaults vs pending levels; configurable approved levels; factual effect independent of level; optional offset, raw fields/counter, related identities; both engines share catalog/evidence; malformed input stays unusable under Information override; TF-029/030 raw/value-effect plumbing. | **Partial producer coverage:** not every degraded-case producer supplies all domain-specific operands yet. Existing engine IDs/RTC/delta/related packet are populated; unknown offsets stay absent, not guessed from packet ID. Generic callers may supply actual offsets/expected fields. NTP producers S05, edition S03, year S08 and reports/validated schema S12/S17 remain. TF-031/032 levels require owner confirmation in their slices. |
 
 No new release-scoped deferral is introduced. The four ADR-0018 deferrals are
@@ -121,3 +121,34 @@ clippy, fmt, warnings-as-errors rustdoc, CLI build/clippy, two no-default
 WASM builds, trace check and cargo-deny. No dependencies were added/updated.
 The CLI, manifests/lockfiles, CI, governing requirement text and human
 Design/Review fields are unchanged. No merge, publish, tag or settings action.
+
+## Review follow-up at d06529f
+
+Tests-only `34664c5` strengthens already-correct code; it is not a new
+main-failing behaviour fix. Each of these **10 isolated mutants compiled and
+failed by assertion**, and was restored before the next check:
+
+| Mutant | Independent assertion |
+|---|---|
+| Remove backward equal-counter guard | Equal counters in BackwardWithinOneWrap must give 0, not -2^48. |
+| Remove zero-session guard | Session 0 vs session 0 must be rejected. |
+| Drop TF-030 mapping check | Kept/nonzero raw, mapped=None is rejected. |
+| Drop TF-030 validity check | Nonzero raw/mapping present, validity=Unusable is rejected. |
+| Drop TF-029 mapping check | Zero raw/Unusable, mapping present is rejected. |
+| Drop TF-029 validity check | Zero raw/no mapping, validity=Kept is rejected. |
+| Wrong structured related packet | Both engines retain packet41, not current99. |
+| Wrong structured delta sign | Both engines retain -500000000/+500000000 ns. |
+| Drop legacy related packet | Both legacy views equal Some(41). |
+| Reverse legacy delta sign | Both legacy views equal the signed hand-computed residual. |
+
+The four NTP fixtures each violate **one** invariant only. Both residual
+signs use 1 s of RTC and 0.5/1.5 s of absolute progress (§11.2.1.1 i).
+Finding/FindingEvidence fields are private with getters/consuming builders;
+a checked Finding cannot be altered or fabricated by a struct literal.
+Privacy compile-fail examples have successful checked-construction controls
+in the runtime suite. Title lookup is checked/table-based; observed finding
+construction and both engines propagate Result. Offline finish() now returns
+Result<OfflineTimeline>; existing call sites were migrated. The saturating
+shared TAI→Unix call is removed from the non-saturating positive control.
+RDG-010 is removed from the NTP container marker: it exercises no second60.
+TF-031/032 levels and all Design/Review fields remain unchanged.

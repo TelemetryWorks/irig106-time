@@ -17,59 +17,60 @@ pub enum Severity {
 /// Permanent catalog identity. Unknown IDs cannot be constructed.
 /// **Traces:** L3-FND-101 ← L2-FND-101 ← L1-FND-001
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct FindingCode(u8);
+pub struct FindingCode(u8, &'static str);
 impl FindingCode {
     /// Look up an approved permanent identity, including pending-level 31/32.
     pub fn from_number(number: u8) -> Result<Self> {
-        if !(1..=32).contains(&number) {
-            return Err(TimeError::InvalidTimelineInput("unknown finding ID"));
-        }
-        Ok(Self(number))
+        const TITLES: [&str; 32] = [
+            "A session has no time packet",
+            "A dynamic packet precedes the session's first time packet",
+            "A time packet is marked invalid (FMT `0xF` NONE; TS \"Time Not Valid\")",
+            "A time packet is malformed (a digit above 9, a field out of range, a short body)",
+            "Reserved bits are set (data word, body, secondary header)",
+            "A reserved value is used (SRC `0x3`–`0xE`, FMT `0x6`–`0xE`, NTF `0x3`–`0xF`, TS `0x2`–`0xF`, ITS `1000`–`1111`, flags bits 3–2 `11`)",
+            "The leap-year bit disagrees with the day or the year",
+            "Time packets on a channel the setup record does not declare TIMEIN",
+            "A declared time channel carries no time packets",
+            "TMATS and the packets differ (`TTF`, `TFMT`, `SHTF`)",
+            "A channel's time source differs from `TSRC`, or changes (lock lost or regained)",
+            "A secondary header fails its checksum",
+            "Channels use different secondary-header time formats",
+            "A secondary header's time and the counter's differ beyond the tolerance",
+            "Packet flags bit 6 is set without bit 7",
+            "A reference gap",
+            "A time jump",
+            "A counter reset: a new session",
+            "A packet later than the late-packet bound",
+            "A session's year is unknown",
+            "A conversion falls after the leap-second table's last known date",
+            "A leap second (23:59:60) was read",
+            "A time scale is assumed or unknown",
+            "Packet flags report an RTC sync error (bit 5)",
+            "A packet's ERTC and RTC disagree (\"RTC = ERTC/100\")",
+            "A Format 2 time packet in a recording declared before 106-17",
+            "Secondary headers satisfy only the other checksum reading (RDG-008)",
+            "Secondary-derived time has an undefined format",
+            "NTP time is zero (unknown or unsynchronized)",
+            "NTP time falls in a leap-second ambiguity window",
+            "Packet-layout edition evidence is contradictory",
+            "Year evidence is contradictory",
+        ];
+        TITLES
+            .get(usize::from(number).wrapping_sub(1))
+            .copied()
+            .map(|title| Self(number, title))
+            .ok_or(TimeError::InvalidTimelineInput("unknown finding ID"))
     }
+
     /// Numeric TF suffix, never reused.
     pub const fn number(self) -> u8 {
         self.0
     }
     /// Accepted catalog title.
     pub fn title(self) -> &'static str {
-        match self.0 {
-            1 => "A session has no time packet",
-            2 => "A dynamic packet precedes the session's first time packet",
-            3 => "A time packet is marked invalid (FMT `0xF` NONE; TS \"Time Not Valid\")",
-            4 => "A time packet is malformed (a digit above 9, a field out of range, a short body)",
-            5 => "Reserved bits are set (data word, body, secondary header)",
-            6 => {
-                "A reserved value is used (SRC `0x3`–`0xE`, FMT `0x6`–`0xE`, NTF `0x3`–`0xF`, TS `0x2`–`0xF`, ITS `1000`–`1111`, flags bits 3–2 `11`)"
-            }
-            7 => "The leap-year bit disagrees with the day or the year",
-            8 => "Time packets on a channel the setup record does not declare TIMEIN",
-            9 => "A declared time channel carries no time packets",
-            10 => "TMATS and the packets differ (`TTF`, `TFMT`, `SHTF`)",
-            11 => "A channel's time source differs from `TSRC`, or changes (lock lost or regained)",
-            12 => "A secondary header fails its checksum",
-            13 => "Channels use different secondary-header time formats",
-            14 => "A secondary header's time and the counter's differ beyond the tolerance",
-            15 => "Packet flags bit 6 is set without bit 7",
-            16 => "A reference gap",
-            17 => "A time jump",
-            18 => "A counter reset: a new session",
-            19 => "A packet later than the late-packet bound",
-            20 => "A session's year is unknown",
-            21 => "A conversion falls after the leap-second table's last known date",
-            22 => "A leap second (23:59:60) was read",
-            23 => "A time scale is assumed or unknown",
-            24 => "Packet flags report an RTC sync error (bit 5)",
-            25 => "A packet's ERTC and RTC disagree (\"RTC = ERTC/100\")",
-            26 => "A Format 2 time packet in a recording declared before 106-17",
-            27 => "Secondary headers satisfy only the other checksum reading (RDG-008)",
-            28 => "Secondary-derived time has an undefined format",
-            29 => "NTP time is zero (unknown or unsynchronized)",
-            30 => "NTP time falls in a leap-second ambiguity window",
-            31 => "Packet-layout edition evidence is contradictory",
-            32 => "Year evidence is contradictory",
-            _ => unreachable!("validated finding identity"),
-        }
+        self.1
     }
+
     /// None means level pending owner in S03 (31) / S08 (32), not WARNING.
     pub fn default_severity(self) -> Option<Severity> {
         match self.0 {
@@ -136,23 +137,66 @@ pub struct NtpEvidence {
     pub mapped_unix: Option<UnixSeconds>,
 }
 /// Reusable evidence container; no serialization schema is frozen here.
+/// ```compile_fail
+/// use irig106_time::findings::{FindingEvidence, ValueValidity};
+/// fn repair(e: &mut FindingEvidence) { e.validity = ValueValidity::Kept; }
+/// ```
 /// **Traces:** L3-FND-101 ← L2-FND-101 ← L1-FND-001
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FindingEvidence {
-    /// Location where observed.
-    pub location: FindingLocation,
-    /// Other packet/reference identities, in caller order.
-    pub related: Vec<FindingLocation>,
-    /// Original raw counter, including when no timestamp is readable.
-    pub raw_rtc: Option<Rtc>,
-    /// Exact raw fields and comparisons.
-    pub raw_fields: Vec<RawField>,
-    /// Factual value effect, independent of configured severity.
-    pub validity: ValueValidity,
-    /// Original NTP words and optional mapped value for TF-029/030.
-    pub ntp: Option<NtpEvidence>,
+    location: FindingLocation,
+    related: Vec<FindingLocation>,
+    raw_rtc: Option<Rtc>,
+    raw_fields: Vec<RawField>,
+    validity: ValueValidity,
+    ntp: Option<NtpEvidence>,
 }
 impl FindingEvidence {
+    /// Original observation location.
+    pub fn location(&self) -> FindingLocation {
+        self.location
+    }
+    /// Related identities, without mutable access to stored evidence.
+    pub fn related(&self) -> &[FindingLocation] {
+        &self.related
+    }
+    /// Original raw counter, when present.
+    pub fn raw_rtc(&self) -> Option<Rtc> {
+        self.raw_rtc
+    }
+    /// Exact observed/expected fields.
+    pub fn raw_fields(&self) -> &[RawField] {
+        &self.raw_fields
+    }
+    /// Factual value effect.
+    pub fn validity(&self) -> ValueValidity {
+        self.validity
+    }
+    /// A copy of the NTP evidence, if present.
+    pub fn ntp(&self) -> Option<NtpEvidence> {
+        self.ntp
+    }
+    /// Add a raw counter before finding validation.
+    pub fn with_raw_rtc(mut self, rtc: Rtc) -> Self {
+        self.raw_rtc = Some(rtc);
+        self
+    }
+    /// Add a related location before finding validation.
+    pub fn with_related(mut self, location: FindingLocation) -> Self {
+        self.related.push(location);
+        self
+    }
+    /// Add an exact field before finding validation.
+    pub fn with_raw_field(mut self, field: RawField) -> Self {
+        self.raw_fields.push(field);
+        self
+    }
+    /// Supply NTP evidence; Finding::new validates it for the selected identity.
+    pub fn with_ntp(mut self, ntp: NtpEvidence) -> Self {
+        self.ntp = Some(ntp);
+        self
+    }
+
     /// Explicit factual effect; empty optional fields stay absent.
     pub fn new(location: FindingLocation, validity: ValueValidity) -> Self {
         Self {
@@ -166,17 +210,37 @@ impl FindingEvidence {
     }
 }
 /// Stable finding plus configured level and unchanged factual evidence.
+/// ```compile_fail
+/// use irig106_time::findings::*;
+/// fn bypass(code: FindingCode, evidence: FindingEvidence) -> Finding {
+///     Finding { code, severity: Severity::Warning, evidence }
+/// }
+/// ```
 /// **Traces:** L3-FND-101 ← L2-FND-101 ← L1-FND-001
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Finding {
-    /// Permanent identity.
-    pub code: FindingCode,
-    /// Approved default or explicit caller override.
-    pub severity: Severity,
-    /// Factual evidence, not modified by severity selection.
-    pub evidence: FindingEvidence,
+    code: FindingCode,
+    severity: Severity,
+    evidence: FindingEvidence,
 }
 impl Finding {
+    /// Permanent validated identity.
+    pub fn code(&self) -> FindingCode {
+        self.code
+    }
+    /// Approved default or override, with no mutation after validation.
+    pub fn severity(&self) -> Severity {
+        self.severity
+    }
+    /// Immutable factual evidence.
+    pub fn evidence(&self) -> &FindingEvidence {
+        &self.evidence
+    }
+    /// Consume the finding to obtain its evidence, requiring revalidation to rebuild.
+    pub fn into_evidence(self) -> FindingEvidence {
+        self.evidence
+    }
+
     /// Build evidence without accepting an unknown/pending-level emission.
     pub fn new(
         code: FindingCode,
@@ -226,7 +290,7 @@ impl Finding {
             raw,
             mapped_unix: None,
         });
-        Self::new(FindingCode(29), level, evidence)
+        Self::new(FindingCode::from_number(29)?, level, evidence)
     }
     /// Attach TF-030 after the caller/converter establishes a covered ambiguity.
     /// RFC1305 E.8 pp78–79; preserves supplied mapped seconds plus raw fraction.
@@ -242,6 +306,6 @@ impl Finding {
             raw,
             mapped_unix: Some(mapped_unix),
         });
-        Self::new(FindingCode(30), level, evidence)
+        Self::new(FindingCode::from_number(30)?, level, evidence)
     }
 }

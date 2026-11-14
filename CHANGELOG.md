@@ -18,13 +18,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   raw NTP words and sentinel-no-value / ambiguity-value-kept effects; conversion
   and leap-window detection remain S05. TF-031/032 levels stay pending owner;
   neither default nor explicit override can emit them yet.
-- S01 verification: 13 focused tests, unit/epoch compile-fail controls and
-  12 assertion-killed mutations; see `docs/verification-s01.md` for honest
+- S01 verification: 15 focused tests, unit/epoch/privacy compile-fail controls and
+  12 initial + 10 reviewer assertion-killed mutations; see `docs/verification-s01.md` for honest
   failing-first history and clause-level limits. Matrix links rise 106→116/288;
   container tests and partial API/producer links do not prove full compliance.
 
 ### ⚠️ S01 migration notes
 
+- `TimelineBuilder::finish()` now returns `Result<OfflineTimeline>`; propagate
+  construction errors with `?`. `Finding`/`FindingEvidence` fields are private;
+  use checked construction, getters and consuming evidence builders.
 - `TimelineFinding` adds required `evidence`; external struct literals must
   provide it. Existing scalar views and `timeline::Severity` remain available;
   the latter now re-exports the common `findings::Severity` type.

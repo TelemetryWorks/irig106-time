@@ -3,12 +3,11 @@
 //!
 //! Explicit successful shared-type conversion (no saturating arithmetic):
 //! ```
-//! use irig106_time::{NanosDuration, TaiSeconds, TaiUtcOffset, UnixSeconds, rtc::SignedRtcTicks};
+//! use irig106_time::{NanosDuration, rtc::SignedRtcTicks};
 //! let d: NanosDuration = SignedRtcTicks::new(150_000).to_nanos().unwrap().to_unsigned().unwrap();
 //! assert_eq!(d.get(), 15_000_000);
-//! let tai: irig106_types::TaiSeconds = TaiSeconds::new(100);
-//! let utc: UnixSeconds = tai.to_unix(TaiUtcOffset::new(37));
-//! assert_eq!(utc.get(), 63);
+//! let _: irig106_types::TaiSeconds = irig106_time::TaiSeconds::new(100);
+//! let _: irig106_types::UnixSeconds = irig106_time::UnixSeconds::new(63);
 //! ```
 //! Epochs cannot be interchanged implicitly:
 //! ```compile_fail

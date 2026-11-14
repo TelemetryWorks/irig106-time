@@ -81,7 +81,7 @@ fn both_engines_keep_structured_malformed_evidence_under_level_override() {
     input.kind = PacketKind::Time; // No body: malformed, even at Information.
     let mut offline = TimelineBuilder::new(p.clone()).unwrap();
     let key = offline.observe(input.clone(), false).unwrap();
-    let timeline = offline.finish();
+    let timeline = offline.finish().unwrap();
     assert!(timeline.lookup(key).unwrap().time.is_none());
     let mut policy = StreamPolicy::new(
         1,
@@ -98,13 +98,13 @@ fn both_engines_keep_structured_malformed_evidence_under_level_override() {
         let f = findings.iter().find(|f| f.code == 4).unwrap();
         assert_eq!(f.severity, Severity::Information);
         assert_eq!(
-            f.evidence.validity,
+            f.evidence.validity(),
             irig106_time::findings::ValueValidity::Unusable
         );
-        assert_eq!(f.evidence.raw_rtc, Some(Rtc::MAX));
-        assert_eq!(f.evidence.location.packet, Some(77));
-        assert_eq!(f.evidence.location.channel, Some(1));
-        assert_eq!(f.evidence.location.byte_offset, None);
+        assert_eq!(f.evidence.raw_rtc(), Some(Rtc::MAX));
+        assert_eq!(f.evidence.location().packet, Some(77));
+        assert_eq!(f.evidence.location().channel, Some(1));
+        assert_eq!(f.evidence.location().byte_offset, None);
     }
 }
 
@@ -143,7 +143,7 @@ fn both_engines_keep_related_identity_and_signed_residual() {
         let mut offline = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
         offline.observe(first.clone(), false).unwrap();
         offline.observe(next.clone(), false).unwrap();
-        let timeline = offline.finish();
+        let timeline = offline.finish().unwrap();
         let mut stream = StreamTimeline::new(
             StreamPolicy::new(
                 1,
@@ -166,10 +166,10 @@ fn both_engines_keep_related_identity_and_signed_residual() {
             let f = findings.iter().find(|f| f.code == 17).unwrap();
             assert_eq!(f.related, Some(41));
             assert_eq!(f.delta_ns, Some(expected));
-            assert_eq!(f.evidence.related[0].packet, Some(41));
-            assert_eq!(f.evidence.raw_fields[0].name, "delta_ns");
+            assert_eq!(f.evidence.related()[0].packet, Some(41));
+            assert_eq!(f.evidence.raw_fields()[0].name, "delta_ns");
             assert_eq!(
-                f.evidence.raw_fields[0].observed,
+                f.evidence.raw_fields()[0].observed,
                 RawValue::Signed(expected)
             );
         }
