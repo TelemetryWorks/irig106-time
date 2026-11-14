@@ -209,9 +209,39 @@ S02 is not started and requires a separate go after S01b merges. Shared-type
 gap closure does not promote global API-104 or NTP/PTP implementation coverage,
 and no Design/Review fields or pending TF-031/032 levels change.
 
-S01b final checks: **17/17 passed**, CARGO_BUILD_JOBS=2/RUST_TEST_THREADS=2:
+S01b initial checks at `7e13e10`: **17/17 passed**, CARGO_BUILD_JOBS=2/RUST_TEST_THREADS=2:
 the full 16-check CI equivalent (feature tests, MSRV1.85, clippy/fmt/rustdoc,
 CLI build/clippy, WASM±serde, trace, cargo-deny), plus an explicit
 `cargo build --benches --all-features`. The matrix remains 116/288 links,
 zero orphans/unknown markers; coverage delta is 0. No new feature completion
 is claimed by these adoption tests.
+
+### Early fuzz review correction
+
+The initial S01b caller audit missed fuzz_correlation's duration constructor.
+`CARGO_BUILD_JOBS=2 cargo check --manifest-path fuzz/Cargo.toml --bins --locked`
+executed before the fix and failed with E0308: expected NanosDuration, found
+Option<NanosDuration>. The harness now names its fixed 1 ms threshold as
+NanosDuration::new(1000000), with no multiplication, unwrap or overflow fallback.
+The zero-threshold oracle is retained.
+
+The all-target command also exposed older BCD harness API drift: private fields
+and the removed DMY to_absolute method. Those harness sources and the BCD
+library API were unchanged on main (source inspection, not a claimed successful
+main all-target fuzz check). Only harness compatibility changes were made:
+getters, checked to_calendar_time and existing invariants on successful
+conversion; calendar rejection is an expected Result, not a new fuzz crash.
+An unused NTP import was removed. No library BCD/calendar behaviour changed;
+S02 has not started.
+
+The new compile-only Fuzz targets compile CI job explicitly checks all ten bins
+on stable, CARGO_BUILD_JOBS=2, locked dependencies and a ten-minute job limit.
+This job was announced before addition; no permissions/credentials/settings or
+fuzz campaign were added. CONTRIBUTING lists the same command in the local CI
+equivalent. Root --all-targets does not include this separate package.
+This is compile coverage, not instrumented fuzz execution or runtime/corpus
+coverage, and changes no requirement or human Design/Review field.
+
+After the fuzz correction, **18/18 local checks passed**: the prior 17-check
+suite plus the locked all-fuzz-bin check. No warnings remained in that check.
+The new CI job runs the same command; matrix links remain 116/288, delta0.

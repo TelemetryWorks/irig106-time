@@ -1,6 +1,6 @@
 #![no_main]
+use irig106_time::network_time::NtpTime;
 use libfuzzer_sys::fuzz_target;
-use irig106_time::network_time::{NtpTime, NTP_UNIX_EPOCH_OFFSET};
 
 fuzz_target!(|data: &[u8]| {
     match NtpTime::from_le_bytes(data) {

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ⚠️ S01b shared-types adoption
 
+- Fuzz follow-up: migrate the missed correlation duration constant and older
+  BCD harness getter/checked-conversion calls, without changing library BCD
+  behaviour or turning expected errors into fuzz crashes. Add a bounded,
+  compile-only all-fuzz-target CI job and the matching local CI command;
+  no fuzz campaign or instrumented runtime coverage is claimed.
+
 - Advance irig106-types to `7bfe47fc903efea342f3efba1ad0f527dd059a0d` (types
   PR #8); root/CLI/fuzz lockfiles follow it. No other dependency version changes.
   Re-export shared SignedNanos/SignedRtcTicks/SignedUnixSeconds; local signed

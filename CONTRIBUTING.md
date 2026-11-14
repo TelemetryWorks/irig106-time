@@ -40,6 +40,18 @@ cargo doc --no-deps --all-features
 cd irig106-time-cli && cargo clippy --all-targets -- -D warnings && cd ..
 ```
 
+The independent `fuzz/` package is not covered by root `--all-targets`.
+Include these compile checks in the local CI equivalent after API/dependency
+changes (the fuzz check also runs in CI):
+
+```sh
+CARGO_BUILD_JOBS=2 cargo build --benches --all-features
+CARGO_BUILD_JOBS=2 cargo check --manifest-path fuzz/Cargo.toml --bins --locked
+```
+
+The stable fuzz check compiles all ten harnesses without running a campaign.
+Instrumented fuzz runs still use the nightly commands below.
+
 ## Running Benchmarks
 
 Benchmarks use two harnesses: criterion (for statistical rigor) and zero-dep
