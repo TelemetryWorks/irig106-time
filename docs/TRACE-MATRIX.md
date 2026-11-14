@@ -171,19 +171,19 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-NTP-001 | L2-NTP-101 | _(none)_ | Draft |
-| L1-NTP-002 | L2-NTP-102 | _(none)_ | Draft |
-| L1-NTP-003 | L2-NTP-103 | _(none)_ | Implemented |
-| L1-NTP-004 | L2-NTP-104 | `tests/slice2_wire.rs::q_ntp_absolute_conversion_requires_context`<br>`tests/slice2_wire.rs::q_ntp_unix_conversion_requires_context` | Implemented |
+| L1-NTP-001 | L2-NTP-101 | `tests/s05_existing.rs::figure11_16_little_endian_words_and_bounds_are_reused` | Implemented |
+| L1-NTP-002 | L2-NTP-102 | `tests/s05_ntp.rs::approximate_and_dated_same_session_pivots_cross_2036`<br>`tests/s05_ntp.rs::half_era_edges_use_unrounded_fractions_and_conflicts_never_fallback`<br>`tests/s05_ntp.rs::invalid_evidence_and_range_limits_are_explicit_not_guessed`<br>`tests/s05_ntp.rs::labelled_default_and_declared_override_keep_all_input_evidence`<br>`tests/s05_ntp.rs::resolved_ntp_pivots_keep_raw_precision_and_scale_assumptions`<br>`tests/s05_ntp.rs::rfc_figure4_dates_and_post_leap_date_have_no_tai_correction` | Implemented |
+| L1-NTP-003 | L2-NTP-103 | `tests/s05_existing.rs::accepted_floor_fraction_boundaries_are_already_correct`<br>`tests/s05_ntp.rs::half_era_edges_use_unrounded_fractions_and_conflicts_never_fallback`<br>`tests/s05_ntp.rs::resolved_ntp_pivots_keep_raw_precision_and_scale_assumptions`<br>`tests/s05_ntp.rs::sentinel_precedes_era_and_rounding_but_nonzero_fraction_is_time` | Implemented |
+| L1-NTP-004 | L2-NTP-104 | `tests/s05_existing.rs::contextless_compatibility_helpers_cannot_discard_era_basis`<br>`tests/s05_ntp.rs::covered_duplicate_coordinate_is_ambiguous_value_kept_not_a_read_leap`<br>`tests/s05_ntp.rs::invalid_evidence_and_range_limits_are_explicit_not_guessed`<br>`tests/s05_ntp.rs::missing_stale_and_partial_coverage_keep_utc_without_false_certainty`<br>`tests/s05_ntp.rs::rfc_figure4_dates_and_post_leap_date_have_no_tai_correction`<br>`tests/s05_ntp.rs::sentinel_precedes_era_and_rounding_but_nonzero_fraction_is_time`<br>`tests/s05_ntp.rs::tf030_nonzero_era_keeps_exact_evidence_and_unix_mapping`<br>`tests/slice2_wire.rs::q_ntp_absolute_conversion_requires_context`<br>`tests/slice2_wire.rs::q_ntp_unix_conversion_requires_context` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L2-NTP-101 | L3-NTP-101 | _(TBD)_ | Draft |
-| L2-NTP-102 | L3-NTP-102 | _(TBD)_ | Draft |
-| L2-NTP-103 | L3-NTP-103 | `tests/pipeline.rs::ntp_sub_millisecond_precision` | Implemented |
-| L2-NTP-104 | L3-NTP-104 | `src/network_time_tests.rs::ntp_before_unix_epoch`<br>`src/network_time_tests.rs::ntp_to_absolute`<br>`src/network_time_tests.rs::ntp_to_unix_seconds`<br>`tests/pipeline.rs::full_ntp_pipeline`<br>`tests/slice2_wire.rs::q_ntp_absolute_conversion_requires_context`<br>`tests/slice2_wire.rs::q_ntp_unix_conversion_requires_context` | Implemented |
+| L2-NTP-101 | L3-NTP-101 | `tests/s05_existing.rs::figure11_16_little_endian_words_and_bounds_are_reused` | Implemented |
+| L2-NTP-102 | L3-NTP-102 | `tests/s05_ntp.rs::approximate_and_dated_same_session_pivots_cross_2036`<br>`tests/s05_ntp.rs::half_era_edges_use_unrounded_fractions_and_conflicts_never_fallback`<br>`tests/s05_ntp.rs::invalid_evidence_and_range_limits_are_explicit_not_guessed`<br>`tests/s05_ntp.rs::labelled_default_and_declared_override_keep_all_input_evidence`<br>`tests/s05_ntp.rs::resolved_ntp_pivots_keep_raw_precision_and_scale_assumptions`<br>`tests/s05_ntp.rs::rfc_figure4_dates_and_post_leap_date_have_no_tai_correction` | Implemented |
+| L2-NTP-103 | L3-NTP-103 | `tests/pipeline.rs::ntp_sub_millisecond_precision`<br>`tests/s05_existing.rs::accepted_floor_fraction_boundaries_are_already_correct`<br>`tests/s05_ntp.rs::half_era_edges_use_unrounded_fractions_and_conflicts_never_fallback`<br>`tests/s05_ntp.rs::resolved_ntp_pivots_keep_raw_precision_and_scale_assumptions`<br>`tests/s05_ntp.rs::sentinel_precedes_era_and_rounding_but_nonzero_fraction_is_time` | Implemented |
+| L2-NTP-104 | L3-NTP-104 | `src/network_time_tests.rs::ntp_before_unix_epoch`<br>`src/network_time_tests.rs::ntp_to_absolute`<br>`src/network_time_tests.rs::ntp_to_unix_seconds`<br>`tests/pipeline.rs::full_ntp_pipeline`<br>`tests/s05_existing.rs::contextless_compatibility_helpers_cannot_discard_era_basis`<br>`tests/s05_ntp.rs::covered_duplicate_coordinate_is_ambiguous_value_kept_not_a_read_leap`<br>`tests/s05_ntp.rs::invalid_evidence_and_range_limits_are_explicit_not_guessed`<br>`tests/s05_ntp.rs::missing_stale_and_partial_coverage_keep_utc_without_false_certainty`<br>`tests/s05_ntp.rs::rfc_figure4_dates_and_post_leap_date_have_no_tai_correction`<br>`tests/s05_ntp.rs::sentinel_precedes_era_and_rounding_but_nonzero_fraction_is_time`<br>`tests/s05_ntp.rs::tf030_nonzero_era_keeps_exact_evidence_and_unix_mapping`<br>`tests/slice2_wire.rs::q_ntp_absolute_conversion_requires_context`<br>`tests/slice2_wire.rs::q_ntp_unix_conversion_requires_context` | Implemented |
 
 ### L1-PTP: Format 2 PTP time
 
@@ -233,7 +233,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1-TAI-004 | L2-TAI-104 | `tests/s04_leaps.rs::coverage_end_is_not_last_transition_and_stale_keeps_value_and_warning`<br>`tests/s04_leaps.rs::empty_and_pre1972_have_missing_context_not_a_default_offset`<br>`tests/s04_leaps.rs::narrowed_start_uses_tai_boundary_not_repeated_unix_coordinate`<br>`tests/s04_leaps.rs::stale_fallback_uses_the_supplied_table_not_constant37`<br>`tests/s04_leaps.rs::transition_cannot_follow_known_current_through`<br>`tests/s04_leaps.rs::unix_lookup_respects_a_narrowed_start_with_earlier_entries` | Implemented |
 | L1-TAI-005 | L2-TAI-105 | `tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance`<br>`tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value` | Implemented |
 | L1-TAI-006 | L2-TAI-106 | `tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance` | Implemented |
-| L1-TAI-007 | L2-TAI-107 | `tests/offline_timeline.rs::bounded_wire_findings_survive_reference_admission`<br>`tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` | Implemented |
+| L1-TAI-007 | L2-TAI-107 | `tests/offline_timeline.rs::bounded_wire_findings_survive_reference_admission`<br>`tests/s05_ntp.rs::covered_duplicate_coordinate_is_ambiguous_value_kept_not_a_read_leap`<br>`tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
@@ -245,7 +245,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L2-TAI-104 | L3-TAI-104 | `tests/s04_leaps.rs::coverage_end_is_not_last_transition_and_stale_keeps_value_and_warning`<br>`tests/s04_leaps.rs::empty_and_pre1972_have_missing_context_not_a_default_offset`<br>`tests/s04_leaps.rs::narrowed_start_uses_tai_boundary_not_repeated_unix_coordinate`<br>`tests/s04_leaps.rs::stale_fallback_uses_the_supplied_table_not_constant37`<br>`tests/s04_leaps.rs::transition_cannot_follow_known_current_through`<br>`tests/s04_leaps.rs::unix_lookup_respects_a_narrowed_start_with_earlier_entries` | Implemented |
 | L2-TAI-105 | L3-TAI-105 | `tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance`<br>`tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value` | Implemented |
 | L2-TAI-106 | L3-TAI-106 | `tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance` | Implemented |
-| L2-TAI-107 | L3-TAI-107 | `tests/offline_timeline.rs::bounded_wire_findings_survive_reference_admission`<br>`tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` | Implemented |
+| L2-TAI-107 | L3-TAI-107 | `tests/offline_timeline.rs::bounded_wire_findings_survive_reference_admission`<br>`tests/s05_ntp.rs::covered_duplicate_coordinate_is_ambiguous_value_kept_not_a_read_leap`<br>`tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` | Implemented |
 
 ### L1-WORD: Time words inside data
 
@@ -401,7 +401,7 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-FND-001 | L2-FND-101 | `tests/s01_existing.rs::available_ntp_and_edition_levels_keep_year_pending`<br>`tests/s01_existing.rs::both_engines_keep_related_identity_and_signed_residual`<br>`tests/s01_existing.rs::both_engines_keep_structured_malformed_evidence_under_level_override`<br>`tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::every_catalog_level_and_pending_identity_is_explicit`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::raw_evidence_offsets_relations_and_validity_survive_override`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value`<br>`tests/s02_readings.rs::malformed_digit_zero_bit_finding_honours_both_engine_level_overrides` | Implemented |
+| L1-FND-001 | L2-FND-101 | `tests/s01_existing.rs::available_ntp_and_edition_levels_keep_year_pending`<br>`tests/s01_existing.rs::both_engines_keep_related_identity_and_signed_residual`<br>`tests/s01_existing.rs::both_engines_keep_structured_malformed_evidence_under_level_override`<br>`tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::every_catalog_level_and_pending_identity_is_explicit`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::raw_evidence_offsets_relations_and_validity_survive_override`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value`<br>`tests/s02_readings.rs::malformed_digit_zero_bit_finding_honours_both_engine_level_overrides`<br>`tests/s05_ntp.rs::tf030_nonzero_era_keeps_exact_evidence_and_unix_mapping` | Implemented |
 | L1-FND-002 | L2-FND-102 | _(none)_ | Draft |
 | L1-FND-003 | L2-FND-103 | `tests/offline_timeline.rs::review_rtc_sync_error_is_tf024_warning_value_kept`<br>`tests/offline_timeline.rs::review_sync_finding_retains_counter_evidence`<br>`tests/stream_timeline.rs::admission_findings_and_raw_sync_counter` | Implemented |
 | L1-FND-004 | L2-FND-104 | _(none)_ | Draft |
@@ -411,7 +411,7 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L2-FND-101 | L3-FND-101 | `tests/s01_existing.rs::available_ntp_and_edition_levels_keep_year_pending`<br>`tests/s01_existing.rs::both_engines_keep_related_identity_and_signed_residual`<br>`tests/s01_existing.rs::both_engines_keep_structured_malformed_evidence_under_level_override`<br>`tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::every_catalog_level_and_pending_identity_is_explicit`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::raw_evidence_offsets_relations_and_validity_survive_override`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value`<br>`tests/s02_readings.rs::malformed_digit_zero_bit_finding_honours_both_engine_level_overrides` | Implemented |
+| L2-FND-101 | L3-FND-101 | `tests/s01_existing.rs::available_ntp_and_edition_levels_keep_year_pending`<br>`tests/s01_existing.rs::both_engines_keep_related_identity_and_signed_residual`<br>`tests/s01_existing.rs::both_engines_keep_structured_malformed_evidence_under_level_override`<br>`tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::every_catalog_level_and_pending_identity_is_explicit`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::raw_evidence_offsets_relations_and_validity_survive_override`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value`<br>`tests/s02_readings.rs::malformed_digit_zero_bit_finding_honours_both_engine_level_overrides`<br>`tests/s05_ntp.rs::tf030_nonzero_era_keeps_exact_evidence_and_unix_mapping` | Implemented |
 | L2-FND-102 | L3-FND-102 | _(TBD)_ | Draft |
 | L2-FND-103 | L3-FND-103 | `tests/offline_timeline.rs::review_rtc_sync_error_is_tf024_warning_value_kept`<br>`tests/offline_timeline.rs::review_sync_finding_retains_counter_evidence`<br>`tests/stream_timeline.rs::admission_findings_and_raw_sync_counter` | Implemented |
 | L2-FND-104 | L3-FND-104 | _(TBD)_ | Draft |
@@ -424,7 +424,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
 | L1-RDG-001 | L2-RDG-101 | _(none)_ | Draft |
-| L1-RDG-002 | L2-RDG-102, L2-RDG-201, L2-RDG-202, L2-RDG-203, L2-RDG-204, L2-RDG-205, L2-RDG-206, L2-RDG-207, L2-RDG-208, L2-RDG-209, L2-RDG-210, L2-RDG-211, L2-RDG-212 | `tests/s03_edition.rs::independent_edition_rule_boundaries_and_its_evidence`<br>`tests/s03_edition.rs::reserved_its_is_a_value_warning_only_in_an_applicable_layout` | Partially Implemented |
+| L1-RDG-002 | L2-RDG-102, L2-RDG-201, L2-RDG-202, L2-RDG-203, L2-RDG-204, L2-RDG-205, L2-RDG-206, L2-RDG-207, L2-RDG-208, L2-RDG-209, L2-RDG-210, L2-RDG-211, L2-RDG-212 | `tests/s03_edition.rs::independent_edition_rule_boundaries_and_its_evidence`<br>`tests/s03_edition.rs::reserved_its_is_a_value_warning_only_in_an_applicable_layout`<br>`tests/s05_ntp.rs::covered_duplicate_coordinate_is_ambiguous_value_kept_not_a_read_leap`<br>`tests/s05_ntp.rs::missing_stale_and_partial_coverage_keep_utc_without_false_certainty`<br>`tests/s05_ntp.rs::sentinel_precedes_era_and_rounding_but_nonzero_fraction_is_time`<br>`tests/s05_ntp.rs::tf030_nonzero_era_keeps_exact_evidence_and_unix_mapping` | Partially Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
@@ -443,7 +443,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L2-RDG-209 | L3-RDG-209 | _(TBD)_ | Draft |
 | L2-RDG-210 | L3-RDG-210 | _(TBD)_ | Draft |
 | L2-RDG-211 | L3-RDG-211 | _(TBD)_ | Draft |
-| L2-RDG-212 | L3-RDG-212 | _(TBD)_ | Draft |
+| L2-RDG-212 | L3-RDG-212 | `tests/s05_ntp.rs::covered_duplicate_coordinate_is_ambiguous_value_kept_not_a_read_leap`<br>`tests/s05_ntp.rs::missing_stale_and_partial_coverage_keep_utc_without_false_certainty`<br>`tests/s05_ntp.rs::sentinel_precedes_era_and_rounding_but_nonzero_fraction_is_time`<br>`tests/s05_ntp.rs::tf030_nonzero_era_keeps_exact_evidence_and_unix_mapping` | Implemented |
 
 ### L1-STRM: Streaming
 
@@ -625,7 +625,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | CSDW | 7 | 7 | 7 | 6 | 6 | 6 | 6 |
 | BCD | 4 | 4 | 4 | 4 | 4 | 4 | 4 |
 | F2CSDW | 4 | 4 | 4 | 3 | 3 | 3 | 3 |
-| NTP | 4 | 4 | 4 | 2 | 2 | 2 | 2 |
+| NTP | 4 | 4 | 4 | 4 | 4 | 4 | 4 |
 | PTP | 4 | 4 | 4 | 3 | 3 | 3 | 3 |
 | F2COR | 2 | 2 | 2 | 0 | 0 | 0 | 0 |
 | TAI | 7 | 7 | 7 | 7 | 7 | 7 | 7 |
@@ -637,7 +637,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | ANS | 5 | 5 | 5 | 2 | 2 | 2 | 2 |
 | POL | 3 | 4 | 4 | 3 | 3 | 3 | 3 |
 | FND | 5 | 5 | 5 | 2 | 2 | 2 | 2 |
-| RDG | 2 | 14 | 14 | 1 | 1 | 1 | 1 |
+| RDG | 2 | 14 | 14 | 2 | 2 | 2 | 2 |
 | STRM | 1 | 7 | 7 | 7 | 7 | 7 | 7 |
 | ERR | 5 | 5 | 5 | 4 | 4 | 4 | 4 |
 | API | 11 | 11 | 11 | 1 | 1 | 1 | 1 |
@@ -645,13 +645,13 @@ This matrix is the single source of truth for live status; the requirement docum
 | CLI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
 | REL | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
 | TST | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
-| **Total** | **124** | **144** | **144** | **73** | **73** | **73** | **73** |
+| **Total** | **124** | **144** | **144** | **76** | **76** | **76** | **76** |
 
 The countable requirement set is every L2 and L3 requirement plus the 0 L1 *leaf* requirement(s) (L1s with no L2 decomposition yet). Composite L1s are verified through their children.
 
-**Tested by at least one test marker**: 146 of 288 (50.7%).
+**Tested by at least one test marker**: 152 of 288 (52.8%).
 
-**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 146 of 288 (50.7%).
+**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 152 of 288 (52.8%).
 
 ### Orphan check
 
@@ -673,9 +673,9 @@ Every entry of `docs/INTERPRETATIONS.md` with its written analysis and the tests
 | RDG-007 | ITS (Format 1 bits 15–12) is read only for recordings declared 106-17 or later | accepted | [qualified edition fields](analysis/RDG-007-edition-fields.md) | `tests/rebuild_layout.rs::t7_its_requires_explicit_applicable_layout`<br>`tests/s03_edition.rs::independent_edition_rule_boundaries_and_its_evidence`<br>`tests/s03_edition.rs::reserved_its_is_a_value_warning_only_in_an_applicable_layout` |
 | RDG-008 | The secondary header checksum sums bytes, not 16-bit words | suspect | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-008) | `tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither`<br>`tests/slice2_wire.rs::rdg008_byte_only_checksum_is_valid`<br>`tests/slice2_wire.rs::rdg008_word_only_checksum_is_not_trusted` |
 | RDG-009 | The time scale of each time format; IRIG time is UTC by assumption | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-009) | `tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance`<br>`tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` |
-| RDG-010 | Second 60 is a leap second on a day that can be 30 June or 31 December | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-010) | `tests/s02_readings.rs::leap_label_is_distinct_and_arithmetic_refuses_missing_context`<br>`tests/s04_leaps.rs::empty_and_pre1972_have_missing_context_not_a_default_offset`<br>`tests/s04_leaps.rs::every_positive_transition_selects_on_tai_and_preserves_second60`<br>`tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` |
+| RDG-010 | Second 60 is a leap second on a day that can be 30 June or 31 December | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-010) | `tests/s02_readings.rs::leap_label_is_distinct_and_arithmetic_refuses_missing_context`<br>`tests/s04_leaps.rs::empty_and_pre1972_have_missing_context_not_a_default_offset`<br>`tests/s04_leaps.rs::every_positive_transition_selects_on_tai_and_preserves_second60`<br>`tests/s05_ntp.rs::covered_duplicate_coordinate_is_ambiguous_value_kept_not_a_read_leap`<br>`tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` |
 | RDG-011 | "The first dynamic data packet" is checked per session | accepted | not yet written | `tests/stream_timeline.rs::early_data_none_and_no_time_findings` |
-| RDG-012 | NTP follows UTC reckoning; era evidence, zero sentinel and leap ambiguity are explicit | accepted | [written all-edition/RFC analysis and planned edge cases](analysis/RDG-012-ntp-utc-era.md) | `tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value` |
+| RDG-012 | NTP follows UTC reckoning; era evidence, zero sentinel and leap ambiguity are explicit | accepted | [written all-edition/RFC analysis and planned edge cases](analysis/RDG-012-ntp-utc-era.md) | `tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value`<br>`tests/s05_ntp.rs::covered_duplicate_coordinate_is_ambiguous_value_kept_not_a_read_leap`<br>`tests/s05_ntp.rs::missing_stale_and_partial_coverage_keep_utc_without_false_certainty`<br>`tests/s05_ntp.rs::sentinel_precedes_era_and_rounding_but_nonzero_fraction_is_time`<br>`tests/s05_ntp.rs::tf030_nonzero_era_keeps_exact_evidence_and_unix_mapping` |
 
 * Entries without a written analysis: **7** of 12
 * Entries without a test: **6** of 12

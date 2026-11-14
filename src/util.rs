@@ -23,9 +23,10 @@
 //! | `u16::is_multiple_of` | Rust 1.87 | Leap year checks (3 files) | Replaced by `is_leap_year` |
 //! | `u16::saturating_sub` | Rust 1.0 | `AbsoluteTime::sub_nanos`, BCD helpers | No concern |
 //! | `u64::saturating_add` | Rust 1.0 | `network_time::unix_seconds_to_ymd` | No concern |
-//! | Edition 2021 | Rust 1.56 | `Cargo.toml` | Below MSRV floor |
+//! | `i128::div_euclid` | Rust 1.38 | `ntp::pivot_era` | Below MSRV floor |
+//! | Edition 2024 | Rust 1.85 | `Cargo.toml` | **MSRV constraint** |
 //!
-//! **Current MSRV: 1.60** (constrained by `dep:` namespaced features in `Cargo.toml`)
+//! **Current MSRV: 1.85** (edition 2024, matching `Cargo.toml`)
 
 /// Determine whether a year is a leap year per the Gregorian calendar.
 ///

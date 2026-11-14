@@ -202,7 +202,7 @@ impl NtpTime {
     ///
     /// Formula: `(fraction as u64 * 1_000_000_000) >> 32`
     ///
-    /// **Traces:** L3-NTP-103
+    /// **Traces:** L3-NTP-103 ← L2-NTP-103 ← L1-NTP-003
     #[inline]
     pub fn fraction_as_nanos(&self) -> u32 {
         // (fraction * 10^9) / 2^32, using u64 to avoid overflow
@@ -215,28 +215,31 @@ impl NtpTime {
         self.seconds as u64 * 1_000_000_000 + self.fraction_as_nanos() as u64
     }
 
-    /// Absolute NTP-epoch conversion is unresolved pending Q-NTP.
-    /// Use [`Self::raw_fixed_point_nanos`] for an explicitly modular view.
-    /// **Traces:** L3-NTP-102 ← L2-NTP-102
+    /// Contextless compatibility API cannot retain era evidence/assumptions.
+    /// Use crate::ntp::convert_ntp for qualified UTC, or raw_fixed_point_nanos
+    /// for an explicitly modular view. Q-NTP was decided; context is required.
+    /// **Traces:** L3-NTP-102 ← L2-NTP-102 ← L1-NTP-002
     pub fn to_nanos_since_ntp_epoch(&self) -> Result<u64> {
         Err(TimeError::NeedsContext {
-            context: "Q-NTP: era and UTC/leap mapping",
+            context: "NTP era/basis required; use ntp::convert_ntp",
         })
     }
 
-    /// No era or leap mapping is assumed; returns NeedsContext pending Q-NTP.
-    /// **Traces:** L3-NTP-104 ← L2-NTP-104
+    /// Contextless compatibility API refuses to discard era/currency basis.
+    /// Use crate::ntp::convert_ntp with explicit context (labelled fallback allowed).
+    /// **Traces:** L3-NTP-104 ← L2-NTP-104 ← L1-NTP-004
     pub fn to_unix_seconds(&self) -> Result<u64> {
         Err(TimeError::NeedsContext {
-            context: "Q-NTP: era and UTC/leap mapping",
+            context: "NTP era/basis required; use ntp::convert_ntp",
         })
     }
 
-    /// No calendar conversion is implemented pending Q-NTP.
-    /// **Traces:** L3-NTP-104 ← L2-NTP-104
+    /// Contextless compatibility API cannot report era assumptions or ambiguity.
+    /// Use crate::ntp::convert_ntp for the evidence-qualified calendar result.
+    /// **Traces:** L3-NTP-104 ← L2-NTP-104 ← L1-NTP-004
     pub fn to_absolute(&self) -> Result<AbsoluteTime> {
         Err(TimeError::NeedsContext {
-            context: "Q-NTP: era and UTC/leap mapping",
+            context: "NTP era/basis required; use ntp::convert_ntp",
         })
     }
 

@@ -393,7 +393,11 @@ impl Default for LeapSecondTable {
         Self::builtin()
     }
 }
-fn calendar(unix: SignedUnixSeconds, nanoseconds: u32, leap: bool) -> Result<CalendarReading> {
+pub(crate) fn calendar(
+    unix: SignedUnixSeconds,
+    nanoseconds: u32,
+    leap: bool,
+) -> Result<CalendarReading> {
     let coordinate = unix.get() - i128::from(leap);
     let ns = coordinate
         .checked_mul(1_000_000_000)
