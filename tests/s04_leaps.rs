@@ -291,3 +291,12 @@ fn narrowed_start_uses_tai_boundary_not_repeated_unix_coordinate() {
     info.source.clear();
     assert!(LeapSecondTable::try_new(vec![], info).is_err());
 }
+
+/// Requirements: L1-TAI-003, L2-TAI-103, L3-TAI-103
+#[test]
+fn extension_cannot_silently_shorten_known_coverage() {
+    let t = LeapSecondTable::builtin();
+    let mut info = t.metadata().clone();
+    info.known_current_through = UnixSeconds::new(1_514_764_800);
+    assert!(t.extended(vec![], info).is_err());
+}
