@@ -5,7 +5,6 @@ use crate::timeline::*;
 use crate::{AbsoluteTime, Result, Rtc, TimeError, TimeF1Source, TimeSource};
 use alloc::{collections::VecDeque, vec::Vec};
 const MASK: i128 = (1i128 << 48) - 1;
-const HALF: i128 = 1i128 << 47;
 /// Explicit stream strategy; Standard is the owner-accepted default.
 /// **Traces:** L3-POL-201 ← L2-POL-201 ← L1-POL-001
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -302,27 +301,14 @@ impl StreamTimeline {
         related: Option<u64>,
         delta: Option<i128>,
     ) {
-        let severity = self
-            .policy
-            .offline
-            .finding_levels
-            .get(&code)
-            .copied()
-            .unwrap_or(match code {
-                4 => Severity::Error,
-                11 | 18 | 22 => Severity::Information,
-                _ => Severity::Warning,
-            });
-        b.findings.push(TimelineFinding {
+        b.findings.push(TimelineFinding::observed(
             code,
-            severity,
-            session: key.session,
-            packet: key.packet,
+            self.policy.offline.finding_levels.get(&code).copied(),
+            key,
             channel,
             related,
-            raw_rtc: Some(Rtc::from_raw((key.ticks & MASK) as u64)),
-            delta_ns: delta,
-        });
+            delta,
+        ));
     }
     fn answer(
         &self,
@@ -433,11 +419,21 @@ impl StreamTimeline {
             ));
         }
         let raw = i128::from(packet.rtc.as_raw());
-        let forward = (raw - (self.high & MASK)) & MASK;
-        let delta = if forward < HALF {
-            forward
+        let delta = if self.first.is_some() && !boundary {
+            crate::rtc::SessionRtc {
+                session: self.session,
+                rtc: Rtc::from_raw((self.high & MASK) as u64),
+            }
+            .delta_to(
+                crate::rtc::SessionRtc {
+                    session: self.session,
+                    rtc: packet.rtc,
+                },
+                crate::rtc::CounterOrder::Nearest,
+            )?
+            .get()
         } else {
-            forward - MASK - 1
+            0
         };
         let late = self.first.is_some()
             && delta < 0

@@ -22,6 +22,23 @@ pub type Result<T> = core::result::Result<T, TimeError>;
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum TimeError {
+    /// Raw counter construction would discard high bits.
+    /// **Traces:** L3-RTC-101 ← L2-RTC-101 ← L1-RTC-001
+    CounterWidth {
+        /// Unmasked caller input.
+        value: u64,
+    },
+    /// Two raw counters are exactly half a wrap apart; ordering is required.
+    /// **Traces:** L3-RTC-103 ← L2-RTC-103 ← L1-RTC-003
+    AmbiguousCounterDelta,
+    /// Counter subtraction crossed sessions or used an unnamed (zero) session.
+    CrossSessionCounterDelta,
+    /// A checked quantity conversion or subtraction cannot fit its destination.
+    /// **Traces:** L3-RTC-104 ← L2-RTC-104 ← L1-RTC-004
+    QuantityOverflow {
+        /// Units and operation, with no truncated result returned.
+        quantity: &'static str,
+    },
     /// A BCD nibble contained a value greater than 9.
     InvalidBcdDigit {
         /// The invalid nibble value (10–15).
@@ -135,6 +152,16 @@ impl From<irig106_types::TypesError> for TimeError {
 impl fmt::Display for TimeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            TimeError::CounterWidth { value } => write!(f, "RTC value {value} exceeds 48 bits"),
+            TimeError::AmbiguousCounterDelta => {
+                write!(f, "half-range RTC difference requires ordering context")
+            }
+            TimeError::CrossSessionCounterDelta => {
+                write!(f, "RTC difference requires the same nonzero session")
+            }
+            TimeError::QuantityOverflow { quantity } => {
+                write!(f, "quantity out of range: {quantity}")
+            }
             TimeError::InvalidBcdDigit { nibble, position } => {
                 write!(f, "invalid BCD digit {nibble} at {position}")
             }

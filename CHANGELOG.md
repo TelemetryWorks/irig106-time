@@ -9,6 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- S01 checked `rtc` quantities: `checked_rtc`, named-session `SessionRtc`,
+  explicit ordering context, signed ticks/nanoseconds and checked shared
+  `NanosDuration` conversion. No absolute epoch or multi-wrap count is inferred.
+- Stable `findings` catalog/evidence shared by the offline/stream engines:
+  optional actual byte offset, related identities, exact raw fields/counter,
+  factual value effect independent of severity. TF-029/030 evidence retains
+  raw NTP words and sentinel-no-value / ambiguity-value-kept effects; conversion
+  and leap-window detection remain S05. TF-031/032 levels stay pending owner;
+  neither default nor explicit override can emit them yet.
+- S01 verification: 13 focused tests, unit/epoch compile-fail controls and
+  12 assertion-killed mutations; see `docs/verification-s01.md` for honest
+  failing-first history and clause-level limits. Matrix links rise 106→116/288;
+  container tests and partial API/producer links do not prove full compliance.
+
+### ⚠️ S01 migration notes
+
+- `TimelineFinding` adds required `evidence`; external struct literals must
+  provide it. Existing scalar views and `timeline::Severity` remain available;
+  the latter now re-exports the common `findings::Severity` type.
+- Offline/stream exact half-wrap RTC displacements now return
+  `AmbiguousCounterDelta` instead of silently selecting a direction/reset.
+  Supply explicit ordering to `SessionRtc::delta_to`, or an actual session
+  boundary to ingestion; rejected ambiguous input does not consume packet ID.
+  `PacketKey::delta_to` checks session and signed subtraction overflow.
+- New non-exhaustive `TimeError` variants report counter width, ambiguity,
+  cross-session subtraction and quantity overflow. Legacy `Rtc::from_raw`
+  still explicitly masks; use `checked_rtc` to reject high bits. Signed
+  conversion refuses overflow/negative-to-unsigned rather than truncating.
+- Policies now accept approved TF-029/030 severity overrides; TF-031/032 and
+  unknown IDs remain rejected. Shared catalog defaults follow architecture §8;
+  level selection never repairs malformed input. No CLI/schema/dependency or
+  published version change is made. The Q-CH4 warning now cites the accepted
+  2026-11-12 caller-context decision; the unsafe prototype conversion is not fixed here.
+
+
 - Owner 2026-11-13 plan decisions (ADR-0018): permanent TF-029 zero-NTP and
   TF-030 NTP ambiguity WARNING findings; TF-031 packet-layout conflict and
   TF-032 year conflict IDs/titles accepted, levels pending owner S03/S08.

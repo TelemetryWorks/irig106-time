@@ -2,6 +2,10 @@
 //! Ordinary decoded Format 1 times retain scale evidence. Automatic year
 //! inference, inverse queries, drift correction and streaming are follow-ups.
 extern crate alloc;
+use crate::findings::{
+    Finding, FindingCode, FindingEvidence, FindingLocation, RawField, RawValue, ValueValidity,
+};
+use crate::rtc::{CounterOrder, SessionRtc, SignedRtcTicks};
 use crate::scale::{ScaleEvidence, ScalePolicy, TimeScale};
 use crate::{
     AbsoluteTime, IrigTimeSource, Result, Rtc, TimeError, TimeF1Layout, TimeF1Source, TimeFormat,
@@ -102,7 +106,12 @@ impl OfflinePolicy {
     pub fn validate(&self) -> Result<()> {
         if self.version != 1
             || i128::from(self.late_ns) >= HALF * 100
-            || self.finding_levels.keys().any(|id| !(1..=28).contains(id))
+            || self.finding_levels.keys().any(|id| {
+                FindingCode::from_number(*id)
+                    .ok()
+                    .and_then(FindingCode::default_severity)
+                    .is_none()
+            })
         {
             return Err(TimeError::InvalidTimelineInput(
                 "policy version, late bound or finding ID",
@@ -111,16 +120,8 @@ impl OfflinePolicy {
         Ok(())
     }
 }
-/// Default severity vocabulary from architecture section 8.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Severity {
-    /// Diagnostic evidence, value may still be used.
-    Information,
-    /// Rule violation, independent of reference admission.
-    Warning,
-    /// Affected value cannot be used.
-    Error,
-}
+/// Compatibility path for the common stable finding severity vocabulary.
+pub use crate::findings::Severity;
 /// A stable finding plus packet and related-reference evidence.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TimelineFinding {
@@ -141,6 +142,69 @@ pub struct TimelineFinding {
     pub raw_rtc: Option<Rtc>,
     /// Signed counter displacement or jump residual, in ns.
     pub delta_ns: Option<i128>,
+    /// Reusable factual evidence; legacy fields above remain compatibility views.
+    /// **Traces:** L3-FND-101 ← L2-FND-101 ← L1-FND-001
+    pub evidence: FindingEvidence,
+}
+impl TimelineFinding {
+    pub(crate) fn observed(
+        code: u8,
+        level: Option<Severity>,
+        key: PacketKey,
+        channel: Option<u16>,
+        related: Option<u64>,
+        delta_ns: Option<i128>,
+    ) -> Self {
+        let location = FindingLocation {
+            session: Some(key.session),
+            packet: Some(key.packet),
+            channel,
+            byte_offset: None,
+        };
+        // Only the malformed-input emission establishes unusability here.
+        // Other findings alone do not decide admission (e.g. reserved FMT vs SRC).
+        let mut evidence = FindingEvidence::new(
+            location,
+            if code == 4 {
+                ValueValidity::Unusable
+            } else {
+                ValueValidity::Undetermined
+            },
+        );
+        evidence.raw_rtc = Some(Rtc::from_raw((key.ticks & MASK) as u64));
+        if let Some(packet) = related {
+            evidence.related.push(FindingLocation {
+                packet: Some(packet),
+                ..location
+            });
+        }
+        if let Some(delta) = delta_ns {
+            evidence.raw_fields.push(RawField {
+                name: "delta_ns",
+                observed: RawValue::Signed(delta),
+                expected: None,
+            });
+        }
+        // Call sites are internal literal IDs with approved levels. A future
+        // producer cannot silently default a pending TF-031/032 to WARNING.
+        let finding = Finding::new(
+            FindingCode::from_number(code).expect("internal catalog identity"),
+            level,
+            evidence,
+        )
+        .expect("internal owner-approved finding level");
+        Self {
+            code,
+            severity: finding.severity,
+            session: key.session,
+            packet: key.packet,
+            channel,
+            related,
+            raw_rtc: finding.evidence.raw_rtc,
+            delta_ns,
+            evidence: finding.evidence,
+        }
+    }
 }
 /// Caller labels; static setup packets may precede the first time packet.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -278,6 +342,22 @@ pub struct PacketKey {
     /// Caller packet identity.
     pub packet: u64,
 }
+impl PacketKey {
+    /// Checked signed unwrapped ticks within the same named session.
+    /// No modular guessing occurs after unwrapping.
+    /// **Traces:** L3-RTC-103 ← L2-RTC-103 ← L1-RTC-003
+    /// **Traces:** L3-RTC-104 ← L2-RTC-104 ← L1-RTC-004
+    pub fn delta_to(self, later: Self) -> Result<SignedRtcTicks> {
+        crate::rtc::same_session(self.session, later.session)?;
+        later
+            .ticks
+            .checked_sub(self.ticks)
+            .map(SignedRtcTicks::new)
+            .ok_or(TimeError::QuantityOverflow {
+                quantity: "unwrapped RTC subtraction",
+            })
+    }
+}
 /// Reference admission reasons remain visible even when policy admits a value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Rejection {
@@ -364,24 +444,35 @@ impl TimelineBuilder {
                 "reference on non-time packet",
             ));
         }
-        self.seen.insert(packet.id);
         let raw = i128::from(packet.rtc.as_raw());
         let mut ticks = raw;
         let mut late = None;
         let mut reset = false;
-        if let Some(s) = self.sessions.last() {
-            let forward = (raw - (s.high_ticks & MASK)) & MASK;
-            let delta = if forward < HALF {
-                forward
-            } else {
-                forward - MASK - 1
-            };
-            ticks = s.high_ticks + delta;
+        if let Some(s) = self.sessions.last().filter(|_| !boundary) {
+            let delta = SessionRtc {
+                session: s.id,
+                rtc: Rtc::from_raw((s.high_ticks & MASK) as u64),
+            }
+            .delta_to(
+                SessionRtc {
+                    session: s.id,
+                    rtc: packet.rtc,
+                },
+                CounterOrder::Nearest,
+            )?
+            .get();
+            ticks = s
+                .high_ticks
+                .checked_add(delta)
+                .ok_or(TimeError::QuantityOverflow {
+                    quantity: "unwrapped RTC ticks",
+                })?;
             if delta < 0 && -delta * 100 > i128::from(self.policy.late_ns) {
                 late = Some(delta * 100);
                 reset = self.policy.infer_sessions;
             }
         }
+        self.seen.insert(packet.id);
         if self.sessions.is_empty() || boundary || reset {
             ticks = raw;
             self.sessions.push(OfflineSession {
@@ -517,26 +608,14 @@ impl TimelineBuilder {
         related: Option<u64>,
         delta_ns: Option<i128>,
     ) {
-        let default = match code {
-            4 => Severity::Error,
-            11 | 18 | 22 => Severity::Information,
-            _ => Severity::Warning,
-        };
-        self.findings.push(TimelineFinding {
+        self.findings.push(TimelineFinding::observed(
             code,
-            severity: self
-                .policy
-                .finding_levels
-                .get(&code)
-                .copied()
-                .unwrap_or(default),
-            session: key.session,
-            packet: key.packet,
+            self.policy.finding_levels.get(&code).copied(),
+            key,
             channel,
             related,
-            raw_rtc: Some(Rtc::from_raw((key.ticks & MASK) as u64)),
             delta_ns,
-        });
+        ));
     }
     /// Finalize immutable sessions and per-channel sorted reference indexes.
     /// Gap/jump checks use only valid admitted same-scale references.

@@ -611,8 +611,9 @@ pub trait Ch4BinaryTimeExt {
     ///
     /// This method still uses an incorrect 17-bit time/day split. It does not
     /// implement the full 32-bit binary count verified in T-10. Calendar/day
-    /// interpretation remains pending owner question
-    /// [Q-CH4](https://github.com/TelemetryWorks/irig106-time/blob/main/docs/L2_Requirements.md#questions-requiring-owner-decisions);
+    /// reconstruction requires explicit caller context under the owner decision
+    /// [Q-CH4, 2026-11-12](https://github.com/TelemetryWorks/irig106-time/blob/main/docs/L2_Requirements.md#l2-abs-102);
+    /// this prototype method does not implement that accepted rule;
     /// do not use this conversion for trusted time.
     /// Raw secondary/intra-packet decoding is unaffected by this limitation.
     ///
