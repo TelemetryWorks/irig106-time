@@ -129,14 +129,16 @@ fn both_engines_keep_related_identity_and_signed_residual() {
                     true,
                 ),
                 scale: ScaleEvidence::assumed(TimeScale::Utc),
-                source: TimeF1Source::Source(TimeSource::External),
-                format: TimeFormat::IrigB,
+                source: Some(TimeF1Source::Source(TimeSource::External)),
+                format: Some(TimeFormat::IrigB),
                 its: None,
                 precision_ns: 10_000_000,
                 wire: None,
                 qualified: None,
                 raw_csdw: None,
                 year_origin: YearOrigin::Unknown,
+                network: None,
+                normalization: None,
             });
             p
         };

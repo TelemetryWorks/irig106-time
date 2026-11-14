@@ -288,7 +288,7 @@ fn contradiction_keeps_body_and_evidence_through_both_engines() {
         };
         assert_eq!(
             answer.basis.reference.as_ref().unwrap().input.source,
-            expected_source
+            Some(expected_source)
         );
         let kept = answer.basis.reference.unwrap().input.qualified.unwrap();
         assert_eq!(kept.csdw.resolution().evidence(), &e);

@@ -72,6 +72,8 @@ pub mod findings;
 pub mod format1;
 /// Format 2 conversion/admission with raw capture metadata.
 pub mod format2;
+/// Explicit physical-scale normalization and retained network reference evidence.
+pub mod reference;
 /// Explicit time-scale evidence and policy assumptions.
 pub mod scale;
 
