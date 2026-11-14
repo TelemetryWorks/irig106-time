@@ -71,3 +71,39 @@ fn shared_values_keep_width_and_unit_contracts() {
     assert_eq!(Rtc::from_raw(1).to_nanos(), 100);
     assert_eq!(irig106_time::Ertc::from_raw(1).to_nanos(), 1);
 }
+
+/// Requirements: L1-FND-001, L2-FND-101, L3-FND-101
+#[test]
+fn both_engines_keep_structured_malformed_evidence_under_level_override() {
+    let mut p = OfflinePolicy::default();
+    p.finding_levels.insert(4, Severity::Information);
+    let mut input = packet(77, Rtc::MAX);
+    input.kind = PacketKind::Time; // No body: malformed, even at Information.
+    let mut offline = TimelineBuilder::new(p.clone()).unwrap();
+    let key = offline.observe(input.clone(), false).unwrap();
+    let timeline = offline.finish();
+    assert!(timeline.lookup(key).unwrap().time.is_none());
+    let mut policy = StreamPolicy::new(
+        1,
+        BufferCaps {
+            packets: 2,
+            bytes: 128,
+            references: 2,
+        },
+    );
+    policy.offline = p;
+    let mut stream = StreamTimeline::new(policy, None).unwrap();
+    let batch = stream.observe(input, 0, 24, false).unwrap();
+    for findings in [timeline.findings(), batch.findings.as_slice()] {
+        let f = findings.iter().find(|f| f.code == 4).unwrap();
+        assert_eq!(f.severity, Severity::Information);
+        assert_eq!(
+            f.evidence.validity,
+            irig106_time::findings::ValueValidity::Unusable
+        );
+        assert_eq!(f.evidence.raw_rtc, Some(Rtc::MAX));
+        assert_eq!(f.evidence.location.packet, Some(77));
+        assert_eq!(f.evidence.location.channel, Some(1));
+        assert_eq!(f.evidence.location.byte_offset, None);
+    }
+}

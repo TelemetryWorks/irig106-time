@@ -125,3 +125,20 @@ fn ntp_zero_and_ambiguity_evidence_are_distinct() {
     );
     assert_eq!(f.evidence.location, location());
 }
+
+/// Requirements: L1-FND-001, L2-FND-101, L3-FND-101
+/// Interpretations: RDG-012
+#[test]
+fn sentinel_evidence_cannot_keep_an_absolute_value() {
+    let raw = NtpTime {
+        seconds: 0,
+        fraction: 0,
+    };
+    assert!(Finding::ntp_ambiguity(location(), raw, UnixSeconds::new(0), None).is_err());
+    let mut bad = FindingEvidence::new(location(), ValueValidity::Kept);
+    bad.ntp = Some(NtpEvidence {
+        raw,
+        mapped_unix: Some(UnixSeconds::new(0)),
+    });
+    assert!(Finding::new(FindingCode::from_number(29).unwrap(), None, bad).is_err());
+}
