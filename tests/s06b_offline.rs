@@ -694,3 +694,225 @@ fn undeclared_network_admission_and_boundary_levels_use_engine_policy() {
         }
     }
 }
+
+/// Requirements: L1-F2COR-002, L2-F2COR-102, L3-F2COR-102
+/// Requirements: L1-TAI-001, L2-TAI-101, L3-TAI-101
+#[test]
+fn review_pre1970_utc_cannot_borrow_the_1972_offset() {
+    // Fig11-14: 1969-01-01 00:00:00, FMT4 / DATE1, BCD year0x1969.
+    // Unix=-365*86400=-31536000; S04's supported baseline starts in1972.
+    let r = ReferenceInput::format1(
+        &[0x41, 2, 0, 0, 0, 0, 0, 0, 1, 1, 0x69, 0x19],
+        12,
+        TimeF1Layout::SourceWithIts17,
+        ScalePolicy::default(),
+    )
+    .unwrap();
+    assert!(matches!(
+        r.normalize_to_tai(LeapSecondTable::builtin()),
+        Err(TimeError::NeedsContext { .. })
+    ));
+}
+
+/// Requirements: L1-F2COR-002, L2-F2COR-102, L3-F2COR-102
+/// Requirements: L1-COR-004, L2-COR-104, L3-COR-104
+/// Requirements: L1-COR-013, L2-COR-113, L3-COR-113
+#[test]
+fn review_partial_utc_normalization_cannot_fall_back_across_insertion() {
+    let table = LeapSecondTable::builtin();
+    // Fig11-14: 2016-12-31 23:59:59 -> 2017-01-01 00:00:00.
+    // Native calendar delta1s; physical delta2s after the +1 insertion.
+    let before = ReferenceInput::format1(
+        &[0x41, 2, 0, 0, 0, 0x59, 0x59, 0x23, 0x31, 0x12, 0x16, 0x20],
+        12,
+        TimeF1Layout::SourceWithIts17,
+        ScalePolicy::default(),
+    )
+    .unwrap();
+    let after = ReferenceInput::format1(
+        &[0x41, 2, 0, 0, 0, 0, 0, 0, 1, 1, 0x17, 0x20],
+        12,
+        TimeF1Layout::SourceWithIts17,
+        ScalePolicy::default(),
+    )
+    .unwrap();
+    for normalize_before in [false, true] {
+        let (mut a, mut z) = (before.clone(), after.clone());
+        if normalize_before {
+            a = a.normalize_to_tai(table.clone()).unwrap();
+        } else {
+            z = z.normalize_to_tai(table.clone()).unwrap();
+        }
+        let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+        b.observe(packet(1, 4, 0, Some(a)), false).unwrap();
+        b.observe(packet(2, 4, 20_000_000, Some(z)), false).unwrap();
+        let t = b.finish().unwrap();
+        assert!(!t.findings().iter().any(|f| f.code == 17));
+        assert!(t.quality(1, 4).unwrap().drift_ppm.is_none());
+        // Drift and jump both consume absolute_delta: neither may claim a
+        // physical bracket from this partly qualified pair. Stream is S06b2.
+    }
+}
+
+/// Requirements: L1-F2COR-002, L2-F2COR-102, L3-F2COR-102
+/// Requirements: L1-TAI-001, L2-TAI-101, L3-TAI-101
+/// Interpretations: RDG-010
+#[test]
+fn review_negative_step_shifts_skip_a_second_without_inventing_sixty() {
+    // S04 caller fixture: hypothetical2028-01-01 B=1830297600, offset37->36.
+    // UTC23:59:58 is TAI B+35; +1s reaches midnight at B+36; +2s reaches
+    // UTC00:00:01 at B+37. No inserted second60 exists at a negative step.
+    let old = LeapSecondTable::builtin();
+    let mut info = old.metadata().clone();
+    info.id = "s06b-negative-step".into();
+    info.source = "synthetic caller data, not an IERS prediction".into();
+    info.known_current_through = UnixSeconds::new(1_861_920_000);
+    let table = old
+        .extended(
+            vec![LeapSecondEntry {
+                effective_unix: UnixSeconds::new(1_830_297_600),
+                tai_utc_offset: TaiUtcOffset::new(36),
+            }],
+            info,
+        )
+        .unwrap();
+    let r = ReferenceInput::format1(
+        &[0x41, 2, 0, 0, 0, 0x58, 0x59, 0x23, 0x31, 0x12, 0x27, 0x20],
+        12,
+        TimeF1Layout::SourceWithIts17,
+        ScalePolicy::default(),
+    )
+    .unwrap()
+    .normalize_to_tai(table)
+    .unwrap();
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    b.observe(packet(1, 4, 0, Some(r)), false).unwrap();
+    let keys: Vec<_> = (0..6)
+        .map(|i| {
+            b.observe(packet(i + 2, 4, i * 5_000_000, None), false)
+                .unwrap()
+        })
+        .collect();
+    let t = b.finish().unwrap();
+    for (i, key) in keys.into_iter().enumerate() {
+        let answer = t.lookup(key).unwrap();
+        assert!(
+            answer.reading.is_some(),
+            "negative step must retain an ordinary readable answer at sample {i}"
+        );
+        let r = answer.reading.unwrap();
+        assert_ne!(r.seconds, 60);
+        assert_eq!(r.nanoseconds, if i % 2 == 0 { 0 } else { 500_000_000 });
+        assert_eq!(
+            (r.year, r.day_of_year, r.hours, r.minutes, r.seconds),
+            if i < 2 {
+                (Some(2027), 365, 23, 59, 58)
+            } else {
+                (Some(2028), 1, 0, 0, (i / 2 - 1) as u8)
+            }
+        );
+    }
+}
+
+/// Requirements: L1-COR-008, L2-COR-108, L3-COR-108
+/// Requirements: L1-FND-002, L2-FND-102, L3-FND-102
+#[test]
+fn review_raw_rate_qualification_preserves_default_and_overridden_gap_level() {
+    let table = LeapSecondTable::builtin();
+    for level in [None, Some(Severity::Information)] {
+        let mut policy = OfflinePolicy::default();
+        if let Some(level) = level {
+            policy.finding_levels.insert(16, level);
+        }
+        let mut b = TimelineBuilder::new(policy).unwrap();
+        b.observe(
+            packet(
+                1,
+                4,
+                0,
+                Some(network(1, 4, 0, [1, 3_692_304_000, 0], true, &table)),
+            ),
+            false,
+        )
+        .unwrap();
+        b.observe(
+            packet(
+                2,
+                4,
+                20_000_000,
+                Some(network(
+                    2,
+                    4,
+                    20_000_000,
+                    [0x21, 1_483_315_239, 0],
+                    true,
+                    &table,
+                )),
+            ),
+            false,
+        )
+        .unwrap();
+        let t = b.finish().unwrap();
+        let f = t.findings().iter().find(|f| f.code == 16).unwrap();
+        assert_eq!(f.severity, level.unwrap_or(Severity::Warning));
+        assert_eq!(
+            f.evidence
+                .raw_fields()
+                .iter()
+                .find(|f| f.name == "standard_minimum_1hz_applies")
+                .unwrap()
+                .observed,
+            findings::RawValue::Unsigned(0)
+        );
+    }
+}
+
+/// Requirements: L1-F2COR-001, L2-F2COR-101, L3-F2COR-101
+/// Requirements: L1-COR-004, L2-COR-104, L3-COR-104
+#[test]
+fn review_network_precision_is_one_ns_not_format1_ten_ms() {
+    let table = LeapSecondTable::builtin();
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    // RTC1s versus absolute1s+100ns: +100ns residual is above1ns, below10ms.
+    b.observe(
+        packet(
+            1,
+            4,
+            0,
+            Some(network(1, 4, 0, [1, 3_692_304_000, 0], false, &table)),
+        ),
+        false,
+    )
+    .unwrap();
+    let key = b
+        .observe(
+            packet(
+                2,
+                4,
+                10_000_000,
+                Some(network(
+                    2,
+                    4,
+                    10_000_000,
+                    [0x21, 1_483_315_238, 100],
+                    false,
+                    &table,
+                )),
+            ),
+            false,
+        )
+        .unwrap();
+    let t = b.finish().unwrap();
+    assert_eq!(
+        t.lookup(key)
+            .unwrap()
+            .basis
+            .reference
+            .unwrap()
+            .input
+            .precision_ns,
+        1
+    );
+    let f = t.findings().iter().find(|f| f.code == 17).unwrap();
+    assert_eq!(f.delta_ns, Some(100));
+}

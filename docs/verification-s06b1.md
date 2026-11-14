@@ -43,12 +43,12 @@ No runtime failure on main is claimed. Seven later tests/assertion expansions
 cover GPS/unknown scale, insertion, capture/invalid bodies, stale normalization,
 stream preflight, coarser jump/drift and undeclared policy; they are not main-first.
 Test fixture refactoring preserves literal CSDW/body words, not an encoder oracle.
-All **12 focused tests** pass. The old offline/stream/edition regressions pass,
+Initial **12 focused tests** passed. The old offline/stream/edition regressions pass,
 including the RCC123-20 §5.6 and contract§7 literal worked-example baselines.
 S05 era context/pivots are caller-supplied; this slice does not automatically
 promote a timeline calendar into independent era evidence.
 
-**35 isolated mutations** compiled and failed assertions; all sources restored:
+Initial **35 isolated mutations** compiled and failed assertions; all sources restored:
 offset sign; GPS19 lost; native scale relabelled; ambiguity normalized/shifted;
 network re-normalization bypass; insertion flattened; only-one-endpoint raw flag;
 invalid/undeclared engine switch ignored; engine levels ignored; capture packet,
@@ -79,7 +79,7 @@ counter-only; never offline most-valid ranking, never lost-lock switching.
 No emitted-answer revision, session/discontinuity bridge or stream completion
 is claimed by this PR. Existing stream tests remain regressions, not new support.
 
-Matrix **156→160/288** counts links, not completed clauses. The matrix cannot
+Initial matrix **156→160/288** counts links, not completed clauses. The matrix cannot
 represent these partial requirements; this ledger supplies the limits.
 New source/format optionality, network/normalization fields, NetworkEvidence year
 origin and qualified OfflineAnswer.reading are breaking migration points listed
@@ -88,3 +88,35 @@ in CHANGELOG. Existing callers can keep unnormalized Format1 behaviour.
 Full bounded CI equivalent: feature tests, MSRV1.85, no_std WASM±serde,
 clippy/fmt/rustdoc, CLI build/clippy, benches, locked all-fuzz-target compile,
 trace freshness and cargo-deny; build jobs/test threads2. No merge/publish.
+
+## Review follow-up at 0c05a75 — tests only
+
+Five new tests pass on unchanged reviewed code: **17 focused tests** total.
+No new main-first runtime failure is claimed; no production bug was exposed.
+The local negative-check total is **35 initial + 6 review = 41** distinct
+assertion-killed mutations. Two reviewer-reported equivalent mutants are not
+counted as killed and do not need additional fixtures.
+
+Each review mutation was applied alone, compiled, and run with
+`cargo test --test s06b_offline review_` (build jobs/test threads2). Original
+source files were restored afterward and their diff checked empty.
+
+| Mutation | New assertion that fails |
+|---|---|
+| Pre1970 UTC borrows the1972 offset10 | Literal Fig11-14 year1969 UTC requires NeedsContext; it cannot gain a physical coordinate from a later baseline |
+| One normalized UTC operand falls back to native arithmetic | Both operand orientations around2017 insertion must emit no jump and no drift; mutant produces a false TF-017 from native1s versus physical2s |
+| Negative step is treated like a positive insertion | Synthetic S04 offset37→36 at B=1830297600: readable samples must skip58→00, then01, never60; mutant loses the required reading at TAI B+37 after inventing an invalid leap label |
+| Raw-rate qualification forces Information | TF-016 must keep default Warning while standard_minimum_1hz_applies=0 |
+| Raw-rate qualification forces Warning | TF-016 must keep caller override Information with the same qualification |
+| Network precision becomes10ms | Exact answer basis requires1ns; network residual+100ns must emit TF-017, above1ns but below10ms |
+
+The negative table is validated caller data, not an IERS prediction: its2028
+transition and coverage match S04's fixture. UTC23:59:58 maps to TAI B+35;
++1 physical second maps to midnight B+36; +2 maps to UTC00:00:01 at B+37.
+The1969 fixture is Unix−31536000, before S04's1972 supported UTC baseline.
+The partial-normalization test checks the public jump/quality consumers of
+absolute_delta; it does not claim a stream bracket implementation.
+
+Matrix regenerated: review links **160→162/288**, adding the FND-102 L2/L3
+severity-override test links. These do not establish all FND-102 clauses.
+Clause boundaries and the S06b2 wait remain unchanged. Full bounded CI equivalent rerun for this revision.

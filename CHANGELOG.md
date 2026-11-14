@@ -22,8 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   establish an exact bracket or displaced answer. D7 stale-offset facts remain.
 - Mixed offline jumps/drift use TAI; raw-network policy gaps remain TF-016 with
   explicit standard-minimum applicability evidence. Gap tolerance stays separate.
-- verification-s06b1 records12 focused tests, missing-API evidence and35 killed
-  mutations. Matrix156→160/288 counts links, not complete clauses. Stream work
+- verification-s06b1 records17 focused tests, missing-API evidence and35 initial
+  +6 review assertion-killed mutations. Matrix156→162/288 counts links, not complete clauses. Stream work
   is S06b2: mixed inputs are rejected before state mutation in this PR; existing
   Format1 stream behaviour remains. No new release deferral or CLI change.
 
