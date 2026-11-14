@@ -70,6 +70,8 @@ extern crate alloc;
 pub mod findings;
 /// Scale-qualified, leap-preserving Format 1 wire readings.
 pub mod format1;
+/// Format 2 conversion/admission with raw capture metadata.
+pub mod format2;
 /// Explicit time-scale evidence and policy assumptions.
 pub mod scale;
 
