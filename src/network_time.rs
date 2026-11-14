@@ -28,7 +28,8 @@ pub const NTP_UNIX_EPOCH_OFFSET: u64 = 2_208_988_800;
 /// Default TAI-UTC offset in seconds (as of January 1, 2017).
 ///
 /// This value is 37 seconds and has been stable since 2017.
-/// Use `LeapSecondTable` for accurate historical conversions.
+/// An explicit caller constant, never a fallback for an empty leap table.
+/// Use `LeapSecondTable::convert_ptp` for historical/currency-qualified UTC.
 pub const DEFAULT_TAI_UTC_OFFSET: TaiUtcOffset = TaiUtcOffset::new(37);
 
 // ── Format 2 CSDW ───────────────────────────────────────────────────
@@ -322,6 +323,7 @@ impl PtpTime {
 
     /// Exact signed Unix seconds, retaining pre-1970 results; offset is caller supplied.
     /// No leap-table lookup or historical offset inference is performed here.
+    /// Integer subtraction is exact arithmetic, not a pre1972 UTC rate model.
     /// **Traces:** L3-API-104 ← L2-API-104 ← L1-API-004
     pub fn to_signed_utc_seconds(&self, offset: TaiUtcOffset) -> SignedUnixSeconds {
         self.tai_seconds().to_signed_unix(offset)
@@ -336,7 +338,8 @@ impl PtpTime {
     /// Convert to `AbsoluteTime` using the given TAI-UTC offset.
     ///
     /// The offset accounts for accumulated leap seconds. As of 2017, the
-    /// offset is 37 seconds (TAI = UTC + 37).
+    /// offset is 37 seconds (TAI = UTC + 37). For leap labels and currency/basis
+    /// use LeapSecondTable::convert_ptp; this scalar helper has no table context.
     pub fn to_absolute(&self, offset: TaiUtcOffset) -> Result<AbsoluteTime> {
         let utc_secs = self.to_utc_seconds(offset)?;
         let (year, doy, hour, minute, second) = unix_seconds_to_ymd(utc_secs);
@@ -466,270 +469,10 @@ impl TimeScaleTagged for NetworkTime {
 
 // ── Leap Second Table ────────────────────────────────────────────────
 
-/// An entry in the leap-second table.
-///
-/// **Traces:** L1-TAI-001
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct LeapSecondEntry {
-    /// Unix timestamp (UTC) at which this offset became effective.
-    pub effective_unix: u64,
-    /// TAI-UTC offset in seconds (TAI = UTC + offset).
-    pub tai_utc_offset: i32,
-}
-
-/// Table of historical TAI-UTC leap-second offsets.
-///
-/// **Traces:** L1-TAI-001, L1-TAI-002, L1-TAI-003
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone)]
-pub struct LeapSecondTable {
-    /// Entries sorted by `effective_unix` ascending.
-    entries: alloc::vec::Vec<LeapSecondEntry>,
-}
-
-extern crate alloc;
-use alloc::vec::Vec;
-
-impl LeapSecondTable {
-    /// Create the built-in table current as of 2026.
-    ///
-    /// **Traces:** L1-TAI-002
-    pub fn builtin() -> Self {
-        // Selected entries since 1972 (when the modern leap-second system began).
-        // Prior to 1972, the TAI-UTC relationship was more complex.
-        let entries = alloc::vec![
-            LeapSecondEntry {
-                effective_unix: 63_072_000,
-                tai_utc_offset: 10
-            }, // 1972-01-01
-            LeapSecondEntry {
-                effective_unix: 78_796_800,
-                tai_utc_offset: 11
-            }, // 1972-07-01
-            LeapSecondEntry {
-                effective_unix: 94_694_400,
-                tai_utc_offset: 12
-            }, // 1973-01-01
-            LeapSecondEntry {
-                effective_unix: 126_230_400,
-                tai_utc_offset: 13
-            }, // 1974-01-01
-            LeapSecondEntry {
-                effective_unix: 157_766_400,
-                tai_utc_offset: 14
-            }, // 1975-01-01
-            LeapSecondEntry {
-                effective_unix: 189_302_400,
-                tai_utc_offset: 15
-            }, // 1976-01-01
-            LeapSecondEntry {
-                effective_unix: 220_924_800,
-                tai_utc_offset: 16
-            }, // 1977-01-01
-            LeapSecondEntry {
-                effective_unix: 252_460_800,
-                tai_utc_offset: 17
-            }, // 1978-01-01
-            LeapSecondEntry {
-                effective_unix: 283_996_800,
-                tai_utc_offset: 18
-            }, // 1979-01-01
-            LeapSecondEntry {
-                effective_unix: 315_532_800,
-                tai_utc_offset: 19
-            }, // 1980-01-01
-            LeapSecondEntry {
-                effective_unix: 362_793_600,
-                tai_utc_offset: 20
-            }, // 1981-07-01
-            LeapSecondEntry {
-                effective_unix: 394_329_600,
-                tai_utc_offset: 21
-            }, // 1982-07-01
-            LeapSecondEntry {
-                effective_unix: 425_865_600,
-                tai_utc_offset: 22
-            }, // 1983-07-01
-            LeapSecondEntry {
-                effective_unix: 489_024_000,
-                tai_utc_offset: 23
-            }, // 1985-07-01
-            LeapSecondEntry {
-                effective_unix: 567_993_600,
-                tai_utc_offset: 24
-            }, // 1988-01-01
-            LeapSecondEntry {
-                effective_unix: 631_152_000,
-                tai_utc_offset: 25
-            }, // 1990-01-01
-            LeapSecondEntry {
-                effective_unix: 662_688_000,
-                tai_utc_offset: 26
-            }, // 1991-01-01
-            LeapSecondEntry {
-                effective_unix: 709_948_800,
-                tai_utc_offset: 27
-            }, // 1992-07-01
-            LeapSecondEntry {
-                effective_unix: 741_484_800,
-                tai_utc_offset: 28
-            }, // 1993-07-01
-            LeapSecondEntry {
-                effective_unix: 773_020_800,
-                tai_utc_offset: 29
-            }, // 1994-07-01
-            LeapSecondEntry {
-                effective_unix: 820_454_400,
-                tai_utc_offset: 30
-            }, // 1996-01-01
-            LeapSecondEntry {
-                effective_unix: 867_715_200,
-                tai_utc_offset: 31
-            }, // 1997-07-01
-            LeapSecondEntry {
-                effective_unix: 915_148_800,
-                tai_utc_offset: 32
-            }, // 1999-01-01
-            LeapSecondEntry {
-                effective_unix: 1_136_073_600,
-                tai_utc_offset: 33
-            }, // 2006-01-01
-            LeapSecondEntry {
-                effective_unix: 1_230_768_000,
-                tai_utc_offset: 34
-            }, // 2009-01-01
-            LeapSecondEntry {
-                effective_unix: 1_341_100_800,
-                tai_utc_offset: 35
-            }, // 2012-07-01
-            LeapSecondEntry {
-                effective_unix: 1_435_708_800,
-                tai_utc_offset: 36
-            }, // 2015-07-01
-            LeapSecondEntry {
-                effective_unix: 1_483_228_800,
-                tai_utc_offset: 37
-            }, // 2017-01-01
-        ];
-        Self { entries }
-    }
-
-    /// Create an empty table (for testing or custom construction).
-    pub fn empty() -> Self {
-        Self {
-            entries: Vec::new(),
-        }
-    }
-
-    /// Add an entry. Maintains sort order.
-    pub fn add(&mut self, entry: LeapSecondEntry) {
-        let pos = self
-            .entries
-            .binary_search_by_key(&entry.effective_unix, |e| e.effective_unix)
-            .unwrap_or_else(|e| e);
-        self.entries.insert(pos, entry);
-    }
-
-    /// Look up the TAI-UTC offset for a given Unix timestamp (UTC).
-    ///
-    /// Returns the most recent offset that is effective at or before the given time.
-    /// Returns `DEFAULT_TAI_UTC_OFFSET` if the table is empty.
-    ///
-    /// **Traces:** L1-TAI-003
-    pub fn offset_at_unix(&self, time: UnixSeconds) -> TaiUtcOffset {
-        self.offset_at_signed_unix(time.to_signed())
-    }
-
-    // Preserve the existing lookup policy, comparing signed values rather than
-    // clamping a pre-1970 approximation. Full table validation is later S04 work.
-    fn offset_at_signed_unix(&self, time: SignedUnixSeconds) -> TaiUtcOffset {
-        if self.entries.is_empty() {
-            return DEFAULT_TAI_UTC_OFFSET;
-        }
-
-        // Find the last entry with effective_unix <= time
-        let raw = match self
-            .entries
-            .binary_search_by_key(&time.get(), |e| i128::from(e.effective_unix))
-        {
-            Ok(i) => self.entries[i].tai_utc_offset,
-            Err(0) => {
-                // Before the first entry — use first offset as best guess
-                self.entries[0].tai_utc_offset
-            }
-            Err(i) => self.entries[i - 1].tai_utc_offset,
-        };
-        TaiUtcOffset::new(raw)
-    }
-
-    /// Look up the TAI-UTC offset for a given TAI timestamp.
-    ///
-    /// Approximates by converting TAI to UTC using the current best guess,
-    /// then looking up the offset for that UTC time.
-    pub fn offset_at_tai(&self, time: TaiSeconds) -> TaiUtcOffset {
-        // First approximation: assume current default offset
-        self.offset_at_signed_unix(time.to_signed_unix(DEFAULT_TAI_UTC_OFFSET))
-    }
-
-    /// Number of entries in the table.
-    pub fn len(&self) -> usize {
-        self.entries.len()
-    }
-
-    /// Whether the table is empty.
-    pub fn is_empty(&self) -> bool {
-        self.entries.is_empty()
-    }
-
-    /// Look up the TAI-UTC offset for a Format 1 (BCD) timestamp.
-    ///
-    /// Converts the year/day-of-year to an approximate Unix timestamp
-    /// and delegates to `offset_at_unix`. This allows F1 time sources
-    /// (IRIG-B, GPS, internal clock) to use the same leap second table
-    /// as PTP sources.
-    ///
-    /// **Traces:** GAP-04
-    pub fn offset_for_f1(&self, year: u16, day_of_year: u16) -> TaiUtcOffset {
-        // Approximate Unix seconds for this year/doy
-        let mut unix_secs: u64 = 0;
-        for y in 1970..year {
-            let days: u64 = if is_leap_year(y) { 366 } else { 365 };
-            unix_secs += days * 86_400;
-        }
-        unix_secs += (day_of_year as u64).saturating_sub(1) * 86_400;
-        self.offset_at_unix(UnixSeconds::new(unix_secs))
-    }
-
-    /// Check if a Unix timestamp falls within a window of a leap second boundary.
-    ///
-    /// Returns `true` if `time` is within `window_secs` of any
-    /// leap second insertion point. Useful for flagging F1 time packets
-    /// that may be affected by a leap second transition.
-    ///
-    /// **Traces:** GAP-04
-    pub fn is_near_leap_second(&self, time: UnixSeconds, window_secs: u64) -> bool {
-        // Uses crate::util::abs_diff_u64 — see MSRV note in util.rs
-        self.entries
-            .iter()
-            .any(|e| crate::util::abs_diff_u64(time.get(), e.effective_unix) <= window_secs)
-    }
-}
-
-impl Default for LeapSecondTable {
-    fn default() -> Self {
-        Self::builtin()
-    }
-}
+/// Validated leap table types; compatibility paths are retained here.
+pub use crate::leap::{LeapSecondEntry, LeapSecondTable};
 
 // ── Helper: Unix seconds to year/doy/time ────────────────────────────
-
-/// Convert Unix seconds to (year, day_of_year, hour, minute, second).
-///
-/// Crate-internal entry point for use by the correlation module.
-pub(crate) fn unix_seconds_to_ymd_pub(unix_secs: u64) -> (u16, u16, u8, u8, u8) {
-    unix_seconds_to_ymd(unix_secs)
-}
 
 /// Convert Unix seconds to (year, day_of_year, hour, minute, second).
 ///

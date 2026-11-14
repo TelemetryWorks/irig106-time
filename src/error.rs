@@ -22,6 +22,12 @@ pub type Result<T> = core::result::Result<T, TimeError>;
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum TimeError {
+    /// A caller leap table is structurally invalid or contradicts known history.
+    /// **Traces:** L3-TAI-103 ← L2-TAI-103 ← L1-TAI-003
+    InvalidLeapTable {
+        /// Stable validation cause, with no repaired data installed.
+        reason: &'static str,
+    },
     /// Raw counter construction would discard high bits.
     /// **Traces:** L3-RTC-101 ← L2-RTC-101 ← L1-RTC-001
     CounterWidth {
@@ -161,6 +167,7 @@ impl From<irig106_types::TypesError> for TimeError {
 impl fmt::Display for TimeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::InvalidLeapTable { reason } => write!(f, "invalid leap table: {reason}"),
             TimeError::CounterWidth { value } => write!(f, "RTC value {value} exceeds 48 bits"),
             TimeError::AmbiguousCounterDelta => {
                 write!(f, "half-range RTC difference requires ordering context")

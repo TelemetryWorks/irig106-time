@@ -407,7 +407,7 @@ fn full_ptp_pipeline() {
 
     // Convert to AbsoluteTime using leap table
     let table = LeapSecondTable::builtin();
-    let offset = table.offset_at_tai(ptp.tai_seconds());
+    let offset = table.offset_at_tai(ptp.tai_seconds()).unwrap();
     assert_eq!(offset.get(), 37);
 
     let abs = ptp.to_absolute(offset).unwrap();
@@ -495,25 +495,37 @@ fn leap_second_table_historical_accuracy() {
 
     // 1975-06-01 ≈ Unix 168307200 → offset should be 14
     assert_eq!(
-        table.offset_at_unix(UnixSeconds::new(168_307_200)).get(),
+        table
+            .offset_at_unix(UnixSeconds::new(168_307_200))
+            .unwrap()
+            .get(),
         14
     );
 
     // 2000-06-01 ≈ Unix 959817600 → offset should be 32
     assert_eq!(
-        table.offset_at_unix(UnixSeconds::new(959_817_600)).get(),
+        table
+            .offset_at_unix(UnixSeconds::new(959_817_600))
+            .unwrap()
+            .get(),
         32
     );
 
     // 2017-06-01 ≈ Unix 1496275200 → offset should be 37
     assert_eq!(
-        table.offset_at_unix(UnixSeconds::new(1_496_275_200)).get(),
+        table
+            .offset_at_unix(UnixSeconds::new(1_496_275_200))
+            .unwrap()
+            .get(),
         37
     );
 
     // 2026 → still 37 (no new leap seconds since 2017)
     assert_eq!(
-        table.offset_at_unix(UnixSeconds::new(1_800_000_000)).get(),
+        table
+            .offset_at_unix(UnixSeconds::new(1_800_000_000))
+            .unwrap()
+            .get(),
         37
     );
 }
@@ -1159,7 +1171,7 @@ fn quality_metrics_from_correlator() {
 fn f1_leap_second_offset() {
     let table = LeapSecondTable::builtin();
     // 2017 day 1 should have offset 37 (last leap second was 2017-01-01)
-    let offset = table.offset_for_f1(2017, 1);
+    let offset = table.offset_for_f1(2017, 1).unwrap();
     assert_eq!(offset.get(), 37);
 }
 

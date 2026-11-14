@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ⚠️ S04 validated leap tables and PTP→UTC
+
+- BREAKING: LeapSecondEntry fields are UnixSeconds/TaiUtcOffset. Table add,
+  offset_at_unix/offset_at_tai/offset_for_f1 return Result; propagate failures.
+  Empty/pre-start no longer guess37/first offset. InvalidLeapTable reports
+  rejected data; add is atomic and does not silently extend coverage.
+- Table serialization gains metadata; deserialization validates through try_new.
+  Use try_new/extended/replaced with explicit identity/source/start/currency.
+  Conflicting history, duplicate/reordered entries and non-unit steps fail.
+- convert_ptp preserves raw TAI, second60, UTC/basis and coverage labels.
+  Stale uses actual last offset with TF-021; no offset means missing context.
+  Lookup uses TAI intervals, not the modern37 approximation. Exact only1972+.
+  Builtin28 transitions verified against IERS C72; expiry and2017 final change
+  are distinct. Canonical findings retain operands and TF-022 leap information.
+- Legacy correlators now propagate missing context/refuse leap-label projection;
+  CLI indirectly inherits these errors. Their bare calendar still lacks currency
+  basis; Format2 adapter/report adoption remains planned, not claimed complete.
+  Explicit-offset scalar helpers do not infer pre1972 rate/offset history.
+- Verification-s04 records12 focused tests, honest failing-first evidence and
+  32 killed mutations; matrix links do not prove every clause/release check.
+
 ### ⚠️ S03 edition-qualified Format 1
 
 - Add caller-first edition evidence resolution: explicit override wins; G\106

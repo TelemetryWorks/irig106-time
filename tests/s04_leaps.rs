@@ -53,7 +53,10 @@ fn all_builtin_transitions_match_the_independent_iers_list_and_currency() {
     }
     assert_eq!(count, 28);
     assert_eq!(table.len(), 28);
-    assert!(table.metadata().id.contains("C72"));
+    assert_eq!(
+        table.metadata().id,
+        "IERS-C72-2026-07-06/6cb6f5d4b819f2e568e25db4b0b26d89dedf031fdffb18bc94d40f4e94e268d7"
+    );
     assert!(table.metadata().source.contains("hpiers.obspm.fr"));
     assert_eq!(table.metadata().supported_start.get(), 63_072_000);
     // IERS file expires2027-06-28: conservative coverage includes all of June27,
@@ -113,6 +116,10 @@ fn every_positive_transition_selects_on_tai_and_preserves_second60() {
             assert_eq!((calendar.seconds, calendar.nanoseconds), (second, ns));
             assert_eq!(calendar.scale.stated(), TimeScale::Utc);
             assert_eq!(converted.basis().offset, Some(offset));
+            assert_eq!(
+                converted.basis().selected_transition,
+                Some(if second == 0 { pair[1] } else { pair[0] })
+            );
             assert_eq!(converted.unix_seconds().unwrap().get(), i128::from(unix));
             assert_eq!(converted.basis().leap_second, second == 60);
             assert_eq!(
@@ -123,6 +130,12 @@ fn every_positive_transition_selects_on_tai_and_preserves_second60() {
                     .any(|f| f.code().number() == 22),
                 second == 60
             );
+            if second == 60 {
+                assert_eq!(
+                    converted.findings(location(), None).unwrap()[0].severity(),
+                    Severity::Information
+                );
+            }
         }
     }
     for (tai, year, doy) in [(78_796_810, 1972, 182), (1_483_228_836, 2016, 366)] {
@@ -179,7 +192,8 @@ fn coverage_end_is_not_last_transition_and_stale_keeps_value_and_warning() {
         }
     }
 }
-/// Requirements: L1-TAI-001, L2-TAI-101, L3-TAI-101, L1-TAI-004, L2-TAI-104, L3-TAI-104
+/// Requirements: L1-TAI-001, L2-TAI-101, L3-TAI-101, L1-TAI-004, L2-TAI-104, L3-TAI-104, L1-PTP-004, L2-PTP-104, L3-PTP-104
+/// Interpretations: RDG-010
 #[test]
 fn empty_and_pre1972_have_missing_context_not_a_default_offset() {
     for table in [LeapSecondTable::empty(), LeapSecondTable::builtin()] {
@@ -203,6 +217,19 @@ fn empty_and_pre1972_have_missing_context_not_a_default_offset() {
         raw(0, 0).to_signed_utc_seconds(TaiUtcOffset::new(10)).get(),
         -10
     );
+    // RDG-010: compatibility AbsoluteTime cannot represent2016-12-31 second60.
+    let leap = NetworkTime::Ptp(raw(1_483_228_836, 0));
+    let table = LeapSecondTable::builtin();
+    let mut offline = TimeCorrelator::new();
+    let mut stream = StreamingTimeCorrelator::new(NanosDuration::new(1_000_000_000));
+    for result in [
+        offline.add_reference_f2(1, Rtc::ZERO, &leap, &table),
+        stream.add_reference_f2(1, Rtc::ZERO, &leap, &table),
+    ] {
+        assert!(matches!(result, Err(TimeError::NeedsContext { .. })));
+    }
+    assert_eq!((offline.len(), stream.len()), (0, 0));
+
     assert!(
         LeapSecondTable::builtin()
             .convert_ptp(raw(1_500_000_000, 1_000_000_000))
@@ -299,4 +326,56 @@ fn extension_cannot_silently_shorten_known_coverage() {
     let mut info = t.metadata().clone();
     info.known_current_through = UnixSeconds::new(1_514_764_800);
     assert!(t.extended(vec![], info).is_err());
+}
+
+/// Requirements: L1-TAI-004, L2-TAI-104, L3-TAI-104, L1-PTP-004, L2-PTP-104, L3-PTP-104
+#[test]
+fn stale_fallback_uses_the_supplied_table_not_constant37() {
+    // Hypothetical caller data, not IERS predictions: baseline36 or38 in2028.
+    for offset in [36, 38] {
+        let t = LeapSecondTable::try_new(
+            vec![entry(1_830_297_600, offset)],
+            metadata("custom", 1_830_297_600, 1_861_920_000),
+        )
+        .unwrap();
+        let r = t
+            .convert_ptp(raw(1_893_456_000 + offset as u64, 987))
+            .unwrap();
+        assert_eq!(r.status(), PtpConversionStatus::PossiblyOutOfDate);
+        assert_eq!(&r.basis().table, t.metadata());
+        assert_eq!(r.unix_seconds().unwrap().get(), 1_893_456_000);
+        assert_eq!(r.basis().offset, Some(TaiUtcOffset::new(offset)));
+        assert_eq!(
+            r.basis().final_transition,
+            Some(UnixSeconds::new(1_830_297_600))
+        );
+        let f = r.findings(location(), None).unwrap();
+        assert_eq!(f.len(), 1);
+        assert_eq!(f[0].code().number(), 21);
+        assert_eq!(f[0].severity(), Severity::Warning);
+        assert!(
+            f[0].evidence()
+                .raw_fields()
+                .iter()
+                .any(|f| f.name == "tai_minus_utc_seconds"
+                    && f.observed == RawValue::Signed(offset.into()))
+        );
+        assert!(
+            f[0].evidence()
+                .raw_fields()
+                .iter()
+                .any(|f| f.name == "known_current_through_unix_seconds"
+                    && f.observed == RawValue::Unsigned(1_861_920_000))
+        );
+    }
+    assert!(
+        LeapSecondTable::empty()
+            .offset_at_tai(TaiSeconds::new(1_500_000_000))
+            .is_err()
+    );
+    assert!(
+        LeapSecondTable::empty()
+            .offset_at_unix(UnixSeconds::new(1_500_000_000))
+            .is_err()
+    );
 }
