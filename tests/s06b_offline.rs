@@ -815,7 +815,7 @@ fn review_negative_step_shifts_skip_a_second_without_inventing_sixty() {
 }
 
 /// Requirements: L1-COR-008, L2-COR-108, L3-COR-108
-/// Requirements: L1-FND-002, L2-FND-102, L3-FND-102
+/// Requirements: L1-FND-001, L2-FND-101, L3-FND-101
 #[test]
 fn review_raw_rate_qualification_preserves_default_and_overridden_gap_level() {
     let table = LeapSecondTable::builtin();

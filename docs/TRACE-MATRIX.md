@@ -401,8 +401,8 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-FND-001 | L2-FND-101 | `tests/s01_existing.rs::available_ntp_and_edition_levels_keep_year_pending`<br>`tests/s01_existing.rs::both_engines_keep_related_identity_and_signed_residual`<br>`tests/s01_existing.rs::both_engines_keep_structured_malformed_evidence_under_level_override`<br>`tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::every_catalog_level_and_pending_identity_is_explicit`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::raw_evidence_offsets_relations_and_validity_survive_override`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value`<br>`tests/s02_readings.rs::malformed_digit_zero_bit_finding_honours_both_engine_level_overrides`<br>`tests/s05_ntp.rs::tf030_nonzero_era_keeps_exact_evidence_and_unix_mapping`<br>`tests/s06a_format2.rs::review_each_converted_finding_uses_policy_level_without_changing_value`<br>`tests/s06a_format2.rs::review_invalid_status_retains_readable_diagnostic_value` | Implemented |
-| L1-FND-002 | L2-FND-102 | `tests/s06b_offline.rs::review_raw_rate_qualification_preserves_default_and_overridden_gap_level` | Implemented |
+| L1-FND-001 | L2-FND-101 | `tests/s01_existing.rs::available_ntp_and_edition_levels_keep_year_pending`<br>`tests/s01_existing.rs::both_engines_keep_related_identity_and_signed_residual`<br>`tests/s01_existing.rs::both_engines_keep_structured_malformed_evidence_under_level_override`<br>`tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::every_catalog_level_and_pending_identity_is_explicit`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::raw_evidence_offsets_relations_and_validity_survive_override`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value`<br>`tests/s02_readings.rs::malformed_digit_zero_bit_finding_honours_both_engine_level_overrides`<br>`tests/s05_ntp.rs::tf030_nonzero_era_keeps_exact_evidence_and_unix_mapping`<br>`tests/s06a_format2.rs::review_each_converted_finding_uses_policy_level_without_changing_value`<br>`tests/s06a_format2.rs::review_invalid_status_retains_readable_diagnostic_value`<br>`tests/s06b_offline.rs::review_raw_rate_qualification_preserves_default_and_overridden_gap_level` | Implemented |
+| L1-FND-002 | L2-FND-102 | _(none)_ | Draft |
 | L1-FND-003 | L2-FND-103 | `tests/offline_timeline.rs::review_rtc_sync_error_is_tf024_warning_value_kept`<br>`tests/offline_timeline.rs::review_sync_finding_retains_counter_evidence`<br>`tests/stream_timeline.rs::admission_findings_and_raw_sync_counter` | Implemented |
 | L1-FND-004 | L2-FND-104 | _(none)_ | Draft |
 | L1-FND-005 | L2-FND-105 | _(none)_ | Draft |
@@ -411,8 +411,8 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L2-FND-101 | L3-FND-101 | `tests/s01_existing.rs::available_ntp_and_edition_levels_keep_year_pending`<br>`tests/s01_existing.rs::both_engines_keep_related_identity_and_signed_residual`<br>`tests/s01_existing.rs::both_engines_keep_structured_malformed_evidence_under_level_override`<br>`tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::every_catalog_level_and_pending_identity_is_explicit`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::raw_evidence_offsets_relations_and_validity_survive_override`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value`<br>`tests/s02_readings.rs::malformed_digit_zero_bit_finding_honours_both_engine_level_overrides`<br>`tests/s05_ntp.rs::tf030_nonzero_era_keeps_exact_evidence_and_unix_mapping`<br>`tests/s06a_format2.rs::review_each_converted_finding_uses_policy_level_without_changing_value`<br>`tests/s06a_format2.rs::review_invalid_status_retains_readable_diagnostic_value` | Implemented |
-| L2-FND-102 | L3-FND-102 | `tests/s06b_offline.rs::review_raw_rate_qualification_preserves_default_and_overridden_gap_level` | Implemented |
+| L2-FND-101 | L3-FND-101 | `tests/s01_existing.rs::available_ntp_and_edition_levels_keep_year_pending`<br>`tests/s01_existing.rs::both_engines_keep_related_identity_and_signed_residual`<br>`tests/s01_existing.rs::both_engines_keep_structured_malformed_evidence_under_level_override`<br>`tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::every_catalog_level_and_pending_identity_is_explicit`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::raw_evidence_offsets_relations_and_validity_survive_override`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value`<br>`tests/s02_readings.rs::malformed_digit_zero_bit_finding_honours_both_engine_level_overrides`<br>`tests/s05_ntp.rs::tf030_nonzero_era_keeps_exact_evidence_and_unix_mapping`<br>`tests/s06a_format2.rs::review_each_converted_finding_uses_policy_level_without_changing_value`<br>`tests/s06a_format2.rs::review_invalid_status_retains_readable_diagnostic_value`<br>`tests/s06b_offline.rs::review_raw_rate_qualification_preserves_default_and_overridden_gap_level` | Implemented |
+| L2-FND-102 | L3-FND-102 | _(TBD)_ | Draft |
 | L2-FND-103 | L3-FND-103 | `tests/offline_timeline.rs::review_rtc_sync_error_is_tf024_warning_value_kept`<br>`tests/offline_timeline.rs::review_sync_finding_retains_counter_evidence`<br>`tests/stream_timeline.rs::admission_findings_and_raw_sync_counter` | Implemented |
 | L2-FND-104 | L3-FND-104 | _(TBD)_ | Draft |
 | L2-FND-105 | L3-FND-105 | _(TBD)_ | Draft |
@@ -636,7 +636,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | COR | 13 | 13 | 13 | 11 | 11 | 11 | 11 |
 | ANS | 5 | 5 | 5 | 2 | 2 | 2 | 2 |
 | POL | 3 | 4 | 4 | 3 | 3 | 3 | 3 |
-| FND | 5 | 5 | 5 | 3 | 3 | 3 | 3 |
+| FND | 5 | 5 | 5 | 2 | 2 | 2 | 2 |
 | RDG | 2 | 14 | 14 | 2 | 2 | 2 | 2 |
 | STRM | 1 | 7 | 7 | 7 | 7 | 7 | 7 |
 | ERR | 5 | 5 | 5 | 4 | 4 | 4 | 4 |
@@ -645,13 +645,13 @@ This matrix is the single source of truth for live status; the requirement docum
 | CLI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
 | REL | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
 | TST | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
-| **Total** | **124** | **144** | **144** | **81** | **81** | **81** | **81** |
+| **Total** | **124** | **144** | **144** | **80** | **80** | **80** | **80** |
 
 The countable requirement set is every L2 and L3 requirement plus the 0 L1 *leaf* requirement(s) (L1s with no L2 decomposition yet). Composite L1s are verified through their children.
 
-**Tested by at least one test marker**: 162 of 288 (56.2%).
+**Tested by at least one test marker**: 160 of 288 (55.6%).
 
-**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 162 of 288 (56.2%).
+**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 160 of 288 (55.6%).
 
 ### Orphan check
 

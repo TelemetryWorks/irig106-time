@@ -117,6 +117,16 @@ The1969 fixture is Unix−31536000, before S04's1972 supported UTC baseline.
 The partial-normalization test checks the public jump/quality consumers of
 absolute_delta; it does not claim a stream bracket implementation.
 
-Matrix regenerated: review links **160→162/288**, adding the FND-102 L2/L3
-severity-override test links. These do not establish all FND-102 clauses.
+After trace review, matrix links remain **160/288**. The TF-016 severity test
+uses FND-101 alongside COR-108; it does not establish FND-102
+(all contract6 degraded cases, including pending TF-032/S08). The earlier
+160→162 rollup was an overclaim and is withdrawn. Partial clause coverage
+belongs in this record, not a marker that promotes an unverified whole statement.
 Clause boundaries and the S06b2 wait remain unchanged. Full bounded CI equivalent rerun for this revision.
+
+Trace-only follow-up at e4e2120: change only the FND-102 test marker to FND-101,
+keeping COR-108. No test logic or production change. Counts remain17 focused
+tests /41 killed mutations; matrix returns160/288. Re-executed the17 focused
+tests, format and trace checks; prior full local CI evidence is unchanged.
+Going forward, a marker that promotes a requirement to Implemented requires
+whole-statement verification; partial coverage is recorded only in this ledger.
