@@ -383,3 +383,126 @@ fn gregorian_dates_not_ly_bits_and_field_boundaries_govern_validation() {
     assert!(max.validate().is_ok());
     assert!(max.with_year(1900).is_err());
 }
+
+/// Requirements: L1-ERR-003, L2-ERR-103, L3-ERR-103, L1-BCD-004, L2-BCD-104, L3-BCD-104
+#[test]
+fn legacy_decoders_reject_decimal_tens_six_and_seven_as_ranges() {
+    // 106-24R1 Figures 11-13/14, printed 11-25/PDF33:
+    // seconds tens occupy word0 bits14..12: 6/7 -> 0x6000/0x7000.
+    // minutes tens occupy word1 bits6..4: 6/7 -> 0x0060/0x0070.
+    // Units are zero; DOY=1 or DMY=2000-01-01. All reserved bits are zero.
+    // These are decimal digits, so the error must be total range, not BCD.
+    let cases = [
+        (
+            "seconds",
+            60,
+            [0, 0x60, 0, 0, 1, 0],
+            [0, 0x60, 0, 0, 1, 1, 0, 0x20],
+        ),
+        (
+            "seconds",
+            70,
+            [0, 0x70, 0, 0, 1, 0],
+            [0, 0x70, 0, 0, 1, 1, 0, 0x20],
+        ),
+        (
+            "minutes",
+            60,
+            [0, 0, 0x60, 0, 1, 0],
+            [0, 0, 0x60, 0, 1, 1, 0, 0x20],
+        ),
+        (
+            "minutes",
+            70,
+            [0, 0, 0x70, 0, 1, 0],
+            [0, 0, 0x70, 0, 1, 1, 0, 0x20],
+        ),
+    ];
+    for (field, value, day, dmy) in cases {
+        let expected = TimeError::OutOfRange {
+            field,
+            value,
+            max: 59,
+        };
+        assert_eq!(DayFormatTime::from_le_bytes(&day).unwrap_err(), expected);
+        assert_eq!(DmyFormatTime::from_le_bytes(&dmy).unwrap_err(), expected);
+    }
+    // Positive control: 59 seconds and 59 minutes use valid decimal/range maxima.
+    assert!(DayFormatTime::from_le_bytes(&[0, 0x59, 0x59, 0, 1, 0]).is_ok());
+    assert!(DmyFormatTime::from_le_bytes(&[0, 0x59, 0x59, 0, 1, 1, 0, 0x20]).is_ok());
+}
+
+/// Requirements: L1-ERR-003, L2-ERR-103, L3-ERR-103, L1-BCD-004, L2-BCD-104, L3-BCD-104
+#[test]
+fn legacy_constructors_reject_decimal_tens_six_and_seven_as_ranges() {
+    // Same independently derived 60/70 field totals as the figure byte fixtures.
+    for value in [60u8, 70] {
+        for (field, minutes, seconds) in [("seconds", 0, value), ("minutes", value, 0)] {
+            let expected = TimeError::OutOfRange {
+                field,
+                value: u32::from(value),
+                max: 59,
+            };
+            assert_eq!(
+                DayFormatTime::new(1, 0, minutes, seconds, 0).unwrap_err(),
+                expected
+            );
+            assert_eq!(
+                DmyFormatTime::new(2000, 1, 1, 0, minutes, seconds, 0).unwrap_err(),
+                expected
+            );
+        }
+    }
+    assert!(DayFormatTime::new(1, 0, 59, 59, 0).is_ok());
+    assert!(DmyFormatTime::new(2000, 1, 1, 0, 59, 59, 0).is_ok());
+}
+
+/// Requirements: L1-ERR-002, L2-ERR-102, L3-ERR-102, L1-BCD-003, L2-BCD-103, L3-BCD-103, L1-FND-001, L2-FND-101, L3-FND-101
+#[test]
+fn malformed_digit_zero_bit_finding_honours_both_engine_level_overrides() {
+    // Figure 11-13: word0 seconds-units=A and word1 reserved bit15.
+    let mut bytes = DOY;
+    bytes[5] = 0x3a;
+    bytes[7] |= 0x80;
+    let mut policy = OfflinePolicy::default();
+    policy.finding_levels.insert(5, Severity::Information);
+    let mut offline = TimelineBuilder::new(policy.clone()).unwrap();
+    offline
+        .observe_format1(packet(88), input(&bytes, 10), false)
+        .unwrap();
+    let timeline = offline.finish().unwrap();
+    let mut stream_policy = StreamPolicy::new(
+        1,
+        BufferCaps {
+            packets: 2,
+            bytes: 128,
+            references: 2,
+        },
+    );
+    stream_policy.offline = policy;
+    let mut stream = StreamTimeline::new(
+        stream_policy,
+        Some(&[StreamChannel {
+            id: 7,
+            timein: true,
+            external: true,
+        }]),
+    )
+    .unwrap();
+    let batch = stream
+        .observe_format1(packet(88), input(&bytes, 10), 0, 32, false)
+        .unwrap();
+    for findings in [timeline.findings(), batch.findings.as_slice()] {
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.code == 4 && f.evidence.decode_error().is_some())
+        );
+        let warning = findings.iter().find(|f| f.code == 5).unwrap();
+        assert_eq!(warning.severity, Severity::Information);
+        assert_eq!(
+            warning.evidence.raw_fields()[0].observed,
+            findings::RawValue::Unsigned(0x8000)
+        );
+    }
+}

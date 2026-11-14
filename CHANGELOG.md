@@ -27,7 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Strict legacy body-only parsers remain unscaled and reject reserved bits and
   second60; canonical Format1 decoding preserves warnings and eligible leap
   labels. No CLI output path is switched in this slice. See verification-s02:
-  12 focused tests, honest failing-first history, 17 assertion-killed mutations;
+  15 focused tests, honest failing-first history, 17 initial plus 18 review
+  assertion-killed mutations;
   matrix links 116→128/288 express links, not complete clause compliance.
 
 ### ⚠️ S01b shared-types adoption

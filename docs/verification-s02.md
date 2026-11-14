@@ -19,7 +19,8 @@ fields, finding catalog rows or requirement statements change.
   against the first uncommitted implementation and failed because the independent
   TF-005 warning was lost. Its fix inspects bounded masks independently of BCD
   validity. Other refinements arrived after implementation; no main-first claim.
-- Final focused suite: **12 tests** (`s02_existing`: five; `s02_readings`: seven).
+- Final focused suite after review: **15 tests** (`s02_existing`: five;
+  `s02_readings`: ten).
   The scale-preservation assertions were added after the tests-only commits.
   Existing offline/stream, properties, wire and CLI checks remain regression
   evidence, not newly failing-first S02 tests.
@@ -83,3 +84,27 @@ operand lost; TF-005 downgraded. Sources were restored after each mutation.
 Bounded full CI equivalent includes all feature test sets, MSRV1.85, clippy,
 fmt, warnings-as-errors docs, CLI build/clippy, no_std wasm with/without serde,
 trace freshness, benches build, locked type-check of every fuzz target and deny.
+
+## PR #18 review follow-up (tests only)
+
+At reviewed head `10db1fe`, three additional tests pass without production
+changes. They are regression assertions added after implementation, not new
+main-first failures. Literal Figure 11-13/14 body bytes put seconds tens 6/7
+in word0 bits14..12 (`0x6000`/`0x7000`), and minutes tens 6/7 in word1 bits6..4
+(`0x0060`/`0x0070`), with units zero. DOY1 and DMY2000-01-01 keep other fields
+valid. Decode and constructor tests require exact OutOfRange field/value/max59
+for both formats, with 59/59 positive controls; no invalid-decimal result fits.
+A third test combines malformed seconds and reserved word1 bit15 with TF-005
+set to Information in each engine, requiring the overridden level and raw mask
+alongside retained TF-004 cause.
+
+Eighteen additional isolated mutations are assertion-killed: each of the eight
+legacy seconds/minutes guards (Day/DMY, decode/constructor) relaxed to >79
+accepts 60 and fails the new corresponding test; separately exempting exactly
+70 at each guard proves the tens-seven fixture catches it too. Replacing the
+TF-005 level argument with None at each engine's retain_decode_error call fails
+the new override test (Warning versus expected Information). Each mutation
+was compiled and executed individually, then restored. No production fix was
+needed; the full CI equivalent is rerun on the restored, unchanged code.
+Matrix marker coverage remains 128/288; extra assertions strengthen existing
+links rather than claim additional covered clauses.
