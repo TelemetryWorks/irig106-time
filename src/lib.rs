@@ -138,6 +138,9 @@ pub use streaming::{StreamingRef, StreamingTimeCorrelator};
 pub use version::{Irig106Version, detect_data_type_version, detect_version};
 
 /// Unit and epoch newtypes from [`irig106_types`], re-exported for convenience.
-pub use irig106_types::{NanosDuration, TaiSeconds, TaiUtcOffset, UnixSeconds};
+pub use irig106_types::{
+    NanosDuration, SignedNanos, SignedRtcTicks, SignedUnixSeconds, TaiSeconds, TaiUtcOffset,
+    UnixSeconds,
+};
 
 pub use scale::{ScaleEvidence, ScaleOrigin, ScalePolicy, Scaled, TimeScale, TimeScaleTagged};

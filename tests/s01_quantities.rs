@@ -72,7 +72,7 @@ fn signed_duration_boundaries_and_shared_magnitude() {
         (150_000, 15_000_000),
         (-150_000, -15_000_000),
     ] {
-        let d = SignedRtcTicks::new(ticks).to_nanos().unwrap();
+        let d = signed_ticks_to_nanos(SignedRtcTicks::new(ticks)).unwrap();
         assert_eq!(d.get(), ns);
         assert_eq!(
             d.magnitude().unwrap(),
@@ -90,7 +90,7 @@ fn signed_duration_boundaries_and_shared_magnitude() {
     );
     for ticks in [limit + 1, -limit - 1, i128::MIN, i128::MAX] {
         assert!(matches!(
-            SignedRtcTicks::new(ticks).to_nanos(),
+            signed_ticks_to_nanos(SignedRtcTicks::new(ticks)),
             Err(TimeError::QuantityOverflow { .. })
         ));
     }
@@ -103,11 +103,11 @@ fn signed_duration_boundaries_and_shared_magnitude() {
     );
     for ns in [u64::MAX as i128 + 1, i128::MIN] {
         assert!(matches!(
-            SignedNanos::new(ns).magnitude(),
+            signed_nanos_magnitude(SignedNanos::new(ns)),
             Err(TimeError::QuantityOverflow { .. })
         ));
     }
-    assert!(SignedNanos::new(-1).to_unsigned().is_err());
+    assert!(signed_nanos_to_unsigned(SignedNanos::new(-1)).is_err());
     assert_eq!(SignedNanos::new(1).to_unsigned().unwrap().get(), 1);
 }
 /// Requirements: L1-RTC-003, L2-RTC-103, L3-RTC-103, L1-RTC-004, L2-RTC-104, L3-RTC-104

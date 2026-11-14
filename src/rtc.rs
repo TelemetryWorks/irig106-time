@@ -9,13 +9,20 @@
 //! let _: irig106_types::TaiSeconds = irig106_time::TaiSeconds::new(100);
 //! let _: irig106_types::UnixSeconds = irig106_time::UnixSeconds::new(63);
 //! ```
+//! Ticks cannot be interchanged with unsigned nanoseconds:
+//! ```compile_fail
+//! use irig106_time::{NanosDuration, rtc::SignedRtcTicks};
+//! let nanos: NanosDuration = SignedRtcTicks::new(1);
+//! ```
 //! Epochs cannot be interchanged implicitly:
 //! ```compile_fail
 //! use irig106_time::{TaiSeconds, UnixSeconds};
 //! let utc: UnixSeconds = TaiSeconds::new(100);
 //! ```
 use crate::{NanosDuration, Result, TimeError};
-pub use irig106_types::Rtc;
+/// Shared signed quantities; Option-returning inherent conversions never saturate.
+/// **Traces:** L3-API-104 ← L2-API-104 ← L1-API-004
+pub use irig106_types::{Rtc, SignedNanos, SignedRtcTicks};
 
 /// Reject out-of-width input; [`Rtc::from_raw`] remains the explicit masking API.
 /// **Traces:** L3-RTC-101 ← L2-RTC-101 ← L1-RTC-001
@@ -25,64 +32,26 @@ pub fn checked_rtc(value: u64) -> Result<Rtc> {
     }
     Ok(Rtc::from_raw(value))
 }
-/// Signed, unwrapped ticks, not an absolute timestamp or nanoseconds.
+/// Checked shared tick-to-nanosecond conversion with this crate's typed error.
 /// **Traces:** L3-RTC-104 ← L2-RTC-104 ← L1-RTC-004
-/// **Traces:** L3-API-104 ← L2-API-104 ← L1-API-004
-/// ```compile_fail
-/// use irig106_time::{NanosDuration, rtc::SignedRtcTicks};
-/// let nanos: NanosDuration = SignedRtcTicks::new(1);
-/// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SignedRtcTicks(i128);
-impl SignedRtcTicks {
-    /// Explicit unwrapped tick count; conversion, not construction, checks ns range.
-    pub const fn new(ticks: i128) -> Self {
-        Self(ticks)
-    }
-    /// Raw signed tick count.
-    pub const fn get(self) -> i128 {
-        self.0
-    }
-    /// Multiply by exactly 100 ns per tick, preserving sign and rejecting overflow.
-    pub fn to_nanos(self) -> Result<SignedNanos> {
-        self.0
-            .checked_mul(100)
-            .map(SignedNanos)
-            .ok_or(TimeError::QuantityOverflow {
-                quantity: "RTC ticks to nanoseconds",
-            })
-    }
+pub fn signed_ticks_to_nanos(ticks: SignedRtcTicks) -> Result<SignedNanos> {
+    ticks.to_nanos().ok_or(TimeError::QuantityOverflow {
+        quantity: "RTC ticks to nanoseconds",
+    })
 }
-/// Signed nanoseconds; the shared [`NanosDuration`] magnitude is unsigned.
+/// Checked shared unsigned magnitude; callers retain sign in the original value.
 /// **Traces:** L3-RTC-104 ← L2-RTC-104 ← L1-RTC-004
-/// **Traces:** L3-API-104 ← L2-API-104 ← L1-API-004
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SignedNanos(i128);
-impl SignedNanos {
-    /// Explicit signed nanoseconds, with no epoch assumption.
-    pub const fn new(nanos: i128) -> Self {
-        Self(nanos)
-    }
-    /// Raw signed nanoseconds.
-    pub const fn get(self) -> i128 {
-        self.0
-    }
-    /// Checked shared unsigned magnitude. Inspect [`Self::get`] to retain sign.
-    pub fn magnitude(self) -> Result<NanosDuration> {
-        u64::try_from(self.0.unsigned_abs())
-            .map(NanosDuration::new)
-            .map_err(|_| TimeError::QuantityOverflow {
-                quantity: "nanosecond magnitude to u64",
-            })
-    }
-    /// Convert to shared unsigned duration only if nonnegative and within u64.
-    pub fn to_unsigned(self) -> Result<NanosDuration> {
-        u64::try_from(self.0)
-            .map(NanosDuration::new)
-            .map_err(|_| TimeError::QuantityOverflow {
-                quantity: "signed to unsigned nanoseconds",
-            })
-    }
+pub fn signed_nanos_magnitude(nanos: SignedNanos) -> Result<NanosDuration> {
+    nanos.magnitude().ok_or(TimeError::QuantityOverflow {
+        quantity: "nanosecond magnitude to u64",
+    })
+}
+/// Checked shared unsigned conversion, rejecting negative or out-of-range input.
+/// **Traces:** L3-RTC-104 ← L2-RTC-104 ← L1-RTC-004
+pub fn signed_nanos_to_unsigned(nanos: SignedNanos) -> Result<NanosDuration> {
+    nanos.to_unsigned().ok_or(TimeError::QuantityOverflow {
+        quantity: "signed to unsigned nanoseconds",
+    })
 }
 /// Caller ordering context, never an inference of multiple wraps.
 /// **Traces:** L3-RTC-103 ← L2-RTC-103 ← L1-RTC-003
@@ -119,7 +88,7 @@ impl SessionRtc {
             CounterOrder::BackwardWithinOneWrap if forward != 0 => forward - wrap,
             _ => forward,
         };
-        Ok(SignedRtcTicks(ticks))
+        Ok(SignedRtcTicks::new(ticks))
     }
 }
 pub(crate) fn same_session(a: usize, b: usize) -> Result<()> {

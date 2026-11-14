@@ -42,7 +42,7 @@ use irig106_types::NanosDuration;
 /// use irig106_time::{AbsoluteTime, NanosDuration, Rtc};
 ///
 /// // Keep a 60-second window
-/// let mut sc = StreamingTimeCorrelator::new(NanosDuration::from_secs(60));
+/// let mut sc = StreamingTimeCorrelator::new(NanosDuration::new(60_000_000_000));
 ///
 /// sc.add_reference(1, Rtc::from_raw(10_000_000),
 ///     AbsoluteTime::new(100, 12, 0, 0, 0).unwrap());
@@ -84,7 +84,7 @@ impl StreamingTimeCorrelator {
     /// latest-seen RTC are evicted on the next insert.
     ///
     /// A typical value for 1 Hz time packets with 30 seconds of lookback:
-    /// `NanosDuration::from_secs(30)`.
+    /// `NanosDuration::from_secs(30)` (checked, returning Option).
     pub fn new(max_age: NanosDuration) -> Self {
         Self {
             channel_refs: BTreeMap::new(),
@@ -141,7 +141,7 @@ impl StreamingTimeCorrelator {
         let abs_time = match network_time {
             crate::network_time::NetworkTime::Ntp(ntp) => ntp.to_absolute()?,
             crate::network_time::NetworkTime::Ptp(ptp) => {
-                let utc_secs = ptp.to_utc_seconds(leap_table.offset_at_tai(ptp.tai_seconds()));
+                let utc_secs = ptp.to_utc_seconds(leap_table.offset_at_tai(ptp.tai_seconds()))?;
                 let (year, doy, hour, minute, second) =
                     crate::network_time::unix_seconds_to_ymd_pub(utc_secs);
                 AbsoluteTime::new(doy, hour, minute, second, ptp.nanoseconds)?

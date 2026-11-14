@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ⚠️ S01b shared-types adoption
+
+- Advance irig106-types to `7bfe47fc903efea342f3efba1ad0f527dd059a0d` (types
+  PR #8); root/CLI/fuzz lockfiles follow it. No other dependency version changes.
+  Re-export shared SignedNanos/SignedRtcTicks/SignedUnixSeconds; local signed
+  definitions are removed. Shared inherent duration conversions return Option;
+  use `rtc::signed_ticks_to_nanos`, `signed_nanos_magnitude` and
+  `signed_nanos_to_unsigned` when a Result/QuantityOverflow boundary is needed.
+- PtpTime::to_utc_seconds now returns Result<u64>; propagate with `?`.
+  `to_signed_utc_seconds` preserves negative Unix seconds. Calendar/offline/
+  stream adapters reject an unrepresentable unsigned result before insertion
+  instead of silently clamping to 1970. Both former to_unix callers use signed
+  arithmetic; no new leap-table policy or pre-1970 calendar support is claimed.
+- NanosDuration::from_secs/from_millis/from_micros now return Option, and
+  TaiSeconds::to_unix is checked; use to_signed_unix for negative results.
+  All affected callers/examples are migrated. The CLI fixed-threshold
+  expression remains exactly 1000000000 ns. A pre-1970 PTP result now follows
+  its existing correlation-error path instead of displaying fabricated 1970 time.
+  Bench/test literal fixtures handle Option explicitly. deny.toml is unchanged.
+- API-104's shared-type gaps are closed in `docs/verification-s01.md`, with
+  adoption evidence and remaining global API/conversion limits retained.
+
 ### Added
 
 - S01 checked `rtc` quantities: `checked_rtc`, named-session `SessionRtc`,

@@ -169,7 +169,7 @@ fn ptp_to_utc_seconds() {
         nanoseconds: 0,
     };
     // TAI-UTC offset = 37 → UTC = TAI - 37
-    let utc = ptp.to_utc_seconds(TaiUtcOffset::new(37));
+    let utc = ptp.to_utc_seconds(TaiUtcOffset::new(37)).unwrap();
     assert_eq!(utc, 1_000_000_000);
 }
 

@@ -59,7 +59,10 @@ fn bench_detect_time_jump(c: &mut Criterion) {
         let corr = build_correlator(n, 4);
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
             b.iter(|| {
-                corr.detect_time_jump(black_box(1), black_box(NanosDuration::from_millis(1)))
+                corr.detect_time_jump(
+                    black_box(1),
+                    black_box(NanosDuration::from_millis(1).expect("bounded literal duration")),
+                )
             });
         });
     }

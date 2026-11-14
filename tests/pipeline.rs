@@ -187,7 +187,10 @@ fn gps_lock_time_jump_detection() {
         AbsoluteTime::new(50, 14, 0, 7, 0).unwrap(), // 1 sec after correction
     );
 
-    let jumps = correlator.detect_time_jump(3, NanosDuration::from_secs(1)); // 1 sec threshold
+    let jumps = correlator.detect_time_jump(
+        3,
+        NanosDuration::from_secs(1).expect("bounded literal duration"),
+    ); // 1 sec threshold
     assert_eq!(jumps.len(), 1);
     assert!(jumps[0].delta_nanos > 0); // jumped forward
 }
@@ -1073,7 +1076,9 @@ fn packet_standard_from_version() {
 fn streaming_correlator_basic_pipeline() {
     use irig106_time::streaming::StreamingTimeCorrelator;
 
-    let mut sc = StreamingTimeCorrelator::new(NanosDuration::from_secs(30)); // 30 sec window
+    let mut sc = StreamingTimeCorrelator::new(
+        NanosDuration::from_secs(30).expect("bounded literal duration"),
+    ); // 30 sec window
 
     // Simulate 1 Hz time packets for 5 seconds
     for i in 0..5u64 {
@@ -1095,7 +1100,9 @@ fn streaming_correlator_basic_pipeline() {
 fn streaming_correlator_eviction_pipeline() {
     use irig106_time::streaming::StreamingTimeCorrelator;
 
-    let mut sc = StreamingTimeCorrelator::new(NanosDuration::from_secs(5)); // 5 sec window
+    let mut sc = StreamingTimeCorrelator::new(
+        NanosDuration::from_secs(5).expect("bounded literal duration"),
+    ); // 5 sec window
 
     // Insert at RTC 10M (1 sec)
     sc.add_reference(

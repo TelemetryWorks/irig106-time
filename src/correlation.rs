@@ -194,7 +194,7 @@ impl TimeCorrelator {
         let abs_time = match network_time {
             crate::network_time::NetworkTime::Ntp(ntp) => ntp.to_absolute()?,
             crate::network_time::NetworkTime::Ptp(ptp) => {
-                let utc_secs = ptp.to_utc_seconds(leap_table.offset_at_tai(ptp.tai_seconds()));
+                let utc_secs = ptp.to_utc_seconds(leap_table.offset_at_tai(ptp.tai_seconds()))?;
                 let (year, doy, hour, minute, second) =
                     crate::network_time::unix_seconds_to_ymd_pub(utc_secs);
                 AbsoluteTime::new(doy, hour, minute, second, ptp.nanoseconds)?

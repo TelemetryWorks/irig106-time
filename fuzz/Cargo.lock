@@ -62,6 +62,7 @@ dependencies = [
 [[package]]
 name = "irig106-types"
 version = "0.1.0"
+source = "git+https://github.com/TelemetryWorks/irig106-types?rev=7bfe47fc903efea342f3efba1ad0f527dd059a0d#7bfe47fc903efea342f3efba1ad0f527dd059a0d"
 
 [[package]]
 name = "jobserver"
