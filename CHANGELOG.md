@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S06a Format 2 conversion/admission boundary
+
+- Add immutable format2 observations with neutral capture identity/RTC, bounded
+  raw CSDW/body and separate NTF/TS. Malformed bodies retain independent findings.
+- Expose native-time eligibility with labelled invalid/undeclared opt-ins; reserved
+  NTF, malformed bodies and unresolved/zero NTP cannot be admitted. Finding levels
+  never rewrite validity. No existing API signatures or CLI behaviour change.
+- Reuse S04 PTP table conversion (D7 last-known offset/TF-021; no offset keeps TAI)
+  and S05 NTP era/UTC/TF-029/030 evidence. Keep native scale/raw and full basis.
+  Explicit pre17 declarations attach TF-026; header versions never select edition.
+- verification-s06a records fourteen focused tests, missing-API tests-first evidence
+  and24 initial +8 review assertion-killed mutations. Matrix152→156/288 counts links, not complete
+  clauses. Engine integration and COR-108 raw-network exception remain S06b;
+  schema remains S12. No new release deferral or finding-level change.
+
 ### S05 qualified NTP era/UTC conversion
 
 - Add ntp::convert_ntp with declared→dated pivot→labelled era0 precedence.
