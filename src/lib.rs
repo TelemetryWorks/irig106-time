@@ -87,6 +87,8 @@ pub mod edition;
 pub mod error;
 /// Intra-packet timestamp format dispatch (RTC, Ch4, IEEE-1588, ERTC).
 pub mod intra_packet;
+/// Validated leap-table snapshots and qualified PTP conversions.
+pub mod leap;
 /// Time Data Format 2 (0x12) Network Time: NTP, PTP, and leap-second table.
 pub mod network_time;
 /// Ch10/Ch11 packet format provenance (106-17 split).

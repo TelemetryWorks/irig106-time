@@ -1,5 +1,9 @@
 # E1 offline core — clause-level verification record
 
+> Subsequent owner decision 2026-11-14: TF-031 WARNING is accepted (time
+> body kept, EXT/SRC qualification withheld). Only TF-032 remains level
+> pending (S08); earlier pending-level references below are historical.
+
 > **Later decision, owner 2026-11-13:** plan Q1–Q6 and C1–C4 are accepted
 > with TF-031/032 levels pending S03/S08 owner confirmation. The original
 > evidence and then-pending labels below are historical, not new results.

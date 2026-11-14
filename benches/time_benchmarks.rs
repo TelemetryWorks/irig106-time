@@ -266,7 +266,7 @@ fn main() {
     // Leap second table lookup
     let lst = irig106_time::network_time::LeapSecondTable::builtin();
     r.push(bench("leap_table_lookup", || {
-        black_box(lst.offset_at_unix(black_box(UnixSeconds::new(1_718_409_600))));
+        let _ = black_box(lst.offset_at_unix(black_box(UnixSeconds::new(1_718_409_600))));
     }));
 
     // Full F2 payload parse

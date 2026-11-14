@@ -183,7 +183,9 @@ impl TimeCorrelator {
     /// `add_reference`. For PTP sources, the leap-second table is used
     /// to convert TAI to UTC.
     ///
-    /// **Traces:** L3-F2-014 ← L2-F2COR-001..003
+    /// Compatibility result omits table/currency basis; retain convert_ptp
+    /// results for qualified answers. Leap labels need the new adapter.
+    /// **Traces:** L3-PTP-104 ← L2-PTP-104 ← L1-PTP-004
     pub fn add_reference_f2(
         &mut self,
         channel_id: u16,
@@ -194,11 +196,17 @@ impl TimeCorrelator {
         let abs_time = match network_time {
             crate::network_time::NetworkTime::Ntp(ntp) => ntp.to_absolute()?,
             crate::network_time::NetworkTime::Ptp(ptp) => {
-                let utc_secs = ptp.to_utc_seconds(leap_table.offset_at_tai(ptp.tai_seconds()))?;
-                let (year, doy, hour, minute, second) =
-                    crate::network_time::unix_seconds_to_ymd_pub(utc_secs);
-                AbsoluteTime::new(doy, hour, minute, second, ptp.nanoseconds)?
-                    .with_year(Some(year))?
+                // Compatibility calendar cannot hold second60. Canonical callers
+                // retain convert_ptp's raw TAI/currency/basis; this legacy API
+                // still returns only an ordinary calendar (S09 adapter remains).
+                leap_table
+                    .convert_ptp(*ptp)?
+                    .utc()
+                    .ok_or(crate::TimeError::NeedsContext {
+                        context: "no known applicable TAI-UTC offset",
+                    })?
+                    .to_absolute()?
+                    .value
             }
         };
         self.add_reference(channel_id, rtc, abs_time);

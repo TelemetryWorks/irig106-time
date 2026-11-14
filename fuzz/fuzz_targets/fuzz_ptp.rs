@@ -13,8 +13,10 @@ fuzz_target!(|data: &[u8]| {
 
             // Test with builtin leap table
             let table = LeapSecondTable::builtin();
-            let offset = table.offset_at_tai(ptp.tai_seconds());
-            let _ = ptp.to_absolute(offset);
+            if let Ok(offset) = table.offset_at_tai(ptp.tai_seconds()) {
+                let _ = ptp.to_absolute(offset);
+            }
+            let _ = table.convert_ptp(ptp);
         }
         Err(_) => {}
     }

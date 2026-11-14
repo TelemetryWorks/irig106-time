@@ -247,7 +247,9 @@ fn leap_second_table_builtin() {
 fn leap_second_table_lookup_2024() {
     let table = LeapSecondTable::builtin();
     // 2024-06-15 00:00:00 UTC = approx 1_718_409_600
-    let offset = table.offset_at_unix(UnixSeconds::new(1_718_409_600));
+    let offset = table
+        .offset_at_unix(UnixSeconds::new(1_718_409_600))
+        .unwrap();
     assert_eq!(offset.get(), 37);
 }
 
@@ -255,20 +257,34 @@ fn leap_second_table_lookup_2024() {
 fn leap_second_table_lookup_1980() {
     let table = LeapSecondTable::builtin();
     // 1980-06-01 = approx 328_665_600
-    let offset = table.offset_at_unix(UnixSeconds::new(328_665_600));
+    let offset = table.offset_at_unix(UnixSeconds::new(328_665_600)).unwrap();
     assert_eq!(offset.get(), 19);
 }
 
 #[test]
 fn leap_second_table_custom() {
-    let mut table = LeapSecondTable::empty();
-    table.add(LeapSecondEntry {
-        effective_unix: 2_000_000_000,
-        tai_utc_offset: 38,
-    });
+    let mut table = LeapSecondTable::try_new(
+        alloc::vec![],
+        crate::leap::LeapTableMetadata {
+            id: "custom-fixture".into(),
+            source: "caller".into(),
+            supported_start: UnixSeconds::new(2_000_000_000),
+            known_current_through: UnixSeconds::new(2_500_000_000),
+        },
+    )
+    .unwrap();
+    table
+        .add(LeapSecondEntry {
+            effective_unix: UnixSeconds::new(2_000_000_000),
+            tai_utc_offset: TaiUtcOffset::new(38),
+        })
+        .unwrap();
     assert_eq!(table.len(), 1);
     assert_eq!(
-        table.offset_at_unix(UnixSeconds::new(2_500_000_000)).get(),
+        table
+            .offset_at_unix(UnixSeconds::new(2_500_000_000))
+            .unwrap()
+            .get(),
         38
     );
 }

@@ -193,7 +193,7 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L1-PTP-002 | L2-PTP-102 | _(none)_ | Draft |
 | L1-PTP-003 | L2-PTP-103 | `tests/slice2_readings.rs::f2_data_length_bounds_and_nanosecond_boundaries` | Implemented |
-| L1-PTP-004 | L2-PTP-104 | _(none)_ | Draft |
+| L1-PTP-004 | L2-PTP-104 | `tests/s04_existing.rs::historical_tai_transition_does_not_use_the_modern_offset_guess`<br>`tests/s04_leaps.rs::coverage_end_is_not_last_transition_and_stale_keeps_value_and_warning`<br>`tests/s04_leaps.rs::empty_and_pre1972_have_missing_context_not_a_default_offset`<br>`tests/s04_leaps.rs::every_positive_transition_selects_on_tai_and_preserves_second60`<br>`tests/s04_leaps.rs::stale_fallback_uses_the_supplied_table_not_constant37` | Implemented |
 | L1-PTP-005 | L2-PTP-105 | `tests/slice2_wire.rs::t3_ptp_has_two_u32_words`<br>`tests/slice2_wire.rs::t3_ptp_never_reads_following_filler` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
@@ -202,7 +202,7 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L2-PTP-102 | L3-PTP-102 | _(TBD)_ | Draft |
 | L2-PTP-103 | L3-PTP-103 | `src/network_time_tests.rs::ptp_nanos_overflow`<br>`tests/slice2_readings.rs::f2_data_length_bounds_and_nanosecond_boundaries` | Implemented |
-| L2-PTP-104 | L3-PTP-104 | _(TBD)_ | Draft |
+| L2-PTP-104 | L3-PTP-104 | `tests/s04_existing.rs::historical_tai_transition_does_not_use_the_modern_offset_guess`<br>`tests/s04_leaps.rs::coverage_end_is_not_last_transition_and_stale_keeps_value_and_warning`<br>`tests/s04_leaps.rs::empty_and_pre1972_have_missing_context_not_a_default_offset`<br>`tests/s04_leaps.rs::every_positive_transition_selects_on_tai_and_preserves_second60`<br>`tests/s04_leaps.rs::stale_fallback_uses_the_supplied_table_not_constant37` | Implemented |
 | L2-PTP-105 | L3-PTP-105 | `src/network_time_tests.rs::parse_f2_ptp_payload`<br>`src/network_time_tests.rs::ptp_buffer_too_short`<br>`src/network_time_tests.rs::ptp_from_le_bytes`<br>`tests/pipeline.rs::full_ptp_pipeline`<br>`tests/pipeline.rs::ptp_to_le_bytes_round_trip`<br>`tests/slice2_wire.rs::t3_ptp_has_two_u32_words`<br>`tests/slice2_wire.rs::t3_ptp_never_reads_following_filler` | Implemented |
 
 ### L1-F2COR: Format 2 references
@@ -227,10 +227,10 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-TAI-001 | L2-TAI-101 | _(none)_ | Draft |
-| L1-TAI-002 | L2-TAI-102 | _(none)_ | Draft |
-| L1-TAI-003 | L2-TAI-103 | _(none)_ | Draft |
-| L1-TAI-004 | L2-TAI-104 | _(none)_ | Draft |
+| L1-TAI-001 | L2-TAI-101 | `tests/s04_existing.rs::historical_tai_transition_does_not_use_the_modern_offset_guess`<br>`tests/s04_leaps.rs::empty_and_pre1972_have_missing_context_not_a_default_offset`<br>`tests/s04_leaps.rs::every_positive_transition_selects_on_tai_and_preserves_second60`<br>`tests/s04_leaps.rs::first_entry_cannot_follow_supported_start`<br>`tests/s04_leaps.rs::invalid_tables_are_rejected_without_sorting_or_repair`<br>`tests/s04_leaps.rs::narrowed_start_uses_tai_boundary_not_repeated_unix_coordinate`<br>`tests/s04_leaps.rs::transition_cannot_follow_known_current_through`<br>`tests/s04_leaps.rs::unit_steps_require_january_or_july_midnight`<br>`tests/s04_leaps.rs::unix_lookup_respects_a_narrowed_start_with_earlier_entries`<br>`tests/s04_serde.rs::deserialization_uses_the_same_table_validation` | Implemented |
+| L1-TAI-002 | L2-TAI-102 | `tests/s04_leaps.rs::all_builtin_transitions_match_the_independent_iers_list_and_currency` | Implemented |
+| L1-TAI-003 | L2-TAI-103 | `tests/s04_existing.rs::conflicting_add_does_not_install_or_grow_the_table`<br>`tests/s04_leaps.rs::extension_cannot_silently_shorten_known_coverage`<br>`tests/s04_leaps.rs::extensions_and_replacements_are_validated_and_previous_basis_is_immutable`<br>`tests/s04_leaps.rs::invalid_tables_are_rejected_without_sorting_or_repair`<br>`tests/s04_leaps.rs::unit_steps_require_january_or_july_midnight`<br>`tests/s04_serde.rs::deserialization_uses_the_same_table_validation` | Implemented |
+| L1-TAI-004 | L2-TAI-104 | `tests/s04_leaps.rs::coverage_end_is_not_last_transition_and_stale_keeps_value_and_warning`<br>`tests/s04_leaps.rs::empty_and_pre1972_have_missing_context_not_a_default_offset`<br>`tests/s04_leaps.rs::narrowed_start_uses_tai_boundary_not_repeated_unix_coordinate`<br>`tests/s04_leaps.rs::stale_fallback_uses_the_supplied_table_not_constant37`<br>`tests/s04_leaps.rs::transition_cannot_follow_known_current_through`<br>`tests/s04_leaps.rs::unix_lookup_respects_a_narrowed_start_with_earlier_entries` | Implemented |
 | L1-TAI-005 | L2-TAI-105 | `tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance`<br>`tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value` | Implemented |
 | L1-TAI-006 | L2-TAI-106 | `tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance` | Implemented |
 | L1-TAI-007 | L2-TAI-107 | `tests/offline_timeline.rs::bounded_wire_findings_survive_reference_admission`<br>`tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` | Implemented |
@@ -239,10 +239,10 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L2-TAI-101 | L3-TAI-101 | _(TBD)_ | Draft |
-| L2-TAI-102 | L3-TAI-102 | _(TBD)_ | Draft |
-| L2-TAI-103 | L3-TAI-103 | _(TBD)_ | Draft |
-| L2-TAI-104 | L3-TAI-104 | _(TBD)_ | Draft |
+| L2-TAI-101 | L3-TAI-101 | `tests/s04_existing.rs::historical_tai_transition_does_not_use_the_modern_offset_guess`<br>`tests/s04_leaps.rs::empty_and_pre1972_have_missing_context_not_a_default_offset`<br>`tests/s04_leaps.rs::every_positive_transition_selects_on_tai_and_preserves_second60`<br>`tests/s04_leaps.rs::first_entry_cannot_follow_supported_start`<br>`tests/s04_leaps.rs::invalid_tables_are_rejected_without_sorting_or_repair`<br>`tests/s04_leaps.rs::narrowed_start_uses_tai_boundary_not_repeated_unix_coordinate`<br>`tests/s04_leaps.rs::transition_cannot_follow_known_current_through`<br>`tests/s04_leaps.rs::unit_steps_require_january_or_july_midnight`<br>`tests/s04_leaps.rs::unix_lookup_respects_a_narrowed_start_with_earlier_entries`<br>`tests/s04_serde.rs::deserialization_uses_the_same_table_validation` | Implemented |
+| L2-TAI-102 | L3-TAI-102 | `tests/s04_leaps.rs::all_builtin_transitions_match_the_independent_iers_list_and_currency` | Implemented |
+| L2-TAI-103 | L3-TAI-103 | `tests/s04_existing.rs::conflicting_add_does_not_install_or_grow_the_table`<br>`tests/s04_leaps.rs::extension_cannot_silently_shorten_known_coverage`<br>`tests/s04_leaps.rs::extensions_and_replacements_are_validated_and_previous_basis_is_immutable`<br>`tests/s04_leaps.rs::invalid_tables_are_rejected_without_sorting_or_repair`<br>`tests/s04_leaps.rs::unit_steps_require_january_or_july_midnight`<br>`tests/s04_serde.rs::deserialization_uses_the_same_table_validation` | Implemented |
+| L2-TAI-104 | L3-TAI-104 | `tests/s04_leaps.rs::coverage_end_is_not_last_transition_and_stale_keeps_value_and_warning`<br>`tests/s04_leaps.rs::empty_and_pre1972_have_missing_context_not_a_default_offset`<br>`tests/s04_leaps.rs::narrowed_start_uses_tai_boundary_not_repeated_unix_coordinate`<br>`tests/s04_leaps.rs::stale_fallback_uses_the_supplied_table_not_constant37`<br>`tests/s04_leaps.rs::transition_cannot_follow_known_current_through`<br>`tests/s04_leaps.rs::unix_lookup_respects_a_narrowed_start_with_earlier_entries` | Implemented |
 | L2-TAI-105 | L3-TAI-105 | `tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance`<br>`tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value` | Implemented |
 | L2-TAI-106 | L3-TAI-106 | `tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance` | Implemented |
 | L2-TAI-107 | L3-TAI-107 | `tests/offline_timeline.rs::bounded_wire_findings_survive_reference_admission`<br>`tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` | Implemented |
@@ -626,9 +626,9 @@ This matrix is the single source of truth for live status; the requirement docum
 | BCD | 4 | 4 | 4 | 4 | 4 | 4 | 4 |
 | F2CSDW | 4 | 4 | 4 | 3 | 3 | 3 | 3 |
 | NTP | 4 | 4 | 4 | 2 | 2 | 2 | 2 |
-| PTP | 4 | 4 | 4 | 2 | 2 | 2 | 2 |
+| PTP | 4 | 4 | 4 | 3 | 3 | 3 | 3 |
 | F2COR | 2 | 2 | 2 | 0 | 0 | 0 | 0 |
-| TAI | 7 | 7 | 7 | 3 | 3 | 3 | 3 |
+| TAI | 7 | 7 | 7 | 7 | 7 | 7 | 7 |
 | WORD | 2 | 2 | 2 | 0 | 0 | 0 | 0 |
 | ENC | 3 | 3 | 3 | 0 | 0 | 0 | 0 |
 | EDN | 3 | 4 | 4 | 4 | 4 | 4 | 4 |
@@ -645,13 +645,13 @@ This matrix is the single source of truth for live status; the requirement docum
 | CLI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
 | REL | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
 | TST | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
-| **Total** | **124** | **144** | **144** | **68** | **68** | **68** | **68** |
+| **Total** | **124** | **144** | **144** | **73** | **73** | **73** | **73** |
 
 The countable requirement set is every L2 and L3 requirement plus the 0 L1 *leaf* requirement(s) (L1s with no L2 decomposition yet). Composite L1s are verified through their children.
 
-**Tested by at least one test marker**: 136 of 288 (47.2%).
+**Tested by at least one test marker**: 146 of 288 (50.7%).
 
-**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 136 of 288 (47.2%).
+**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 146 of 288 (50.7%).
 
 ### Orphan check
 
@@ -673,7 +673,7 @@ Every entry of `docs/INTERPRETATIONS.md` with its written analysis and the tests
 | RDG-007 | ITS (Format 1 bits 15–12) is read only for recordings declared 106-17 or later | accepted | [qualified edition fields](analysis/RDG-007-edition-fields.md) | `tests/rebuild_layout.rs::t7_its_requires_explicit_applicable_layout`<br>`tests/s03_edition.rs::independent_edition_rule_boundaries_and_its_evidence`<br>`tests/s03_edition.rs::reserved_its_is_a_value_warning_only_in_an_applicable_layout` |
 | RDG-008 | The secondary header checksum sums bytes, not 16-bit words | suspect | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-008) | `tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither`<br>`tests/slice2_wire.rs::rdg008_byte_only_checksum_is_valid`<br>`tests/slice2_wire.rs::rdg008_word_only_checksum_is_not_trusted` |
 | RDG-009 | The time scale of each time format; IRIG time is UTC by assumption | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-009) | `tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance`<br>`tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` |
-| RDG-010 | Second 60 is a leap second on a day that can be 30 June or 31 December | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-010) | `tests/s02_readings.rs::leap_label_is_distinct_and_arithmetic_refuses_missing_context`<br>`tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` |
+| RDG-010 | Second 60 is a leap second on a day that can be 30 June or 31 December | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-010) | `tests/s02_readings.rs::leap_label_is_distinct_and_arithmetic_refuses_missing_context`<br>`tests/s04_leaps.rs::empty_and_pre1972_have_missing_context_not_a_default_offset`<br>`tests/s04_leaps.rs::every_positive_transition_selects_on_tai_and_preserves_second60`<br>`tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` |
 | RDG-011 | "The first dynamic data packet" is checked per session | accepted | not yet written | `tests/stream_timeline.rs::early_data_none_and_no_time_findings` |
 | RDG-012 | NTP follows UTC reckoning; era evidence, zero sentinel and leap ambiguity are explicit | accepted | [written all-edition/RFC analysis and planned edge cases](analysis/RDG-012-ntp-utc-era.md) | `tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value` |
 
