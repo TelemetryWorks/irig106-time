@@ -383,8 +383,8 @@ report which reading a recording's headers satisfy. Register entry RDG-008.
 
 ### T-10 Chapter 4 binary time
 
-**Code / GAP-03 (shared fix merged; time adoption pending):** the prototype
-`src/absolute.rs` splits the combined high/low value at bit 17 into a day
+**Code / GAP-03 (historical defects; S07 context API):** the prototype
+`src/absolute.rs` split the combined high/low value at bit 17 into a day
 and a time count. Separately, **irig106-types c59e004 remains wrong**:
 `src/binary_time.rs` `Ch4BinaryTime::from_secondary_bytes` reads
 `[unused(2), high(2), low(2), usec(2)]`; `from_intra_packet_bytes`
@@ -396,7 +396,12 @@ fixtures, before time adopts the corrected revision. The shared fix is now merge
 reserved/usec/low/high parsing and the full 32-bit binary count. This
 closes the shared-parser prerequisite, not time's remaining calendar-origin
 or prototype interpretation work. Fixing ERTC/SRC/ITS/version values in
-c59e004 alone had not fixed the Chapter 4 defect.
+c59e004 alone had not fixed the Chapter 4 defect. S01b has adopted the corrected
+shared parser. S07 replaces the prototype calendar split with explicit caller
+context/labelled partials; context-free `to_absolute()` now returns NeedsContext.
+See [S07 clause evidence](verification-s07.md); secondary/stamp answer integration
+remains S10. This implementation evidence does not settle the figure/wording
+ambiguities or constitute human interpretation review.
 
 **Page check, 2026-11-12 (visual inspection, not an implementation check):**
 The archive's `scripts/fetch.py --edition 106-24R1 --chapter 4 --chapter 9
@@ -467,7 +472,8 @@ cannot distinguish a parser that wrongly clears/rejects the binary top
 bit. Both secondary and intra-packet shared parsers must be checked.
 The prototype's 17-bit split and c59e004's word order remain separate
 GAP-03 defects; the shared word-order/count fix is merged at 48f1834,
-while adoption in time and its context-dependent calendar path are separate work.
+with adoption in S01b and the explicit-context calendar API in S07 now recorded
+in their verification records. Common secondary/stamp answer integration remains S10.
 
 **Wording caveat:** §11.2.1.1 g says "The two lsbs of the 64-bit
 packet secondary header time and IPTS shall be zero-filled." The phrase

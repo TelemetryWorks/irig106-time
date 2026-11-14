@@ -81,6 +81,8 @@ pub mod scale;
 pub mod absolute;
 /// BCD-encoded Day-of-Year and Day-Month-Year time message decoding.
 pub mod bcd;
+/// Chapter4 caller-governed calendar reconstruction and labelled partial readings.
+pub mod ch4;
 /// RTC-to-absolute-time correlation engine with multi-channel support.
 pub mod correlation;
 /// Time Data Format 1 (0x11) Channel-Specific Data Word parsing.

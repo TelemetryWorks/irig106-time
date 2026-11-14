@@ -619,51 +619,29 @@ impl core::fmt::Display for CalendarTime {
 // Chapter 4 Binary Weighted Time
 // ═══════════════════════════════════════════════════════════════════════
 
-/// Interpretation of [`Ch4BinaryTime`] as an absolute time of day.
-///
-/// `Ch4BinaryTime` is defined in [`irig106_types`], which has no notion of
-/// [`AbsoluteTime`]; this extension trait supplies the decoding. It is
-/// re-exported at the crate root, so `use irig106_time::*` or
-/// `use irig106_time::Ch4BinaryTimeExt` brings `to_absolute()` into scope.
+/// Legacy context-free Chapter4 calendar conversion.
+/// Use [`crate::ch4::Ch4Words::binary`] with an explicit origin instead.
 pub trait Ch4BinaryTimeExt {
-    /// Decode to absolute time using the prototype interpretation.
+    /// Context-free conversion cannot produce a calendar (Q-CH4, owner2026-11-12).
     ///
     /// # Warning
     ///
-    /// This method still uses an incorrect 17-bit time/day split. It does not
-    /// implement the full 32-bit binary count verified in T-10. Calendar/day
-    /// reconstruction requires explicit caller context under the owner decision
-    /// [Q-CH4, 2026-11-12](https://github.com/TelemetryWorks/irig106-time/blob/main/docs/L2_Requirements.md#l2-abs-102);
-    /// this prototype method does not implement that accepted rule;
-    /// do not use this conversion for trusted time.
-    /// Raw secondary/intra-packet decoding is unaffected by this limitation.
+    /// The prototype's17-bit time/day split has been withdrawn. This method
+    /// validates microseconds then returns [`TimeError::NeedsContext`], never an
+    /// invented day1/year/origin. Use [`crate::ch4::Ch4Words::binary`] for labelled
+    /// partial elapsed time or explicitly qualified nominal calendar reconstruction.
+    /// Raw secondary/IPTS parsing remains the shared full32-bit count.
     ///
-    /// Prototype traces (superseded): L3-CH4-002, L3-CH4-003, L3-CH4-004
+    /// **Traces:** L3-ABS-102 ← L2-ABS-102 ← L1-ABS-002
     fn to_absolute(&self) -> Result<AbsoluteTime>;
 }
 
 impl Ch4BinaryTimeExt for Ch4BinaryTime {
     fn to_absolute(&self) -> Result<AbsoluteTime> {
-        let combined = ((self.high_order as u32) << 16) | (self.low_order as u32);
-        let time_10ms = combined & 0x0001_FFFF;
-        let day_of_year = ((combined >> 17) & 0x01FF) as u16;
-
-        let total_ms = time_10ms * 10;
-        let total_secs = total_ms / 1000;
-        let remaining_ms = total_ms % 1000;
-
-        let hours = (total_secs / 3600) as u8;
-        let minutes = ((total_secs % 3600) / 60) as u8;
-        let seconds = (total_secs % 60) as u8;
-        let nanoseconds = (remaining_ms * 1_000_000) + (self.microseconds as u32 * 1_000);
-
-        AbsoluteTime::new(
-            if day_of_year == 0 { 1 } else { day_of_year },
-            hours,
-            minutes,
-            seconds,
-            nanoseconds,
-        )
+        crate::ch4::Ch4Words::from(*self).binary(None)?;
+        Err(TimeError::NeedsContext {
+            context: "Chapter4 requires explicit calendar origin",
+        })
     }
 }
 

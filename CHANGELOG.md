@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ⚠️ S07 Chapter 4 explicit calendar context
+
+- Add `ch4::Ch4Words` binary elapsed/BCD clock readings with raw words,
+  missing-context labels and exact caller context. Binary uses the full32-bit
+  count; BCD calendar requires year, full day and an explicit packed-BCD-bits
+  interpretation. No day/year/origin or nearest-packet inference is provided.
+- BREAKING behaviour: `Ch4BinaryTimeExt::to_absolute()` no longer uses the
+  incorrect17-bit day split or repairs day0 to1. After microsecond validation it
+  returns `NeedsContext`. Migrate to `Ch4Words::from(raw).binary(Some(origin))`
+  with a dated nominal origin, or `.binary(None)` for labelled partial elapsed
+  time. Unknown-year origins remain partial. No UTC/leap arithmetic is implied.
+- BCD results always retain the unresolved106-04..15 "characters" versus
+  106-17+ "bits" wording, including with complete caller context. Reserved low
+  bit15 is TF-005 evidence with value kept; invalid digits/ranges remain errors.
+- `verification-s07.md` records clause coverage and tests-first limitations;
+  no whole-requirement marker is added for a partial check. Secondary/stamp
+  answer integration and finding aggregation remain S10; schema remains S12.
+
 ### ⚠️ S06b2 mixed-format stream integration
 
 - Remove the mixed-input rejection after tests-first coverage; use shared actual-
