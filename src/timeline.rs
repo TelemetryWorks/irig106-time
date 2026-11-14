@@ -60,8 +60,8 @@ pub struct OfflinePolicy {
     pub include_invalid: bool,
     /// Reference lookup strategy; default nearest.
     pub strategy: ReferenceStrategy,
-    /// L3-COR-102 proposed deterministic tie choice: preceding by default;
-    /// false chooses following. The snapshot exposes this proposed choice.
+    /// L3-COR-102 owner-accepted C2 (2026-11-13): preceding by default;
+    /// false chooses following. The snapshot exposes this policy choice.
     pub preceding_on_tie: bool,
     /// Allow labelled offline back-extrapolation; default false.
     pub back_extrapolate: bool,
@@ -70,8 +70,8 @@ pub struct OfflinePolicy {
     /// Extra tolerance beyond the 1 s gap interval; default zero.
     pub gap_tolerance_ns: u64,
     /// Explicit jump threshold; None uses the coarser endpoint precision.
-    /// The mixed-resolution convention remains the L3 proposed choice, not
-    /// a newly approved owner default; callers can set an explicit threshold.
+    /// The coarser mixed-resolution default is owner-accepted C3 (2026-11-13);
+    /// callers can set an explicit threshold.
     pub jump_threshold_ns: Option<u64>,
     /// Optional severity overrides, indexed by stable TF number.
     pub finding_levels: BTreeMap<u8, Severity>,

@@ -1,5 +1,10 @@
 # E1 offline core — clause-level verification record
 
+> **Later decision, owner 2026-11-13:** plan Q1–Q6 and C1–C4 are accepted
+> with TF-031/032 levels pending S03/S08 owner confirmation. The original
+> evidence and then-pending labels below are historical, not new results.
+> See [the decision record](analysis/plan-decisions-2026-11-13.md); release deferrals do not imply coverage.
+
 Base main: `3c1cf2e` (PR10). Reviewed E1 head: `3554065`.
 This record describes the first offline part, not completion of slice 3.
 E2 streaming and the offline follow-up remain outside this PR. Requirement

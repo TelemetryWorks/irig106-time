@@ -216,3 +216,13 @@ Existing slice-2 tests intentionally pin `NeedsContext` until a future,
 separately authorized implementation slice replaces them. Their existing
 trace links are not evidence that these revised requirements are implemented.
 No source/tests, dependencies or API behaviour change in this documentation PR.
+
+## Permanent finding identities (owner 2026-11-13, plan Q1)
+
+The existing all-zero sentinel maps to TF-029 WARNING: raw kept, no absolute
+value (RFC 5905 §6, p.14, "a value of zero is a special case representing
+unknown or unsynchronized time"). The existing covered ambiguity window maps
+to TF-030 WARNING: mapped value kept, labelled leap-ambiguous (RFC 1305 E.8,
+pp.78–79, repeated NTP coordinate in Figure 8; RDG-012/RDG-010). This is distinct
+from TF-022 explicit second 60 and does not change the accepted reading or
+human Review. See [plan decisions](plan-decisions-2026-11-13.md).

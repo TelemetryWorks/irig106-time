@@ -12,7 +12,7 @@ const HALF: i128 = 1i128 << 47;
 pub enum StreamMode {
     /// RCC 123-20 §5.6 printed 5-44: preceding time plus RTC displacement.
     Standard,
-    /// Drift-corrected bracket, bounded look-ahead; floor is a L3 proposal.
+    /// Drift-corrected bracket, bounded look-ahead; floor accepted C1 (2026-11-13).
     Interpolate,
 }
 /// Mandatory caller limits. Bytes account declared retained packet sizes;
@@ -107,7 +107,7 @@ pub enum StreamChannelChoice {
 pub enum ReleaseReason {
     /// Immediate preceding/reference-exact answer, no drift correction.
     Standard,
-    /// Compatible bracket with proposed floor rounding.
+    /// Compatible bracket with owner-accepted floor rounding (C1, 2026-11-13).
     Interpolated,
     /// No usable preceding reference or undecidable channel.
     NoReference,
@@ -121,7 +121,7 @@ pub enum ReleaseReason {
     ByteCap,
     /// Retained reference cap would be exceeded.
     ReferenceCap,
-    /// Proposed transition: drain under old policy before installing replacement.
+    /// Accepted C4 (2026-11-13): drain old policy before installing replacement.
     ModeChange,
     /// Explicit boundary or inferred counter reset.
     SessionBoundary,
@@ -160,7 +160,8 @@ pub struct StreamBasis {
     pub drift_correction_ns: Option<i128>,
     /// Coarser endpoint resolution; arithmetic does not improve accuracy.
     pub precision_ns: Option<u64>,
-    /// Rounding proposal retained explicitly on interpolated answers.
+    /// Owner-accepted rounding retained explicitly on interpolated answers.
+    /// The legacy string label is unchanged until a separate behaviour migration.
     pub rounding: Option<&'static str>,
     /// Missing calendar/reference/selection context when counter-only.
     pub unresolved: Option<&'static str>,
@@ -730,7 +731,7 @@ impl StreamTimeline {
         self.finished = true;
         Ok(b)
     }
-    /// Proposed old-snapshot drain on explicit replacement. Never changes an
+    /// Owner-accepted C4 old-snapshot drain on replacement. Never changes an
     /// already committed channel or issued answer. Admission-setting changes
     /// clear old references, requiring fresh evidence under the new snapshot.
     /// **Traces:** L3-STRM-206 ← L2-STRM-206 ← L1-STRM-001

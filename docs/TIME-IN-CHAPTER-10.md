@@ -25,6 +25,38 @@
 
 ---
 
+## 0.8.0 scope and policy decisions (owner 2026-11-13)
+
+[ADR-0018](adr/0018-0-8-release-scope-and-policy-decisions.md) and the
+[decision/source audit](analysis/plan-decisions-2026-11-13.md) refine this
+contract without claiming implementation. C1 interpolation floors; C2 an
+equal-distance nearest tie selects the preceding reference; C3 the default
+jump threshold is the coarser endpoint resolution; C4 mode changes drain
+pending observations under the old policy. Each remains labelled in the basis
+and selectable where the API permits. Offline drift-corrected queries are
+after 0.8.0, distinct from the already accepted stream interpolate mode.
+
+Inverse range queries use half-open absolute [start, end), return every
+matching half-open RTC tick interval with explicit quantization/basis, and
+never bridge gaps/jumps; point queries are separate. COR-111 is deferred past
+0.8.0. The other three release-scoped deferrals are the new complete ENC-103
+secondary/stamp encoder API, complex timeline Deserialize rehydration only
+(API-110), and prebuilt distribution (conditional REL-106). Requirements remain
+and are not marked covered. Existing encoders/byte sum, validated supported
+value loads, complete versioned JSON outputs and all other obligations stay
+0.8.0 blockers. JSON includes units and decimal-string 64/128-bit quantities,
+validated loads and raw/stated/assumed provenance; schema review precedes freeze.
+
+Finding identities extend through TF-032 (architecture §8): TF-029 WARNING
+keeps raw zero NTP but no absolute answer; TF-030 WARNING keeps the mapped
+leap-ambiguous value. TF-031 packet-layout conflict and TF-032 year conflict
+have levels pending owner in S03/S08. Override precedence and existing year
+policy do not change. CLI classes remain 0–4: usage before input, first fatal
+operational failure decides 3/4, later failures are diagnostics. Release is
+crates.io-only via Trusted Publishing/OIDC GitHub Actions; no stored publishing
+token or local publish. These JSON, exit and publication rules are product
+policy, not IRIG mandates. No workflow/credential/publication action is taken.
+
 ## 1. What `irig106-time` is for
 
 ### 1.1 The problem: packets carry relative time, not absolute time
@@ -732,7 +764,7 @@ advances the year.
 | **Session** | a run of packets whose counter increases, allowing for late packets | — |
 | **Span** | a session's first and last packet in absolute time, through its chosen time channel; per setup record, the part of the span each governs | — |
 | **Reference gap** | two consecutive valid references of the chosen channel further apart in counter time than the standard's rate implies | more than 1 s ("minimum frequency of 1 hertz"), plus a tolerance the caller can set |
-| **Time jump** | between consecutive references, absolute time and counter time advance by different amounts | a threshold the caller sets (today required by `detect_time_jump`); proposed default: the resolution of the time format (10 ms for Format 1 bodies) |
+| **Time jump** | between consecutive references, absolute time and counter time advance by different amounts | a threshold the caller sets (today required by `detect_time_jump`); owner-accepted C3 default (2026-11-13): the coarser endpoint resolution (10 ms for Format 1 bodies) |
 | **Counter reset** | the counter goes backwards by more than the late-packet bound | 5.2 rule 1 |
 | **Late packet** | a packet whose counter is earlier than one already seen, within the bound | 1100 ms: the stream commit time (1000 ms) plus the packet generation time (100 ms) of Chapter 10 §10.6.1; today the crate uses 2 s (`DEFAULT_OOO_WINDOW`) |
 | **Counter wrap** | 2^48 ticks, about 325.8 days | treated as arithmetic, not as a reset |
