@@ -197,15 +197,29 @@ pub fn decode_time_f1(
     policy: ScalePolicy,
 ) -> Result<Format1Reading> {
     let (csdw, words, reserved_body_bits, consumed) = bounded_words(payload, data_length)?;
-    let calendar = csdw.date_format() == DateFormat::DayMonthYear;
-    if !csdw.payload_is_valid(layout) {
-        return Ok(Format1Reading {
-            csdw,
-            time: None,
-            reserved_body_bits,
-            consumed,
-        });
-    }
+    let time = if csdw.payload_is_valid(layout) {
+        Some(decode_calendar(
+            words,
+            csdw.date_format() == DateFormat::DayMonthYear,
+            csdw.time_format_for_layout(layout),
+            policy,
+        )?)
+    } else {
+        None
+    };
+    Ok(Format1Reading {
+        csdw,
+        time,
+        reserved_body_bits,
+        consumed,
+    })
+}
+fn decode_calendar(
+    words: [u16; 4],
+    calendar: bool,
+    format: TimeFormat,
+    policy: ScalePolicy,
+) -> Result<CalendarReading> {
     let nanoseconds = (digit(words[0], 0, 0, 4, "milliseconds", 1)? * 10
         + digit(words[0], 0, 4, 4, "milliseconds", 2)? * 100)
         * 1_000_000;
@@ -250,9 +264,9 @@ pub fn decode_time_f1(
         minutes,
         seconds,
         nanoseconds,
-        scale: policy.for_format1(csdw.time_format_for_layout(layout)),
+        scale: policy.for_format1(format),
     };
-    if time.seconds == 60 && csdw.time_format_for_layout(layout) == TimeFormat::Rtc {
+    if time.seconds == 60 && format == TimeFormat::Rtc {
         return Err(TimeError::OutOfRange {
             field: "seconds",
             value: 60,
@@ -260,12 +274,7 @@ pub fn decode_time_f1(
         });
     }
     time.validate()?;
-    Ok(Format1Reading {
-        csdw,
-        time: Some(time),
-        reserved_body_bits,
-        consumed,
-    })
+    Ok(time)
 }
 // Inspect figure words independently of decimal/calendar validity, so one
 // malformed digit cannot suppress an independently observed zero-bit warning.
@@ -358,4 +367,48 @@ fn month_lengths(year: u16) -> [u8; 12] {
         30,
         31,
     ]
+}
+
+/// Bounded Format1 reading with immutable edition, source and ITS qualification.
+/// **Traces:** L3-CSDW-101 ← L2-CSDW-101 ← L1-CSDW-001
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QualifiedFormat1Reading {
+    /// Word and competing meanings; no guessed source on unresolved layout.
+    pub csdw: crate::csdw::QualifiedCsdw,
+    /// Common readable calendar value, even when source qualification is withheld.
+    pub time: Option<CalendarReading>,
+    /// Body zero-mask operands, independent of edition ambiguity.
+    pub reserved_body_bits: [u16; 4],
+    /// Bytes consumed, excluding adjacent filler.
+    pub consumed: usize,
+}
+/// Resolve evidence before field interpretation, then decode only readable FMT.
+/// Unknown layout can still read common FMT0..5; FMT15 stays unresolved, not None.
+/// **Traces:** L3-CSDW-101 ← L2-CSDW-101 ← L1-CSDW-001
+/// **Traces:** L3-EDN-201 ← L2-EDN-201 ← L1-EDN-002
+pub fn decode_qualified_time_f1(
+    payload: &[u8],
+    data_length: usize,
+    evidence: crate::edition::EditionEvidence,
+    policy: ScalePolicy,
+) -> Result<QualifiedFormat1Reading> {
+    let (word, words, reserved_body_bits, consumed) = bounded_words(payload, data_length)?;
+    let csdw = word.qualify(crate::edition::resolve_edition(evidence));
+    let time = match csdw.format() {
+        Some(format) if !matches!(format, TimeFormat::None | TimeFormat::Reserved(_)) => {
+            Some(decode_calendar(
+                words,
+                word.date_format() == DateFormat::DayMonthYear,
+                format,
+                policy,
+            )?)
+        }
+        _ => None,
+    };
+    Ok(QualifiedFormat1Reading {
+        csdw,
+        time,
+        reserved_body_bits,
+        consumed,
+    })
 }

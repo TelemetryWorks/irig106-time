@@ -81,6 +81,8 @@ pub mod bcd;
 pub mod correlation;
 /// Time Data Format 1 (0x11) Channel-Specific Data Word parsing.
 pub mod csdw;
+/// Caller-governed packet-layout edition evidence.
+pub mod edition;
 /// Error types and `Result` alias for time parsing operations.
 pub mod error;
 /// Intra-packet timestamp format dispatch (RTC, Ch4, IEEE-1588, ERTC).

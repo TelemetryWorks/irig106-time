@@ -1,5 +1,10 @@
 # S01 — typed quantities and stable finding evidence
 
+> Current status (owner 2026-11-14): TF-031 WARNING is accepted (body kept,
+> EXT/SRC qualification withheld); only TF-032 is pending (S08). Pending-level
+> assertions and mutation descriptions below describe the historical S01 run,
+> before S03. See [S03 verification](verification-s03.md).
+
 Baseline main `e714f9a594e25143188f3d499ac2bc45f704a130` (PR F merged).
 Scope: the S01 ledger in the coordinator's saved 0.8.0 plan, plus the
 requested stale Q-CH4 comment correction. No conversion, edition resolver,
@@ -72,7 +77,7 @@ Source inspection reuses existing cited requirements and archived-page records;
 | RTC-103 | Named nonzero session; checked modular signed difference; half-range refusal with explicit directional context; checked unwrapped PacketKey subtraction; offline/stream half-range refusal and explicit-boundary retry. | No inference of multiple wraps. Compatibility correlator APIs do not gain missing session metadata; later API/compatibility audits must not treat them as equivalent to the new checked boundary. |
 | RTC-104 | Checked i128 ticks×100; both signs; typed overflow; checked unsigned shared magnitude; no negative-to-unsigned truncation. | Legacy calendar and network conversion arithmetic is not certified by these scalar tests; S02/S04/S05 remain blockers. |
 | API-104 | New public quantity boundaries distinguish raw Rtc, signed ticks, signed nanos and shared NanosDuration. Shared epoch types retained; unit/epoch compile-fail examples; duration conversion has a successful control. S01b now re-exports shared SignedNanos/SignedRtcTicks/SignedUnixSeconds and uses checked conversions. | **Shared-type gaps closed by S01b:** [types PR #8](https://github.com/TelemetryWorks/irig106-types/pull/8), adopted at `7bfe47fc903efea342f3efba1ad0f527dd059a0d`, supplies signed durations/ticks/Unix and checked TAI→Unix. Local signed definitions are removed; checked Result adapters map None to QuantityOverflow. Pre-1970 signed values are retained. **Global API coverage remains partial:** legacy primitive signatures, calendar/network adapters and S02/S04/S05/S10/API audits remain; no schema freeze or complete-conversion claim. |
-| FND-101 | Reusable stable catalog; approved defaults vs pending levels; configurable approved levels; factual effect independent of level; optional offset, raw fields/counter, related identities; both engines share catalog/evidence; malformed input stays unusable under Information override; TF-029/030 raw/value-effect plumbing. | **Partial producer coverage:** not every degraded-case producer supplies all domain-specific operands yet. Existing engine IDs/RTC/delta/related packet are populated; unknown offsets stay absent, not guessed from packet ID. Generic callers may supply actual offsets/expected fields. NTP producers S05, edition S03, year S08 and reports/validated schema S12/S17 remain. TF-031/032 levels require owner confirmation in their slices. |
+| FND-101 | Reusable stable catalog; approved defaults vs pending levels; configurable approved levels; factual effect independent of level; optional offset, raw fields/counter, related identities; both engines share catalog/evidence; malformed input stays unusable under Information override; TF-029/030 raw/value-effect plumbing. | **Partial producer coverage:** not every degraded-case producer supplies all domain-specific operands yet. Existing engine IDs/RTC/delta/related packet are populated; unknown offsets stay absent, not guessed from packet ID. Generic callers may supply actual offsets/expected fields. NTP producers S05, edition S03, year S08 and reports/validated schema S12/S17 remain. TF-031 WARNING is owner-accepted (2026-11-14); only TF-032 level requires owner confirmation in S08. |
 
 No new release-scoped deferral is introduced. The four ADR-0018 deferrals are
 unchanged; the remaining implementation/audit clauses above still block 0.8.0.

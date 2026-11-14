@@ -2,7 +2,7 @@
 //!
 //! 106-24R1 §11.2.7.2 Figure 11-34 and §11.2.1.1 e use different lists.
 //! Neither constructor resolves a recording edition or selects an EXT layout.
-//! Setup version fields do not exist in 106-04/05. Q-EDITION is deferred.
+//! Setup version fields do not exist in 106-04/05; use resolve_edition for policy.
 
 pub use irig106_types::Irig106Version;
 
@@ -59,3 +59,9 @@ pub fn format2_availability(version: &Irig106Version) -> Format2Availability {
         _ => Format2Availability::Unavailable,
     }
 }
+
+/// Edition evidence is separate from these shared version-code mappings.
+pub use crate::edition::{
+    EditionBasis, EditionEvidence, EditionResolution, EditionRules, PacketEdition,
+    SetupVersionEvidence, resolve_edition,
+};

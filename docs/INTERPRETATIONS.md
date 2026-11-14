@@ -218,9 +218,9 @@ edge-case tests, and two-person review remain outstanding.
 
 **Design**: accepted · **Review**: pending · **Origin**: T-14
 
-**Test**: not yet written
+**Test**: `tests/s03_edition.rs` (edition rows, all ITS values, non-IRIG FMT, unknown edition, reserved-field findings)
 
-**Development**: intensive testing and deep analysis required · **Analysis**: not yet written
+**Development**: intensive testing and deep analysis required · **Analysis**: [qualified edition fields](analysis/RDG-007-edition-fields.md)
 
 ### RDG-008
 

@@ -31,6 +31,7 @@ fn reference(ns: u64) -> ReferenceInput {
         its: None,
         precision_ns: 10_000_000,
         wire: None,
+        qualified: None,
         raw_csdw: None,
         year_origin: YearOrigin::Unknown,
     }

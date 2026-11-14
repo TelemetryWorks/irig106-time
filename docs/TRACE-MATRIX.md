@@ -105,25 +105,25 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-CSDW-001 | L2-CSDW-101 | `src/csdw_tests.rs::combined_fields`<br>`src/csdw_tests.rs::date_format_dmy`<br>`src/csdw_tests.rs::date_format_doy`<br>`src/csdw_tests.rs::from_le_bytes_round_trip`<br>`src/csdw_tests.rs::leap_year_clear`<br>`src/csdw_tests.rs::leap_year_set`<br>`src/csdw_tests.rs::time_format_gps`<br>`src/csdw_tests.rs::time_format_irig_b`<br>`src/csdw_tests.rs::time_format_reserved`<br>`src/csdw_tests.rs::time_source_external`<br>`src/csdw_tests.rs::time_source_internal`<br>`src/csdw_tests.rs::time_source_none`<br>`src/csdw_tests.rs::time_source_reserved`<br>`src/csdw_tests.rs::time_source_three_reserved` | Partially Implemented |
-| L1-CSDW-002 | L2-CSDW-102 | `tests/pipeline.rs::csdw_explicit_legacy_layout`<br>`tests/pipeline.rs::full_day_format_pipeline`<br>`tests/rebuild_layout.rs::t6_legacy_ext_is_not_src`<br>`tests/rebuild_wire.rs::t6_source_three_is_reserved`<br>`tests/rebuild_wire.rs::t6_source_two_is_rmm` | Implemented |
-| L1-CSDW-003 | L2-CSDW-103 | `tests/rebuild_layout.rs::t7_none_only_in_modern_layout`<br>`tests/rebuild_wire.rs::t7_none_format_is_distinct` | Implemented |
+| L1-CSDW-001 | L2-CSDW-101 | `src/csdw_tests.rs::combined_fields`<br>`src/csdw_tests.rs::date_format_dmy`<br>`src/csdw_tests.rs::date_format_doy`<br>`src/csdw_tests.rs::from_le_bytes_round_trip`<br>`src/csdw_tests.rs::leap_year_clear`<br>`src/csdw_tests.rs::leap_year_set`<br>`src/csdw_tests.rs::time_format_gps`<br>`src/csdw_tests.rs::time_format_irig_b`<br>`src/csdw_tests.rs::time_format_reserved`<br>`src/csdw_tests.rs::time_source_external`<br>`src/csdw_tests.rs::time_source_internal`<br>`src/csdw_tests.rs::time_source_none`<br>`src/csdw_tests.rs::time_source_reserved`<br>`src/csdw_tests.rs::time_source_three_reserved`<br>`tests/s03_edition.rs::every_source_and_format_nibble_is_edition_qualified`<br>`tests/s03_edition.rs::qualified_data_length_and_unresolved_fmt15_never_invent_none` | Implemented |
+| L1-CSDW-002 | L2-CSDW-102 | `tests/pipeline.rs::csdw_explicit_legacy_layout`<br>`tests/pipeline.rs::full_day_format_pipeline`<br>`tests/rebuild_layout.rs::t6_legacy_ext_is_not_src`<br>`tests/rebuild_wire.rs::t6_source_three_is_reserved`<br>`tests/rebuild_wire.rs::t6_source_two_is_rmm`<br>`tests/s03_edition.rs::contradiction_keeps_body_and_evidence_through_both_engines`<br>`tests/s03_edition.rs::every_source_and_format_nibble_is_edition_qualified` | Implemented |
+| L1-CSDW-003 | L2-CSDW-103 | `tests/rebuild_layout.rs::t7_none_only_in_modern_layout`<br>`tests/rebuild_wire.rs::t7_none_format_is_distinct`<br>`tests/s03_edition.rs::every_source_and_format_nibble_is_edition_qualified`<br>`tests/s03_edition.rs::qualified_data_length_and_unresolved_fmt15_never_invent_none` | Implemented |
 | L1-CSDW-004 | L2-CSDW-104 | _(none)_ | Draft |
 | L1-CSDW-005 | L2-CSDW-105 | `tests/s02_existing.rs::date_bit_alone_selects_the_bounded_body`<br>`tests/s02_readings.rs::every_zero_bit_is_a_warning_with_exact_operands_and_kept_value` | Implemented |
-| L1-CSDW-006 | L2-CSDW-106 | `tests/rebuild_layout.rs::t7_its_requires_explicit_applicable_layout` | Implemented |
-| L1-CSDW-007 | L2-CSDW-107 | `tests/rebuild_layout.rs::t7_reserved_masks_are_layout_specific` | Implemented |
+| L1-CSDW-006 | L2-CSDW-106 | `tests/rebuild_layout.rs::t7_its_requires_explicit_applicable_layout`<br>`tests/s03_edition.rs::reserved_its_is_a_value_warning_only_in_an_applicable_layout` | Implemented |
+| L1-CSDW-007 | L2-CSDW-107 | `tests/rebuild_layout.rs::t7_reserved_masks_are_layout_specific`<br>`tests/s03_edition.rs::each_reserved_bit_has_selected_or_competing_raw_intersections`<br>`tests/s03_edition.rs::reserved_its_is_a_value_warning_only_in_an_applicable_layout` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L2-CSDW-101 | L3-CSDW-101 | _(TBD)_ | Draft |
-| L2-CSDW-102 | L3-CSDW-102 | `tests/rebuild_layout.rs::t6_legacy_ext_is_not_src`<br>`tests/rebuild_wire.rs::t6_source_three_is_reserved`<br>`tests/rebuild_wire.rs::t6_source_two_is_rmm` | Implemented |
-| L2-CSDW-103 | L3-CSDW-103 | `tests/rebuild_layout.rs::t7_none_only_in_modern_layout`<br>`tests/rebuild_wire.rs::t7_none_format_is_distinct` | Implemented |
+| L2-CSDW-101 | L3-CSDW-101 | `tests/s03_edition.rs::every_source_and_format_nibble_is_edition_qualified`<br>`tests/s03_edition.rs::qualified_data_length_and_unresolved_fmt15_never_invent_none` | Implemented |
+| L2-CSDW-102 | L3-CSDW-102 | `tests/rebuild_layout.rs::t6_legacy_ext_is_not_src`<br>`tests/rebuild_wire.rs::t6_source_three_is_reserved`<br>`tests/rebuild_wire.rs::t6_source_two_is_rmm`<br>`tests/s03_edition.rs::contradiction_keeps_body_and_evidence_through_both_engines`<br>`tests/s03_edition.rs::every_source_and_format_nibble_is_edition_qualified` | Implemented |
+| L2-CSDW-103 | L3-CSDW-103 | `tests/rebuild_layout.rs::t7_none_only_in_modern_layout`<br>`tests/rebuild_wire.rs::t7_none_format_is_distinct`<br>`tests/s03_edition.rs::every_source_and_format_nibble_is_edition_qualified`<br>`tests/s03_edition.rs::qualified_data_length_and_unresolved_fmt15_never_invent_none` | Implemented |
 | L2-CSDW-104 | L3-CSDW-104 | _(TBD)_ | Draft |
 | L2-CSDW-105 | L3-CSDW-105 | `tests/s02_existing.rs::date_bit_alone_selects_the_bounded_body`<br>`tests/s02_readings.rs::every_zero_bit_is_a_warning_with_exact_operands_and_kept_value` | Implemented |
-| L2-CSDW-106 | L3-CSDW-106 | `tests/rebuild_layout.rs::t7_its_requires_explicit_applicable_layout` | Implemented |
-| L2-CSDW-107 | L3-CSDW-107 | `tests/rebuild_layout.rs::t7_reserved_masks_are_layout_specific` | Implemented |
+| L2-CSDW-106 | L3-CSDW-106 | `tests/rebuild_layout.rs::t7_its_requires_explicit_applicable_layout`<br>`tests/s03_edition.rs::reserved_its_is_a_value_warning_only_in_an_applicable_layout` | Implemented |
+| L2-CSDW-107 | L3-CSDW-107 | `tests/rebuild_layout.rs::t7_reserved_masks_are_layout_specific`<br>`tests/s03_edition.rs::each_reserved_bit_has_selected_or_competing_raw_intersections`<br>`tests/s03_edition.rs::reserved_its_is_a_value_warning_only_in_an_applicable_layout` | Implemented |
 
 ### L1-BCD: Format 1 time bodies
 
@@ -288,8 +288,8 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
 | L1-EDN-001 | L2-EDN-101 | `src/version_tests.rs::format_two_requires_known_declared_release`<br>`tests/pipeline.rs::version_feature_queries`<br>`tests/slice2_readings.rs::t4_explicit_availability_never_infers_unknown_edition` | Implemented |
-| L1-EDN-002 | L2-EDN-102, L2-EDN-201 | `src/packet_standard_tests.rs::display_formatting`<br>`src/packet_standard_tests.rs::is_ch10_and_is_ch11`<br>`src/packet_standard_tests.rs::pre17_is_ch10`<br>`src/packet_standard_tests.rs::unknown_has_unknown_provenance`<br>`src/packet_standard_tests.rs::v17_and_later_is_ch11`<br>`src/version_tests.rs::separate_version_codes_from_standard`<br>`tests/pipeline.rs::packet_standard_from_version`<br>`tests/pipeline.rs::version_code_domains_stay_distinct`<br>`tests/pipeline.rs::version_detection_from_tmats_csdw`<br>`tests/rebuild_layout.rs::t9_separate_shared_code_lists`<br>`tests/rebuild_wire.rs::t9_setup_fifteen_is_unknown` | Partially Implemented |
-| L1-EDN-003 | L2-EDN-103 | _(none)_ | Draft |
+| L1-EDN-002 | L2-EDN-102, L2-EDN-201 | `src/packet_standard_tests.rs::display_formatting`<br>`src/packet_standard_tests.rs::is_ch10_and_is_ch11`<br>`src/packet_standard_tests.rs::pre17_is_ch10`<br>`src/packet_standard_tests.rs::unknown_has_unknown_provenance`<br>`src/packet_standard_tests.rs::v17_and_later_is_ch11`<br>`src/version_tests.rs::separate_version_codes_from_standard`<br>`tests/pipeline.rs::packet_standard_from_version`<br>`tests/pipeline.rs::version_code_domains_stay_distinct`<br>`tests/pipeline.rs::version_detection_from_tmats_csdw`<br>`tests/rebuild_layout.rs::t9_separate_shared_code_lists`<br>`tests/rebuild_wire.rs::t9_setup_fifteen_is_unknown`<br>`tests/s03_edition.rs::contradiction_keeps_body_and_evidence_through_both_engines`<br>`tests/s03_edition.rs::resolver_follows_every_accepted_evidence_row`<br>`tests/s03_edition.rs::setup_and_header_domains_do_not_choose_a_layout` | Implemented |
+| L1-EDN-003 | L2-EDN-103 | `tests/s03_edition.rs::independent_edition_rule_boundaries_and_its_evidence`<br>`tests/s03_edition.rs::setup_and_header_domains_do_not_choose_a_layout` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
@@ -297,8 +297,8 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L2-EDN-101 | L3-EDN-101 | `tests/slice2_readings.rs::t4_explicit_availability_never_infers_unknown_edition` | Implemented |
 | L2-EDN-102 | L3-EDN-102 | `src/version_tests.rs::separate_version_codes_from_standard`<br>`tests/rebuild_layout.rs::t9_separate_shared_code_lists`<br>`tests/rebuild_wire.rs::t9_setup_fifteen_is_unknown` | Implemented |
-| L2-EDN-103 | L3-EDN-103 | _(TBD)_ | Draft |
-| L2-EDN-201 | L3-EDN-201 | _(TBD)_ | Draft |
+| L2-EDN-103 | L3-EDN-103 | `tests/s03_edition.rs::independent_edition_rule_boundaries_and_its_evidence`<br>`tests/s03_edition.rs::setup_and_header_domains_do_not_choose_a_layout` | Implemented |
+| L2-EDN-201 | L3-EDN-201 | `tests/s03_edition.rs::contradiction_keeps_body_and_evidence_through_both_engines`<br>`tests/s03_edition.rs::resolver_follows_every_accepted_evidence_row`<br>`tests/s03_edition.rs::setup_and_header_domains_do_not_choose_a_layout` | Implemented |
 
 ### L1-DECL: Time declarations from the setup record
 
@@ -401,7 +401,7 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-FND-001 | L2-FND-101 | `tests/s01_existing.rs::approved_ntp_levels_are_configurable_but_pending_levels_are_not`<br>`tests/s01_existing.rs::both_engines_keep_related_identity_and_signed_residual`<br>`tests/s01_existing.rs::both_engines_keep_structured_malformed_evidence_under_level_override`<br>`tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::every_catalog_level_and_pending_identity_is_explicit`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::raw_evidence_offsets_relations_and_validity_survive_override`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value`<br>`tests/s02_readings.rs::malformed_digit_zero_bit_finding_honours_both_engine_level_overrides` | Implemented |
+| L1-FND-001 | L2-FND-101 | `tests/s01_existing.rs::available_ntp_and_edition_levels_keep_year_pending`<br>`tests/s01_existing.rs::both_engines_keep_related_identity_and_signed_residual`<br>`tests/s01_existing.rs::both_engines_keep_structured_malformed_evidence_under_level_override`<br>`tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::every_catalog_level_and_pending_identity_is_explicit`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::raw_evidence_offsets_relations_and_validity_survive_override`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value`<br>`tests/s02_readings.rs::malformed_digit_zero_bit_finding_honours_both_engine_level_overrides` | Implemented |
 | L1-FND-002 | L2-FND-102 | _(none)_ | Draft |
 | L1-FND-003 | L2-FND-103 | `tests/offline_timeline.rs::review_rtc_sync_error_is_tf024_warning_value_kept`<br>`tests/offline_timeline.rs::review_sync_finding_retains_counter_evidence`<br>`tests/stream_timeline.rs::admission_findings_and_raw_sync_counter` | Implemented |
 | L1-FND-004 | L2-FND-104 | _(none)_ | Draft |
@@ -411,7 +411,7 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L2-FND-101 | L3-FND-101 | `tests/s01_existing.rs::approved_ntp_levels_are_configurable_but_pending_levels_are_not`<br>`tests/s01_existing.rs::both_engines_keep_related_identity_and_signed_residual`<br>`tests/s01_existing.rs::both_engines_keep_structured_malformed_evidence_under_level_override`<br>`tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::every_catalog_level_and_pending_identity_is_explicit`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::raw_evidence_offsets_relations_and_validity_survive_override`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value`<br>`tests/s02_readings.rs::malformed_digit_zero_bit_finding_honours_both_engine_level_overrides` | Implemented |
+| L2-FND-101 | L3-FND-101 | `tests/s01_existing.rs::available_ntp_and_edition_levels_keep_year_pending`<br>`tests/s01_existing.rs::both_engines_keep_related_identity_and_signed_residual`<br>`tests/s01_existing.rs::both_engines_keep_structured_malformed_evidence_under_level_override`<br>`tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::every_catalog_level_and_pending_identity_is_explicit`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::raw_evidence_offsets_relations_and_validity_survive_override`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value`<br>`tests/s02_readings.rs::malformed_digit_zero_bit_finding_honours_both_engine_level_overrides` | Implemented |
 | L2-FND-102 | L3-FND-102 | _(TBD)_ | Draft |
 | L2-FND-103 | L3-FND-103 | `tests/offline_timeline.rs::review_rtc_sync_error_is_tf024_warning_value_kept`<br>`tests/offline_timeline.rs::review_sync_finding_retains_counter_evidence`<br>`tests/stream_timeline.rs::admission_findings_and_raw_sync_counter` | Implemented |
 | L2-FND-104 | L3-FND-104 | _(TBD)_ | Draft |
@@ -424,7 +424,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
 | L1-RDG-001 | L2-RDG-101 | _(none)_ | Draft |
-| L1-RDG-002 | L2-RDG-102, L2-RDG-201, L2-RDG-202, L2-RDG-203, L2-RDG-204, L2-RDG-205, L2-RDG-206, L2-RDG-207, L2-RDG-208, L2-RDG-209, L2-RDG-210, L2-RDG-211, L2-RDG-212 | _(none)_ | Implemented (I) |
+| L1-RDG-002 | L2-RDG-102, L2-RDG-201, L2-RDG-202, L2-RDG-203, L2-RDG-204, L2-RDG-205, L2-RDG-206, L2-RDG-207, L2-RDG-208, L2-RDG-209, L2-RDG-210, L2-RDG-211, L2-RDG-212 | `tests/s03_edition.rs::independent_edition_rule_boundaries_and_its_evidence`<br>`tests/s03_edition.rs::reserved_its_is_a_value_warning_only_in_an_applicable_layout` | Partially Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
@@ -438,7 +438,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L2-RDG-204 | L3-RDG-204 | _(TBD)_ | Draft |
 | L2-RDG-205 | L3-RDG-205 | _(TBD)_ | Draft |
 | L2-RDG-206 | L3-RDG-206 | _(TBD)_ | Draft |
-| L2-RDG-207 | L3-RDG-207 | _(TBD)_ | Draft |
+| L2-RDG-207 | L3-RDG-207 | `tests/s03_edition.rs::independent_edition_rule_boundaries_and_its_evidence`<br>`tests/s03_edition.rs::reserved_its_is_a_value_warning_only_in_an_applicable_layout` | Implemented |
 | L2-RDG-208 | L3-RDG-208 | _(TBD)_ | Draft |
 | L2-RDG-209 | L3-RDG-209 | _(TBD)_ | Draft |
 | L2-RDG-210 | L3-RDG-210 | _(TBD)_ | Draft |
@@ -622,7 +622,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | ABS | 4 | 4 | 4 | 3 | 3 | 3 | 3 |
 | IPT | 3 | 3 | 3 | 3 | 3 | 3 | 3 |
 | SEC | 6 | 6 | 6 | 3 | 3 | 3 | 3 |
-| CSDW | 7 | 7 | 7 | 5 | 5 | 5 | 5 |
+| CSDW | 7 | 7 | 7 | 6 | 6 | 6 | 6 |
 | BCD | 4 | 4 | 4 | 4 | 4 | 4 | 4 |
 | F2CSDW | 4 | 4 | 4 | 3 | 3 | 3 | 3 |
 | NTP | 4 | 4 | 4 | 2 | 2 | 2 | 2 |
@@ -631,13 +631,13 @@ This matrix is the single source of truth for live status; the requirement docum
 | TAI | 7 | 7 | 7 | 3 | 3 | 3 | 3 |
 | WORD | 2 | 2 | 2 | 0 | 0 | 0 | 0 |
 | ENC | 3 | 3 | 3 | 0 | 0 | 0 | 0 |
-| EDN | 3 | 4 | 4 | 2 | 2 | 2 | 2 |
+| EDN | 3 | 4 | 4 | 4 | 4 | 4 | 4 |
 | DECL | 2 | 2 | 2 | 0 | 0 | 0 | 0 |
 | COR | 13 | 13 | 13 | 11 | 11 | 11 | 11 |
 | ANS | 5 | 5 | 5 | 2 | 2 | 2 | 2 |
 | POL | 3 | 4 | 4 | 3 | 3 | 3 | 3 |
 | FND | 5 | 5 | 5 | 2 | 2 | 2 | 2 |
-| RDG | 2 | 14 | 14 | 0 | 0 | 0 | 0 |
+| RDG | 2 | 14 | 14 | 1 | 1 | 1 | 1 |
 | STRM | 1 | 7 | 7 | 7 | 7 | 7 | 7 |
 | ERR | 5 | 5 | 5 | 4 | 4 | 4 | 4 |
 | API | 11 | 11 | 11 | 1 | 1 | 1 | 1 |
@@ -645,13 +645,13 @@ This matrix is the single source of truth for live status; the requirement docum
 | CLI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
 | REL | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
 | TST | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
-| **Total** | **124** | **144** | **144** | **64** | **64** | **64** | **64** |
+| **Total** | **124** | **144** | **144** | **68** | **68** | **68** | **68** |
 
 The countable requirement set is every L2 and L3 requirement plus the 0 L1 *leaf* requirement(s) (L1s with no L2 decomposition yet). Composite L1s are verified through their children.
 
-**Tested by at least one test marker**: 128 of 288 (44.4%).
+**Tested by at least one test marker**: 136 of 288 (47.2%).
 
-**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 128 of 288 (44.4%).
+**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 136 of 288 (47.2%).
 
 ### Orphan check
 
@@ -670,14 +670,14 @@ Every entry of `docs/INTERPRETATIONS.md` with its written analysis and the tests
 | RDG-004 | `R-x\TFMT-n` 0, 1, 2 name Format 2 NTF values | accepted | not yet written | _(none)_ |
 | RDG-005 | `R-x\TSRC-n` letters name Format 1 SRC values; a difference is information | accepted | not yet written | _(none)_ |
 | RDG-006 | `R-x\SHTF-n` 0 "Chapter 4 BCD" names packet flags `00`, "Chapter 4 binary weighted" | accepted | not yet written | _(none)_ |
-| RDG-007 | ITS (Format 1 bits 15–12) is read only for recordings declared 106-17 or later | accepted | not yet written | `tests/rebuild_layout.rs::t7_its_requires_explicit_applicable_layout` |
+| RDG-007 | ITS (Format 1 bits 15–12) is read only for recordings declared 106-17 or later | accepted | [qualified edition fields](analysis/RDG-007-edition-fields.md) | `tests/rebuild_layout.rs::t7_its_requires_explicit_applicable_layout`<br>`tests/s03_edition.rs::independent_edition_rule_boundaries_and_its_evidence`<br>`tests/s03_edition.rs::reserved_its_is_a_value_warning_only_in_an_applicable_layout` |
 | RDG-008 | The secondary header checksum sums bytes, not 16-bit words | suspect | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-008) | `tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither`<br>`tests/slice2_wire.rs::rdg008_byte_only_checksum_is_valid`<br>`tests/slice2_wire.rs::rdg008_word_only_checksum_is_not_trusted` |
 | RDG-009 | The time scale of each time format; IRIG time is UTC by assumption | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-009) | `tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance`<br>`tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` |
 | RDG-010 | Second 60 is a leap second on a day that can be 30 June or 31 December | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-010) | `tests/s02_readings.rs::leap_label_is_distinct_and_arithmetic_refuses_missing_context`<br>`tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` |
 | RDG-011 | "The first dynamic data packet" is checked per session | accepted | not yet written | `tests/stream_timeline.rs::early_data_none_and_no_time_findings` |
 | RDG-012 | NTP follows UTC reckoning; era evidence, zero sentinel and leap ambiguity are explicit | accepted | [written all-edition/RFC analysis and planned edge cases](analysis/RDG-012-ntp-utc-era.md) | `tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value` |
 
-* Entries without a written analysis: **8** of 12
+* Entries without a written analysis: **7** of 12
 * Entries without a test: **6** of 12
 * Entries missing the development mark: **0**
 
