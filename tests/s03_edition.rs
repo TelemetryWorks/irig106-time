@@ -180,6 +180,28 @@ fn every_source_and_format_nibble_is_edition_qualified() {
         assert_eq!(modern.format(), Some(TimeFormat::from_raw(raw as u8)));
         let unknown = word.qualify(resolve_edition(EditionEvidence::default()));
         assert_eq!(unknown.source(), None);
+        assert_eq!(
+            unknown.source_alternatives(),
+            [
+                TimeF1Source::ExternalTime {
+                    present: raw & 1 != 0,
+                    reserved_bits: (raw & 14) as u8
+                },
+                TimeF1Source::Source(TimeSource::from_raw(raw as u8))
+            ]
+        );
+        assert_eq!(
+            unknown.format_alternatives(),
+            [
+                if raw >= 6 {
+                    TimeFormat::Reserved(raw as u8)
+                } else {
+                    TimeFormat::from_raw(raw as u8)
+                },
+                TimeFormat::from_raw(raw as u8)
+            ]
+        );
+
         assert_eq!(unknown.raw().as_raw(), raw | (raw << 4));
         assert_eq!(
             unknown.format(),
@@ -233,22 +255,41 @@ fn observation(id: u64, reading: QualifiedFormat1Reading) -> PacketObservation {
 fn contradiction_keeps_body_and_evidence_through_both_engines() {
     // Fig11-13 day1 / midnight; source nibble3 must never become GPS or None.
     let bytes = [3, 0, 0, 0, 0, 0, 0, 0, 1, 0];
-    for e in [
-        EditionEvidence::default(),
-        tmats("04", true, Some(10)),
-        declared(PacketEdition::V04),
-        declared(PacketEdition::V17),
+    for (e, expected_conflict) in [
+        (EditionEvidence::default(), false),
+        (tmats("04", true, Some(10)), true),
+        (declared(PacketEdition::V04), false),
+        (declared(PacketEdition::V17), false),
+        (
+            EditionEvidence {
+                override_edition: Some(PacketEdition::V04),
+                ..tmats("24", true, Some(10))
+            },
+            false,
+        ),
     ] {
         let reading =
             decode_qualified_time_f1(&bytes, 10, e.clone(), ScalePolicy::default()).unwrap();
         assert_eq!(reading.time.unwrap().day_of_year, 1);
         let conflict = reading.csdw.resolution().contradiction();
-        assert_eq!(conflict, e.use_tmats);
+        assert_eq!(conflict, expected_conflict);
         let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
         let key = b.observe(observation(1, reading.clone()), false).unwrap();
         let t = b.finish().unwrap();
         let answer = t.lookup(key).unwrap();
         assert!(answer.time.is_some());
+        let expected_source = match e.override_edition {
+            Some(PacketEdition::V04) => TimeF1Source::ExternalTime {
+                present: true,
+                reserved_bits: 2,
+            },
+            Some(PacketEdition::V17) => TimeF1Source::Source(TimeSource::Reserved(3)),
+            _ => TimeF1Source::Unresolved(3),
+        };
+        assert_eq!(
+            answer.basis.reference.as_ref().unwrap().input.source,
+            expected_source
+        );
         let kept = answer.basis.reference.unwrap().input.qualified.unwrap();
         assert_eq!(kept.csdw.resolution().evidence(), &e);
         let mut stream = StreamTimeline::new(
@@ -270,7 +311,18 @@ fn contradiction_keeps_body_and_evidence_through_both_engines() {
         let batch = stream
             .observe(observation(1, reading), 0, 32, false)
             .unwrap();
-        let stream_answer = &batch.answers[0];
+        let data = PacketObservation {
+            id: 2,
+            channel: 7,
+            rtc: Rtc::from_raw(100),
+            kind: PacketKind::Data,
+            declared_timein: false,
+            declared_external: false,
+            flags: 0,
+            reference: None,
+        };
+        let released = stream.observe(data, 1, 32, false).unwrap();
+        let stream_answer = &released.answers[0];
         assert_eq!(stream_answer.time, answer.time);
         assert_eq!(
             stream_answer
@@ -297,6 +349,17 @@ fn contradiction_keeps_body_and_evidence_through_both_engines() {
                 findings.iter().any(|f| f.code == 6),
                 e.override_edition == Some(PacketEdition::V17)
             );
+            if e.override_edition == Some(PacketEdition::V04) {
+                let f = findings.iter().find(|f| f.code == 5).unwrap();
+                assert!(
+                    f.evidence
+                        .raw_fields()
+                        .iter()
+                        .any(|f| f.name == "csdw.reserved"
+                            && f.observed == findings::RawValue::Unsigned(2)
+                            && f.expected == Some(findings::RawValue::Unsigned(0)))
+                );
+            }
             if conflict {
                 let f = findings.iter().find(|f| f.code == 31).unwrap();
                 assert_eq!(f.severity, Severity::Warning);
@@ -347,5 +410,34 @@ fn qualified_data_length_and_unresolved_fmt15_never_invent_none() {
         let r = decode_qualified_time_f1(&bytes, 10, declared(e), ScalePolicy::default()).unwrap();
         assert_eq!(r.csdw.format(), Some(fmt));
         assert!(r.time.is_none());
+    }
+}
+
+/// Requirements: L1-CSDW-006, L2-CSDW-106, L3-CSDW-106, L1-CSDW-007, L2-CSDW-107, L3-CSDW-107, L1-RDG-002, L2-RDG-207, L3-RDG-207
+/// Interpretations: RDG-007
+#[test]
+fn reserved_its_is_a_value_warning_only_in_an_applicable_layout() {
+    // Fig11-12: SRC1, FMT0, ITS8 -> little-endian 0x00008001.
+    // Before17 bit15 is reserved; unknown retains competing meanings.
+    let bytes = [1, 0x80, 0, 0, 0, 0, 0, 0, 1, 0];
+    for (e, bit_warning, value_warning, its) in [
+        (EditionEvidence::default(), false, false, None),
+        (declared(PacketEdition::V05), true, false, None),
+        (
+            declared(PacketEdition::V17),
+            false,
+            true,
+            Some(IrigTimeSource::Reserved(8)),
+        ),
+    ] {
+        let r = decode_qualified_time_f1(&bytes, 10, e, ScalePolicy::default()).unwrap();
+        let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+        let key = b.observe(observation(1, r), false).unwrap();
+        let t = b.finish().unwrap();
+        let a = t.lookup(key).unwrap();
+        assert!(a.time.is_some());
+        assert_eq!(a.basis.reference.unwrap().input.its, its);
+        assert_eq!(t.findings().iter().any(|f| f.code == 5), bit_warning);
+        assert_eq!(t.findings().iter().any(|f| f.code == 6), value_warning);
     }
 }
