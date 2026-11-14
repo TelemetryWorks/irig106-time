@@ -110,11 +110,40 @@ PTP requirement and finding-catalog omissions using decisions already accepted
 on 2026-11-13; it implements no conversion or new finding producer.
 
 The coordinator's saved `coordination-work/irig106-time-0.8.0-plan.md` is a
-planning artifact, not a new release-scope approval. Its **plan Q1–Q6,
-Q3 deferrals and C1–C4 remain pending**. Those labels differ from the older,
+planning artifact, not a new release-scope approval. At S00, its **plan Q1–Q6,
+Q3 deferrals and C1–C4 were pending**; the owner has since accepted the
+recommendations on 2026-11-13, with TF-031/032 levels expressly held for S03/S08. Those labels differ from the older,
 already answered roadmap questions below. No new IDs/levels, inverse bounds,
 JSON form, failure precedence, distribution mode, default policy or deferral
 is chosen by S00. No further code slice is started by this audit.
+
+## 0.8.0 plan decisions accepted 2026-11-13
+
+The owner said "accept your recommendations". [ADR-0018](adr/0018-0-8-release-scope-and-policy-decisions.md)
+and [the decision/source audit](analysis/plan-decisions-2026-11-13.md) record
+Q1–Q6 and C1–C4. TF-029/030 are WARNING with distinct sentinel/ambiguity
+value effects; TF-031/032 IDs/titles are approved, **levels pending owner
+(S03)/(S08)**. Inverse queries have decided half-open semantics for later.
+JSON is versioned with units, decimal-string 64/128-bit quantities, validated
+loads and raw/stated/assumed provenance; schema review precedes freeze.
+CLI usage precedes input, first fatal operational failure wins 3/4, later
+failures are diagnostics. C1 floor, C2 preceding tie, C3 coarser mixed-resolution
+jump threshold and C4 old-policy drain are accepted selectable defaults.
+
+Exactly four release-scoped requirement deferrals (not deletion or coverage):
+
+| Deferred portion past 0.8.0 | Retained requirement | Boundary |
+|---|---|---|
+| Inverse queries | L2/L3-COR-111 | Half-open absolute ranges and all matching half-open RTC intervals, explicit quantization/basis, separate point query; never bridge gaps/jumps. |
+| New complete secondary/stamp encoder API | L2/L3-ENC-103 | Existing exposed/used encoders and byte-sum behaviour remain 0.8.0 blockers. |
+| Complex timeline-state rehydration | L2/L3-API-110 (deserialization subset only) | Omit/disable unsupported complex Deserialize; supported public-value loads validate; versioned complete output/schema remains a blocker. |
+| Prebuilt binary distribution | conditional L2/L3-REL-106 | No binaries in 0.8.0; future binary SBOM/provenance requirement retained. |
+
+Every other requirement remains a 0.8.0 blocker. Offline drift-corrected
+query mode is after 0.8.0. 0.8.0 ships both crates to crates.io only, via
+Trusted Publishing/OIDC from GitHub Actions, no stored publishing token and
+no local publish. [Release prerequisites](RELEASING.md) remain work to do;
+this decision configures no workflow or credentials and authorizes no publish.
 
 ## L2 decisions accepted 2026-11-12/13
 
@@ -136,8 +165,9 @@ verbatim Source lines are recorded in
 
 All original L2 questions are decided; Q-FLAGS-ERROR is TF-028. NTP floor
 is accepted (owner 2026-11-13), with raw fraction retained.
-Existing interpolation rounding/ties/mode-change flushing proposals are not
-silently accepted. Propose archiving RFC 1305/5905 in rcc-106-standards; they
+Interpolation floor, preceding midpoint tie, coarser mixed-resolution jump
+threshold and old-policy drain are now accepted explicitly (plan C1–C4, owner
+2026-11-13). Propose archiving RFC 1305/5905 in rcc-106-standards; they
 are external sources today, and this task does not archive them.
 
 Q-FLAGS implementation follows **only after this documentation PR merges**, in

@@ -9,7 +9,7 @@ one; records are not rewritten.
 **Status:** `accepted` — decided by the project owner; `proposed` — part of
 the architecture proposal (`docs/architecture.md`) awaiting the owner's
 review. The contract these decisions serve is `docs/TIME-IN-CHAPTER-10.md`.
-All seventeen records were accepted by 2026-09-27 (0011 to 0014, 0016, and
+The original seventeen records were accepted by 2026-09-27 (0011 to 0014, 0016, and
 0017 on that day, at the owner's review of step 1).
 
 | ADR | Decision | Status |
@@ -31,6 +31,7 @@ All seventeen records were accepted by 2026-09-27 (0011 to 0014, 0016, and
 | [0015](0015-shared-time-values-in-irig106-types.md) | Shared time values live in `irig106-types` and are fixed there first | accepted |
 | [0016](0016-tests-from-the-standard.md) | Tests from the standard: a failing test per finding; fixtures from its figures; real data local only | accepted |
 | [0017](0017-releases-after-the-rebuild.md) | The rebuilt crate is released as 0.8.0; users of 0.1.0 to 0.7.0 are told what was wrong | accepted |
+| [0018](0018-0-8-release-scope-and-policy-decisions.md) | 0.8.0 release scope, finding identities and accepted policy defaults | accepted 2026-11-13 |
 
 New records take the next number and use the same front matter
 (`status`, `date`, `decision-makers`).

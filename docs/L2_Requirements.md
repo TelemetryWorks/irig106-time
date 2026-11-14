@@ -46,6 +46,29 @@ results. Every entry has exactly one L1 parent. Its L3 child supplies data
 layout/algorithm obligations and planned cases. Additional STRM and RDG
 entries decompose complex policy and reading obligations.
 
+## 0.8.0 plan decisions accepted 2026-11-13
+
+Owner: "accept your recommendations"; the coordinator's explicit scope and
+finding-level qualifications are recorded in [the plan decision record](analysis/plan-decisions-2026-11-13.md).
+TF-029/030 are WARNING; TF-031/032 IDs/titles are permanent but their levels
+remain pending owner confirmation in S03/S08. C1–C4 are accepted.
+
+Release-scoped deferrals only: COR-111 inverse queries; the new complete
+ENC-103 secondary/stamp encoder API; API-110 complex timeline-state
+rehydration only; REL-106 prebuilt binary distribution. Requirements remain,
+not marked covered. Existing encoders/byte-sum behaviour, validated existing
+public value loads, complete versioned outputs and every other requirement
+remain 0.8.0 blockers. Offline drift-corrected query mode is after 0.8.0.
+
+0.8.0 is crates.io-only, both crates in lockstep, via Trusted Publishing/OIDC
+from GitHub Actions: no stored publishing token, no local publish, no prebuilt
+binaries. JSON uses a versioned reviewed schema, units and decimal strings
+for 64/128-bit quantities; supported loads validate and retain provenance.
+CLI keeps classes 0–4; usage precedes input, first fatal operational failure
+wins (3 input/4 output), later failures are diagnostics. These are owner/product
+policies; IRIG 106 does not prescribe release authentication, JSON or exit codes.
+This documentation implements none of them and starts no S01 work.
+
 ## Shared types and edition qualification
 
 The target shared API is `irig106-types` merge **c59e004**, described in
@@ -91,17 +114,17 @@ changed requirement/parent/Source lines are listed in
 | Q-TFMT-DEFAULT | Accepted owner 2026-11-13: by default missing required TFMT is reported and no comparison made; caller opt-in compares default A with default-derived basis, retaining the missing finding and raw absence. RDG-002 / Table 9-4 / Ch9 §9.5.1 a / TMATS ADR-0023. |
 
 All nine original L2 questions are decided. Q-FLAGS-ERROR is also resolved
-as TF-028 (owner 2026-11-13). Other explicitly marked proposals remain.
+as TF-028 (owner 2026-11-13). Plan C1–C4 are now accepted as recorded below; unrelated proposals remain.
 
 **NTP fraction floor (round toward zero) is accepted**, owner 2026-11-13;
 retain the raw fraction and quantization basis. RFC 1305/5905 archiving is
-proposed, not performed. Interpolation rounding/ties and mode-change flushing
-remain proposed where marked.
+proposed, not performed. Plan interpolation/tie/threshold/drain decisions C1–C4
+are accepted owner 2026-11-13; implementation evidence remains separate.
 
-Interpolation rounding, midpoint ties, mixed-resolution
-jump thresholds, and mode-change flushing are explicitly proposed design
-choices in the requirements. They need review as part of this draft; none
-changes an accepted Design field. RDG-008 remains suspect; page inspection
+Interpolation floor, preceding midpoint ties, coarser mixed-resolution
+jump thresholds and old-policy mode-change flushing are accepted policy
+choices (owner 2026-11-13, C1–C4), not new standard mandates. No Design
+or Review field is changed. RDG-008 remains suspect; page inspection
 does not settle it or replace its real-recording evidence.
 
 ## RTC
@@ -544,13 +567,13 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-NTP-004
 
-**Statement**: The library SHALL convert resolved NTP seconds to UTC civil/Unix-style time by subtracting 2208988800 seconds, without adding or subtracting cumulative TAI-UTC; return no absolute time for an all-zero seconds/fraction timestamp and retain leap-ambiguity and table-currency evidence.
+**Statement**: The library SHALL convert resolved NTP seconds to UTC civil/Unix-style time by subtracting 2208988800 seconds, without adding or subtracting cumulative TAI-UTC; return no absolute time for an all-zero seconds/fraction timestamp and retain leap-ambiguity and table-currency evidence. TF-029 WARNING SHALL report seconds=0 AND fraction=0, retaining raw data with no absolute value. TF-030 WARNING SHALL report a covered leap-second ambiguity window, keeping the ordinary mapped value labelled leap-ambiguous; it is not TF-022.
 
-**Source**: "2,208,988,800" (RFC 5905 §6 Figure 4, p.14, 1 Jan 1970); "a value of zero is a special case representing unknown or unsynchronized time" (§6, p.14); "knowledge of all previous leap seconds is lost" (RFC 1305 Appendix E.8, p.78); Figure 8 (p.79) repeats the same NTP number for UTC second 60 and midnight. "The NTP is referenced in UTC time with an epoch of January 1, 1900. The NTP time includes leap seconds." (106-24R1 §11.2.3.3, printed 11-26 / PDF 34); "the NTP timescale is in effect reset to UTC as each timecode is received" (RFC 1305 Appendix E.8, p.78). RDG-012, owner 2026-11-12; analysis: `docs/analysis/RDG-012-ntp-utc-era.md`.
+**Source**: "2,208,988,800" (RFC 5905 §6 Figure 4, p.14, 1 Jan 1970); "a value of zero is a special case representing unknown or unsynchronized time" (§6, p.14); "knowledge of all previous leap seconds is lost" (RFC 1305 Appendix E.8, p.78); Figure 8 (p.79) repeats the same NTP number for UTC second 60 and midnight. "The NTP is referenced in UTC time with an epoch of January 1, 1900. The NTP time includes leap seconds." (106-24R1 §11.2.3.3, printed 11-26 / PDF 34); "the NTP timescale is in effect reset to UTC as each timecode is received" (RFC 1305 Appendix E.8, p.78). RDG-012, owner 2026-11-12; analysis: `docs/analysis/RDG-012-ntp-utc-era.md`. Owner 2026-11-13, plan Q1: permanent TF-029/030 WARNING with the stated value effects; TF-031/032 IDs/titles approved, levels pending owner in S03/S08. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md).
 
 **Verification Method**: Test (T)
 
-**Planned verification**: RFC 5905 Figure 4: 1970, 1972, 1999-12-31 and 2036 era 1; a post-2016-leap date must not acquire +/-37 s; negative pre-1970 Unix time; exact all-zero sentinel vs zero seconds/nonzero fraction; [B,B+1) boundaries with a covered insertion; missing/stale table keeps value and records uncertainty.
+**Planned verification**: RFC 5905 Figure 4: 1970, 1972, 1999-12-31 and 2036 era 1; a post-2016-leap date must not acquire +/-37 s; negative pre-1970 Unix time; exact all-zero sentinel vs zero seconds/nonzero fraction; [B,B+1) boundaries with a covered insertion; missing/stale table keeps value and records uncertainty. Check exact TF-029/030 IDs, WARNING levels, raw retention, sentinel no-value and ambiguity value-kept effects.
 
 ## PTP
 
@@ -706,13 +729,13 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-TAI-007
 
-**Statement**: The library SHALL accept and retain explicit UTC second 60 only under RDG-010 date/time constraints, and label an NTP reading leap-ambiguous rather than inventing second 60 when Format 2 lacks a leap indicator.
+**Statement**: The library SHALL accept and retain explicit UTC second 60 only under RDG-010 date/time constraints, and label an NTP reading leap-ambiguous rather than inventing second 60 when Format 2 lacks a leap indicator. Use TF-022 for an explicit leap-second label read; use distinct TF-030 WARNING for an NTP ambiguity window, keeping and labelling the mapped value.
 
-**Source**: "time changes are made on December 31 and on June 30 at 2400 hours" (RCC 200-16 Appendix A.2, printed A-1 / PDF 56); "Time Unsigned Seconds", "Time Unsigned Seconds Fractions" (106-24R1 Figure 11-16, printed 11-27 / PDF 35); RFC 1305 Appendix E.8 Figure 8, p.79. RDG-010 remains accepted; RDG-012 refines the NTP case.
+**Source**: "time changes are made on December 31 and on June 30 at 2400 hours" (RCC 200-16 Appendix A.2, printed A-1 / PDF 56); "Time Unsigned Seconds", "Time Unsigned Seconds Fractions" (106-24R1 Figure 11-16, printed 11-27 / PDF 35); RFC 1305 Appendix E.8 Figure 8, p.79. RDG-010 remains accepted; RDG-012 refines the NTP case. Owner 2026-11-13, plan Q1: permanent TF-029/030 WARNING with the stated value effects; TF-031/032 IDs/titles approved, levels pending owner in S03/S08. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md).
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Retain Format 1 known/unknown-year UTC leap cases; NTP covered [B,B+1) ambiguity is distinct from explicit second 60, normal values outside, and unknown table coverage.
+**Planned verification**: Retain Format 1 known/unknown-year UTC leap cases; NTP covered [B,B+1) ambiguity is distinct from explicit second 60, normal values outside, and unknown table coverage. Distinguish TF-022 explicit second 60 from TF-030 ambiguity without a leap indicator.
 
 ## WORD
 
@@ -772,9 +795,11 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL encode a secondary header or a stamp using the same validated flags/format model and the documented checksum reading.
 
-**Source**: §11.2.1.1 g, §11.2.1.2, §11.2.1.3 b.
+**Source**: §11.2.1.1 g, §11.2.1.2, §11.2.1.3 b. Owner 2026-11-13, plan Q3/Q4: exact release-scoped deferrals and crates.io-only 0.8.0; Trusted Publishing/OIDC from GitHub Actions only, no stored publishing token or local publish. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). This policy does not authorise publication or settings/workflow changes.
 
 **Verification Method**: Test (T)
+
+**Release scope**: Only the new complete secondary-header/stamp encoder API is deferred past 0.8.0 (owner 2026-11-13, plan Q3). Repair of already exposed/used encoders and correct byte-sum behaviour remain 0.8.0 blockers; the requirement is not deleted or marked covered. See [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md).
 
 **Planned verification**: Golden header for all three formats, RTC-form stamp, invalid flags, byte-vs-word checksum distinction, and no writes past provided output capacity.
 
@@ -820,13 +845,13 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-EDN-002
 
-**Statement**: The library SHALL give an explicit caller declaration/override precedence when selecting packet layout (basis override), retaining and showing contradictory opted-in G\106 and header data-type-version evidence side by side in the basis. Without an override, use caller-opted-in G\106 as packet edition (basis declared, assumed from TMATS) only when not contradicted by packet evidence; otherwise leave layout unresolved, preserve raw bits and invent no SRC/None labels, retaining the evidence and reporting a conflict only when packet evidence contradicts the opted-in declaration. Differing declarations alone do not automatically produce a conflict finding; a lower header version allowed by at-or-below wording or an unadopted different TMATS-file edition is not proof of conflict. Keep setup and data-type version evidence distinct and applicable only where defined. Basis vocabulary and override precedence follow TMATS ADR-0028; no fallback assumption selects EXT.
+**Statement**: The library SHALL give an explicit caller declaration/override precedence when selecting packet layout (basis override), retaining and showing contradictory opted-in G\106 and header data-type-version evidence side by side in the basis. Without an override, use caller-opted-in G\106 as packet edition (basis declared, assumed from TMATS) only when not contradicted by packet evidence; otherwise leave layout unresolved, preserve raw bits and invent no SRC/None labels, retaining the evidence and reporting a conflict only when packet evidence contradicts the opted-in declaration. Differing declarations alone do not automatically produce a conflict finding; a lower header version allowed by at-or-below wording or an unadopted different TMATS-file edition is not proof of conflict. Keep setup and data-type version evidence distinct and applicable only where defined. Basis vocabulary and override precedence follow TMATS ADR-0028; no fallback assumption selects EXT. Report the existing no-override contradictory packet-layout evidence case as TF-031 "Packet-layout edition evidence is contradictory"; level pending owner (S03). Explicit override still wins with contradictory evidence retained side by side, without an automatic conflict finding; differing declarations or lower permitted header versions alone are not conflicts.
 
-**Source**: "EXT" (106-04 §10.6.3.3 Figure 10-15, printed 10-30 / full PDF 288; EXT definitions printed 10-31 / full PDF 289); "SRC" (106-05 Figure 10-16a, printed 10-37 / PDF 41). "a value at or below the release version of the standard applied to the data types" (106-24R1 §11.2.1.1 e, printed 11-6 / PDF 14). No setup version: 106-04 §10.6.7.2.2/Figure 10-34, printed 10-48 / full PDF 306; "Reserved. (Bits 31-0) are reserved." (106-05 Figure 10-34b, printed 10-55 / PDF 59); "CH10VER" (106-07 Figure 10-50, printed 10-72 / PDF 76, only 0x07 assigned). G\106 is "VERSION OF IRIG 106 STANDARD USED TO GENERATE THIS TMATS FILE" (106-04 Table 9-1, printed 9-8 / full PDF 186). Basis vocabulary: "override", "declared", "fallback" (TelemetryWorks/irig106-tmats `docs/adr/0028-edition-declarations-and-validation-basis.md`, commit `41030d54dfbd8a539c2810d023dd0670bfd3dc1f`). Owner 2026-11-13, Q-EDITION: explicit caller override wins with contradictory evidence retained side by side; without override use opt-in TMATS only when uncontradicted, else unresolved. The earlier conflicting-evidence brief applied to the no-override case, as clarified in review. ADR-0028: "No automatic conflict finding"; "differing declarations are shown side by side" (same pinned commit, lines 59–63; caller-override precedence context line 11). STANDARD-REVIEW T-6; 106-24R1 Table 9-2 printed 9-10 / PDF 16 (index 9-9 / PDF 15); analysis: `docs/analysis/Q-EDITION-2026-11-13.md`.
+**Source**: "EXT" (106-04 §10.6.3.3 Figure 10-15, printed 10-30 / full PDF 288; EXT definitions printed 10-31 / full PDF 289); "SRC" (106-05 Figure 10-16a, printed 10-37 / PDF 41). "a value at or below the release version of the standard applied to the data types" (106-24R1 §11.2.1.1 e, printed 11-6 / PDF 14). No setup version: 106-04 §10.6.7.2.2/Figure 10-34, printed 10-48 / full PDF 306; "Reserved. (Bits 31-0) are reserved." (106-05 Figure 10-34b, printed 10-55 / PDF 59); "CH10VER" (106-07 Figure 10-50, printed 10-72 / PDF 76, only 0x07 assigned). G\106 is "VERSION OF IRIG 106 STANDARD USED TO GENERATE THIS TMATS FILE" (106-04 Table 9-1, printed 9-8 / full PDF 186). Basis vocabulary: "override", "declared", "fallback" (TelemetryWorks/irig106-tmats `docs/adr/0028-edition-declarations-and-validation-basis.md`, commit `41030d54dfbd8a539c2810d023dd0670bfd3dc1f`). Owner 2026-11-13, Q-EDITION: explicit caller override wins with contradictory evidence retained side by side; without override use opt-in TMATS only when uncontradicted, else unresolved. The earlier conflicting-evidence brief applied to the no-override case, as clarified in review. ADR-0028: "No automatic conflict finding"; "differing declarations are shown side by side" (same pinned commit, lines 59–63; caller-override precedence context line 11). STANDARD-REVIEW T-6; 106-24R1 Table 9-2 printed 9-10 / PDF 16 (index 9-9 / PDF 15); analysis: `docs/analysis/Q-EDITION-2026-11-13.md`. Owner 2026-11-13, plan Q1: permanent TF-029/030 WARNING with the stated value effects; TF-031/032 IDs/titles approved, levels pending owner in S03/S08. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md).
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Header 0x01 alone -> unresolved/raw bits, no SRC/None labels; 106-04/05 reserved setup CSDW never becomes a version field. Explicit 106-04 -> EXT/basis override; explicit 106-05 -> SRC/basis override. Explicit override wins even with contradictory opted-in G\106 or header data-type-version evidence: retain all evidence side by side in the basis. Without override, G\106=04 without opt-in -> metadata only/unresolved; with opt-in and no contradictory packet evidence -> EXT/basis declared, assumed from TMATS; opted-in 05 -> SRC with the same assumption label. Without override, opted-in G\106 contradicted by packet evidence -> unresolved plus finding with evidence shown. Missing/malformed usable declarations -> unresolved. Differing declarations alone do not automatically create a conflict; a header at or below the adopted release is only a hint. Later CH10VER 0x07 tests remain distinct; no fictional 106-04/05 setup code or fallback EXT. All are planned fixtures.
+**Planned verification**: Header 0x01 alone -> unresolved/raw bits, no SRC/None labels; 106-04/05 reserved setup CSDW never becomes a version field. Explicit 106-04 -> EXT/basis override; explicit 106-05 -> SRC/basis override. Explicit override wins even with contradictory opted-in G\106 or header data-type-version evidence: retain all evidence side by side in the basis. Without override, G\106=04 without opt-in -> metadata only/unresolved; with opt-in and no contradictory packet evidence -> EXT/basis declared, assumed from TMATS; opted-in 05 -> SRC with the same assumption label. Without override, opted-in G\106 contradicted by packet evidence -> unresolved plus finding with evidence shown. Missing/malformed usable declarations -> unresolved. Differing declarations alone do not automatically create a conflict; a header at or below the adopted release is only a hint. Later CH10VER 0x07 tests remain distinct; no fictional 106-04/05 setup code or fallback EXT. All are planned fixtures. Verify TF-031 only in the existing no-override contradiction case; retain override precedence. Do not choose a severity before S03 owner confirmation.
 
 ## DECL
 
@@ -872,13 +897,13 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-COR-002
 
-**Statement**: The library SHALL keep whole-recording nearest-reference lookup distinct from streaming preceding/interpolating modes; make ties deterministic and record the selection rule.
+**Statement**: The library SHALL keep whole-recording nearest-reference lookup distinct from streaming preceding/interpolating modes; make ties deterministic and record the selection rule. Equal-distance nearest ties SHALL choose the preceding reference by default (owner-accepted C2), with the selection rule retained in the basis.
 
-**Source**: "It is better to use the clock and relative time values from a time packet that occurs near the current data packet as the data file is decoded since there is some drift in the RTC during a recording session" (RCC 123-09 §6.6; T-13); contract 5.2 rule 5; a policy setting (L1-POL-001). Prototype identifier kept.
+**Source**: "It is better to use the clock and relative time values from a time packet that occurs near the current data packet as the data file is decoded since there is some drift in the RTC during a recording session" (RCC 123-09 §6.6; T-13); contract 5.2 rule 5; a policy setting (L1-POL-001). Prototype identifier kept. Owner 2026-11-13 accepts plan C1–C4: floor interpolation, preceding midpoint tie, coarser mixed-resolution jump threshold and old-policy drain. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). These are selectable reader-policy decisions; original standard/handbook sources remain below or above.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Exact reference, midpoint tie, before-first default/override, beyond-last, wrap, and no reference from another session or channel. Compare streaming only with the same reference strategy, not offline nearest by accident.
+**Planned verification**: Exact reference, midpoint tie, before-first default/override, beyond-last, wrap, and no reference from another session or channel. Compare streaming only with the same reference strategy, not offline nearest by accident. Check the accepted preceding midpoint tie default and any explicit override.
 
 #### L2-COR-103
 
@@ -896,13 +921,13 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-COR-004
 
-**Statement**: The library SHALL measure jumps from consecutive same-channel references using the configured threshold and compatible scales.
+**Statement**: The library SHALL measure jumps from consecutive same-channel references using the configured threshold and compatible scales. With no explicit override, heterogeneous endpoint resolutions SHALL use the coarser resolution as the default jump threshold (owner-accepted C3).
 
-**Source**: "there is a jump in input clock time during a recording, such as when GPS locks for the first time, or when an IRIG time source is reprogrammed" (RCC 123-09 §6.6; T-13); contract 5.4; default threshold the format's resolution (L1-POL-001). Prototype identifier kept.
+**Source**: "there is a jump in input clock time during a recording, such as when GPS locks for the first time, or when an IRIG time source is reprogrammed" (RCC 123-09 §6.6; T-13); contract 5.4; default threshold the format's resolution (L1-POL-001). Prototype identifier kept. Owner 2026-11-13 accepts plan C1–C4: floor interpolation, preceding midpoint tie, coarser mixed-resolution jump threshold and old-policy drain. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). These are selectable reader-policy decisions; original standard/handbook sources remain below or above.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Threshold-1, exact threshold and threshold+1; positive/negative jumps, lock regain, no false jump at RTC wrap, different scales requiring conversion, and unknown scale unresolved.
+**Planned verification**: Threshold-1, exact threshold and threshold+1; positive/negative jumps, lock regain, no false jump at RTC wrap, different scales requiring conversion, and unknown scale unresolved. Check coarser mixed-resolution threshold by default and explicit threshold override at/below/above the boundary.
 
 #### L2-COR-105
 
@@ -968,25 +993,27 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-COR-010
 
-**Statement**: The library SHALL resolve and report year provenance in the configured precedence, checking recorded LY and advancing calendar years at rollover.
+**Statement**: The library SHALL resolve and report year provenance in the configured precedence, checking recorded LY and advancing calendar years at rollover. Report contradictory year candidates as TF-032 "Year evidence is contradictory"; level pending owner (S08). Preserve candidates and the existing year-evidence policy; do not select a severity before owner confirmation.
 
-**Source**: Figures 11-13 and 11-14; "Date and time original recording was created" (`R-x\RI4`, Chapter 9); contract 5.3.
+**Source**: Figures 11-13 and 11-14; "Date and time original recording was created" (`R-x\RI4`, Chapter 9); contract 5.3. Owner 2026-11-13, plan Q1: permanent TF-029/030 WARNING with the stated value effects; TF-031/032 IDs/titles approved, levels pending owner in S03/S08. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md).
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Each precedence branch, all sources absent, contradictory years, leap/common year, setup changes, and December 31->January 1 with known and unknown year.
+**Planned verification**: Each precedence branch, all sources absent, contradictory years, leap/common year, setup changes, and December 31->January 1 with known and unknown year. Retain conflicting year evidence and TF-032 identity; severity proposal/owner confirmation belongs to S08.
 
 #### L2-COR-111
 
 **Parent**: L1-COR-011
 
-**Statement**: The library SHALL return session spans and all matching counter ranges for absolute-time spans, preserving discontinuities and uncertainty.
+**Statement**: The library SHALL return session spans and all matching counter ranges for absolute-time spans, preserving discontinuities and uncertainty. Absolute range queries SHALL use half-open [start, end) and return every matching half-open RTC tick interval with explicit quantization and basis. Provide a separate point query; never bridge gaps/jumps, and retain unresolved endpoints.
 
-**Source**: Contract 3.6, 4.9, 5.5.
+**Source**: Contract 3.6, 4.9, 5.5. Owner 2026-11-13: "accept your recommendations" for the 0.8.0 plan; [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). This is reader/release policy, not an added IRIG mandate.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Monotonic span, backwards/forwards clock jump with multiple/no matches, multiple sessions, inclusive boundary convention documented, unknown year/scale, and a request outside coverage.
+**Release scope**: Deferred past 0.8.0 (owner 2026-11-13, plan Q3). The requirement and decided half-open semantics remain; no inverse-query coverage is claimed. Offline drift-corrected query mode is also after 0.8.0. See [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md).
+
+**Planned verification**: Monotonic span, backwards/forwards clock jump with multiple/no matches, multiple sessions, half-open start-included/end-excluded boundaries and separate point queries, unknown year/scale, and a request outside coverage. Check start included/end excluded, tick quantization, separate point queries, multiple matches and no gap/jump bridging; feature remains deferred past 0.8.0.
 
 #### L2-COR-112
 
@@ -1082,7 +1109,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL represent cited defaults and every accepted stream policy setting explicitly: standard mode, committed Option A channel selection, 100 ms hold tolerance, 0 ns gap tolerance, caller progress and caller-set resource caps.
 
-**Source**: "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78); ADR-0010 (cited, selectable defaults). Owner decision 2026-11-12; policy/interpretation, not an added standard mandate. "minimum frequency of 1 hertz" (106-24R1 Chapter 10 §10.6.2); "packet generation times shall be equal to or less than 100 milliseconds" (§10.6.1 b); "stream commit time equal to or less than 1000 ms" (§10.6.1 c), all printed 10-26 / PDF 32. The 100 ms hold tolerance, zero gap tolerance, explicit progress, caps and release rules are owner-selected policy (2026-11-12), not timing guarantees imposed on a reader.
+**Source**: "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78); ADR-0010 (cited, selectable defaults). Owner decision 2026-11-12; policy/interpretation, not an added standard mandate. "minimum frequency of 1 hertz" (106-24R1 Chapter 10 §10.6.2); "packet generation times shall be equal to or less than 100 milliseconds" (§10.6.1 b); "stream commit time equal to or less than 1000 ms" (§10.6.1 c), all printed 10-26 / PDF 32. The 100 ms hold tolerance, zero gap tolerance, explicit progress, caps and release rules are owner-selected policy (2026-11-12), not timing guarantees imposed on a reader. Owner 2026-11-13 accepts plan C1–C4; [decision/source record](analysis/plan-decisions-2026-11-13.md).
 
 **Verification Method**: Test (T)
 
@@ -1092,25 +1119,25 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-POL-002
 
-**Statement**: The library SHALL make every policy setting caller-selectable with validation and an explicit effective point for streaming changes.
+**Statement**: The library SHALL make every policy setting caller-selectable with validation and an explicit effective point for streaming changes. On explicit stream-mode change, drain pending packets using the old policy/deadline/cap/fallback basis before installing the new snapshot (owner-accepted C4); never relabel emitted answers.
 
-**Source**: "I would like for it to be selectable as well" (owner, 2026-09-27); ADR-0010.
+**Source**: "I would like for it to be selectable as well" (owner, 2026-09-27); ADR-0010. Owner 2026-11-13 accepts plan C1–C4: floor interpolation, preceding midpoint tie, coarser mixed-resolution jump threshold and old-policy drain. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). These are selectable reader-policy decisions; original standard/handbook sources remain below or above.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Change each setting from default; invalid bounds, standard->interpolate->standard with queued packets, and no mutation of already issued answers.
+**Planned verification**: Change each setting from default; invalid bounds, standard->interpolate->standard with queued packets, and no mutation of already issued answers. Assert accepted old-policy drain and immutable old/new snapshot identities.
 
 #### L2-POL-103
 
 **Parent**: L1-POL-003
 
-**Statement**: The library SHALL record enough policy information to reproduce each answer and timeline, including explicit non-default assumptions.
+**Statement**: The library SHALL record enough policy information to reproduce each answer and timeline, including explicit non-default assumptions. Snapshot/report JSON SHALL use a reviewed versioned schema with units, decimal strings for 64/128-bit quantities, validation on load and retained raw/stated/assumed provenance. Review the schema once before freeze.
 
-**Source**: ADR-0010.
+**Source**: ADR-0010. Owner 2026-11-13, plan Q5: reviewed versioned snapshot/report JSON schema with units, 64/128-bit quantities as decimal strings, validation on load and raw/stated/assumed provenance. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). IRIG 106 does not prescribe JSON representation.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Same bytes+same policy deterministic result; different policies distinguishable; serialized delta cannot silently adopt changed future defaults.
+**Planned verification**: Same bytes+same policy deterministic result; different policies distinguishable; serialized delta cannot silently adopt changed future defaults. Check 64/128-bit extrema as decimal strings, units/schema version, validation and full provenance. Complex timeline rehydration alone has the API-110 release deferral.
 
 #### L2-POL-201
 
@@ -1118,7 +1145,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL default streaming to standard (preceding-reference) while allowing explicit interpolate selection; keep offline nearest as a separate accepted default.
 
-**Source**: "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78); ADR-0010 (cited, selectable defaults). Owner decision 2026-11-12; policy/interpretation, not an added standard mandate.
+**Source**: "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78); ADR-0010 (cited, selectable defaults). Owner decision 2026-11-12; policy/interpretation, not an added standard mandate. Owner 2026-11-13 accepts plan C1–C4; [decision/source record](analysis/plan-decisions-2026-11-13.md).
 
 **Verification Method**: Test (T)
 
@@ -1130,25 +1157,25 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-FND-001
 
-**Statement**: The library SHALL use the owner-accepted TF-001..TF-028 identities and severity defaults with structured evidence; caller severity overrides do not alter factual validity.
+**Statement**: The library SHALL use the owner-accepted TF-001..TF-032 identities with structured evidence and only the severity defaults approved by the owner; caller severity overrides do not alter factual validity. Permanent IDs extend through TF-032. TF-001..TF-028 remain unchanged; TF-029/030 are WARNING with sentinel-no-value/ambiguity-value-kept effects. TF-031 "Packet-layout edition evidence is contradictory" has level pending owner (S03); TF-032 "Year evidence is contradictory" has level pending owner (S08). No default level is assigned to the latter two by this decision.
 
-**Source**: Contract section 6; ADR-0013. "Bits 3-2: Indicate the packet secondary header time format."; "11 = Reserved"; "1 = Packet secondary header time (bit 7 must be 1)." (106-24R1 §11.2.1.1 g, printed 11-8/11-9, PDF 16/17). The standard defines the flags, not finding IDs. Owner 2026-11-13, Q-FLAGS-ERROR accepts TF-028 "Secondary-derived time has an undefined format" at ERROR; architecture section 8. TF-001..TF-027 remain unchanged.
+**Source**: Contract section 6; ADR-0013. "Bits 3-2: Indicate the packet secondary header time format."; "11 = Reserved"; "1 = Packet secondary header time (bit 7 must be 1)." (106-24R1 §11.2.1.1 g, printed 11-8/11-9, PDF 16/17). The standard defines the flags, not finding IDs. Owner 2026-11-13, Q-FLAGS-ERROR accepts TF-028 "Secondary-derived time has an undefined format" at ERROR; architecture section 8. TF-001..TF-027 remain unchanged. Owner 2026-11-13, plan Q1: permanent TF-029/030 WARNING with the stated value effects; TF-031/032 IDs/titles approved, levels pending owner in S03/S08. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md).
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Each ID and severity override, absent offset, serialization, duplicate findings with distinct evidence, and an immutable identifier list matching architecture 8.
+**Planned verification**: Each ID and severity override, absent offset, serialization, duplicate findings with distinct evidence, and an immutable identifier list matching architecture 8. Verify all permanent identities; freeze existing TF-001..028 rows; distinguish approved WARNING levels 029/030 from pending levels 031/032.
 
 #### L2-FND-102
 
 **Parent**: L1-FND-002
 
-**Statement**: The library SHALL cover each contract 6 degraded case with the accepted architecture 8 finding and a documented answer effect.
+**Statement**: The library SHALL cover each contract 6 degraded case with the accepted architecture 8 finding and a documented answer effect. Include TF-029 (zero NTP, WARNING, no absolute value/raw kept), TF-030 (NTP ambiguity, WARNING, mapped value kept/labelled), TF-031 (contradictory packet-layout evidence, level pending owner S03) and TF-032 (contradictory year evidence, level pending owner S08). No pending level may be silently defaulted.
 
-**Source**: Contract 6.1 to 6.9.
+**Source**: Contract 6.1 to 6.9. Owner 2026-11-13, plan Q1: permanent TF-029/030 WARNING with the stated value effects; TF-031/032 IDs/titles approved, levels pending owner in S03/S08. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md).
 
 **Verification Method**: Test (T)
 
-**Planned verification**: At least one synthesized case per TF identifier, including simultaneous causes; exact error/warning/information defaults from architecture 8 without renaming or changing owner choices.
+**Planned verification**: At least one synthesized case per TF identifier, including simultaneous causes; exact error/warning/information defaults from architecture 8 without renaming or changing owner choices. Check the new value effects and approved levels; severity proposals for 031/032 remain for their implementing slices.
 
 #### L2-FND-103
 
@@ -1350,13 +1377,13 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-RDG-002
 
-**Statement**: The project SHALL specify and verify RDG-012: UTC-following NTP reckoning without cumulative TAI-UTC adjustment, evidenced/policy-assumed era resolution, zero sentinel, leap ambiguity, accepted floor rounding and PTP last-known-offset fallback with TF-021.
+**Statement**: The project SHALL specify and verify RDG-012: UTC-following NTP reckoning without cumulative TAI-UTC adjustment, evidenced/policy-assumed era resolution, zero sentinel, leap ambiguity, accepted floor rounding and PTP last-known-offset fallback with TF-021. Apply TF-029 WARNING to the all-zero NTP sentinel (no absolute value, raw kept) and TF-030 WARNING to NTP leap ambiguity (mapped value kept and labelled).
 
-**Source**: "2,208,988,800" (RFC 5905 §6 Figure 4, p.14, 1 Jan 1970); "a value of zero is a special case representing unknown or unsynchronized time" (§6, p.14); "knowledge of all previous leap seconds is lost" (RFC 1305 Appendix E.8, p.78); Figure 8 (p.79) repeats the same NTP number for UTC second 60 and midnight. "The NTP is referenced in UTC time with an epoch of January 1, 1900. The NTP time includes leap seconds." (106-24R1 §11.2.3.3, printed 11-26 / PDF 34); "the NTP timescale is in effect reset to UTC as each timecode is received" (RFC 1305 Appendix E.8, p.78). RDG-012, owner 2026-11-12; analysis: `docs/analysis/RDG-012-ntp-utc-era.md`. "The PTP is referenced in International Atomic Time with an epoch of January 1, 1970. The PTP time does not include leap seconds." (106-24R1 §11.2.3.3, printed 11-26 / PDF 34). Owner 2026-11-13 confirms contract 6.8/6.9 and L1-TAI-004: outside leap-table coverage use the last known offset, label the UTC conversion possibly out of date, and raise TF-021 (warning); keep TAI and table/offset provenance. The contrary no-UTC rule came from the coordinator brief and was withdrawn, not an owner decision; RDG-012.
+**Source**: "2,208,988,800" (RFC 5905 §6 Figure 4, p.14, 1 Jan 1970); "a value of zero is a special case representing unknown or unsynchronized time" (§6, p.14); "knowledge of all previous leap seconds is lost" (RFC 1305 Appendix E.8, p.78); Figure 8 (p.79) repeats the same NTP number for UTC second 60 and midnight. "The NTP is referenced in UTC time with an epoch of January 1, 1900. The NTP time includes leap seconds." (106-24R1 §11.2.3.3, printed 11-26 / PDF 34); "the NTP timescale is in effect reset to UTC as each timecode is received" (RFC 1305 Appendix E.8, p.78). RDG-012, owner 2026-11-12; analysis: `docs/analysis/RDG-012-ntp-utc-era.md`. "The PTP is referenced in International Atomic Time with an epoch of January 1, 1970. The PTP time does not include leap seconds." (106-24R1 §11.2.3.3, printed 11-26 / PDF 34). Owner 2026-11-13 confirms contract 6.8/6.9 and L1-TAI-004: outside leap-table coverage use the last known offset, label the UTC conversion possibly out of date, and raise TF-021 (warning); keep TAI and table/offset provenance. The contrary no-UTC rule came from the coordinator brief and was withdrawn, not an owner decision; RDG-012. Owner 2026-11-13, plan Q1: permanent TF-029/030 WARNING with the stated value effects; TF-031/032 IDs/titles approved, levels pending owner in S03/S08. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md).
 
 **Verification Method**: Inspection (I)
 
-**Planned verification**: Written all-edition analysis and RFC page checks; each listed edge gets a future failing test/fixture; floor rounding is accepted (owner 2026-11-13), and human Review remains pending.
+**Planned verification**: Written all-edition analysis and RFC page checks; each listed edge gets a future failing test/fixture; floor rounding is accepted (owner 2026-11-13), and human Review remains pending. Pin the two permanent IDs and their distinct value effects without changing TF-022.
 
 ## STRM
 
@@ -1388,13 +1415,13 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-STRM-001
 
-**Statement**: The library SHALL when interpolate is explicitly selected, hold for the next compatible same-channel reference within the accepted hold/cap rules and interpolate only between valid bracketing references.
+**Statement**: The library SHALL when interpolate is explicitly selected, hold for the next compatible same-channel reference within the accepted hold/cap rules and interpolate only between valid bracketing references. Interpolate with checked i128 using t=t0+floor((r-r0)*(t1-t0)/(r1-r0)); floor is owner-accepted C1, not a pending proposal.
 
-**Source**: "minimum frequency of 1 hertz" (106-24R1 Chapter 10 §10.6.2); "packet generation times shall be equal to or less than 100 milliseconds" (§10.6.1 b); "stream commit time equal to or less than 1000 ms" (§10.6.1 c), all printed 10-26 / PDF 32. The 100 ms hold tolerance, zero gap tolerance, explicit progress, caps and release rules are owner-selected policy (2026-11-12), not timing guarantees imposed on a reader. "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78); ADR-0010 (cited, selectable defaults). Owner decision 2026-11-12; policy/interpretation, not an added standard mandate.
+**Source**: "minimum frequency of 1 hertz" (106-24R1 Chapter 10 §10.6.2); "packet generation times shall be equal to or less than 100 milliseconds" (§10.6.1 b); "stream commit time equal to or less than 1000 ms" (§10.6.1 c), all printed 10-26 / PDF 32. The 100 ms hold tolerance, zero gap tolerance, explicit progress, caps and release rules are owner-selected policy (2026-11-12), not timing guarantees imposed on a reader. "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78); ADR-0010 (cited, selectable defaults). Owner decision 2026-11-12; policy/interpretation, not an added standard mandate. Owner 2026-11-13 accepts plan C1–C4: floor interpolation, preceding midpoint tie, coarser mixed-resolution jump threshold and old-policy drain. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). These are selectable reader-policy decisions; original standard/handbook sources remain below or above.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: 1 s RTC interval and1.000010 s absolute interval -> proposed midpoint0.500005 s; explicit Interpolate, endpoints, rounding proposal, wrap/equal counters and incompatible scale; timeout/cap/EOF fallback.
+**Planned verification**: 1 s RTC interval and1.000010 s absolute interval -> accepted midpoint0.500005 s; explicit Interpolate, endpoints, accepted floor rounding, wrap/equal counters and incompatible scale; timeout/cap/EOF fallback. Assert accepted floor rounding, including a non-integral result, endpoint basis and coarser precision.
 
 #### L2-STRM-203
 
@@ -1436,13 +1463,13 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-STRM-001
 
-**Statement**: The library SHALL make mode changes explicit, preserve the original policy/fallback on released answers, and obey the committed stream channel decision without future count ranking.
+**Statement**: The library SHALL make mode changes explicit, preserve the original policy/fallback on released answers, and obey the committed stream channel decision without future count ranking. Explicit mode changes SHALL drain pending data under the old snapshot before installing the new one (owner-accepted C4), preserving old deadline/caps/progress/fallback and never revising emitted answers.
 
-**Source**: "it is incumbent on the programmer or data analyst to determine and select the best source of time" (RCC 123-20 §5.6, printed 5-44 / PDF 78); "TIMEIN" / "IRIG Time Input" (`R-x\CDT-n`, 106-24R1 Chapter 9 Table 9-4, printed 9-50 / PDF 56), "E" / "External" (`R-x\TSRC-n`, printed 9-72 / PDF 78). Option A ranking/commitment is owner policy (2026-11-12); the standard names attributes, not that ranking. "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78); ADR-0010 (cited, selectable defaults). Owner decision 2026-11-12; policy/interpretation, not an added standard mandate.
+**Source**: "it is incumbent on the programmer or data analyst to determine and select the best source of time" (RCC 123-20 §5.6, printed 5-44 / PDF 78); "TIMEIN" / "IRIG Time Input" (`R-x\CDT-n`, 106-24R1 Chapter 9 Table 9-4, printed 9-50 / PDF 56), "E" / "External" (`R-x\TSRC-n`, printed 9-72 / PDF 78). Option A ranking/commitment is owner policy (2026-11-12); the standard names attributes, not that ranking. "clock time of a subsequent data packet" (RCC 123-20 §5.6, printed 5-44 / PDF 78); ADR-0010 (cited, selectable defaults). Owner decision 2026-11-12; policy/interpretation, not an added standard mandate. Owner 2026-11-13 accepts plan C1–C4: floor interpolation, preceding midpoint tie, coarser mixed-resolution jump threshold and old-policy drain. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). These are selectable reader-policy decisions; original standard/handbook sources remain below or above.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Mode change with pending data preserves old answer basis and resource bounds; explicit channel commitment and no count-based or lost-lock reassignment; no retroactive answer changes.
+**Planned verification**: Mode change with pending data preserves old answer basis and resource bounds; explicit channel commitment and no count-based or lost-lock reassignment; no retroactive answer changes. Test the accepted old-snapshot drain with pending data and unchanged channel commitment.
 
 ## ERR
 
@@ -1572,13 +1599,13 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-API-007
 
-**Statement**: The library SHALL keep the public value and recording APIs buildable for wasm 32-unknown-unknown with serde disabled and enabled.
+**Statement**: The library SHALL keep the public value and recording APIs buildable for wasm 32-unknown-unknown with serde disabled and enabled. In snapshot/report JSON, 64/128-bit quantities SHALL be decimal strings with units under the reviewed versioned schema; preserve exact signed values and raw/stated/assumed provenance.
 
-**Source**: `irig106-tmats` L1-REL-003; contract 4.8; ADR-0014.
+**Source**: `irig106-tmats` L1-REL-003; contract 4.8; ADR-0014. Owner 2026-11-13, plan Q5: reviewed versioned snapshot/report JSON schema with units, 64/128-bit quantities as decimal strings, validation on load and raw/stated/assumed provenance. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). IRIG 106 does not prescribe JSON representation.
 
 **Verification Method**: Inspection (I)
 
-**Planned verification**: Planned inspection: two WASM builds plus boundary serialization fixtures for values above 2^53, alongside native feature checks.
+**Planned verification**: Planned inspection: two WASM builds plus boundary serialization fixtures for values above 2^53, alongside native feature checks. Exercise exact signed/unsigned 64/128-bit extrema and units in JSON; never pass them through floating-point.
 
 #### L2-API-108
 
@@ -1608,13 +1635,15 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-API-010
 
-**Statement**: The library SHALL provide version-aware serde representations for public values and provenance without allowing deserialization to bypass invariants.
+**Statement**: The library SHALL provide version-aware serde representations for public values and provenance without allowing deserialization to bypass invariants. Snapshot/report JSON SHALL be versioned with units; 64/128-bit quantities SHALL be decimal strings. Validate supported loads and retain raw/stated/assumed provenance; review the schema once before freeze.
 
-**Source**: Architecture section 9; tools store and exchange answers (contract 4.7 to 4.9).
+**Source**: Architecture section 9; tools store and exchange answers (contract 4.7 to 4.9). Owner 2026-11-13, plan Q5: reviewed versioned snapshot/report JSON schema with units, 64/128-bit quantities as decimal strings, validation on load and raw/stated/assumed provenance. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). IRIG 106 does not prescribe JSON representation.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Roundtrip every public type, malformed/out-of-range serialized fields, dangling IDs, unknown schema version, and values above 2^53; no bare absolute time substituted for an answer.
+**Release scope**: Only deserialization that rehydrates complex timeline state is deferred past 0.8.0 (owner 2026-11-13, plan Q3). Disable/omit unsupported complex Deserialize. Validating existing public value deserialization, versioned policy/answer/timeline output and JSON schema remain 0.8.0 blockers; this is not a blanket serde deferral. See [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md).
+
+**Planned verification**: Roundtrip every public type, malformed/out-of-range serialized fields, dangling IDs, unknown schema version, and values above 2^53; no bare absolute time substituted for an answer. Unsupported complex timeline Deserialize is disabled/omitted for 0.8.0; supported value loads remain validated and complete versioned output stays in scope.
 
 #### L2-API-111
 
@@ -1720,25 +1749,25 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-CLI-006
 
-**Statement**: The CLI SHALL publish a versioned JSON report schema and consistent text/CSV views of the same report.
+**Statement**: The CLI SHALL publish a versioned JSON report schema and consistent text/CSV views of the same report. JSON SHALL use a reviewed versioned snapshot/report schema with units, decimal strings for 64/128-bit quantities, supported-load validation and raw/stated/assumed provenance; review the schema once before freeze.
 
-**Source**: As `irig106-tmats` L1-CLI-006; `irig106-cli` and scripts rely on the output (contract 4.10); architecture section 4.4.
+**Source**: As `irig106-tmats` L1-CLI-006; `irig106-cli` and scripts rely on the output (contract 4.10); architecture section 4.4. Owner 2026-11-13, plan Q5: reviewed versioned snapshot/report JSON schema with units, 64/128-bit quantities as decimal strings, validation on load and raw/stated/assumed provenance. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). IRIG 106 does not prescribe JSON representation.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Golden outputs with quotes/commas/newlines, unknown year/scale, counter-only and values above 2^53; schema validation and report round trips.
+**Planned verification**: Golden outputs with quotes/commas/newlines, unknown year/scale, counter-only and values above 2^53; schema validation and report round trips. Check schema/version/units, exact decimal strings and provenance in golden reports; align with library snapshots.
 
 #### L2-CLI-107
 
 **Parent**: L1-CLI-007
 
-**Statement**: The CLI SHALL use five documented exit classes: 0 success; 1 findings at or above the chosen severity; 2 usage error; 3 input could not be read or is not valid Chapter 10/time input; 4 output could not be written. These shared ecosystem assignments SHALL agree with `irig106 tmats` and SHALL NOT be renumbered. Document classification precedence; usage validation precedes input access and input/output failures take precedence over finding-only outcomes.
+**Statement**: The CLI SHALL use five documented exit classes: 0 success; 1 findings at or above the chosen severity; 2 usage error; 3 input could not be read or is not valid Chapter 10/time input; 4 output could not be written. These shared ecosystem assignments SHALL agree with `irig106 tmats` and SHALL NOT be renumbered. Document classification precedence; usage validation precedes input access and input/output failures take precedence over finding-only outcomes. After usage validation and before a finding-only outcome, the first fatal operational failure SHALL determine code 3 for input or 4 for output; later failures become diagnostics and do not replace that first fatal classification.
 
-**Source**: As `irig106-tmats` L1-CLI-006 (the existing L1 source); TelemetryWorks/irig106-tmats, `docs/CLI.md` §4, lines 88–91, commit `41030d54dfbd8a539c2810d023dd0670bfd3dc1f`: "`0` success; `1` the check failed (`verify` mismatch, `validate` findings at or above the failure threshold); `2` usage error; `3` input could not be read or is not TMATS/Chapter 10; `4` output could not be written. To be fixed before 0.1 and never renumbered." Owner 2026-11-12, Q-CLI-EXIT = align with irig106-tmats; findings/severities ADR-0013, hand-rolled parser ADR-0008. IRIG 106 is silent on tool exit codes: no standard source exists. This is a shared ecosystem convention so `irig106 tmats` and `irig106 time` agree; code 3 specializes the domain to Chapter 10/time input. See `docs/analysis/Q-CLI-EXIT-2026-11-12.md`.
+**Source**: As `irig106-tmats` L1-CLI-006 (the existing L1 source); TelemetryWorks/irig106-tmats, `docs/CLI.md` §4, lines 88–91, commit `41030d54dfbd8a539c2810d023dd0670bfd3dc1f`: "`0` success; `1` the check failed (`verify` mismatch, `validate` findings at or above the failure threshold); `2` usage error; `3` input could not be read or is not TMATS/Chapter 10; `4` output could not be written. To be fixed before 0.1 and never renumbered." Owner 2026-11-12, Q-CLI-EXIT = align with irig106-tmats; findings/severities ADR-0013, hand-rolled parser ADR-0008. IRIG 106 is silent on tool exit codes: no standard source exists. This is a shared ecosystem convention so `irig106 tmats` and `irig106 time` agree; code 3 specializes the domain to Chapter 10/time input. See `docs/analysis/Q-CLI-EXIT-2026-11-12.md`. Owner 2026-11-13, plan Q6: usage before input; first fatal operational failure determines code 3 (input) or 4 (output), later failures are diagnostics. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). IRIG 106 is silent on process exit codes and their precedence.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: One test per numeric code: 0 successful output with no threshold findings; 1 finding at/above the chosen severity, including threshold changes; 2 hand-rolled parser usage errors (ADR-0008), including unknown options, missing arguments and usage error before opening a nonexistent input; 3 unreadable input and invalid Chapter 10/time input; 4 injected output-write failure. Verify the shared runner returns the classification for host invocation without exiting the process; input/output failure must not be reported as success or only findings. Code/tests belong to the CLI restructure step, with /// Requirements: markers for L1-CLI-007, L2-CLI-107 and L3-CLI-107, correct Traces tags and regenerated matrix linking requirement → code → test; these are planned checks, not executed tests.
+**Planned verification**: One test per numeric code: 0 successful output with no threshold findings; 1 finding at/above the chosen severity, including threshold changes; 2 hand-rolled parser usage errors (ADR-0008), including unknown options, missing arguments and usage error before opening a nonexistent input; 3 unreadable input and invalid Chapter 10/time input; 4 injected output-write failure. Verify the shared runner returns the classification for host invocation without exiting the process; input/output failure must not be reported as success or only findings. Code/tests belong to the CLI restructure step, with /// Requirements: markers for L1-CLI-007, L2-CLI-107 and L3-CLI-107, correct Traces tags and regenerated matrix linking requirement → code → test; these are planned checks, not executed tests. Inject both input and output failures in each occurrence order, including diagnostic-output failure after an input failure; verify first fatal code wins and later diagnostics are retained.
 
 ## REL
 
@@ -1746,13 +1775,13 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-REL-001
 
-**Statement**: The project SHALL validate one workspace version and the exact CLI library pin before release packaging.
+**Statement**: The project SHALL validate one workspace version and the exact CLI library pin before release packaging. Actual publication SHALL use crates.io Trusted Publishing/OIDC from GitHub Actions only; no stored publishing token and no local publish. 0.8.0 ships both crates to crates.io without prebuilt binaries; this documentation grants no publication authority.
 
-**Source**: ADR-0007.
+**Source**: ADR-0007. Owner 2026-11-13, plan Q3/Q4: exact release-scoped deferrals and crates.io-only 0.8.0; Trusted Publishing/OIDC from GitHub Actions only, no stored publishing token or local publish. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). This policy does not authorise publication or settings/workflow changes.
 
 **Verification Method**: Inspection (I)
 
-**Planned verification**: Planned inspection: manifest/package metadata and dry-run artifacts for both packages; intentionally mismatched versions/pins must fail.
+**Planned verification**: Planned inspection: manifest/package metadata and dry-run artifacts for both packages; intentionally mismatched versions/pins must fail. Inspect publisher workflow/identity and no stored token/local publish path in authorised release work; no such workflow or settings are changed here.
 
 #### L2-REL-102
 
@@ -1808,9 +1837,11 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The project SHALL require a verifiable SBOM and build-provenance artifact for each published irigtime binary.
 
-**Source**: As `irig106-tmats` L1-REL-006 and its `docs/RELEASING.md` step 7.
+**Source**: As `irig106-tmats` L1-REL-006 and its `docs/RELEASING.md` step 7. Owner 2026-11-13, plan Q3/Q4: exact release-scoped deferrals and crates.io-only 0.8.0; Trusted Publishing/OIDC from GitHub Actions only, no stored publishing token or local publish. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). This policy does not authorise publication or settings/workflow changes.
 
 **Verification Method**: Inspection (I)
+
+**Release scope**: Prebuilt binary distribution is deferred; 0.8.0 is crates.io-only (owner 2026-11-13, plan Q3/Q4). SBOM/provenance remains mandatory for every binary eventually distributed. No binary is shipped in 0.8.0; the conditional requirement is retained and not marked covered. See [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md).
 
 **Planned verification**: Planned inspection: reviewed release workflow and sample verification, including digest mismatch and missing provenance.
 

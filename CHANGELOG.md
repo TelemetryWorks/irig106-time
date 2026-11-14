@@ -9,12 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Owner 2026-11-13 plan decisions (ADR-0018): permanent TF-029 zero-NTP and
+  TF-030 NTP ambiguity WARNING findings; TF-031 packet-layout conflict and
+  TF-032 year conflict IDs/titles accepted, levels pending owner S03/S08.
+  Catalog/requirements only; no new producer is implemented by this docs PR.
+- 0.8.0 release scope: defer only COR-111 inverse queries (half-open semantics
+  accepted), the new complete ENC-103 secondary/stamp API, complex API-110
+  timeline rehydration, and conditional REL-106 prebuilt distribution. These
+  remain requirements without coverage claims. Existing encoders/byte sum,
+  supported validated loads and complete versioned outputs remain blockers;
+  all other requirements remain blockers. Offline drift-corrected query mode
+  is after 0.8.0. Trace links cannot express partially covered clauses.
+- Accepted versioned snapshot/report JSON with units, decimal-string 64/128-bit
+  quantities, validated loads and raw/stated/assumed provenance; schema review
+  before freeze. Accepted CLI failure precedence: usage before input, first
+  fatal operational failure determines 3/4, later failures diagnostic. These
+  are future implementation obligations, not runtime changes in this PR.
+- Release policy: both crates at 0.8.0, crates.io only, GitHub Actions Trusted
+  Publishing/OIDC only, no stored publishing token or local publish; no prebuilt
+  binaries. No workflow, settings, credentials or release action changed.
+- C1–C4 acceptance updates documentation/comments only. The legacy runtime basis
+  string `floor (L3 proposal)` is deliberately unchanged, including its tests;
+  replacing that output requires a separate behaviour migration.
+
 - E2 `stream::StreamTimeline`: Standard preceding-reference default and explicit
   Interpolate, caller progress, fixed advance channel commitment, mandatory
   packet/byte/reference caps, incremental findings and immutable answer basis.
   Hold defaults to1 s+100 ms, gap tolerance to0 ns; every resource/timeout/EOF
   fallback is labelled extrapolated or counter-only. No session/jump/scale bridge.
-  Floor interpolation and old-policy mode-change flushing remain L3 proposals.
+  Floor interpolation and old-policy mode-change flushing are owner-accepted
+  defaults (2026-11-13, C1/C4).
   See `docs/verification-e2.md`: ordinary Format1 projections only; matrix links
   cannot express partial clauses. Network adapters/year inference/serialization
   remain deferred; legacy `streaming` is a separate compatibility API.
@@ -38,9 +62,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   counts test markers and cannot express partially verified clauses within a
   linked L2/L3 requirement; an Implemented row does not mean full compliance.
   See `docs/verification-e1.md` for covered/deferred clauses and mutation evidence.
-- The preceding midpoint tie and coarser-resolution jump threshold are **L3
-  PROPOSALS used as labelled, selectable defaults**, pending owner confirmation;
-  E1 does not promote them to accepted owner decisions.
+- The preceding midpoint tie and coarser mixed-resolution jump threshold are
+  owner-accepted selectable defaults (2026-11-13, C2/C3). Historical E1 evidence
+  is unchanged; this documentation update changes no arithmetic.
 
 ### ⚠️ E1 migration notes
 

@@ -1,5 +1,10 @@
 # E2 bounded stream verification
 
+> **Later decision, owner 2026-11-13:** plan Q1–Q6 and C1–C4 are accepted
+> with TF-031/032 levels pending S03/S08 owner confirmation. The original
+> evidence and then-pending labels below are historical, not new results.
+> See [the decision record](analysis/plan-decisions-2026-11-13.md); release deferrals do not imply coverage.
+
 Base: main `ce78185` (merged E1); split recorded before code in working notes.
 Initial E2 core: about1,500 handwritten changed lines plus generated matrix;
 review-requested tests and fixes are retained in the same PR.

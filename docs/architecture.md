@@ -168,6 +168,9 @@ input; 4 output could not be written**. Never renumber. IRIG 106 is silent
 on tool exit codes; no standard source exists. The pinned TMATS draft,
 L1-CLI-007 → L2-CLI-107 → L3-CLI-107, and planned restructure-step tests
 are recorded in [the Q-CLI-EXIT analysis](analysis/Q-CLI-EXIT-2026-11-12.md).
+Owner 2026-11-13, plan Q6: usage is validated before input; the first fatal
+operational failure determines 3 (input) or 4 (output), and later failures
+become diagnostics. This does not renumber the classes.
 
 ---
 
@@ -348,8 +351,8 @@ change, and its evidence: the packet (file position when the caller gives
 it), the channel, the counter. Identifiers are never reused. Nothing panics
 on any input (L1-ERR-001).
 
-**The findings** (proposed identifiers and default severities; L2 fixes
-them). *Error*: the value cannot be trusted and is not used; *warning*: the
+**The findings** (owner-accepted identifiers; default levels accepted except
+TF-031/032, whose levels remain pending owner confirmation in S03/S08). *Error*: the value cannot be trusted and is not used; *warning*: the
 recording breaks a rule of the standard; *information*: worth knowing,
 nothing is wrong.
 
@@ -383,6 +386,31 @@ nothing is wrong.
 | TF-026 | A Format 2 time packet in a recording declared before 106-17 | warning | 3.9 |
 | TF-027 | Secondary headers satisfy only the other checksum reading (RDG-008) | information | 6.6 |
 | TF-028 | Secondary-derived time has an undefined format | error | 6.6; §11.2.1.1 g |
+| TF-029 | NTP time is zero (unknown or unsynchronized) | warning | 6.3; RFC 5905 §6 |
+| TF-030 | NTP time falls in a leap-second ambiguity window | warning | 6.8; RFC 1305 E.8; RDG-012/RDG-010 |
+| TF-031 | Packet-layout edition evidence is contradictory | level pending owner (S03) | 3.9; §11.2.1.1 e; Ch9 G\106 |
+| TF-032 | Year evidence is contradictory | level pending owner (S08) | 5.3; Figures 11-13/14 |
+
+Owner 2026-11-13, plan Q1: TF-029 retains raw seconds/fraction but produces
+no absolute value; TF-030 keeps the mapped value labelled leap-ambiguous.
+RFC 5905 §6, p.14: "a value of zero is a special case representing unknown or
+unsynchronized time". RFC 1305 Appendix E.8, pp.78–79: "the NTP timescale is
+in effect reset to UTC as each timecode is received"; Figure 8 shows the
+repeated insertion coordinate (RDG-012/RDG-010).
+
+TF-031 is the existing no-override contradiction case, not a new conflict
+rule: an explicit override wins and retains contrary evidence side by side;
+differing declarations alone and lower permitted header versions are not
+conflicts. Source: §11.2.1.1 e, printed 11-6, "a value at or below the release
+version of the standard applied to the data types"; 106-04 Table 9-1, printed
+9-8, G\106 is "VERSION OF IRIG 106 STANDARD USED TO GENERATE THIS TMATS FILE",
+not necessarily the packet layout. TF-032 retains contradictory year evidence;
+Figures 11-13/14 and contract 5.3 distinguish year-bearing and day-only evidence.
+No severity for TF-031/032 is approved here. IDs/titles are permanent; their
+implementing slices must propose levels for owner confirmation. TF-001..028
+are unchanged. The standards supply evidence, not these product finding IDs.
+See [accepted plan decisions](analysis/plan-decisions-2026-11-13.md).
+
 
 TF-028 source: 106-24R1 §11.2.1.1 g, printed 11-8/11-9:
 "Bits 3-2: Indicate the packet secondary header time format."; "11 = Reserved";
@@ -413,7 +441,7 @@ it.
 | **Features** | `std` (default: `std::error::Error`); `alloc` implied by the recording layer; `serde`; `chrono` (conversions to and from `chrono` types) |
 | **Targets** | any Rust target; CI builds `wasm32-unknown-unknown` with and without `serde`, and a `no_std` target without `std` (ADR-0014) |
 | **Edition and MSRV** | edition 2024, Rust 1.85 (ADR-0003) |
-| **`serde`** | `Serialize` and `Deserialize` for every public value type, answer, finding, policy, and time timeline, so tools can store and exchange them |
+| **`serde`** | Versioned snapshot/report JSON with units; 64/128-bit quantities as decimal strings; validation on supported loads; raw/stated/assumed provenance. Review schema once before freeze. For 0.8.0 only complex timeline-state rehydration is deferred: omit/disable unsupported complex `Deserialize`; existing value validation and complete versioned outputs remain required (API-110, POL-103; owner 2026-11-13 Q3/Q5). |
 | **`chrono`** | conversions between the crate's absolute times and `chrono`'s date-time types, for times whose year and scale are known |
 | **Unsafe code** | none (`#![forbid(unsafe_code)]`) |
 | **Lints** | Clippy's `unwrap_used`, `expect_used`, `panic`, `todo`, `unimplemented`, `unreachable`, `dbg_macro`, `print_stdout`, `print_stderr` denied in library code (L1-API-012) |
@@ -505,7 +533,9 @@ wrong are retired and never reused (L1, section "Prototype requirements").
    bounded by the 1 Hz time-packet rate; see `docs/ROADMAP.md` question 2.
    Owner2026-11-12 accepted Standard as default, 100 ms hold/0 ns gap
    tolerances, explicit progress/caps and Option A channel commitment; see
-   L2/L3 for accepted behaviour and remaining rounding proposals.
+   L2/L3 for accepted behaviour; interpolation floor, preceding midpoint tie,
+   coarser mixed-resolution jump threshold and old-policy drain are accepted
+   owner 2026-11-13 (plan C1–C4).
 6. **The reading register** (`docs/INTERPRETATIONS.md`, RDG-001 to RDG-012):
    prior Design states remain unchanged; RDG-012 is accepted (owner 2026-11-12),
    with written RFC/all-edition analysis and floor rounding accepted, owner 2026-11-13.

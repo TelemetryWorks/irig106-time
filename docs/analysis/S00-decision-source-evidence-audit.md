@@ -1,5 +1,10 @@
 # S00 — decision/source and evidence audit
 
+> **Later decision, owner 2026-11-13:** plan Q1–Q6 and C1–C4 are accepted
+> with TF-031/032 levels pending S03/S08 owner confirmation. The original
+> evidence and then-pending labels below are historical, not new results.
+> See [the decision record](../analysis/plan-decisions-2026-11-13.md); release deferrals do not imply coverage.
+
 2026-11-13. Baseline: main `2b996243ec14dd2b5a795902df804e0a79f78692`
 (E2 PR #12 merged). This is the coordinator-authorised **S00 only**, from
 `coordination-work/irig106-time-0.8.0-plan.md` saved by the coordinator.
