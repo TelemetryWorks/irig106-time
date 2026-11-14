@@ -91,6 +91,8 @@ pub mod intra_packet;
 pub mod leap;
 /// Time Data Format 2 (0x12) Network Time: NTP, PTP, and leap-second table.
 pub mod network_time;
+/// RDG-012 NTP era/UTC and leap-ambiguity conversion with explicit evidence.
+pub mod ntp;
 /// Ch10/Ch11 packet format provenance (106-17 split).
 pub mod packet_standard;
 /// Time quality metrics for correlation health assessment.

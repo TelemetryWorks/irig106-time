@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S05 qualified NTP era/UTC conversion
+
+- Add ntp::convert_ntp with declared→dated pivot→labelled era0 precedence.
+  Preserve session/identity/scale/year evidence, strict half-era ambiguity and
+  conflicts; never use host clock or bootstrap an era0-assumed NTP pivot.
+- Map checked signed era*2^32+seconds-2208988800, never cumulative TAI-UTC.
+  Pre1970 and proleptic pre1972 coordinates retain their labels; calendar range
+  limits do not discard signed values. Raw fraction and accepted floor remain.
+- TF-029 zero sentinel keeps raw/no absolute value even with era context.
+  Covered insertion [B,B+1) gives TF-030/value kept with both possible labels,
+  never TF-022. Missing/stale/partial leap coverage keeps UTC with uncertainty;
+  PTP D7 is unchanged. Every result retains source/table/rounding basis.
+- Contextless compatibility methods still require context; their diagnostic text
+  now directs to the qualified API instead of calling Q-NTP pending. Existing
+  CLI may display that revised error text; no CLI source/output-format change.
+  New output/context types have no frozen serialization schema (planned S12).
+- Verification-s05 records12 focused tests, honest no-main-runtime-failure /
+  missing-API evidence and37 caught mutations; links are not full compliance.
+
 ### ⚠️ S04 validated leap tables and PTP→UTC
 
 - BREAKING: LeapSecondEntry fields are UnixSeconds/TaiUtcOffset. Table add,

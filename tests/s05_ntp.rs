@@ -153,6 +153,19 @@ fn approximate_and_dated_same_session_pivots_cross_2036() {
     }
     let p = NtpPivot::dated(1, "packet-year", 77, date).unwrap();
     assert_eq!(p.origin(), PivotOrigin::DatedReference { packet: 77 });
+    assert_eq!(p.seconds().get(), 2086041600);
+    assert_eq!(p.calendar(), Some(date));
+    // RFC epoch dates and one prior day verify both signed calendar branches.
+    for (year, day, unix) in [(1969, 365, -86400), (1970, 1, 0), (1972, 1, 63072000)] {
+        let d = CalendarReading {
+            year: Some(year),
+            day_of_year: day,
+            ..date
+        };
+        let p = NtpPivot::dated(1, "calendar-date", 88, d).unwrap();
+        assert_eq!(p.seconds().get(), unix);
+        assert_eq!(p.calendar(), Some(d));
+    }
 }
 /// Requirements: L1-NTP-002, L2-NTP-102, L3-NTP-102, L1-NTP-003, L2-NTP-103, L3-NTP-103
 #[test]
@@ -206,6 +219,7 @@ fn sentinel_precedes_era_and_rounding_but_nonzero_fraction_is_time() {
         assert_eq!(r.unix_seconds(), None);
         assert_eq!(r.utc(), None);
         assert_eq!(r.basis().era, None);
+        assert!(r.as_pivot("zero-sentinel").is_err());
         let f = r.findings(location(), None).unwrap();
         assert_eq!(f.len(), 1);
         assert_eq!(f[0].code().number(), 29);
@@ -296,6 +310,19 @@ fn covered_duplicate_coordinate_is_ambiguous_value_kept_not_a_read_leap() {
             assert_eq!(f.code().number(), 30);
             assert_eq!(f.severity(), Severity::Warning);
             assert_eq!(f.evidence().validity(), ValueValidity::Kept);
+            assert!(
+                f.evidence()
+                    .raw_fields()
+                    .iter()
+                    .any(|f| f.name == "nanoseconds_floor"
+                        && f.observed == RawValue::Unsigned(r.nanoseconds().into()))
+            );
+            assert!(
+                f.evidence()
+                    .raw_fields()
+                    .iter()
+                    .any(|f| f.name == "ntp_era" && f.observed == RawValue::Signed(0))
+            );
             assert_eq!(f.evidence().location(), location());
             assert_eq!(f.evidence().ntp().unwrap().raw, input);
             assert_eq!(
@@ -337,6 +364,23 @@ fn missing_stale_and_partial_coverage_keep_utc_without_false_certainty() {
         assert_eq!(r.basis().final_transition, builtin.final_transition());
         assert!(r.findings(location(), None).unwrap().is_empty());
     }
+    // A hypothetical negative step is not the duplicated positive-insertion window.
+    let mut future = builtin.metadata().clone();
+    future.id = "negative-test".into();
+    future.known_current_through = UnixSeconds::new(1861920000);
+    let negative = builtin
+        .extended(
+            vec![LeapSecondEntry {
+                effective_unix: UnixSeconds::new(1830297600),
+                tai_utc_offset: TaiUtcOffset::new(36),
+            }],
+            future,
+        )
+        .unwrap();
+    let r = convert_ntp(raw(4039286400, 0), &declared(0), Some(&negative));
+    assert_eq!(r.basis().leap, NtpLeapStatus::UnambiguousCovered);
+    assert_eq!(r.possible_leap(), None);
+    assert!(r.findings(location(), None).unwrap().is_empty());
     let mut info = builtin.metadata().clone();
     info.supported_start = UnixSeconds::new(1483228800);
     let narrow = LeapSecondTable::try_new(builtin.entries().to_vec(), info).unwrap();
@@ -371,6 +415,19 @@ fn invalid_evidence_and_range_limits_are_explicit_not_guessed() {
             .is_err()
         );
     }
+    assert!(
+        NtpPivot::dated(
+            1,
+            "bad-calendar",
+            1,
+            CalendarReading {
+                day_of_year: 0,
+                ..ordinary
+            }
+        )
+        .is_err()
+    );
+    assert!(NtpPivot::approximate(1, "", SignedUnixSeconds::new(0), 0).is_err());
     assert!(
         NtpPivot::dated(
             1,

@@ -319,7 +319,7 @@ edge-case tests, and two-person review remain outstanding.
 
 **Design**: accepted · **Review**: pending · **Origin**: Q-NTP, owner 2026-11-12: "make this as correct as possible"
 
-**Test**: not yet written for this new interpretation; future edge fixtures are enumerated in the analysis. Existing NeedsContext tests are not evidence for the new conversion behaviour.
+**Test**: `tests/s05_ntp.rs` exercises era/UTC/sentinel/ambiguity/currency semantics; `tests/s05_existing.rs` retains correct wire/floor/contextless controls. [S05 clause-level evidence](verification-s05.md) separates compilation evidence from executed tests and mutations. Contextless NeedsContext tests alone are not evidence for conversion.
 
 **Development**: intensive testing and deep analysis required · **Analysis**: [written all-edition/RFC analysis and planned edge cases](analysis/RDG-012-ntp-utc-era.md)
 

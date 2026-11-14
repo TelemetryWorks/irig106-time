@@ -226,3 +226,21 @@ to TF-030 WARNING: mapped value kept, labelled leap-ambiguous (RFC 1305 E.8,
 pp.78–79, repeated NTP coordinate in Figure 8; RDG-012/RDG-010). This is distinct
 from TF-022 explicit second 60 and does not change the accepted reading or
 human Review. See [plan decisions](plan-decisions-2026-11-13.md).
+
+## S05 implementation evidence (2026-11-14)
+
+[Verification-s05](../verification-s05.md) records canonical conversion tests,
+mutations, source refresh and clause limits. `ntp::convert_ntp` carries its full
+era/pivot/table basis; existing contextless helpers remain strict compatibility
+entry points because they cannot return labelled assumptions. Q-NTP is decided;
+their NeedsContext is a context/basis limitation, not an unanswered owner question.
+No Design/Review field changes; the RFC archive proposal above remains unperformed.
+
+Two derived boundary details are explicit: compare eras at original fraction
+precision (including pivots from resolved NTP), before nanosecond quantization;
+and require table coverage of both the mapped second and preceding civil second
+before claiming leap certainty. At a narrowed start the alternative leap label
+can precede supported coverage, so retain direct UTC with uncertainty. A dated
+UTC second60 pivot keeps its original label while its comparison coordinate folds
+to midnight; it establishes era, not a new NTP leap indicator. Proleptic pre1972
+UTC follows RFC5905's epoch convention and is labelled, not a physical rate model.
