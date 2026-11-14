@@ -26,14 +26,16 @@ fn reference(ns: u64) -> ReferenceInput {
             true,
         ),
         scale: ScaleEvidence::assumed(TimeScale::Utc),
-        source: TimeF1Source::Source(TimeSource::External),
-        format: TimeFormat::IrigB,
+        source: Some(TimeF1Source::Source(TimeSource::External)),
+        format: Some(TimeFormat::IrigB),
         its: None,
         precision_ns: 10_000_000,
         wire: None,
         qualified: None,
         raw_csdw: None,
         year_origin: YearOrigin::Unknown,
+        network: None,
+        normalization: None,
     }
 }
 fn packet(id: u64, ticks: u64, r: Option<ReferenceInput>) -> PacketObservation {
@@ -313,7 +315,7 @@ fn early_data_none_and_no_time_findings() {
         finding(&end, 1, Severity::Warning);
         let mut s = stream(mode);
         let mut r = reference(0);
-        r.source = TimeF1Source::Source(TimeSource::None);
+        r.source = Some(TimeF1Source::Source(TimeSource::None));
         let b = s.observe(packet(1, 0, Some(r)), 0, 100, false).unwrap();
         finding(&b, 3, Severity::Warning);
         let b = s.observe(packet(2, 1, None), 1, 100, false).unwrap();
@@ -382,7 +384,7 @@ fn commitment_inventory_loss_and_no_revision() {
         .answers
         .remove(0);
     let mut r = reference(1_000_000_000);
-    r.source = TimeF1Source::Source(TimeSource::Internal);
+    r.source = Some(TimeF1Source::Source(TimeSource::Internal));
     let b = s
         .observe(packet(4, 10_000_000, Some(r)), 3, 100, false)
         .unwrap();
@@ -421,7 +423,7 @@ fn discontinuities_and_scale_never_bridge() {
             r.scale = ScaleEvidence::standard(TimeScale::Gps);
         }
         if reason == ReleaseReason::UnusableReference {
-            r.source = TimeF1Source::Source(TimeSource::Internal);
+            r.source = Some(TimeF1Source::Source(TimeSource::Internal));
         }
         let b = s.observe(packet(3, ticks, Some(r)), 1, 100, false).unwrap();
         assert_eq!(b.answers[0].basis.release, reason);
@@ -455,7 +457,7 @@ fn admission_findings_and_raw_sync_counter() {
             r.value = ReferenceValue::Malformed;
         }
         if code == 6 {
-            r.source = TimeF1Source::Source(TimeSource::Reserved(3));
+            r.source = Some(TimeF1Source::Source(TimeSource::Reserved(3)));
         }
         let mut p = packet(1, 123, Some(r));
         if code == 8 {
@@ -631,7 +633,7 @@ fn reserved_leap_and_stop_on_loss_evidence() {
     s.observe(packet(1, 0, Some(reference(0))), 0, 100, false)
         .unwrap();
     let mut r = reference(1_000_000_000);
-    r.source = TimeF1Source::Source(TimeSource::Internal);
+    r.source = Some(TimeF1Source::Source(TimeSource::Internal));
     let b = s
         .observe(packet(2, 10_000_000, Some(r)), 1, 100, false)
         .unwrap();
@@ -661,7 +663,7 @@ fn review_unusable_reference_keeps_eligible_predecessor() {
                 .unwrap();
             let mut r = reference(500_000_000);
             match invalid {
-                0 => r.source = TimeF1Source::Source(TimeSource::None),
+                0 => r.source = Some(TimeF1Source::Source(TimeSource::None)),
                 1 => r.value = ReferenceValue::Invalid,
                 2 => r.value = ReferenceValue::Malformed,
                 4 => {
@@ -670,7 +672,7 @@ fn review_unusable_reference_keeps_eligible_predecessor() {
                         false,
                     )
                 }
-                5 => r.format = TimeFormat::None,
+                5 => r.format = Some(TimeFormat::None),
                 _ => {}
             }
             let mut p = packet(3, 5_000_000, Some(r));

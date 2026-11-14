@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ⚠️ S06b1 mixed-format offline references
+
+- BREAKING: ReferenceInput source/format are Option: Some for Format1, None
+  for network time; never fabricate SRC/FMT/ITS. Wrap old struct literals in
+  Some and initialize network/normalization to None. Add YearOrigin::NetworkEvidence
+  (exhaustive matches must handle it); network years retain their era/table basis.
+- Add ReferenceInput::format2 and explicit normalize_to_tai with owned table,
+  native scale/offset/currency evidence. Offline admission refreshes the actual
+  engine policy and preserves raw conversion diagnostics; capture mismatches fail.
+- BREAKING: OfflineAnswer adds reading, a qualified native calendar. At a derived
+  UTC second60 reading is present but compatibility time is None; consume the
+  reading with its basis. No UTC relabelling of TAI/GPS; ambiguous NTP cannot
+  establish an exact bracket or displaced answer. D7 stale-offset facts remain.
+- Mixed offline jumps/drift use TAI; raw-network policy gaps remain TF-016 with
+  explicit standard-minimum applicability evidence. Gap tolerance stays separate.
+- verification-s06b1 records12 focused tests, missing-API evidence and35 killed
+  mutations. Matrix156→160/288 counts links, not complete clauses. Stream work
+  is S06b2: mixed inputs are rejected before state mutation in this PR; existing
+  Format1 stream behaviour remains. No new release deferral or CLI change.
+
 ### S06a Format 2 conversion/admission boundary
 
 - Add immutable format2 observations with neutral capture identity/RTC, bounded

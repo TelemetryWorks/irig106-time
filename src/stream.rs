@@ -411,6 +411,15 @@ impl StreamTimeline {
         boundary: bool,
     ) -> Result<StreamBatch> {
         self.check_progress(progress)?;
+        if packet
+            .reference
+            .as_ref()
+            .is_some_and(|r| r.network.is_some() || r.normalization.is_some())
+        {
+            return Err(TimeError::NeedsContext {
+                context: "mixed reference streaming requires S06b2",
+            });
+        }
         if bytes == 0
             || self.last_id.is_some_and(|id| packet.id <= id)
             || (packet.kind != PacketKind::Time && packet.reference.is_some())
@@ -575,7 +584,7 @@ impl StreamTimeline {
         // Missing/unreadable input already has its finding; it does not
         // invalidate an earlier eligible reference or drain held queries.
         let Some(r) = reference else { return Ok(()) };
-        if self.source.is_some_and(|s| s != r.input.source) {
+        if self.source.is_some() && r.input.source.is_some() && self.source != r.input.source {
             self.emit(
                 b,
                 11,
@@ -585,11 +594,17 @@ impl StreamTimeline {
                 None,
             )?;
         }
-        self.source = Some(r.input.source);
-        self.external_seen |= matches!(r.input.source, TimeF1Source::Source(TimeSource::External));
+        self.source = r.input.source;
+        self.external_seen |= matches!(
+            r.input.source,
+            Some(TimeF1Source::Source(TimeSource::External))
+        );
         let stopped = self.policy.offline.stop_on_loss
             && self.external_seen
-            && matches!(r.input.source, TimeF1Source::Source(TimeSource::Internal));
+            && matches!(
+                r.input.source,
+                Some(TimeF1Source::Source(TimeSource::Internal))
+            );
         if stopped {
             self.flush(b, ReleaseReason::UnusableReference);
             self.refs.clear();

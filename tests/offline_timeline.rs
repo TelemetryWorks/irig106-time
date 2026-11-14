@@ -106,14 +106,16 @@ fn reference(second: u8) -> ReferenceInput {
     ReferenceInput {
         value: ReferenceValue::Readable(AbsoluteTime::new(100, 12, 0, second, 0).unwrap(), true),
         scale: ScaleEvidence::assumed(TimeScale::Utc),
-        source: TimeF1Source::Source(TimeSource::External),
-        format: TimeFormat::IrigB,
+        source: Some(TimeF1Source::Source(TimeSource::External)),
+        format: Some(TimeFormat::IrigB),
         its: None,
         precision_ns: 10_000_000,
         wire: None,
         qualified: None,
         raw_csdw: None,
         year_origin: YearOrigin::Unknown,
+        network: None,
+        normalization: None,
     }
 }
 fn source_packet(id: u64, bytes: &[u8; 36]) -> PacketObservation {
@@ -165,8 +167,11 @@ fn both_literal_examples_carry_reproducible_basis() {
         let r = a.basis.reference.as_ref().unwrap();
         assert_eq!(r.key, first);
         assert_eq!(r.input.raw_csdw, Some(0x3001));
-        assert_eq!(r.input.format, TimeFormat::IrigB);
-        assert_eq!(r.input.source, TimeF1Source::Source(TimeSource::External));
+        assert_eq!(r.input.format, Some(TimeFormat::IrigB));
+        assert_eq!(
+            r.input.source,
+            Some(TimeF1Source::Source(TimeSource::External))
+        );
         assert_eq!(
             r.input.its,
             Some(irig106_time::IrigTimeSource::ExternalIrig)
@@ -274,7 +279,7 @@ fn channel_rank_admission_none_and_caller_no_fallback() {
         ),
     ] {
         let mut r = reference(0);
-        r.source = TimeF1Source::Source(source);
+        r.source = Some(TimeF1Source::Source(source));
         r.value = state;
         let mut p = packet(id, 8, id, Some(r));
         p.declared_timein = declared;
@@ -389,7 +394,7 @@ fn quality_gap_jump_source_loss_and_duplicate_reasons() {
     b.observe(packet(3, 2, 15_000_000, Some(reference(1))), false)
         .unwrap();
     let mut r = reference(4);
-    r.source = TimeF1Source::Source(TimeSource::Internal);
+    r.source = Some(TimeF1Source::Source(TimeSource::Internal));
     let key = b.observe(packet(4, 1, 20_000_001, Some(r)), false).unwrap();
     let t = b.finish().unwrap();
     let q = t.quality(1, 1).unwrap();
@@ -417,7 +422,7 @@ fn quality_gap_jump_source_loss_and_duplicate_reasons() {
     b.observe(packet(1, 1, 0, Some(reference(0))), false)
         .unwrap();
     let mut r = reference(1);
-    r.source = TimeF1Source::Source(TimeSource::Internal);
+    r.source = Some(TimeF1Source::Source(TimeSource::Internal));
     let key = b.observe(packet(2, 1, 10_000_000, Some(r)), false).unwrap();
     assert!(b.finish().unwrap().lookup(key).unwrap().time.is_none());
     for duplicate in [false, true] {
@@ -447,7 +452,7 @@ fn first_time_presence_scale_boundaries_and_invalid_queries() {
     p.kind = PacketKind::StaticSetup;
     b.observe(p, false).unwrap();
     let mut r = reference(0);
-    r.source = TimeF1Source::Source(TimeSource::None);
+    r.source = Some(TimeF1Source::Source(TimeSource::None));
     b.observe(packet(2, 1, 1, Some(r)), false).unwrap();
     let key = b.observe(packet(3, 3, 2, None), false).unwrap();
     let t = b.finish().unwrap();
@@ -469,7 +474,7 @@ fn first_time_presence_scale_boundaries_and_invalid_queries() {
     let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
     let mut r = reference(0);
     r.scale = ScaleEvidence::standard(TimeScale::Gps);
-    r.format = TimeFormat::Gps;
+    r.format = Some(TimeFormat::Gps);
     let key = b.observe(packet(1, 1, 0, Some(r)), false).unwrap();
     let t = b.finish().unwrap();
     let a = t.lookup(key).unwrap();
@@ -547,7 +552,7 @@ fn none_format_never_supplies_a_readable_body() {
     })
     .unwrap();
     let mut r = reference(0);
-    r.format = TimeFormat::None;
+    r.format = Some(TimeFormat::None);
     let key = b.observe(packet(1, 1, 0, Some(r)), false).unwrap();
     let t = b.finish().unwrap();
     assert!(t.lookup(key).unwrap().time.is_none());
@@ -602,7 +607,10 @@ fn review_literal_reserved_src_keeps_readable_time() {
         ScalePolicy::default(),
     )
     .unwrap();
-    assert_eq!(r.source, TimeF1Source::Source(TimeSource::Reserved(3)));
+    assert_eq!(
+        r.source,
+        Some(TimeF1Source::Source(TimeSource::Reserved(3)))
+    );
     let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
     let key = b.observe(packet(1, 1, 0, Some(r)), false).unwrap();
     let t = b.finish().unwrap();

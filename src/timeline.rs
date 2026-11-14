@@ -1,6 +1,6 @@
-//! Offline E1 timeline core. Inputs arrive in recording order; no file walking.
-//! Ordinary decoded Format 1 times retain scale evidence. Automatic year
-//! inference, inverse queries, drift correction and streaming are follow-ups.
+//! Offline timeline: native Format1/2 evidence and explicit TAI normalization.
+//! Inputs arrive in recording order; no file walking. Automatic year inference,
+//! inverse queries and offline drift-corrected queries remain follow-ups.
 extern crate alloc;
 use crate::findings::{
     Finding, FindingCode, FindingEvidence, FindingLocation, RawField, RawValue, ValueValidity,
@@ -214,6 +214,8 @@ pub enum PacketKind {
 /// Year provenance supplied by a reviewed decoder/caller; no inference here.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum YearOrigin {
+    /// Calendar derived by the network converter; consult its era/table basis.
+    NetworkEvidence,
     /// DMY packet provides year.
     Packet,
     /// Caller explicitly supplied year.
@@ -242,10 +244,10 @@ pub struct ReferenceInput {
     pub value: ReferenceValue,
     /// Scale and stated/assumed provenance; never relabel GPS as UTC.
     pub scale: ScaleEvidence,
-    /// Edition-qualified source, including legacy EXT without inventing SRC.
-    pub source: TimeF1Source,
-    /// Format 1 format, retained even when invalid/reserved.
-    pub format: TimeFormat,
+    /// Edition-qualified Format1 source; None for network references.
+    pub source: Option<TimeF1Source>,
+    /// Format1 format, retained even when invalid/reserved; None for network.
+    pub format: Option<TimeFormat>,
     /// Applicable IRIG time-source evidence.
     pub its: Option<IrigTimeSource>,
     /// Actual format resolution, in ns (not arithmetic output resolution).
@@ -259,6 +261,10 @@ pub struct ReferenceInput {
     pub raw_csdw: Option<u32>,
     /// Basis of a resolved year; unknown remains unknown.
     pub year_origin: YearOrigin,
+    /// Full native network evidence; None for Format1.
+    pub network: Option<alloc::boxed::Box<crate::reference::NetworkReference>>,
+    /// Explicit caller-qualified TAI arithmetic; native scale stays recorded.
+    pub normalization: Option<crate::reference::Normalization>,
 }
 impl ReferenceInput {
     /// Adapt an evidence-qualified reading without inventing SRC or ITS.
@@ -303,14 +309,16 @@ impl ReferenceInput {
         Ok(Self {
             value,
             scale,
-            source,
-            format,
+            source: Some(source),
+            format: Some(format),
             its,
             precision_ns: 10_000_000,
             raw_csdw: Some(reading.csdw.raw().as_raw()),
             year_origin,
             wire: None,
             qualified: Some(reading),
+            network: None,
+            normalization: None,
         })
     }
     /// Decode only within caller Data Length, with explicitly selected layout.
@@ -351,12 +359,14 @@ impl ReferenceInput {
         Ok(Self {
             value,
             scale,
-            source: reading.csdw.time_source_for_layout(layout),
-            format,
+            source: Some(reading.csdw.time_source_for_layout(layout)),
+            format: Some(format),
             its: reading.csdw.irig_time_source_for_layout(layout),
             precision_ns: 10_000_000,
             wire: Some((layout, reading)),
             qualified: None,
+            network: None,
+            normalization: None,
             raw_csdw: Some(reading.csdw.as_raw()),
             year_origin,
         })
@@ -486,6 +496,7 @@ impl TimelineBuilder {
     /// **Traces:** L3-COR-109 ← L2-COR-109 ← L1-COR-009
     /// **Traces:** L3-COR-112 ← L2-COR-112 ← L1-COR-012
     pub fn observe(&mut self, packet: PacketObservation, boundary: bool) -> Result<PacketKey> {
+        crate::reference::check_capture(&packet)?;
         if self.seen.contains(&packet.id) {
             return Err(TimeError::InvalidTimelineInput("duplicate packet identity"));
         }
@@ -520,6 +531,18 @@ impl TimelineBuilder {
             if delta < 0 && -delta * 100 > i128::from(self.policy.late_ns) {
                 late = Some(delta * 100);
                 reset = self.policy.infer_sessions;
+            }
+        }
+        if let Some(n) = packet.reference.as_ref().and_then(|r| r.network.as_ref()) {
+            let session = if self.sessions.is_empty() || boundary || reset {
+                self.sessions.len() + 1
+            } else {
+                self.sessions.len()
+            };
+            if n.reference().observation().capture().session != session {
+                return Err(TimeError::InvalidTimelineInput(
+                    "network capture session differs from timeline",
+                ));
             }
         }
         self.seen.insert(packet.id);
@@ -559,7 +582,14 @@ impl TimelineBuilder {
             self.sessions[index]
                 .first_time_packet
                 .get_or_insert(packet.id);
-            if let Some(input) = packet.reference {
+            if let Some(input) = packet.reference.clone() {
+                if input.network.is_some() {
+                    let (reference, findings) =
+                        crate::reference::admit_network(input, &packet, key, &self.policy)?;
+                    self.findings.extend(findings);
+                    self.sessions[index].references.push(reference);
+                    return Ok(key);
+                }
                 if let Some((layout, wire)) = input.wire {
                     if wire.csdw.validate_reserved(layout).is_err()
                         || wire.reserved_body_bits.iter().any(|bits| *bits != 0)
@@ -611,20 +641,31 @@ impl TimelineBuilder {
                         self.finding(22, key, Some(packet.channel), None, None)?;
                     }
                 }
+                if let Some(f) = crate::reference::normalization_warning(
+                    &input,
+                    key,
+                    packet.channel,
+                    &self.policy,
+                )? {
+                    self.findings.push(f)
+                }
                 let mut reasons = Vec::new();
                 if !packet.declared_timein {
                     reasons.push(Rejection::Undeclared);
                     self.finding(8, key, Some(packet.channel), None, None)?;
                 }
-                if matches!(input.source, TimeF1Source::Source(TimeSource::None)) {
+                if matches!(input.source, Some(TimeF1Source::Source(TimeSource::None))) {
                     reasons.push(Rejection::NoneSource);
                 }
-                if matches!(input.source, TimeF1Source::Source(TimeSource::Reserved(_))) {
+                if matches!(
+                    input.source,
+                    Some(TimeF1Source::Source(TimeSource::Reserved(_)))
+                ) {
                     // SRC is a reserved VALUE, not an unreadable payload.
                     // TF-006 warning keeps the admitted time and raw source.
                     self.finding(6, key, Some(packet.channel), None, None)?;
                 }
-                if matches!(input.format, TimeFormat::Reserved(_)) {
+                if matches!(input.format, Some(TimeFormat::Reserved(_))) {
                     reasons.push(Rejection::Reserved);
                 }
                 match input.value {
@@ -636,7 +677,7 @@ impl TimelineBuilder {
                     _ => (),
                 }
                 let invalid_calendar = matches!(input.value, ReferenceValue::Readable(t, _) if t.year().is_some_and(|y| i128::from(t.day_of_year()) > year_days(y)));
-                if matches!(input.format, TimeFormat::None)
+                if matches!(input.format, Some(TimeFormat::None))
                     && !reasons.contains(&Rejection::Invalid)
                 {
                     reasons.push(Rejection::Invalid);
@@ -660,7 +701,10 @@ impl TimelineBuilder {
                     }
                 }
                 let admitted = matches!(input.value, ReferenceValue::Readable(..))
-                    && !matches!(input.format, TimeFormat::None | TimeFormat::Reserved(_))
+                    && !matches!(
+                        input.format,
+                        Some(TimeFormat::None | TimeFormat::Reserved(_))
+                    )
                     && reasons.iter().all(|r| match r {
                         Rejection::Undeclared => self.policy.include_undeclared,
                         Rejection::Invalid => self.policy.include_invalid,
@@ -672,7 +716,10 @@ impl TimelineBuilder {
                     .rev()
                     .find(|r| r.channel == packet.channel)
                 {
-                    if prev.input.source != input.source {
+                    if prev.input.source.is_some()
+                        && input.source.is_some()
+                        && prev.input.source != input.source
+                    {
                         self.finding(11, key, Some(packet.channel), Some(prev.key.packet), None)?;
                     }
                 }
@@ -785,6 +832,16 @@ impl TimelineBuilder {
         }
         for (code, key, ch, related, delta) in events {
             self.finding(code, key, ch, related, delta)?;
+            if code == 16 {
+                let refs = &self.sessions[key.session - 1].references;
+                if let (Some(a), Some(b), Some(f)) = (
+                    refs.iter().find(|r| Some(r.key.packet) == related),
+                    refs.iter().find(|r| r.key.packet == key.packet),
+                    self.findings.last_mut(),
+                ) {
+                    crate::reference::qualify_gap(f, a, b);
+                }
+            }
         }
         Ok(OfflineTimeline {
             policy: self.policy,
@@ -834,6 +891,8 @@ pub struct OfflineBasis {
 pub struct OfflineAnswer {
     /// Ordinary calendar reading in the reference's scale, never silently UTC.
     pub time: Option<AbsoluteTime>,
+    /// Native qualified calendar, including second60 absent from the compatibility field.
+    pub reading: Option<crate::format1::CalendarReading>,
     /// Counter offset from this session's first packet, in ns.
     pub counter_ns: i128,
     /// Source/format/ITS/scale/year/precision/reference and policy evidence.
@@ -901,6 +960,7 @@ impl OfflineTimeline {
             .ok_or(TimeError::InvalidTimelineInput("unknown session"))?;
         let mut answer = OfflineAnswer {
             time: None,
+            reading: None,
             counter_ns: distance_ns(key.ticks, s.first_ticks)?,
             basis: OfflineBasis {
                 key,
@@ -956,12 +1016,10 @@ impl OfflineTimeline {
         } else {
             ReferencePosition::Between
         };
-        let ReferenceValue::Readable(time, _) = r.input.value else {
-            return Ok(answer);
-        };
-        match shift(time, delta) {
+        match crate::reference::shifted_reference(r, delta) {
             Ok(t) => {
-                answer.time = Some(t);
+                answer.time = crate::reference::legacy_calendar(t).ok();
+                answer.reading = Some(t);
                 answer.basis.unresolved = None;
             }
             Err(_) => answer.basis.unresolved = Some("calendar/year boundary needs context"),
@@ -1027,17 +1085,28 @@ impl OfflineTimeline {
             .map(|p| (p[1].key.ticks - p[0].key.ticks) * 100)
             .max();
         q.references_per_second = Some(valid.len() as f64 / (span as f64 / 1e9));
-        if valid.iter().any(|r| {
-            r.input.scale.effective() == TimeScale::Unknown
-                || r.input.scale.effective() != valid[0].input.scale.effective()
-        }) {
+        if !valid.iter().all(|r| r.input.normalization.is_some())
+            && valid.iter().any(|r| {
+                r.input.scale.effective() == TimeScale::Unknown
+                    || r.input.scale.effective() != valid[0].input.scale.effective()
+            })
+        {
             q.unavailable = Some("unknown or incompatible scales");
             return Ok(q);
         }
         let mut sum = 0.;
         for p in valid.windows(2) {
             let Some(abs) = absolute_delta(p[0], p[1]) else {
-                q.unavailable = Some("calendar/year context");
+                q.unavailable = Some(
+                    if valid
+                        .iter()
+                        .any(|r| r.input.network.is_some() || r.input.normalization.is_some())
+                    {
+                        "scale normalization or leap context"
+                    } else {
+                        "calendar/year context"
+                    },
+                );
                 return Ok(q);
             };
             sum += 1e6 * (abs as f64 / ((p[1].key.ticks - p[0].key.ticks) * 100) as f64 - 1.);
@@ -1077,11 +1146,14 @@ fn lost_lock_at(refs: &[TimelineReference], channel: u16, ticks: i128) -> bool {
     let Some(current) = current else { return false };
     matches!(
         current.input.source,
-        TimeF1Source::Source(TimeSource::Internal)
+        Some(TimeF1Source::Source(TimeSource::Internal))
     ) && refs.iter().any(|r| {
         r.channel == channel
             && r.key.ticks < current.key.ticks
-            && matches!(r.input.source, TimeF1Source::Source(TimeSource::External))
+            && matches!(
+                r.input.source,
+                Some(TimeF1Source::Source(TimeSource::External))
+            )
     })
 }
 fn year_days(year: u16) -> i128 {
@@ -1091,7 +1163,18 @@ fn year_days(year: u16) -> i128 {
         365
     }
 }
+/// **Traces:** L3-F2COR-102 ← L2-F2COR-102 ← L1-F2COR-002
 pub(crate) fn absolute_delta(a: &TimelineReference, b: &TimelineReference) -> Option<i128> {
+    if let (Some(a), Some(b)) = (&a.input.normalization, &b.input.normalization) {
+        return b.tai_nanoseconds().checked_sub(a.tai_nanoseconds());
+    }
+    if a.input.network.is_some()
+        || b.input.network.is_some()
+        || a.input.normalization.is_some()
+        || b.input.normalization.is_some()
+    {
+        return None;
+    }
     if a.input.scale.effective() == TimeScale::Unknown
         || a.input.scale.effective() != b.input.scale.effective()
     {
@@ -1210,6 +1293,15 @@ pub(crate) fn stream_observation(
     policy: &OfflinePolicy,
     key: PacketKey,
 ) -> Result<(Option<TimelineReference>, Vec<TimelineFinding>)> {
+    if packet
+        .reference
+        .as_ref()
+        .is_some_and(|r| r.network.is_some() || r.normalization.is_some())
+    {
+        return Err(TimeError::NeedsContext {
+            context: "mixed reference streaming requires S06b2",
+        });
+    }
     let mut b = TimelineBuilder::new(policy.clone())?;
     b.observe(packet, false)?;
     let mut reference = b.sessions.pop().and_then(|mut s| s.references.pop());
