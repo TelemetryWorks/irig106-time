@@ -160,7 +160,9 @@ Baseline main `02ccac480472e9e62a5b8f04b0ee6e6af11e1f18` (S01 merged).
 Adopt [irig106-types PR #8](https://github.com/TelemetryWorks/irig106-types/pull/8),
 revision `7bfe47fc903efea342f3efba1ad0f527dd059a0d`. Root, CLI and fuzz lockfiles
 resolve that revision; other packages/versions and deny.toml are unchanged.
-No fuzz build/run is claimed; only its dependency resolution was refreshed.
+At `7e13e10`, only fuzz dependency resolution had been refreshed; harness
+compilation was missed. Follow-up `bfa5bd9` type-checked all ten targets, with
+no instrumented fuzz campaign or runtime/corpus coverage claim.
 
 The shared-type API-104 gaps above are closed: signed duration/tick/Unix values
 have exact shared identity. Shared inherent conversions now return Option;
@@ -178,8 +180,11 @@ new leap-table validation/coverage policy, or the S04/S06 conversion adapters.
 The existing approximate lookup/empty/before-first policies are preserved;
 comparison uses signed i128, without clamping an approximate Unix value.
 
-All duration constructor callers were audited. Test and bench constants handle
-Option explicitly as bounded fixtures. The CLI threshold changes one expression
+The initial duration-constructor audit missed fuzz_correlation. After its
+correction, the caller audit covers library, CLI, tests, benches, examples and
+fuzz harnesses. All ten fuzz targets were type-checked with
+`CARGO_BUILD_JOBS=2 cargo check --manifest-path fuzz/Cargo.toml --bins --locked`.
+Test and bench constants handle Option explicitly as bounded fixtures. The CLI threshold changes one expression
 from from_secs(1) to new(1000000000), preserving exactly 1 second and threshold output. A pre-1970 PTP result
 instead follows the existing CLI correlation-error path and is not inserted
 or displayed as 1970 (source inspection; not a CLI-input execution).

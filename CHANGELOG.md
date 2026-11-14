@@ -28,7 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   arithmetic; no new leap-table policy or pre-1970 calendar support is claimed.
 - NanosDuration::from_secs/from_millis/from_micros now return Option, and
   TaiSeconds::to_unix is checked; use to_signed_unix for negative results.
-  All affected callers/examples are migrated. The CLI fixed-threshold
+  After the fuzz follow-up, callers/examples including fuzz harnesses are
+  migrated; all ten fuzz targets were type-checked with the locked cargo check.
+  The CLI fixed-threshold
   expression remains exactly 1000000000 ns. A pre-1970 PTP result now follows
   its existing correlation-error path instead of displaying fabricated 1970 time.
   Bench/test literal fixtures handle Option explicitly. deny.toml is unchanged.
