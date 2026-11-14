@@ -16,11 +16,11 @@ fn packet(id: u64, rtc: Rtc) -> PacketObservation {
 #[test]
 fn approved_ntp_levels_are_configurable_but_pending_levels_are_not() {
     let mut p = OfflinePolicy::default();
-    for id in [29, 30] {
+    for id in [29, 30, 31] {
         p.finding_levels.insert(id, Severity::Information);
         assert!(p.validate().is_ok(), "approved TF-{id:03}");
     }
-    for id in [0, 31, 32, 33, 255] {
+    for id in [0, 32, 33, 255] {
         let mut bad = p.clone();
         bad.finding_levels.insert(id, Severity::Error);
         assert!(bad.validate().is_err(), "pending/unknown TF-{id:03}");

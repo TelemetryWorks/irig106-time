@@ -15,7 +15,7 @@ fn every_catalog_level_and_pending_identity_is_explicit() {
     // Independent table copied from accepted architecture rows, not code logic.
     use Severity::{Error as E, Information as I, Warning as W};
     let levels = [
-        W, W, W, E, W, W, W, W, I, W, I, E, W, W, E, W, W, I, W, I, W, I, I, W, W, W, I, E, W, W,
+        W, W, W, E, W, W, W, W, I, W, I, E, W, W, E, W, W, I, W, I, W, I, I, W, W, W, I, E, W, W, W,
     ];
     for (i, level) in levels.into_iter().enumerate() {
         let id = FindingCode::from_number((i + 1) as u8).unwrap();
@@ -24,7 +24,6 @@ fn every_catalog_level_and_pending_identity_is_explicit() {
         assert!(!id.title().is_empty());
     }
     for (id, title) in [
-        (31, "Packet-layout edition evidence is contradictory"),
         (32, "Year evidence is contradictory"),
     ] {
         let code = FindingCode::from_number(id).unwrap();
