@@ -154,6 +154,14 @@ pub struct FindingEvidence {
     decode_error: Option<TimeError>,
 }
 impl FindingEvidence {
+    // One-packet stream adapters use temporary session1 while decoding.
+    pub(crate) fn in_session(mut self, session: usize) -> Self {
+        self.location.session = Some(session);
+        for related in &mut self.related {
+            related.session = Some(session);
+        }
+        self
+    }
     /// Original observation location.
     pub fn location(&self) -> FindingLocation {
         self.location

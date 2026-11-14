@@ -1,5 +1,5 @@
 //! E2 stream core. No host clock, file walking, retained output or future-count
-//! ranking. Ordinary Format 1 inputs share E1 admission and calendar guards.
+//! ranking. Format1/2 share offline admission and explicit TAI normalization.
 //! Legacy `streaming` remains a separate compatibility API.
 use crate::timeline::*;
 use crate::{AbsoluteTime, Result, Rtc, TimeError, TimeF1Source, TimeSource};
@@ -15,7 +15,8 @@ pub enum StreamMode {
     Interpolate,
 }
 /// Mandatory caller limits. Bytes account declared retained packet sizes;
-/// packet/reference caps also bound the fixed-size metadata allocations.
+/// packet/reference caps bound retained snapshots. Caller-supplied table/pivot
+/// sizes and declared byte charges determine the size of each snapshot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BufferCaps {
     /// Maximum pending data observations; must be positive.
@@ -41,9 +42,10 @@ pub struct StreamPolicy {
     pub offline: OfflinePolicy,
     /// Added to the 1 s interval; default 100 ms, independently of gap/late.
     pub hold_tolerance_ns: u64,
-    /// Reserved metadata for a future Format2 adapter; copied into the basis
-    /// only. Currently has no effect on TF-016. The §11.2.3.3 raw-network
-    /// exception is deferred; this ordinary Format1 core does not implement it.
+    /// Declare raw NTP/PTP frame-rate recording for network references observed
+    /// under this snapshot (§11.2.3.3). Per-reference declarations also apply.
+    /// Both endpoints must qualify; Format1 is never exempt. Changing this flag
+    /// does not retroactively reclassify references from an older policy.
     pub raw_network_rate: bool,
     /// Caller resource bounds, never implicit unbounded defaults.
     pub caps: BufferCaps,
@@ -168,8 +170,10 @@ pub struct StreamBasis {
 /// Absolute-or-counter-only stream answer, never revised after release.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StreamAnswer {
-    /// Calendar in the labelled reference scale, not implicitly UTC.
+    /// Compatibility calendar; None for a qualified UTC second60.
     pub time: Option<AbsoluteTime>,
+    /// Native scale-qualified calendar, preserving UTC leap labels.
+    pub reading: Option<crate::format1::CalendarReading>,
     /// Counter displacement from this session's first observation, ns.
     pub counter_ns: i128,
     /// Reference, mode, policy, progress and fallback evidence.
@@ -211,6 +215,8 @@ pub struct StreamTimeline {
     policy: StreamPolicy,
     channel: Option<(u16, StreamChannelChoice)>,
     refs: Vec<TimelineReference>,
+    // References older than this closed clock-segment boundary cannot reopen it.
+    segment_start: Option<i128>,
     pending: VecDeque<Pending>,
     bytes: usize,
     progress: u64,
@@ -249,6 +255,7 @@ impl StreamTimeline {
             policy,
             channel,
             refs: Vec::new(),
+            segment_start: None,
             pending: VecDeque::new(),
             bytes: 0,
             progress: 0,
@@ -311,18 +318,20 @@ impl StreamTimeline {
         )?);
         Ok(())
     }
+    /// **Traces:** L3-STRM-202 ← L2-STRM-202 ← L1-STRM-001
+    /// **Traces:** L3-F2COR-102 ← L2-F2COR-102 ← L1-F2COR-002
     fn answer(
         &self,
         p: Pending,
         reason: ReleaseReason,
         next: Option<TimelineReference>,
     ) -> StreamAnswer {
-        let mut time = None;
+        let mut reading = None;
         let mut correction = None;
         let mut precision = p.preceding.as_ref().map(|r| r.input.precision_ns);
         let mut unresolved = Some("no usable preceding reference or undecidable committed channel");
         if let Some(r) = &p.preceding {
-            if let ReferenceValue::Readable(t, _) = r.input.value {
+            if let ReferenceValue::Readable(..) = r.input.value {
                 let offset = (p.key.ticks - r.key.ticks) * 100;
                 let displacement = if let Some(n) = &next {
                     precision = Some(r.input.precision_ns.max(n.input.precision_ns));
@@ -334,16 +343,18 @@ impl StreamTimeline {
                 } else {
                     Some(offset)
                 };
-                time = displacement.and_then(|d| crate::timeline::shift(t, d).ok());
-                unresolved = if time.is_some() {
+                reading = displacement.and_then(|d| crate::reference::shifted_reference(r, d).ok());
+                unresolved = if reading.is_some() {
                     None
                 } else {
                     Some("calendar/arithmetic context unavailable")
                 };
             }
         }
+        let time = reading.and_then(|r| crate::reference::legacy_calendar(r).ok());
         StreamAnswer {
             time,
+            reading,
             counter_ns: p.counter_ns,
             basis: StreamBasis {
                 key: p.key,
@@ -353,7 +364,7 @@ impl StreamTimeline {
                 policy: self.policy.clone(),
                 progress_ns: self.progress,
                 deadline_ns: p.deadline,
-                extrapolated: time.is_some()
+                extrapolated: reading.is_some()
                     && !matches!(
                         reason,
                         ReleaseReason::Standard | ReleaseReason::Interpolated
@@ -397,7 +408,8 @@ impl StreamTimeline {
         Ok(b)
     }
     /// Observe metadata/decoded input with explicit monotonic progress and byte
-    /// charge. No packet body is retained. New sessions drain old pending answers.
+    /// charge. No data payload is retained; decoded time/context snapshots are.
+    /// New sessions drain old pending answers.
     /// **Traces:** L3-STRM-201 ← L2-STRM-201 ← L1-STRM-001
     /// **Traces:** L3-STRM-202 ← L2-STRM-202 ← L1-STRM-001
     /// **Traces:** L3-STRM-204 ← L2-STRM-204 ← L1-STRM-001
@@ -411,15 +423,7 @@ impl StreamTimeline {
         boundary: bool,
     ) -> Result<StreamBatch> {
         self.check_progress(progress)?;
-        if packet
-            .reference
-            .as_ref()
-            .is_some_and(|r| r.network.is_some() || r.normalization.is_some())
-        {
-            return Err(TimeError::NeedsContext {
-                context: "mixed reference streaming requires S06b2",
-            });
-        }
+        crate::reference::check_capture(&packet)?;
         if bytes == 0
             || self.last_id.is_some_and(|id| packet.id <= id)
             || (packet.kind != PacketKind::Time && packet.reference.is_some())
@@ -456,13 +460,30 @@ impl StreamTimeline {
                 .checked_add(delta)
                 .ok_or(TimeError::InvalidTimelineInput("counter overflow"))?
         };
+        let session = if self.first.is_none() || boundary || reset {
+            self.session
+                .checked_add(1)
+                .ok_or(TimeError::QuantityOverflow {
+                    quantity: "stream session identity",
+                })?
+        } else {
+            self.session
+        };
+        if let Some(n) = packet.reference.as_ref().and_then(|r| r.network.as_ref()) {
+            if n.reference().observation().capture().session != session {
+                return Err(TimeError::InvalidTimelineInput(
+                    "network capture session differs from stream",
+                ));
+            }
+        }
         let mut b = self.advance(progress)?;
         if self.first.is_none() || boundary || reset {
             self.flush(&mut b, ReleaseReason::SessionBoundary);
             self.end_session(&mut b)?;
-            self.session += 1;
+            self.session = session;
             self.high = ticks;
             self.time_seen = false;
+            self.segment_start = None;
             self.refs.clear();
             self.source = None;
             self.external_seen = false;
@@ -501,6 +522,10 @@ impl StreamTimeline {
         self.last_id = Some(packet.id);
         let kind = packet.kind;
         let ch = packet.channel;
+        let mut packet = packet;
+        if let Some(n) = packet.reference.as_mut().and_then(|r| r.network.as_mut()) {
+            n.record_rate_policy(self.policy.id, self.policy.raw_network_rate);
+        }
         let (reference, findings) =
             crate::timeline::stream_observation(packet, &self.policy.offline, key)?;
         b.findings.extend(findings);
@@ -584,6 +609,9 @@ impl StreamTimeline {
         // Missing/unreadable input already has its finding; it does not
         // invalidate an earlier eligible reference or drain held queries.
         let Some(r) = reference else { return Ok(()) };
+        if self.segment_start.is_some_and(|start| r.key.ticks < start) {
+            return Ok(());
+        }
         if self.source.is_some() && r.input.source.is_some() && self.source != r.input.source {
             self.emit(
                 b,
@@ -594,7 +622,9 @@ impl StreamTimeline {
                 None,
             )?;
         }
-        self.source = r.input.source;
+        if r.input.source.is_some() {
+            self.source = r.input.source;
+        }
         self.external_seen |= matches!(
             r.input.source,
             Some(TimeF1Source::Source(TimeSource::External))
@@ -610,7 +640,7 @@ impl StreamTimeline {
             self.refs.clear();
             return Ok(());
         }
-        if !r.admitted {
+        if !r.admitted || !matches!(r.input.value, ReferenceValue::Readable(..)) {
             return Ok(());
         }
         let mut barrier = None;
@@ -641,15 +671,16 @@ impl StreamTimeline {
             })
         {
             let elapsed = (z.key.ticks - a.key.ticks) * 100;
+            let related = Some(if a.key.packet == r.key.packet {
+                z.key.packet
+            } else {
+                a.key.packet
+            });
             if elapsed > 1_000_000_000 + i128::from(self.policy.offline.gap_tolerance_ns) {
-                self.emit(
-                    b,
-                    16,
-                    key,
-                    Some(r.channel),
-                    Some(a.key.packet),
-                    Some(elapsed),
-                )?;
+                self.emit(b, 16, key, Some(r.channel), related, Some(elapsed))?;
+                if let Some(f) = b.findings.last_mut() {
+                    crate::reference::qualify_gap(f, a, z);
+                }
             }
             match crate::timeline::absolute_delta(a, z) {
                 Some(d) => {
@@ -660,23 +691,23 @@ impl StreamTimeline {
                         .jump_threshold_ns
                         .unwrap_or(a.input.precision_ns.max(z.input.precision_ns));
                     if residual.abs() > i128::from(threshold) {
-                        self.emit(
-                            b,
-                            17,
-                            key,
-                            Some(r.channel),
-                            Some(a.key.packet),
-                            Some(residual),
-                        )?;
-                        barrier = Some(ReleaseReason::Discontinuity);
+                        self.emit(b, 17, key, Some(r.channel), related, Some(residual))?;
+                        barrier = Some((ReleaseReason::Discontinuity, z.key.ticks));
                     }
                 }
-                None => barrier = Some(ReleaseReason::IncompatibleScale),
+                None => barrier = Some((ReleaseReason::IncompatibleScale, z.key.ticks)),
             }
         }
-        if let Some(reason) = barrier {
+        if let Some((reason, cut)) = barrier {
             self.flush(b, reason);
-            self.refs.clear();
+            let start = self.segment_start.map_or(cut, |prior| prior.max(cut));
+            self.segment_start = Some(start);
+            // With a late incoming endpoint, keep the already-known later side.
+            self.refs
+                .retain(|p| p.key.ticks >= start && p.key.ticks > r.key.ticks);
+            if r.key.ticks < start {
+                return Ok(());
+            }
         }
         if self.refs.len() == self.policy.caps.references {
             self.flush(b, ReleaseReason::ReferenceCap);

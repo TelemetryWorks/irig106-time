@@ -1288,6 +1288,8 @@ fn body_reserved_evidence(mut evidence: FindingEvidence, bits: [u16; 4]) -> Find
 
 // Bounded one-packet admission adapter shared by E1/E2. Never accumulates
 // recording history; stream owns session/source/presence and gap state.
+// **Traces:** L3-F2COR-101 ← L2-F2COR-101 ← L1-F2COR-001
+// **Traces:** L3-COR-106 ← L2-COR-106 ← L1-COR-006
 pub(crate) fn stream_observation(
     packet: PacketObservation,
     policy: &OfflinePolicy,
@@ -1296,11 +1298,44 @@ pub(crate) fn stream_observation(
     if packet
         .reference
         .as_ref()
-        .is_some_and(|r| r.network.is_some() || r.normalization.is_some())
+        .is_some_and(|r| r.network.is_some())
     {
-        return Err(TimeError::NeedsContext {
-            context: "mixed reference streaming requires S06b2",
-        });
+        let input = packet
+            .reference
+            .clone()
+            .ok_or(TimeError::InvalidTimelineInput("network reference missing"))?;
+        let (reference, mut findings) =
+            crate::reference::admit_network(input, &packet, key, policy)?;
+        if packet.flags & 0x20 != 0 {
+            let mut finding = TimelineFinding::observed(
+                24,
+                policy.finding_levels.get(&24).copied(),
+                key,
+                Some(packet.channel),
+                None,
+                None,
+            )?;
+            let byte_offset = reference
+                .input
+                .network
+                .as_ref()
+                .and_then(|n| n.reference().observation().capture().byte_offset);
+            finding.evidence = FindingEvidence::new(
+                FindingLocation {
+                    byte_offset,
+                    ..finding.evidence.location()
+                },
+                finding.evidence.validity(),
+            )
+            .with_raw_rtc(packet.rtc)
+            .with_raw_field(RawField {
+                name: "packet_flags",
+                observed: RawValue::Unsigned(packet.flags.into()),
+                expected: None,
+            });
+            findings.push(finding);
+        }
+        return Ok((Some(reference), findings));
     }
     let mut b = TimelineBuilder::new(policy.clone())?;
     b.observe(packet, false)?;
@@ -1312,6 +1347,7 @@ pub(crate) fn stream_observation(
     for f in &mut b.findings {
         f.session = key.session;
         f.packet = key.packet;
+        f.evidence = f.evidence.clone().in_session(key.session);
     }
     Ok((reference, b.findings))
 }

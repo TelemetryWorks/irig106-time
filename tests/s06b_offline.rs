@@ -557,48 +557,6 @@ fn stale_utc_normalization_labels_the_offset_and_engine_level() {
     );
 }
 
-/// Requirements: L1-F2COR-001, L2-F2COR-101, L3-F2COR-101
-#[test]
-fn stream_deferral_rejects_new_inputs_before_mutating_legacy_state() {
-    use irig106_time::stream::*;
-    let policy = StreamPolicy::new(
-        1,
-        BufferCaps {
-            packets: 2,
-            bytes: 64,
-            references: 2,
-        },
-    );
-    let mut stream = StreamTimeline::new(
-        policy,
-        Some(&[StreamChannel {
-            id: 4,
-            timein: true,
-            external: false,
-        }]),
-    )
-    .unwrap();
-    let table = LeapSecondTable::builtin();
-    let net = network(1, 4, 0, [1, 3_692_304_000, 0], false, &table);
-    assert!(matches!(
-        stream.observe(packet(1, 4, 0, Some(net)), 0, 12, false),
-        Err(TimeError::NeedsContext { .. })
-    ));
-    // The failed future-adapter input must not consume the packet identity.
-    let legacy = ReferenceInput::format1(
-        &[0x41, 2, 0, 0, 0, 0, 0, 0, 2, 1, 0x17, 0x20],
-        12,
-        TimeF1Layout::SourceWithIts17,
-        ScalePolicy::default(),
-    )
-    .unwrap();
-    assert!(
-        stream
-            .observe(packet(1, 4, 0, Some(legacy)), 0, 12, false)
-            .is_ok()
-    );
-}
-
 /// Requirements: L1-COR-004, L2-COR-104, L3-COR-104
 /// Requirements: L1-COR-013, L2-COR-113, L3-COR-113
 /// Requirements: L1-F2COR-002, L2-F2COR-102, L3-F2COR-102

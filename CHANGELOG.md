@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ⚠️ S06b2 mixed-format stream integration
+
+- Remove the mixed-input rejection after tests-first coverage; use shared actual-
+  policy admission and TAI arithmetic with original native scale/era/table basis.
+- BREAKING: StreamAnswer adds qualified reading. UTC second60 is retained there
+  while compatibility time is None; consume the reading with its basis.
+- raw_network_rate is now active for network endpoints observed under its policy
+  snapshot; caller declarations also apply. Older endpoints are not reclassified.
+  TF-016 remains a policy gap with self-contained standard/rate/NTF provenance.
+- Preserve Option A commitment, caps, prior usable references across unusable input,
+  source-loss policy and no revision. Close clock segments at jumps/scale barriers:
+  late old-domain references cannot replace the later segment. Keep actual finding
+  session/RTC/byte offset; NTF source absence never invents/erases Format1 source.
+- verification-s06b2:14 focused tests, six runtime failures on main, later probes,
+  71 killed mutations and clause-level limits. Matrix160/288 unchanged; partial
+  checks add no whole-requirement markers. No CLI output/dependency/level change.
+
 ### ⚠️ S06b1 mixed-format offline references
 
 - BREAKING: ReferenceInput source/format are Option: Some for Format1, None

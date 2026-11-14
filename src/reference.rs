@@ -131,12 +131,24 @@ pub struct NetworkReference {
     context: NtpContext,
     table: LeapSecondTable,
     raw_network_rate: bool,
+    stream_rate_policy: Option<(u64, bool)>,
     normalization_issue: Option<TimeError>,
 }
 impl NetworkReference {
     /// Conversion, native scale/raw data and actual boundary policy snapshot.
     pub fn reference(&self) -> &Format2Reference {
         &self.reference
+    }
+    /// Stream policy identity and rate declaration effective when this reference
+    /// was observed; None for offline-only inputs. No retroactive reclassification.
+    pub fn rate_policy(&self) -> Option<(u64, bool)> {
+        self.stream_rate_policy
+    }
+    pub(crate) fn record_rate_policy(&mut self, id: u64, raw: bool) {
+        self.stream_rate_policy = Some((id, raw));
+    }
+    fn effective_raw_rate(&self) -> bool {
+        self.raw_network_rate || self.stream_rate_policy.is_some_and(|(_, raw)| raw)
     }
     /// Why a unique physical coordinate could not be established, if applicable.
     pub fn normalization_issue(&self) -> Option<&TimeError> {
@@ -213,6 +225,7 @@ impl ReferenceInput {
                 context,
                 table: table.clone(),
                 raw_network_rate,
+                stream_rate_policy: None,
                 normalization_issue: None,
             })),
             normalization: None,
@@ -372,13 +385,70 @@ pub(crate) fn admit_network(
 /// raw-network-rate Format2 frames. A configured policy gap remains TF-016.
 /// **Traces:** L3-COR-108 ← L2-COR-108 ← L1-COR-008
 pub(crate) fn qualify_gap(f: &mut TimelineFinding, a: &TimelineReference, b: &TimelineReference) {
-    let raw = a.input.network.as_ref().is_some_and(|n| n.raw_network_rate)
-        && b.input.network.as_ref().is_some_and(|n| n.raw_network_rate);
-    f.evidence = f.evidence.clone().with_raw_field(findings::RawField {
+    let raw = a
+        .input
+        .network
+        .as_ref()
+        .is_some_and(|n| n.effective_raw_rate())
+        && b.input
+            .network
+            .as_ref()
+            .is_some_and(|n| n.effective_raw_rate());
+    let mut evidence = f.evidence.clone().with_raw_field(findings::RawField {
         name: "standard_minimum_1hz_applies",
         observed: findings::RawValue::Unsigned(u128::from(!raw)),
         expected: None,
     });
+    // Findings outlive bounded reference eviction: retain both rate claims.
+    for (n, names) in [
+        (
+            a.input.network.as_ref(),
+            [
+                "preceding_raw_network_rate_caller",
+                "preceding_raw_network_rate_policy",
+                "preceding_raw_network_rate_policy_id",
+                "preceding_ntf",
+            ],
+        ),
+        (
+            b.input.network.as_ref(),
+            [
+                "following_raw_network_rate_caller",
+                "following_raw_network_rate_policy",
+                "following_raw_network_rate_policy_id",
+                "following_ntf",
+            ],
+        ),
+    ] {
+        if let Some(n) = n {
+            let ntf = (n.reference.observation().csdw().as_raw() >> 4) & 15;
+            evidence = evidence
+                .with_raw_field(findings::RawField {
+                    name: names[0],
+                    observed: findings::RawValue::Unsigned(u128::from(n.raw_network_rate)),
+                    expected: None,
+                })
+                .with_raw_field(findings::RawField {
+                    name: names[3],
+                    observed: findings::RawValue::Unsigned(ntf.into()),
+                    expected: None,
+                });
+            if let Some((policy_id, policy_raw)) = n.stream_rate_policy {
+                evidence = evidence
+                    .with_raw_field(findings::RawField {
+                        name: names[1],
+                        observed: findings::RawValue::Unsigned(u128::from(policy_raw)),
+                        expected: None,
+                    })
+                    .with_raw_field(findings::RawField {
+                        name: names[2],
+                        observed: findings::RawValue::Unsigned(policy_id.into()),
+                        expected: None,
+                    });
+            }
+        }
+    }
+    f.evidence = evidence;
 }
 
 // Conversions using a last-known UTC offset retain the value and actual operand.

@@ -130,3 +130,7 @@ tests /41 killed mutations; matrix returns160/288. Re-executed the17 focused
 tests, format and trace checks; prior full local CI evidence is unchanged.
 Going forward, a marker that promotes a requirement to Implemented requires
 whole-statement verification; partial coverage is recorded only in this ledger.
+
+Subsequent S06b2 integration: [verification-s06b2](verification-s06b2.md) closes
+the stream clauses deferred above and retires the temporary rejection test.
+This dated S06b1 evidence is otherwise unchanged; remaining scopes stay explicit.
