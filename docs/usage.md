@@ -335,7 +335,7 @@ correlator.add_reference(3, Rtc::from_raw(30_000_000),
     AbsoluteTime::new(50, 14, 0, 7, 0).unwrap());
 
 // Detect jumps with a 1-second threshold:
-let jumps = correlator.detect_time_jump(3, NanosDuration::from_secs(1));
+let jumps = correlator.detect_time_jump(3, NanosDuration::new(1_000_000_000));
 
 for jump in &jumps {
     let delta_ms = jump.delta_nanos as f64 / 1_000_000.0;
@@ -1102,7 +1102,7 @@ use irig106_time::streaming::StreamingTimeCorrelator;
 use irig106_time::{AbsoluteTime, NanosDuration, Rtc};
 
 // Keep a 60-second window of reference points
-let mut sc = StreamingTimeCorrelator::new(NanosDuration::from_secs(60));
+let mut sc = StreamingTimeCorrelator::new(NanosDuration::new(60_000_000_000));
 
 // As time packets arrive from the UDP stream:
 sc.add_reference(1, Rtc::from_raw(10_000_000),

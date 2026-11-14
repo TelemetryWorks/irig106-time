@@ -204,7 +204,10 @@ fn main() {
     // Use reduced iterations for O(n) scan
     let start = Instant::now();
     for _ in 0..1_000 {
-        black_box(lg.detect_time_jump(black_box(1), black_box(NanosDuration::from_secs(1))));
+        black_box(lg.detect_time_jump(
+            black_box(1),
+            black_box(NanosDuration::from_secs(1).expect("bounded literal duration")),
+        ));
     }
     r.push(Bench {
         name: "corr_detect_jumps_3600",

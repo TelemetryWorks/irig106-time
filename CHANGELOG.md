@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ⚠️ S01b shared-types adoption
+
+- Fuzz follow-up: migrate the missed correlation duration constant and older
+  BCD harness getter/checked-conversion calls, without changing library BCD
+  behaviour or turning expected errors into fuzz crashes. Add a bounded,
+  compile-only all-fuzz-target CI job and the matching local CI command;
+  no fuzz campaign or instrumented runtime coverage is claimed.
+
+- Advance irig106-types to `7bfe47fc903efea342f3efba1ad0f527dd059a0d` (types
+  PR #8); root/CLI/fuzz lockfiles follow it. No other dependency version changes.
+  Re-export shared SignedNanos/SignedRtcTicks/SignedUnixSeconds; local signed
+  definitions are removed. Shared inherent duration conversions return Option;
+  use `rtc::signed_ticks_to_nanos`, `signed_nanos_magnitude` and
+  `signed_nanos_to_unsigned` when a Result/QuantityOverflow boundary is needed.
+- PtpTime::to_utc_seconds now returns Result<u64>; propagate with `?`.
+  `to_signed_utc_seconds` preserves negative Unix seconds. Calendar/offline/
+  stream adapters reject an unrepresentable unsigned result before insertion
+  instead of silently clamping to 1970. Both former to_unix callers use signed
+  arithmetic; no new leap-table policy or pre-1970 calendar support is claimed.
+- NanosDuration::from_secs/from_millis/from_micros now return Option, and
+  TaiSeconds::to_unix is checked; use to_signed_unix for negative results.
+  After the fuzz follow-up, callers/examples including fuzz harnesses are
+  migrated; all ten fuzz targets were type-checked with the locked cargo check.
+  The CLI fixed-threshold
+  expression remains exactly 1000000000 ns. A pre-1970 PTP result now follows
+  its existing correlation-error path instead of displaying fabricated 1970 time.
+  Bench/test literal fixtures handle Option explicitly. deny.toml is unchanged.
+- API-104's shared-type gaps are closed in `docs/verification-s01.md`, with
+  adoption evidence and remaining global API/conversion limits retained.
+
 ### Added
 
 - S01 checked `rtc` quantities: `checked_rtc`, named-session `SessionRtc`,
@@ -249,8 +279,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   | Before | After |
   |--------|-------|
   | `TimeCorrelator::with_ooo_window(Option<u64>)` | `with_ooo_window(Option<NanosDuration>)` |
-  | `detect_time_jump(ch, 1_000_000_000)` | `detect_time_jump(ch, NanosDuration::from_secs(1))` |
-  | `StreamingTimeCorrelator::new(60_000_000_000)` | `StreamingTimeCorrelator::new(NanosDuration::from_secs(60))` |
+  | `detect_time_jump(ch, 1_000_000_000)` | `detect_time_jump(ch, NanosDuration::new(1_000_000_000))` |
+  | `StreamingTimeCorrelator::new(60_000_000_000)` | `StreamingTimeCorrelator::new(NanosDuration::new(60_000_000_000))` |
   | `PtpTime::to_utc_seconds(37)` / `to_absolute(37)` | `to_utc_seconds(TaiUtcOffset::new(37))` / `to_absolute(TaiUtcOffset::new(37))` |
   | `LeapSecondTable::offset_at_unix(u64) -> i32` | `offset_at_unix(UnixSeconds) -> TaiUtcOffset` |
   | `LeapSecondTable::offset_at_tai(u64) -> i32` | `offset_at_tai(TaiSeconds) -> TaiUtcOffset` |

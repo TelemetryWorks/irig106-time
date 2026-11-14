@@ -583,7 +583,7 @@ fn cmd_summary(mmap: &[u8], filename: &str) {
     for ch in &all_channels {
         let jumps = scanner
             .correlator
-            .detect_time_jump(*ch, NanosDuration::from_secs(1));
+            .detect_time_jump(*ch, NanosDuration::new(1_000_000_000));
         if !jumps.is_empty() {
             if !any_jumps {
                 println!("Time Jumps Detected (threshold: 1 second)");

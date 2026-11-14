@@ -16,7 +16,7 @@
 use crate::absolute::AbsoluteTime;
 use crate::error::{Result, TimeError};
 use crate::scale::{ScaleEvidence, Scaled, TimeScale, TimeScaleTagged};
-use irig106_types::{TaiSeconds, TaiUtcOffset, UnixSeconds};
+use irig106_types::{SignedUnixSeconds, TaiSeconds, TaiUtcOffset, UnixSeconds};
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -307,12 +307,24 @@ impl PtpTime {
         (self.seconds as u128) * 1_000_000_000 + (self.nanoseconds as u128)
     }
 
-    /// Convert TAI seconds to UTC seconds by subtracting the leap-second offset.
+    /// Checked unsigned UTC seconds; pre-1970 results return QuantityOverflow.
     ///
     /// **Traces:** L1-PTP-004
     #[inline]
-    pub fn to_utc_seconds(&self, offset: TaiUtcOffset) -> u64 {
-        self.tai_seconds().to_unix(offset).get()
+    pub fn to_utc_seconds(&self, offset: TaiUtcOffset) -> Result<u64> {
+        self.to_signed_utc_seconds(offset)
+            .to_unsigned()
+            .map(UnixSeconds::get)
+            .ok_or(TimeError::QuantityOverflow {
+                quantity: "signed UTC seconds to u64",
+            })
+    }
+
+    /// Exact signed Unix seconds, retaining pre-1970 results; offset is caller supplied.
+    /// No leap-table lookup or historical offset inference is performed here.
+    /// **Traces:** L3-API-104 ← L2-API-104 ← L1-API-004
+    pub fn to_signed_utc_seconds(&self, offset: TaiUtcOffset) -> SignedUnixSeconds {
+        self.tai_seconds().to_signed_unix(offset)
     }
 
     /// The seconds field as a [`TaiSeconds`] value.
@@ -326,7 +338,7 @@ impl PtpTime {
     /// The offset accounts for accumulated leap seconds. As of 2017, the
     /// offset is 37 seconds (TAI = UTC + 37).
     pub fn to_absolute(&self, offset: TaiUtcOffset) -> Result<AbsoluteTime> {
-        let utc_secs = self.to_utc_seconds(offset);
+        let utc_secs = self.to_utc_seconds(offset)?;
         let (year, doy, hour, minute, second) = unix_seconds_to_ymd(utc_secs);
 
         let abs = AbsoluteTime::new(doy, hour, minute, second, self.nanoseconds)?
@@ -626,6 +638,12 @@ impl LeapSecondTable {
     ///
     /// **Traces:** L1-TAI-003
     pub fn offset_at_unix(&self, time: UnixSeconds) -> TaiUtcOffset {
+        self.offset_at_signed_unix(time.to_signed())
+    }
+
+    // Preserve the existing lookup policy, comparing signed values rather than
+    // clamping a pre-1970 approximation. Full table validation is later S04 work.
+    fn offset_at_signed_unix(&self, time: SignedUnixSeconds) -> TaiUtcOffset {
         if self.entries.is_empty() {
             return DEFAULT_TAI_UTC_OFFSET;
         }
@@ -633,7 +651,7 @@ impl LeapSecondTable {
         // Find the last entry with effective_unix <= time
         let raw = match self
             .entries
-            .binary_search_by_key(&time.get(), |e| e.effective_unix)
+            .binary_search_by_key(&time.get(), |e| i128::from(e.effective_unix))
         {
             Ok(i) => self.entries[i].tai_utc_offset,
             Err(0) => {
@@ -651,7 +669,7 @@ impl LeapSecondTable {
     /// then looking up the offset for that UTC time.
     pub fn offset_at_tai(&self, time: TaiSeconds) -> TaiUtcOffset {
         // First approximation: assume current default offset
-        self.offset_at_unix(time.to_unix(DEFAULT_TAI_UTC_OFFSET))
+        self.offset_at_signed_unix(time.to_signed_unix(DEFAULT_TAI_UTC_OFFSET))
     }
 
     /// Number of entries in the table.

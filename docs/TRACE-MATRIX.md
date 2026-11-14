@@ -26,7 +26,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1-RTC-001 | L2-RTC-101 | `tests/s01_existing.rs::shared_values_keep_width_and_unit_contracts`<br>`tests/s01_quantities.rs::checked_width_never_silently_masks` | Implemented |
 | L1-RTC-002 | L2-RTC-102 | `src/intra_packet_tests.rs::parse_rtc48_reserved_ignored`<br>`tests/rebuild_wire.rs::rtc_padding_warning_is_separate_from_decoding` | Implemented |
 | L1-RTC-003 | L2-RTC-103 | `tests/s01_existing.rs::offline_half_range_requires_ordering_context`<br>`tests/s01_existing.rs::stream_half_range_requires_ordering_context`<br>`tests/s01_quantities.rs::modular_signed_direction_context_and_sessions`<br>`tests/s01_quantities.rs::unwrapped_packet_boundaries_are_checked` | Implemented |
-| L1-RTC-004 | L2-RTC-104 | `tests/s01_quantities.rs::signed_duration_boundaries_and_shared_magnitude`<br>`tests/s01_quantities.rs::unwrapped_packet_boundaries_are_checked` | Implemented |
+| L1-RTC-004 | L2-RTC-104 | `tests/s01_quantities.rs::signed_duration_boundaries_and_shared_magnitude`<br>`tests/s01_quantities.rs::unwrapped_packet_boundaries_are_checked`<br>`tests/s01b_adoption.rs::signed_quantities_are_shared_and_checked_errors_remain_typed` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
@@ -35,7 +35,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L2-RTC-101 | L3-RTC-101 | `tests/s01_existing.rs::shared_values_keep_width_and_unit_contracts`<br>`tests/s01_quantities.rs::checked_width_never_silently_masks` | Implemented |
 | L2-RTC-102 | L3-RTC-102 | `src/intra_packet_tests.rs::parse_rtc48_reserved_ignored`<br>`tests/rebuild_wire.rs::rtc_padding_warning_is_separate_from_decoding` | Implemented |
 | L2-RTC-103 | L3-RTC-103 | `tests/s01_existing.rs::offline_half_range_requires_ordering_context`<br>`tests/s01_existing.rs::stream_half_range_requires_ordering_context`<br>`tests/s01_quantities.rs::modular_signed_direction_context_and_sessions`<br>`tests/s01_quantities.rs::unwrapped_packet_boundaries_are_checked` | Implemented |
-| L2-RTC-104 | L3-RTC-104 | `tests/s01_quantities.rs::signed_duration_boundaries_and_shared_magnitude`<br>`tests/s01_quantities.rs::unwrapped_packet_boundaries_are_checked` | Implemented |
+| L2-RTC-104 | L3-RTC-104 | `tests/s01_quantities.rs::signed_duration_boundaries_and_shared_magnitude`<br>`tests/s01_quantities.rs::unwrapped_packet_boundaries_are_checked`<br>`tests/s01b_adoption.rs::signed_quantities_are_shared_and_checked_errors_remain_typed` | Implemented |
 
 ### L1-ABS: Absolute time values
 
@@ -495,7 +495,7 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L1-API-001 | L2-API-101 | _(none)_ | Draft |
 | L1-API-002 | L2-API-102 | _(none)_ | Implemented (I) |
-| L1-API-004 | L2-API-104 | `tests/s01_existing.rs::shared_values_keep_width_and_unit_contracts` | Implemented |
+| L1-API-004 | L2-API-104 | `tests/s01_existing.rs::shared_values_keep_width_and_unit_contracts`<br>`tests/s01b_adoption.rs::legacy_calendar_rejects_pre1970_instead_of_clamping`<br>`tests/s01b_adoption.rs::ptp_retains_signed_unix_and_unsigned_failure_is_explicit`<br>`tests/s01b_adoption.rs::signed_quantities_are_shared_and_checked_errors_remain_typed`<br>`tests/s01b_adoption.rs::upstream_unit_and_epoch_conversions_do_not_saturate` | Implemented |
 | L1-API-005 | L2-API-105 | _(none)_ | Draft |
 | L1-API-006 | L2-API-106 | _(none)_ | Draft |
 | L1-API-007 | L2-API-107 | _(none)_ | Implemented (I) |
@@ -511,7 +511,7 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L2-API-101 | L3-API-101 | _(TBD)_ | Draft |
 | L2-API-102 | L3-API-102 | _(TBD)_ | Draft |
-| L2-API-104 | L3-API-104 | `tests/s01_existing.rs::shared_values_keep_width_and_unit_contracts` | Implemented |
+| L2-API-104 | L3-API-104 | `tests/s01_existing.rs::shared_values_keep_width_and_unit_contracts`<br>`tests/s01b_adoption.rs::legacy_calendar_rejects_pre1970_instead_of_clamping`<br>`tests/s01b_adoption.rs::ptp_retains_signed_unix_and_unsigned_failure_is_explicit`<br>`tests/s01b_adoption.rs::signed_quantities_are_shared_and_checked_errors_remain_typed`<br>`tests/s01b_adoption.rs::upstream_unit_and_epoch_conversions_do_not_saturate` | Implemented |
 | L2-API-105 | L3-API-105 | _(TBD)_ | Draft |
 | L2-API-106 | L3-API-106 | _(TBD)_ | Draft |
 | L2-API-107 | L3-API-107 | _(TBD)_ | Draft |

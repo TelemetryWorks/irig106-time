@@ -1,6 +1,6 @@
 #![no_main]
-use libfuzzer_sys::fuzz_target;
 use irig106_time::{AbsoluteTime, NanosDuration, Rtc, TimeCorrelator};
+use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
     // Need at least 16 bytes to construct a reference point + target
@@ -15,8 +15,12 @@ fuzz_target!(|data: &[u8]| {
     while offset + 10 <= data.len() && correlator.len() < 100 {
         let channel_id = u16::from_le_bytes([data[offset], data[offset + 1]]);
         let rtc = Rtc::from_le_bytes([
-            data[offset + 2], data[offset + 3], data[offset + 4],
-            data[offset + 5], data[offset + 6], data[offset + 7],
+            data[offset + 2],
+            data[offset + 3],
+            data[offset + 4],
+            data[offset + 5],
+            data[offset + 6],
+            data[offset + 7],
         ]);
         let hour = data[offset + 8] % 24;
         let minute = data[offset + 9] % 60;
@@ -31,8 +35,12 @@ fuzz_target!(|data: &[u8]| {
     // Correlate with remaining bytes as target RTC
     if data.len() >= offset + 6 {
         let target = Rtc::from_le_bytes([
-            data[offset], data[offset + 1], data[offset + 2],
-            data[offset + 3], data[offset + 4], data[offset + 5],
+            data[offset],
+            data[offset + 1],
+            data[offset + 2],
+            data[offset + 3],
+            data[offset + 4],
+            data[offset + 5],
         ]);
 
         // Must not panic regardless of state
@@ -42,6 +50,6 @@ fuzz_target!(|data: &[u8]| {
     }
 
     // Jump detection must never panic
-    let _ = correlator.detect_time_jump(0, NanosDuration::from_millis(1));
+    let _ = correlator.detect_time_jump(0, NanosDuration::new(1_000_000));
     let _ = correlator.detect_time_jump(1, NanosDuration::ZERO); // zero threshold
 });

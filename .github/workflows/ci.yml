@@ -80,6 +80,18 @@ jobs:
       - run: cargo build --manifest-path irig106-time-cli/Cargo.toml
       - run: cargo clippy --manifest-path irig106-time-cli/Cargo.toml --all-targets -- -D warnings
 
+  fuzz-check:
+    name: Fuzz targets compile
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CARGO_BUILD_JOBS: 2
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      # Type-check every harness; no fuzz campaign or nightly instrumentation.
+      - run: cargo check --manifest-path fuzz/Cargo.toml --bins --locked
+
   wasm:
     name: WASM Build
     runs-on: ubuntu-latest
