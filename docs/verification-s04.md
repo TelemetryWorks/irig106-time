@@ -18,7 +18,7 @@ Design/Review field or CLI source change. No NTP conversion or schema freeze.
   the first implementation; no failing-first claim for it.
 - `c618370`: extension-shrinks-coverage assertion failed against that uncommitted
   implementation before its fix. Later custom-offset/evidence and legacy leap-refusal assertions are
-  additions after implementation. Final focused suite: **12 tests**, including
+  additions after implementation. Final focused suite after review: **16 tests**, including
   one serde-only test, plus compatibility/wire/property regressions.
 
 ## Source inspection and derivation
@@ -65,7 +65,7 @@ adapter/report adoption remains a0.8 blocker. Matrix links are not full clauses.
 
 ## Negative checks and full verification
 
-**32 isolated mutations** compiled and failed focused tests: duplicates/source/
+**32 initial isolated mutations** compiled and failed focused tests: duplicates/source/
 pre1972/step validation; historical rewrite, input sort and coverage shrink;
 approximate/strict-boundary TAI lookup; narrowed start; missing context; constant37
 fallback; last-transition/endpoint currency; stale UTC/raw TAI/leap/offset/source/selected-transition
@@ -74,3 +74,22 @@ override ignored, TF-022 grade changed; serde bypass; each legacy correlator
 normalizing the leap label into midnight. Sources restored each time.
 Full bounded CI equivalent covers features, MSRV1.85, no_std wasm±serde,
 clippy/fmt/docs, CLI, benches, locked all-fuzz-target type-check, trace and deny.
+
+## PR #20 tests-only follow-up at5b66296
+
+Four new tests pass on the reviewed production code; no bug or production change.
+Each guard was removed independently and its specifically named test executed:
+`unit_steps_require_january_or_july_midnight` then accepts synthetic +/-1 steps
+on March1 or July1+1second; `first_entry_cannot_follow_supported_start` then
+accepts July's first entry with January's declared start;
+`transition_cannot_follow_known_current_through` then accepts a July transition
+beyond coverage with a valid January baseline; `unix_lookup_respects_a_narrowed_start_with_earlier_entries`
+then returns32 for1999-12-31 despite a2000 start, instead of NeedsContext.
+All four removals compiled and failed by assertion; originals restored. Valid
+boundary/baseline controls pass. Fixtures use cited IERS Unix dates and the
+independent calendar arithmetic shown in tests. These are post-implementation
+regressions, not new failing-first-on-main claims. Total local negative evidence
+is **32 initial +4 review =36 killed mutations**; extension-conflict-overwrites
+is reviewer-identified equivalent and is not counted or given a redundant test.
+Focused total is16 (2 existing +13 leap +1 serde-only). Full bounded CI rerun;
+matrix links remain146/288, with clause/release limits unchanged.

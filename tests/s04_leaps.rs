@@ -379,3 +379,83 @@ fn stale_fallback_uses_the_supplied_table_not_constant37() {
             .is_err()
     );
 }
+
+/// Requirements: L1-TAI-001, L2-TAI-101, L3-TAI-101, L1-TAI-003, L2-TAI-103, L3-TAI-103
+#[test]
+fn unit_steps_require_january_or_july_midnight() {
+    // RCC200-16 Appendix A.2 / accepted UTC model: June/December boundaries.
+    // 1972 is leap: March1 = Jan1(63072000) + (31+29)*86400 = 68256000.
+    // July1 = 78796800 (IERS MJD41499); +1 is one second after midnight.
+    // Both signs are synthetic validation fixtures, not historical assertions.
+    let info = metadata("date-guard", 63_072_000, 94_694_400);
+    for offset in [9, 11] {
+        for at in [68_256_000, 78_796_801] {
+            assert!(matches!(
+                LeapSecondTable::try_new(
+                    vec![entry(63_072_000, 10), entry(at, offset)],
+                    info.clone()
+                ),
+                Err(TimeError::InvalidLeapTable { .. })
+            ));
+        }
+        assert!(
+            LeapSecondTable::try_new(
+                vec![entry(63_072_000, 10), entry(78_796_800, offset)],
+                info.clone()
+            )
+            .is_ok()
+        );
+    }
+}
+
+/// Requirements: L1-TAI-001, L2-TAI-101, L3-TAI-101
+#[test]
+fn first_entry_cannot_follow_supported_start() {
+    // IERS dates/offsets: both dates are in coverage, but July1 cannot anchor Jan1.
+    let info = metadata("baseline-guard", 63_072_000, 94_694_400);
+    assert!(matches!(
+        LeapSecondTable::try_new(vec![entry(78_796_800, 11)], info.clone()),
+        Err(TimeError::InvalidLeapTable { .. })
+    ));
+    assert!(LeapSecondTable::try_new(vec![entry(63_072_000, 10)], info).is_ok());
+}
+
+/// Requirements: L1-TAI-001, L2-TAI-101, L3-TAI-101, L1-TAI-004, L2-TAI-104, L3-TAI-104
+#[test]
+fn transition_cannot_follow_known_current_through() {
+    // A valid baseline isolates the later transition's coverage guard.
+    let entries = vec![entry(63_072_000, 10), entry(78_796_800, 11)];
+    assert!(matches!(
+        LeapSecondTable::try_new(
+            entries.clone(),
+            metadata("end-guard", 63_072_000, 78_796_799)
+        ),
+        Err(TimeError::InvalidLeapTable { .. })
+    ));
+    assert!(
+        LeapSecondTable::try_new(entries, metadata("end-control", 63_072_000, 78_796_800)).is_ok()
+    );
+}
+
+/// Requirements: L1-TAI-001, L2-TAI-101, L3-TAI-101, L1-TAI-004, L2-TAI-104, L3-TAI-104
+#[test]
+fn unix_lookup_respects_a_narrowed_start_with_earlier_entries() {
+    // 2000-01-01 = 63072000 + (28*365+7 leap days)*86400 = 946684800.
+    // Earlier entries are available, so removing the guard would return32.
+    let builtin = LeapSecondTable::builtin();
+    let mut info = builtin.metadata().clone();
+    info.id = "starts2000".into();
+    info.supported_start = UnixSeconds::new(946_684_800);
+    let table = LeapSecondTable::try_new(builtin.entries().to_vec(), info).unwrap();
+    assert!(matches!(
+        table.offset_at_unix(UnixSeconds::new(946_684_799)),
+        Err(TimeError::NeedsContext { .. })
+    ));
+    assert_eq!(
+        table
+            .offset_at_unix(UnixSeconds::new(946_684_800))
+            .unwrap()
+            .get(),
+        32
+    );
+}

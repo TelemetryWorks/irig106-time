@@ -25,8 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   CLI indirectly inherits these errors. Their bare calendar still lacks currency
   basis; Format2 adapter/report adoption remains planned, not claimed complete.
   Explicit-offset scalar helpers do not infer pre1972 rate/offset history.
-- Verification-s04 records12 focused tests, honest failing-first evidence and
-  32 killed mutations; matrix links do not prove every clause/release check.
+- Verification-s04 records16 focused tests, honest failing-first evidence and
+  32 initial +4 review killed mutations; matrix links do not prove every clause/release check.
 
 ### ⚠️ S03 edition-qualified Format 1
 
