@@ -16,7 +16,7 @@ levels, Design/Review fields, CLI source, or PTP conversion policy change.
   uncommitted implementation, not main. Fixed by retaining original second60
   while folding only its era-comparison coordinate. Later range/operand/date/
   negative-step assertions strengthen coverage without a main-first claim.
-- Final focused suite: **12 tests** (three controls, nine conversion tests).
+- Final focused suite after review: **13 tests** (three controls, ten conversion tests).
   Contextless legacy helpers still return NeedsContext; they cannot preserve
   era assumptions/currency. Their diagnostic text now names the qualified API,
   not a pending Q-NTP. This may appear in the old CLI; no output format changes.
@@ -71,7 +71,7 @@ Fuzz harness now exercises canonical raw retention; compile check is not a campa
 
 ## Negative checks and full CI
 
-**37 isolated mutations** compiled and failed executed tests: declared/default
+**37 initial isolated mutations** compiled and failed executed tests: declared/default
 precedence/labels; cross-session/conflicting/tied pivots; fraction precision,
 negative quotient and signed era; +/-37 shifts; sentinel/floor; rejected index,
 proleptic/evidence metadata; coverage/narrowed start/negative step/window;
@@ -79,3 +79,19 @@ ordinary/possible leap labels; date validation/provenance; circular pivot and
 scale/raw pivot assumptions; TF-029/030 omission/override/operands. All source
 restored. Full bounded CI covers features, MSRV1.85, clippy/fmt/docs, no_std
 wasm±serde, CLI, benches, locked all-fuzz-target compile, trace and cargo-deny.
+
+## PR #21 single-test follow-up at13934e3
+
+`tf030_nonzero_era_keeps_exact_evidence_and_unix_mapping` adds a synthetic
+validated caller-table extension with a hypothetical +1 step on2037-01-01;
+this is not IERS future data. Hand arithmetic:67*365+17 leap days=24472 days
+since1970, so B=24472*86400=2114380800. RFC5905 §6 era equation gives raw
+seconds B+2208988800-4294967296=28402304, declared era1; fraction0x80000000
+maps to500000000ns inside [B,B+1). The test asserts TF-030 WARNING/Kept,
+`ntp_era == Signed(1)`, and both conversion/finding mapped Unix2114380800.
+It passes on the reviewed code. Replacing only the findings ntp_era operand
+with constant0 compiles and fails the exact Signed(1) assertion (observed
+Signed(0)); original source restored. No production changes or new main-first
+failure claim. Focused total13; cumulative local negative evidence37 initial
++1 review =38 killed mutations. Full bounded CI rerun, trace links unchanged;
+clause limits and human Review remain unchanged.

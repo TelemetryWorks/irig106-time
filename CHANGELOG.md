@@ -23,8 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now directs to the qualified API instead of calling Q-NTP pending. Existing
   CLI may display that revised error text; no CLI source/output-format change.
   New output/context types have no frozen serialization schema (planned S12).
-- Verification-s05 records12 focused tests, honest no-main-runtime-failure /
-  missing-API evidence and37 caught mutations; links are not full compliance.
+- Verification-s05 records13 focused tests, honest no-main-runtime-failure /
+  missing-API evidence and37 initial +1 review caught mutations; links are not full compliance.
 
 ### ⚠️ S04 validated leap tables and PTP→UTC
 

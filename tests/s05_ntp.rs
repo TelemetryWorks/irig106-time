@@ -513,3 +513,56 @@ fn resolved_ntp_pivots_keep_raw_precision_and_scale_assumptions() {
         ScaleOrigin::Policy
     );
 }
+
+/// Requirements: L1-NTP-004, L2-NTP-104, L3-NTP-104, L1-FND-001, L2-FND-101, L3-FND-101, L1-RDG-002, L2-RDG-212, L3-RDG-212
+/// Interpretations: RDG-012
+#[test]
+fn tf030_nonzero_era_keeps_exact_evidence_and_unix_mapping() {
+    // Synthetic caller model, NOT an IERS prediction: +1 at2037-01-01.
+    // Gregorian days1970->2037:67*365+17 leap days=24472;
+    // B=24472*86400=2114380800. RFC5905 §6/Fig4 era equation:
+    // raw=B+2208988800-4294967296=28402304, era1. Fraction0x80000000=0.5s.
+    let builtin = LeapSecondTable::builtin();
+    let mut info = builtin.metadata().clone();
+    info.id = "hypothetical-2037-insertion".into();
+    info.source = "synthetic caller fixture, not IERS future data".into();
+    info.known_current_through = UnixSeconds::new(2_145_916_800); // 2038-01-01
+    let table = builtin
+        .extended(
+            vec![LeapSecondEntry {
+                effective_unix: UnixSeconds::new(2_114_380_800),
+                tai_utc_offset: TaiUtcOffset::new(38),
+            }],
+            info,
+        )
+        .unwrap();
+    let input = raw(28_402_304, 0x80000000);
+    let converted = convert_ntp(input, &declared(1), Some(&table));
+    assert_eq!(converted.status(), NtpConversionStatus::Mapped);
+    assert_eq!(converted.basis().era, Some(1));
+    assert_eq!(converted.basis().leap, NtpLeapStatus::Ambiguous);
+    assert_eq!(converted.unix_seconds().unwrap().get(), 2_114_380_800);
+    let utc = converted.utc().unwrap();
+    assert_eq!(
+        (utc.year, utc.day_of_year, utc.nanoseconds),
+        (Some(2037), 1, 500_000_000)
+    );
+    let findings = converted.findings(location(), None).unwrap();
+    assert_eq!(findings.len(), 1);
+    let finding = &findings[0];
+    assert_eq!(finding.code().number(), 30);
+    assert_eq!(finding.severity(), Severity::Warning);
+    assert_eq!(finding.evidence().validity(), ValueValidity::Kept);
+    assert_eq!(finding.evidence().ntp().unwrap().raw, input);
+    assert_eq!(
+        finding.evidence().ntp().unwrap().mapped_unix.unwrap().get(),
+        2_114_380_800
+    );
+    let era = finding
+        .evidence()
+        .raw_fields()
+        .iter()
+        .find(|field| field.name == "ntp_era")
+        .unwrap();
+    assert_eq!(era.observed, RawValue::Signed(1));
+}
