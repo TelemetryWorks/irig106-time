@@ -5,7 +5,6 @@ use crate::timeline::*;
 use crate::{AbsoluteTime, Result, Rtc, TimeError, TimeF1Source, TimeSource};
 use alloc::{collections::VecDeque, vec::Vec};
 const MASK: i128 = (1i128 << 48) - 1;
-const HALF: i128 = 1i128 << 47;
 /// Explicit stream strategy; Standard is the owner-accepted default.
 /// **Traces:** L3-POL-201 ← L2-POL-201 ← L1-POL-001
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -301,28 +300,16 @@ impl StreamTimeline {
         channel: Option<u16>,
         related: Option<u64>,
         delta: Option<i128>,
-    ) {
-        let severity = self
-            .policy
-            .offline
-            .finding_levels
-            .get(&code)
-            .copied()
-            .unwrap_or(match code {
-                4 => Severity::Error,
-                11 | 18 | 22 => Severity::Information,
-                _ => Severity::Warning,
-            });
-        b.findings.push(TimelineFinding {
+    ) -> Result<()> {
+        b.findings.push(TimelineFinding::observed(
             code,
-            severity,
-            session: key.session,
-            packet: key.packet,
+            self.policy.offline.finding_levels.get(&code).copied(),
+            key,
             channel,
             related,
-            raw_rtc: Some(Rtc::from_raw((key.ticks & MASK) as u64)),
-            delta_ns: delta,
-        });
+            delta,
+        )?);
+        Ok(())
     }
     fn answer(
         &self,
@@ -433,11 +420,21 @@ impl StreamTimeline {
             ));
         }
         let raw = i128::from(packet.rtc.as_raw());
-        let forward = (raw - (self.high & MASK)) & MASK;
-        let delta = if forward < HALF {
-            forward
+        let delta = if self.first.is_some() && !boundary {
+            crate::rtc::SessionRtc {
+                session: self.session,
+                rtc: Rtc::from_raw((self.high & MASK) as u64),
+            }
+            .delta_to(
+                crate::rtc::SessionRtc {
+                    session: self.session,
+                    rtc: packet.rtc,
+                },
+                crate::rtc::CounterOrder::Nearest,
+            )?
+            .get()
         } else {
-            forward - MASK - 1
+            0
         };
         let late = self.first.is_some()
             && delta < 0
@@ -453,7 +450,7 @@ impl StreamTimeline {
         let mut b = self.advance(progress)?;
         if self.first.is_none() || boundary || reset {
             self.flush(&mut b, ReleaseReason::SessionBoundary);
-            self.end_session(&mut b);
+            self.end_session(&mut b)?;
             self.session += 1;
             self.high = ticks;
             self.time_seen = false;
@@ -479,7 +476,7 @@ impl StreamTimeline {
                 Some(packet.channel),
                 None,
                 Some(delta * 100),
-            );
+            )?;
             if reset {
                 self.emit(
                     &mut b,
@@ -488,7 +485,7 @@ impl StreamTimeline {
                     Some(packet.channel),
                     None,
                     Some(delta * 100),
-                );
+                )?;
             }
         }
         self.high = self.high.max(ticks);
@@ -501,11 +498,11 @@ impl StreamTimeline {
         if kind == PacketKind::Time {
             self.time_seen = true;
             if self.channel.is_some_and(|(id, _)| id == ch) {
-                self.add_reference(reference, key, &mut b);
+                self.add_reference(reference, key, &mut b)?;
             }
         } else if kind == PacketKind::Data {
             if !self.time_seen {
-                self.emit(&mut b, 2, key, Some(ch), None, None);
+                self.emit(&mut b, 2, key, Some(ch), None, None)?;
             }
             let preceding = self
                 .refs
@@ -574,10 +571,10 @@ impl StreamTimeline {
         reference: Option<TimelineReference>,
         key: PacketKey,
         b: &mut StreamBatch,
-    ) {
+    ) -> Result<()> {
         // Missing/unreadable input already has its finding; it does not
         // invalidate an earlier eligible reference or drain held queries.
-        let Some(r) = reference else { return };
+        let Some(r) = reference else { return Ok(()) };
         if self.source.is_some_and(|s| s != r.input.source) {
             self.emit(
                 b,
@@ -586,7 +583,7 @@ impl StreamTimeline {
                 Some(r.channel),
                 self.refs.last().map(|r| r.key.packet),
                 None,
-            );
+            )?;
         }
         self.source = Some(r.input.source);
         self.external_seen |= matches!(r.input.source, TimeF1Source::Source(TimeSource::External));
@@ -596,10 +593,10 @@ impl StreamTimeline {
         if stopped {
             self.flush(b, ReleaseReason::UnusableReference);
             self.refs.clear();
-            return;
+            return Ok(());
         }
         if !r.admitted {
-            return;
+            return Ok(());
         }
         let mut barrier = None;
         // Compare both immediate neighbours for late reference insertion.
@@ -637,7 +634,7 @@ impl StreamTimeline {
                     Some(r.channel),
                     Some(a.key.packet),
                     Some(elapsed),
-                );
+                )?;
             }
             match crate::timeline::absolute_delta(a, z) {
                 Some(d) => {
@@ -655,7 +652,7 @@ impl StreamTimeline {
                             Some(r.channel),
                             Some(a.key.packet),
                             Some(residual),
-                        );
+                        )?;
                         barrier = Some(ReleaseReason::Discontinuity);
                     }
                 }
@@ -673,6 +670,7 @@ impl StreamTimeline {
         self.refs.push(r);
         self.refs.sort_by_key(|r| (r.key.ticks, r.key.packet));
         self.resolve(b);
+        Ok(())
     }
     fn resolve(&mut self, b: &mut StreamBatch) {
         let mut remaining = VecDeque::new();
@@ -714,19 +712,20 @@ impl StreamTimeline {
         }
         self.pending = remaining;
     }
-    fn end_session(&self, b: &mut StreamBatch) {
+    fn end_session(&self, b: &mut StreamBatch) -> Result<()> {
         if !self.time_seen {
             if let Some(key) = self.first {
-                self.emit(b, 1, key, None, None, None);
+                self.emit(b, 1, key, None, None, None)?;
             }
         }
+        Ok(())
     }
     /// Explicit EOF releases as extrapolated (or counter-only), then closes.
     /// **Traces:** L3-STRM-203 ← L2-STRM-203 ← L1-STRM-001
     pub fn finish(&mut self, progress: u64) -> Result<StreamBatch> {
         let mut b = self.advance(progress)?;
         self.flush(&mut b, ReleaseReason::Eof);
-        self.end_session(&mut b);
+        self.end_session(&mut b)?;
         self.refs.clear();
         self.finished = true;
         Ok(b)

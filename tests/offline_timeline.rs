@@ -152,7 +152,7 @@ fn both_literal_examples_carry_reproducible_basis() {
             ];
             b.observe(source_packet(3, &next), false).unwrap();
         }
-        let timeline = b.finish();
+        let timeline = b.finish().unwrap();
         let a = timeline.lookup(key).unwrap();
         assert_eq!(a.time, Some(expected));
         assert_eq!(a.basis.key.session, 1);
@@ -206,7 +206,7 @@ fn sessions_high_water_wrap_and_exact_late_boundary() {
     // A late packet must not lower high water: now 1100 ms + one tick back.
     let reset = b.observe(packet(3, 3, 8_999_999, None), false).unwrap();
     assert_eq!(reset.session, 2);
-    let t = b.finish();
+    let t = b.finish().unwrap();
     assert_eq!(t.sessions().len(), 2);
     assert!(t.lookup(reset).unwrap().time.is_none());
     for code in [18, 19] {
@@ -226,7 +226,12 @@ fn sessions_high_water_wrap_and_exact_late_boundary() {
     let wrapped = b.observe(packet(2, 3, 5, None), false).unwrap();
     assert_eq!(wrapped.session, 1);
     assert_eq!(
-        b.finish().lookup(wrapped).unwrap().basis.distance_ns,
+        b.finish()
+            .unwrap()
+            .lookup(wrapped)
+            .unwrap()
+            .basis
+            .distance_ns,
         Some(1500)
     );
     let mut b = TimelineBuilder::new(OfflinePolicy {
@@ -271,7 +276,7 @@ fn channel_rank_admission_none_and_caller_no_fallback() {
         b.observe(p, false).unwrap();
     }
     let key = b.observe(packet(6, 3, 10, None), false).unwrap();
-    let t = b.finish();
+    let t = b.finish().unwrap();
     assert_eq!(
         t.lookup(key).unwrap().basis.channel,
         Some((7, ChannelChoice::DeclaredExternal))
@@ -296,7 +301,7 @@ fn channel_rank_admission_none_and_caller_no_fallback() {
     let key = b
         .observe(packet(1, 1, 0, Some(reference(0))), false)
         .unwrap();
-    let t = b.finish();
+    let t = b.finish().unwrap();
     assert!(t.lookup(key).unwrap().time.is_none());
     assert_eq!(
         t.lookup(key).unwrap().basis.channel,
@@ -315,7 +320,7 @@ fn channel_rank_admission_none_and_caller_no_fallback() {
     let mut p = packet(1, 1, 0, Some(r));
     p.declared_timein = false;
     let key = b.observe(p, false).unwrap();
-    let t = b.finish();
+    let t = b.finish().unwrap();
     let a = t.lookup(key).unwrap();
     assert!(a.time.is_some());
     assert_eq!(
@@ -344,7 +349,7 @@ fn nearest_preceding_ties_counter_only_and_policy_snapshots() {
         let key = b.observe(packet(3, 3, 15_000_000, None), false).unwrap();
         b.observe(packet(4, 1, 20_000_000, Some(reference(10))), false)
             .unwrap();
-        let t = b.finish();
+        let t = b.finish().unwrap();
         assert!(t.lookup(before).unwrap().time.is_none());
         let a = t.lookup(key).unwrap();
         assert_eq!(
@@ -361,7 +366,7 @@ fn nearest_preceding_ties_counter_only_and_policy_snapshots() {
     let key = b.observe(packet(1, 3, 0, None), false).unwrap();
     b.observe(packet(2, 1, 10_000_000, Some(reference(1))), false)
         .unwrap();
-    let a = b.finish().lookup(key).unwrap();
+    let a = b.finish().unwrap().lookup(key).unwrap();
     assert!(a.time.is_some());
     assert_eq!(a.basis.position, ReferencePosition::Before);
 }
@@ -381,7 +386,7 @@ fn quality_gap_jump_source_loss_and_duplicate_reasons() {
     let mut r = reference(4);
     r.source = TimeF1Source::Source(TimeSource::Internal);
     let key = b.observe(packet(4, 1, 20_000_001, Some(r)), false).unwrap();
-    let t = b.finish();
+    let t = b.finish().unwrap();
     let q = t.quality(1, 1).unwrap();
     assert_eq!(q.valid, 3);
     assert_eq!(q.min_spacing_ns, Some(1_000_000_000));
@@ -409,7 +414,7 @@ fn quality_gap_jump_source_loss_and_duplicate_reasons() {
     let mut r = reference(1);
     r.source = TimeF1Source::Source(TimeSource::Internal);
     let key = b.observe(packet(2, 1, 10_000_000, Some(r)), false).unwrap();
-    assert!(b.finish().lookup(key).unwrap().time.is_none());
+    assert!(b.finish().unwrap().lookup(key).unwrap().time.is_none());
     for duplicate in [false, true] {
         let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
         b.observe(packet(1, 1, 0, Some(reference(0))), false)
@@ -419,7 +424,7 @@ fn quality_gap_jump_source_loss_and_duplicate_reasons() {
                 .unwrap();
         }
         assert_eq!(
-            b.finish().quality(1, 1).unwrap().unavailable,
+            b.finish().unwrap().quality(1, 1).unwrap().unavailable,
             Some(if duplicate {
                 "duplicate RTC"
             } else {
@@ -440,7 +445,7 @@ fn first_time_presence_scale_boundaries_and_invalid_queries() {
     r.source = TimeF1Source::Source(TimeSource::None);
     b.observe(packet(2, 1, 1, Some(r)), false).unwrap();
     let key = b.observe(packet(3, 3, 2, None), false).unwrap();
-    let t = b.finish();
+    let t = b.finish().unwrap();
     assert!(t.lookup(key).unwrap().time.is_none());
     assert!(!t.findings().iter().any(|f| f.code == 1 || f.code == 2));
     assert!(t.lookup(PacketKey { session: 99, ..key }).is_err());
@@ -461,7 +466,7 @@ fn first_time_presence_scale_boundaries_and_invalid_queries() {
     r.scale = ScaleEvidence::standard(TimeScale::Gps);
     r.format = TimeFormat::Gps;
     let key = b.observe(packet(1, 1, 0, Some(r)), false).unwrap();
-    let t = b.finish();
+    let t = b.finish().unwrap();
     let a = t.lookup(key).unwrap();
     assert_eq!(
         a.basis.reference.unwrap().input.scale.effective(),
@@ -479,7 +484,7 @@ fn first_time_presence_scale_boundaries_and_invalid_queries() {
     r.year_origin = YearOrigin::Caller;
     b.observe(packet(1, 1, 0, Some(r)), false).unwrap();
     let key = b.observe(packet(2, 3, 20_000_000, None), false).unwrap();
-    let a = b.finish().lookup(key).unwrap();
+    let a = b.finish().unwrap().lookup(key).unwrap();
     assert_eq!(
         a.time.unwrap(),
         AbsoluteTime::new(1, 0, 0, 1, 0)
@@ -515,7 +520,14 @@ fn valid_count_id_and_caller_preference_are_ordered() {
         undeclared.declared_external = true;
         b.observe(undeclared, false).unwrap();
         assert_eq!(
-            b.finish().lookup(key).unwrap().basis.channel.unwrap().0,
+            b.finish()
+                .unwrap()
+                .lookup(key)
+                .unwrap()
+                .basis
+                .channel
+                .unwrap()
+                .0,
             expected
         );
     }
@@ -532,7 +544,7 @@ fn none_format_never_supplies_a_readable_body() {
     let mut r = reference(0);
     r.format = TimeFormat::None;
     let key = b.observe(packet(1, 1, 0, Some(r)), false).unwrap();
-    let t = b.finish();
+    let t = b.finish().unwrap();
     assert!(t.lookup(key).unwrap().time.is_none());
     assert!(!t.sessions()[0].references[0].admitted);
 }
@@ -545,7 +557,7 @@ fn bounded_wire_findings_survive_reference_admission() {
     bytes[29] |= 0x80;
     let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
     let key = b.observe(source_packet(1, &bytes), false).unwrap();
-    let t = b.finish();
+    let t = b.finish().unwrap();
     assert!(t.lookup(key).unwrap().time.is_some());
     assert!(
         t.findings()
@@ -563,7 +575,7 @@ fn bounded_wire_findings_survive_reference_admission() {
     assert_eq!(r.wire.unwrap().1.time.unwrap().seconds, 60);
     let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
     let key = b.observe(packet(1, 1, 0, Some(r)), false).unwrap();
-    let t = b.finish();
+    let t = b.finish().unwrap();
     assert!(t.lookup(key).unwrap().time.is_none());
     assert!(
         t.findings()
@@ -588,7 +600,7 @@ fn review_literal_reserved_src_keeps_readable_time() {
     assert_eq!(r.source, TimeF1Source::Source(TimeSource::Reserved(3)));
     let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
     let key = b.observe(packet(1, 1, 0, Some(r)), false).unwrap();
-    let t = b.finish();
+    let t = b.finish().unwrap();
     assert!(t.lookup(key).unwrap().time.is_some());
     assert!(t.sessions()[0].references[0].admitted);
     assert!(
@@ -610,7 +622,7 @@ fn review_literal_reserved_src_keeps_readable_time() {
     })
     .unwrap();
     let key = b.observe(packet(1, 1, 0, Some(r)), false).unwrap();
-    let t = b.finish();
+    let t = b.finish().unwrap();
     assert!(t.lookup(key).unwrap().time.is_none());
     assert!(!t.sessions()[0].references[0].admitted);
 }
@@ -622,7 +634,7 @@ fn review_dynamic_before_time_has_tf002() {
     let early = b.observe(packet(1, 3, 0, None), false).unwrap();
     b.observe(packet(2, 1, 10_000_000, Some(reference(1))), false)
         .unwrap();
-    let t = b.finish();
+    let t = b.finish().unwrap();
     assert!(t.lookup(early).unwrap().time.is_none());
     assert!(
         t.findings()
@@ -636,7 +648,7 @@ fn review_dynamic_before_time_has_tf002() {
 fn review_session_without_time_has_tf001() {
     let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
     let key = b.observe(packet(1, 3, 0, None), false).unwrap();
-    let t = b.finish();
+    let t = b.finish().unwrap();
     assert!(t.lookup(key).unwrap().time.is_none());
     assert!(
         t.findings()
@@ -657,7 +669,7 @@ fn review_readable_invalid_requires_opt_in() {
         let mut r = reference(0);
         r.value = ReferenceValue::Readable(AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(), false);
         let key = b.observe(packet(1, 1, 0, Some(r)), false).unwrap();
-        let t = b.finish();
+        let t = b.finish().unwrap();
         assert_eq!(t.sessions()[0].references[0].admitted, include_invalid);
         assert_eq!(t.lookup(key).unwrap().time.is_some(), include_invalid);
         assert!(
@@ -676,7 +688,7 @@ fn review_unknown_year_does_not_invent_day366() {
     r.value = ReferenceValue::Readable(AbsoluteTime::new(365, 23, 59, 59, 0).unwrap(), true);
     b.observe(packet(1, 1, 0, Some(r)), false).unwrap();
     let key = b.observe(packet(2, 3, 20_000_000, None), false).unwrap();
-    let a = b.finish().lookup(key).unwrap();
+    let a = b.finish().unwrap().lookup(key).unwrap();
     assert!(a.time.is_none());
     assert_eq!(a.counter_ns, 2_000_000_000);
     assert_eq!(
@@ -703,7 +715,7 @@ fn review_nonleap_day366_is_malformed() {
         true,
     );
     let key = b.observe(packet(1, 1, 0, Some(r)), false).unwrap();
-    let t = b.finish();
+    let t = b.finish().unwrap();
     assert!(t.lookup(key).unwrap().time.is_none());
     assert!(
         t.sessions()[0].references[0]
@@ -724,7 +736,7 @@ fn review_rtc_sync_error_is_tf024_warning_value_kept() {
     let mut p = packet(1, 1, 0, Some(reference(0)));
     p.flags = 0x20;
     let key = b.observe(p, false).unwrap();
-    let t = b.finish();
+    let t = b.finish().unwrap();
     assert!(t.lookup(key).unwrap().time.is_some());
     assert!(
         t.findings()
@@ -746,7 +758,7 @@ fn review_duplicate_packet_identity_is_rejected() {
             "duplicate packet identity"
         ))
     );
-    let t = b.finish();
+    let t = b.finish().unwrap();
     assert!(t.lookup(first).unwrap().time.is_some());
     assert_eq!(t.sessions()[0].references.len(), 1);
 }
@@ -758,7 +770,7 @@ fn review_sync_finding_retains_counter_evidence() {
     let mut p = packet(1, 1, 123, None);
     p.flags = 0x20;
     b.observe(p, false).unwrap();
-    let t = b.finish();
+    let t = b.finish().unwrap();
     let f = t.findings().iter().find(|f| f.code == 24).unwrap();
     // Existing API only: this is a behavioural failure before adding the field.
     assert!(format!("{f:?}").contains("raw_rtc: Some"));

@@ -2,6 +2,10 @@
 //! Ordinary decoded Format 1 times retain scale evidence. Automatic year
 //! inference, inverse queries, drift correction and streaming are follow-ups.
 extern crate alloc;
+use crate::findings::{
+    Finding, FindingCode, FindingEvidence, FindingLocation, RawField, RawValue, ValueValidity,
+};
+use crate::rtc::{CounterOrder, SessionRtc, SignedRtcTicks};
 use crate::scale::{ScaleEvidence, ScalePolicy, TimeScale};
 use crate::{
     AbsoluteTime, IrigTimeSource, Result, Rtc, TimeError, TimeF1Layout, TimeF1Source, TimeFormat,
@@ -102,7 +106,12 @@ impl OfflinePolicy {
     pub fn validate(&self) -> Result<()> {
         if self.version != 1
             || i128::from(self.late_ns) >= HALF * 100
-            || self.finding_levels.keys().any(|id| !(1..=28).contains(id))
+            || self.finding_levels.keys().any(|id| {
+                FindingCode::from_number(*id)
+                    .ok()
+                    .and_then(FindingCode::default_severity)
+                    .is_none()
+            })
         {
             return Err(TimeError::InvalidTimelineInput(
                 "policy version, late bound or finding ID",
@@ -111,16 +120,8 @@ impl OfflinePolicy {
         Ok(())
     }
 }
-/// Default severity vocabulary from architecture section 8.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Severity {
-    /// Diagnostic evidence, value may still be used.
-    Information,
-    /// Rule violation, independent of reference admission.
-    Warning,
-    /// Affected value cannot be used.
-    Error,
-}
+/// Compatibility path for the common stable finding severity vocabulary.
+pub use crate::findings::Severity;
 /// A stable finding plus packet and related-reference evidence.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TimelineFinding {
@@ -141,6 +142,64 @@ pub struct TimelineFinding {
     pub raw_rtc: Option<Rtc>,
     /// Signed counter displacement or jump residual, in ns.
     pub delta_ns: Option<i128>,
+    /// Reusable factual evidence; legacy fields above remain compatibility views.
+    /// **Traces:** L3-FND-101 ← L2-FND-101 ← L1-FND-001
+    pub evidence: FindingEvidence,
+}
+impl TimelineFinding {
+    pub(crate) fn observed(
+        code: u8,
+        level: Option<Severity>,
+        key: PacketKey,
+        channel: Option<u16>,
+        related: Option<u64>,
+        delta_ns: Option<i128>,
+    ) -> Result<Self> {
+        let location = FindingLocation {
+            session: Some(key.session),
+            packet: Some(key.packet),
+            channel,
+            byte_offset: None,
+        };
+        // Only the malformed-input emission establishes unusability here.
+        // Other findings alone do not decide admission (e.g. reserved FMT vs SRC).
+        let mut evidence = FindingEvidence::new(
+            location,
+            if code == 4 {
+                ValueValidity::Unusable
+            } else {
+                ValueValidity::Undetermined
+            },
+        );
+        evidence = evidence.with_raw_rtc(Rtc::from_raw((key.ticks & MASK) as u64));
+        if let Some(packet) = related {
+            evidence = evidence.with_related(FindingLocation {
+                packet: Some(packet),
+                ..location
+            });
+        }
+        if let Some(delta) = delta_ns {
+            evidence = evidence.with_raw_field(RawField {
+                name: "delta_ns",
+                observed: RawValue::Signed(delta),
+                expected: None,
+            });
+        }
+        let finding = Finding::new(FindingCode::from_number(code)?, level, evidence)?;
+        let severity = finding.severity();
+        let evidence = finding.into_evidence();
+        Ok(Self {
+            code,
+            severity,
+            session: key.session,
+            packet: key.packet,
+            channel,
+            related,
+            raw_rtc: evidence.raw_rtc(),
+            delta_ns,
+            evidence,
+        })
+    }
 }
 /// Caller labels; static setup packets may precede the first time packet.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -278,6 +337,22 @@ pub struct PacketKey {
     /// Caller packet identity.
     pub packet: u64,
 }
+impl PacketKey {
+    /// Checked signed unwrapped ticks within the same named session.
+    /// No modular guessing occurs after unwrapping.
+    /// **Traces:** L3-RTC-103 ← L2-RTC-103 ← L1-RTC-003
+    /// **Traces:** L3-RTC-104 ← L2-RTC-104 ← L1-RTC-004
+    pub fn delta_to(self, later: Self) -> Result<SignedRtcTicks> {
+        crate::rtc::same_session(self.session, later.session)?;
+        later
+            .ticks
+            .checked_sub(self.ticks)
+            .map(SignedRtcTicks::new)
+            .ok_or(TimeError::QuantityOverflow {
+                quantity: "unwrapped RTC subtraction",
+            })
+    }
+}
 /// Reference admission reasons remain visible even when policy admits a value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Rejection {
@@ -364,24 +439,35 @@ impl TimelineBuilder {
                 "reference on non-time packet",
             ));
         }
-        self.seen.insert(packet.id);
         let raw = i128::from(packet.rtc.as_raw());
         let mut ticks = raw;
         let mut late = None;
         let mut reset = false;
-        if let Some(s) = self.sessions.last() {
-            let forward = (raw - (s.high_ticks & MASK)) & MASK;
-            let delta = if forward < HALF {
-                forward
-            } else {
-                forward - MASK - 1
-            };
-            ticks = s.high_ticks + delta;
+        if let Some(s) = self.sessions.last().filter(|_| !boundary) {
+            let delta = SessionRtc {
+                session: s.id,
+                rtc: Rtc::from_raw((s.high_ticks & MASK) as u64),
+            }
+            .delta_to(
+                SessionRtc {
+                    session: s.id,
+                    rtc: packet.rtc,
+                },
+                CounterOrder::Nearest,
+            )?
+            .get();
+            ticks = s
+                .high_ticks
+                .checked_add(delta)
+                .ok_or(TimeError::QuantityOverflow {
+                    quantity: "unwrapped RTC ticks",
+                })?;
             if delta < 0 && -delta * 100 > i128::from(self.policy.late_ns) {
                 late = Some(delta * 100);
                 reset = self.policy.infer_sessions;
             }
         }
+        self.seen.insert(packet.id);
         if self.sessions.is_empty() || boundary || reset {
             ticks = raw;
             self.sessions.push(OfflineSession {
@@ -401,17 +487,17 @@ impl TimelineBuilder {
         };
         if !boundary {
             if let Some(delta) = late {
-                self.finding(19, key, Some(packet.channel), None, Some(delta));
+                self.finding(19, key, Some(packet.channel), None, Some(delta))?;
                 if reset {
-                    self.finding(18, key, Some(packet.channel), None, Some(delta));
+                    self.finding(18, key, Some(packet.channel), None, Some(delta))?;
                 }
             }
         }
         if packet.flags & 0x20 != 0 {
-            self.finding(24, key, Some(packet.channel), None, None);
+            self.finding(24, key, Some(packet.channel), None, None)?;
         }
         if packet.kind == PacketKind::Data && self.sessions[index].first_time_packet.is_none() {
-            self.finding(2, key, Some(packet.channel), None, None);
+            self.finding(2, key, Some(packet.channel), None, None)?;
         }
         self.sessions[index].high_ticks = self.sessions[index].high_ticks.max(ticks);
         if packet.kind == PacketKind::Time {
@@ -423,16 +509,16 @@ impl TimelineBuilder {
                     if wire.csdw.validate_reserved(layout).is_err()
                         || wire.reserved_body_bits.iter().any(|bits| *bits != 0)
                     {
-                        self.finding(5, key, Some(packet.channel), None, None);
+                        self.finding(5, key, Some(packet.channel), None, None)?;
                     }
                     if wire.time.is_some_and(|t| t.is_leap_second()) {
-                        self.finding(22, key, Some(packet.channel), None, None);
+                        self.finding(22, key, Some(packet.channel), None, None)?;
                     }
                 }
                 let mut reasons = Vec::new();
                 if !packet.declared_timein {
                     reasons.push(Rejection::Undeclared);
-                    self.finding(8, key, Some(packet.channel), None, None);
+                    self.finding(8, key, Some(packet.channel), None, None)?;
                 }
                 if matches!(input.source, TimeF1Source::Source(TimeSource::None)) {
                     reasons.push(Rejection::NoneSource);
@@ -440,7 +526,7 @@ impl TimelineBuilder {
                 if matches!(input.source, TimeF1Source::Source(TimeSource::Reserved(_))) {
                     // SRC is a reserved VALUE, not an unreadable payload.
                     // TF-006 warning keeps the admitted time and raw source.
-                    self.finding(6, key, Some(packet.channel), None, None);
+                    self.finding(6, key, Some(packet.channel), None, None)?;
                 }
                 if matches!(input.format, TimeFormat::Reserved(_)) {
                     reasons.push(Rejection::Reserved);
@@ -474,7 +560,7 @@ impl TimelineBuilder {
                         _ => None,
                     };
                     if let Some(code) = code {
-                        self.finding(code, key, Some(packet.channel), None, None);
+                        self.finding(code, key, Some(packet.channel), None, None)?;
                     }
                 }
                 let admitted = matches!(input.value, ReferenceValue::Readable(..))
@@ -491,7 +577,7 @@ impl TimelineBuilder {
                     .find(|r| r.channel == packet.channel)
                 {
                     if prev.input.source != input.source {
-                        self.finding(11, key, Some(packet.channel), Some(prev.key.packet), None);
+                        self.finding(11, key, Some(packet.channel), Some(prev.key.packet), None)?;
                     }
                 }
                 self.sessions[index].references.push(TimelineReference {
@@ -504,7 +590,7 @@ impl TimelineBuilder {
                     reasons,
                 });
             } else {
-                self.finding(4, key, Some(packet.channel), None, None);
+                self.finding(4, key, Some(packet.channel), None, None)?;
             }
         }
         Ok(key)
@@ -516,33 +602,22 @@ impl TimelineBuilder {
         channel: Option<u16>,
         related: Option<u64>,
         delta_ns: Option<i128>,
-    ) {
-        let default = match code {
-            4 => Severity::Error,
-            11 | 18 | 22 => Severity::Information,
-            _ => Severity::Warning,
-        };
-        self.findings.push(TimelineFinding {
+    ) -> Result<()> {
+        self.findings.push(TimelineFinding::observed(
             code,
-            severity: self
-                .policy
-                .finding_levels
-                .get(&code)
-                .copied()
-                .unwrap_or(default),
-            session: key.session,
-            packet: key.packet,
+            self.policy.finding_levels.get(&code).copied(),
+            key,
             channel,
             related,
-            raw_rtc: Some(Rtc::from_raw((key.ticks & MASK) as u64)),
             delta_ns,
-        });
+        )?);
+        Ok(())
     }
     /// Finalize immutable sessions and per-channel sorted reference indexes.
     /// Gap/jump checks use only valid admitted same-scale references.
     /// **Traces:** L3-COR-104 ← L2-COR-104 ← L1-COR-004
     /// **Traces:** L3-COR-108 ← L2-COR-108 ← L1-COR-008
-    pub fn finish(mut self) -> OfflineTimeline {
+    pub fn finish(mut self) -> Result<OfflineTimeline> {
         let mut indexes = BTreeMap::<(usize, u16), Vec<usize>>::new();
         let mut events = Vec::new();
         for s in &self.sessions {
@@ -590,14 +665,14 @@ impl TimelineBuilder {
             }
         }
         for (code, key, ch, related, delta) in events {
-            self.finding(code, key, ch, related, delta);
+            self.finding(code, key, ch, related, delta)?;
         }
-        OfflineTimeline {
+        Ok(OfflineTimeline {
             policy: self.policy,
             sessions: self.sessions,
             findings: self.findings,
             indexes,
-        }
+        })
     }
 }
 /// Position relative to admitted same-channel references.

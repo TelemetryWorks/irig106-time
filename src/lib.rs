@@ -66,6 +66,8 @@ extern crate std;
 
 extern crate alloc;
 
+/// Stable finding catalog and structured factual evidence.
+pub mod findings;
 /// Scale-qualified, leap-preserving Format 1 wire readings.
 pub mod format1;
 /// Explicit time-scale evidence and policy assumptions.

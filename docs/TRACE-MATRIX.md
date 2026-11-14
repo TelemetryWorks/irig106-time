@@ -23,19 +23,19 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-RTC-001 | L2-RTC-101 | _(none)_ | Draft |
+| L1-RTC-001 | L2-RTC-101 | `tests/s01_existing.rs::shared_values_keep_width_and_unit_contracts`<br>`tests/s01_quantities.rs::checked_width_never_silently_masks` | Implemented |
 | L1-RTC-002 | L2-RTC-102 | `src/intra_packet_tests.rs::parse_rtc48_reserved_ignored`<br>`tests/rebuild_wire.rs::rtc_padding_warning_is_separate_from_decoding` | Implemented |
-| L1-RTC-003 | L2-RTC-103 | _(none)_ | Draft |
-| L1-RTC-004 | L2-RTC-104 | _(none)_ | Draft |
+| L1-RTC-003 | L2-RTC-103 | `tests/s01_existing.rs::offline_half_range_requires_ordering_context`<br>`tests/s01_existing.rs::stream_half_range_requires_ordering_context`<br>`tests/s01_quantities.rs::modular_signed_direction_context_and_sessions`<br>`tests/s01_quantities.rs::unwrapped_packet_boundaries_are_checked` | Implemented |
+| L1-RTC-004 | L2-RTC-104 | `tests/s01_quantities.rs::signed_duration_boundaries_and_shared_magnitude`<br>`tests/s01_quantities.rs::unwrapped_packet_boundaries_are_checked` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L2-RTC-101 | L3-RTC-101 | _(TBD)_ | Draft |
+| L2-RTC-101 | L3-RTC-101 | `tests/s01_existing.rs::shared_values_keep_width_and_unit_contracts`<br>`tests/s01_quantities.rs::checked_width_never_silently_masks` | Implemented |
 | L2-RTC-102 | L3-RTC-102 | `src/intra_packet_tests.rs::parse_rtc48_reserved_ignored`<br>`tests/rebuild_wire.rs::rtc_padding_warning_is_separate_from_decoding` | Implemented |
-| L2-RTC-103 | L3-RTC-103 | _(TBD)_ | Draft |
-| L2-RTC-104 | L3-RTC-104 | _(TBD)_ | Draft |
+| L2-RTC-103 | L3-RTC-103 | `tests/s01_existing.rs::offline_half_range_requires_ordering_context`<br>`tests/s01_existing.rs::stream_half_range_requires_ordering_context`<br>`tests/s01_quantities.rs::modular_signed_direction_context_and_sessions`<br>`tests/s01_quantities.rs::unwrapped_packet_boundaries_are_checked` | Implemented |
+| L2-RTC-104 | L3-RTC-104 | `tests/s01_quantities.rs::signed_duration_boundaries_and_shared_magnitude`<br>`tests/s01_quantities.rs::unwrapped_packet_boundaries_are_checked` | Implemented |
 
 ### L1-ABS: Absolute time values
 
@@ -401,7 +401,7 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-FND-001 | L2-FND-101 | _(none)_ | Draft |
+| L1-FND-001 | L2-FND-101 | `tests/s01_existing.rs::approved_ntp_levels_are_configurable_but_pending_levels_are_not`<br>`tests/s01_existing.rs::both_engines_keep_related_identity_and_signed_residual`<br>`tests/s01_existing.rs::both_engines_keep_structured_malformed_evidence_under_level_override`<br>`tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::every_catalog_level_and_pending_identity_is_explicit`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::raw_evidence_offsets_relations_and_validity_survive_override`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value` | Implemented |
 | L1-FND-002 | L2-FND-102 | _(none)_ | Draft |
 | L1-FND-003 | L2-FND-103 | `tests/offline_timeline.rs::review_rtc_sync_error_is_tf024_warning_value_kept`<br>`tests/offline_timeline.rs::review_sync_finding_retains_counter_evidence`<br>`tests/stream_timeline.rs::admission_findings_and_raw_sync_counter` | Implemented |
 | L1-FND-004 | L2-FND-104 | _(none)_ | Draft |
@@ -411,7 +411,7 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L2-FND-101 | L3-FND-101 | _(TBD)_ | Draft |
+| L2-FND-101 | L3-FND-101 | `tests/s01_existing.rs::approved_ntp_levels_are_configurable_but_pending_levels_are_not`<br>`tests/s01_existing.rs::both_engines_keep_related_identity_and_signed_residual`<br>`tests/s01_existing.rs::both_engines_keep_structured_malformed_evidence_under_level_override`<br>`tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::every_catalog_level_and_pending_identity_is_explicit`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::raw_evidence_offsets_relations_and_validity_survive_override`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value` | Implemented |
 | L2-FND-102 | L3-FND-102 | _(TBD)_ | Draft |
 | L2-FND-103 | L3-FND-103 | `tests/offline_timeline.rs::review_rtc_sync_error_is_tf024_warning_value_kept`<br>`tests/offline_timeline.rs::review_sync_finding_retains_counter_evidence`<br>`tests/stream_timeline.rs::admission_findings_and_raw_sync_counter` | Implemented |
 | L2-FND-104 | L3-FND-104 | _(TBD)_ | Draft |
@@ -495,7 +495,7 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L1-API-001 | L2-API-101 | _(none)_ | Draft |
 | L1-API-002 | L2-API-102 | _(none)_ | Implemented (I) |
-| L1-API-004 | L2-API-104 | _(none)_ | Draft |
+| L1-API-004 | L2-API-104 | `tests/s01_existing.rs::shared_values_keep_width_and_unit_contracts` | Implemented |
 | L1-API-005 | L2-API-105 | _(none)_ | Draft |
 | L1-API-006 | L2-API-106 | _(none)_ | Draft |
 | L1-API-007 | L2-API-107 | _(none)_ | Implemented (I) |
@@ -511,7 +511,7 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L2-API-101 | L3-API-101 | _(TBD)_ | Draft |
 | L2-API-102 | L3-API-102 | _(TBD)_ | Draft |
-| L2-API-104 | L3-API-104 | _(TBD)_ | Draft |
+| L2-API-104 | L3-API-104 | `tests/s01_existing.rs::shared_values_keep_width_and_unit_contracts` | Implemented |
 | L2-API-105 | L3-API-105 | _(TBD)_ | Draft |
 | L2-API-106 | L3-API-106 | _(TBD)_ | Draft |
 | L2-API-107 | L3-API-107 | _(TBD)_ | Draft |
@@ -618,7 +618,7 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | Category | L1 | L2 | L3 | L2 tested | L3 tested | L2 verified | L3 verified |
 |----------|----|----|----|-----------|-----------|-------------|-------------|
-| RTC | 4 | 4 | 4 | 1 | 1 | 1 | 1 |
+| RTC | 4 | 4 | 4 | 4 | 4 | 4 | 4 |
 | ABS | 4 | 4 | 4 | 2 | 2 | 2 | 2 |
 | IPT | 3 | 3 | 3 | 3 | 3 | 3 | 3 |
 | SEC | 6 | 6 | 6 | 3 | 3 | 3 | 3 |
@@ -636,22 +636,22 @@ This matrix is the single source of truth for live status; the requirement docum
 | COR | 13 | 13 | 13 | 11 | 11 | 11 | 11 |
 | ANS | 5 | 5 | 5 | 2 | 2 | 2 | 2 |
 | POL | 3 | 4 | 4 | 3 | 3 | 3 | 3 |
-| FND | 5 | 5 | 5 | 1 | 1 | 1 | 1 |
+| FND | 5 | 5 | 5 | 2 | 2 | 2 | 2 |
 | RDG | 2 | 14 | 14 | 0 | 0 | 0 | 0 |
 | STRM | 1 | 7 | 7 | 7 | 7 | 7 | 7 |
 | ERR | 5 | 5 | 5 | 2 | 2 | 2 | 2 |
-| API | 11 | 11 | 11 | 0 | 0 | 0 | 0 |
+| API | 11 | 11 | 11 | 1 | 1 | 1 | 1 |
 | PERF | 1 | 1 | 1 | 0 | 0 | 0 | 0 |
 | CLI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
 | REL | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
 | TST | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
-| **Total** | **124** | **144** | **144** | **53** | **53** | **53** | **53** |
+| **Total** | **124** | **144** | **144** | **58** | **58** | **58** | **58** |
 
 The countable requirement set is every L2 and L3 requirement plus the 0 L1 *leaf* requirement(s) (L1s with no L2 decomposition yet). Composite L1s are verified through their children.
 
-**Tested by at least one test marker**: 106 of 288 (36.8%).
+**Tested by at least one test marker**: 116 of 288 (40.3%).
 
-**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 106 of 288 (36.8%).
+**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 116 of 288 (40.3%).
 
 ### Orphan check
 
@@ -675,10 +675,10 @@ Every entry of `docs/INTERPRETATIONS.md` with its written analysis and the tests
 | RDG-009 | The time scale of each time format; IRIG time is UTC by assumption | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-009) | `tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance`<br>`tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` |
 | RDG-010 | Second 60 is a leap second on a day that can be 30 June or 31 December | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-010) | `tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` |
 | RDG-011 | "The first dynamic data packet" is checked per session | accepted | not yet written | `tests/stream_timeline.rs::early_data_none_and_no_time_findings` |
-| RDG-012 | NTP follows UTC reckoning; era evidence, zero sentinel and leap ambiguity are explicit | accepted | [written all-edition/RFC analysis and planned edge cases](analysis/RDG-012-ntp-utc-era.md) | _(none)_ |
+| RDG-012 | NTP follows UTC reckoning; era evidence, zero sentinel and leap ambiguity are explicit | accepted | [written all-edition/RFC analysis and planned edge cases](analysis/RDG-012-ntp-utc-era.md) | `tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value` |
 
 * Entries without a written analysis: **8** of 12
-* Entries without a test: **7** of 12
+* Entries without a test: **6** of 12
 * Entries missing the development mark: **0**
 
 ### Marker reference check
