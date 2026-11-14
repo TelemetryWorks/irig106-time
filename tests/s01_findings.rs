@@ -65,7 +65,7 @@ fn raw_evidence_offsets_relations_and_validity_survive_override() {
     assert_eq!(f.evidence.related[0].byte_offset, Some(4096));
 }
 /// Requirements: L1-FND-001, L2-FND-101, L3-FND-101
-/// Interpretations: RDG-012, RDG-010
+/// Interpretations: RDG-012
 #[test]
 fn ntp_zero_and_ambiguity_evidence_are_distinct() {
     let raw = NtpTime {
@@ -141,4 +141,33 @@ fn sentinel_evidence_cannot_keep_an_absolute_value() {
         mapped_unix: Some(UnixSeconds::new(0)),
     });
     assert!(Finding::new(FindingCode::from_number(29).unwrap(), None, bad).is_err());
+}
+
+/// Requirements: L1-FND-001, L2-FND-101, L3-FND-101
+/// Interpretations: RDG-012
+#[test]
+fn each_ntp_evidence_invariant_is_independent() {
+    let zero = NtpTime {
+        seconds: 0,
+        fraction: 0,
+    };
+    let raw = NtpTime {
+        seconds: 3_692_217_600,
+        fraction: 0x8000_0000,
+    };
+    let mapped = Some(UnixSeconds::new(1_483_228_800));
+    // Exactly ONE invariant differs from the corresponding valid fixture.
+    for (id, validity, raw, mapped_unix) in [
+        (29, ValueValidity::Unusable, zero, mapped), // mapped value only
+        (29, ValueValidity::Kept, zero, None),       // validity only
+        (30, ValueValidity::Kept, raw, None),        // missing mapping only
+        (30, ValueValidity::Unusable, raw, mapped),  // validity only
+    ] {
+        let mut evidence = FindingEvidence::new(location(), validity);
+        evidence.ntp = Some(NtpEvidence { raw, mapped_unix });
+        assert!(
+            Finding::new(FindingCode::from_number(id).unwrap(), None, evidence).is_err(),
+            "TF-{id} {validity:?} mapped={mapped_unix:?}"
+        );
+    }
 }

@@ -107,3 +107,71 @@ fn both_engines_keep_structured_malformed_evidence_under_level_override() {
         assert_eq!(f.evidence.location.byte_offset, None);
     }
 }
+
+/// Requirements: L1-FND-001, L2-FND-101, L3-FND-101
+#[test]
+fn both_engines_keep_related_identity_and_signed_residual() {
+    use irig106_time::findings::RawValue;
+    use irig106_time::{
+        AbsoluteTime, TimeF1Source, TimeFormat, TimeSource,
+        scale::{ScaleEvidence, TimeScale},
+    };
+    // Ch11 §11.2.1.1 i: 10000000 ticks = 1 s. Absolute advances 0.5/1.5 s,
+    // so jump residual = -0.5/+0.5 s, independently of the crate's arithmetic.
+    for (second, expected) in [(10, -500_000_000), (11, 500_000_000)] {
+        let reference = |id, ticks, second, ns| {
+            let mut p = packet(id, Rtc::from_raw(ticks));
+            p.kind = PacketKind::Time;
+            p.reference = Some(ReferenceInput {
+                value: ReferenceValue::Readable(
+                    AbsoluteTime::new(100, 0, 0, second, ns).unwrap(),
+                    true,
+                ),
+                scale: ScaleEvidence::assumed(TimeScale::Utc),
+                source: TimeF1Source::Source(TimeSource::External),
+                format: TimeFormat::IrigB,
+                its: None,
+                precision_ns: 10_000_000,
+                wire: None,
+                raw_csdw: None,
+                year_origin: YearOrigin::Unknown,
+            });
+            p
+        };
+        let first = reference(41, 1_000_000, 10, 0);
+        let next = reference(99, 11_000_000, second, 500_000_000);
+        let mut offline = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+        offline.observe(first.clone(), false).unwrap();
+        offline.observe(next.clone(), false).unwrap();
+        let timeline = offline.finish();
+        let mut stream = StreamTimeline::new(
+            StreamPolicy::new(
+                1,
+                BufferCaps {
+                    packets: 2,
+                    bytes: 128,
+                    references: 2,
+                },
+            ),
+            Some(&[StreamChannel {
+                id: 1,
+                timein: true,
+                external: true,
+            }]),
+        )
+        .unwrap();
+        stream.observe(first, 0, 24, false).unwrap();
+        let batch = stream.observe(next, 1, 24, false).unwrap();
+        for findings in [timeline.findings(), batch.findings.as_slice()] {
+            let f = findings.iter().find(|f| f.code == 17).unwrap();
+            assert_eq!(f.related, Some(41));
+            assert_eq!(f.delta_ns, Some(expected));
+            assert_eq!(f.evidence.related[0].packet, Some(41));
+            assert_eq!(f.evidence.raw_fields[0].name, "delta_ns");
+            assert_eq!(
+                f.evidence.raw_fields[0].observed,
+                RawValue::Signed(expected)
+            );
+        }
+    }
+}

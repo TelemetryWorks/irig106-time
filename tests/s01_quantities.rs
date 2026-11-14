@@ -20,6 +20,16 @@ fn modular_signed_direction_context_and_sessions() {
     assert_eq!(max.delta_to(zero, CounterOrder::Nearest).unwrap().get(), 1);
     assert_eq!(zero.delta_to(max, CounterOrder::Nearest).unwrap().get(), -1);
     assert_eq!(zero.delta_to(zero, CounterOrder::Nearest).unwrap().get(), 0);
+    assert_eq!(
+        zero.delta_to(zero, CounterOrder::BackwardWithinOneWrap)
+            .unwrap()
+            .get(),
+        0
+    );
+    assert!(matches!(
+        stamp(0, Rtc::ZERO).delta_to(stamp(0, Rtc::ZERO), CounterOrder::Nearest),
+        Err(TimeError::CrossSessionCounterDelta)
+    ));
     let half = stamp(7, Rtc::from_raw(1 << 47));
     assert!(matches!(
         zero.delta_to(half, CounterOrder::Nearest),
