@@ -65,8 +65,16 @@ proptest! {
         delta in 0u64..1_000_000_000,  // < 1 second to avoid day wrap
     ) {
         let t = AbsoluteTime::new(doy, h, m, s, ns).unwrap();
-        let added = t.add_nanos(delta);
-        let restored = added.sub_nanos(delta);
+        let added = match t.add_nanos(delta) {
+            Ok(value) => value,
+            Err(error) => {
+                prop_assert!(matches!(error, irig106_time::TimeError::NeedsContext { .. }), "unknown-year boundary needs context");
+                prop_assert_eq!((doy, h, m, s), (365, 23, 59, 59));
+                prop_assert!(u64::from(ns) + delta >= 1_000_000_000);
+                return Ok(());
+            }
+        };
+        let restored = added.sub_nanos(delta).unwrap();
         prop_assert_eq!(t.day_of_year(), restored.day_of_year());
         prop_assert_eq!(t.hours(), restored.hours());
         prop_assert_eq!(t.minutes(), restored.minutes());
@@ -84,7 +92,7 @@ proptest! {
         delta in 1u64..3_600_000_000_000,  // up to 1 hour
     ) {
         let t = AbsoluteTime::new(doy, h, m, s, ns).unwrap();
-        let t2 = t.add_nanos(delta);
+        let t2 = t.add_nanos(delta).unwrap();
         let ns1 = (t.day_of_year() as u64 - 1) * 86_400_000_000_000 + t.total_nanos_of_day();
         let ns2 = (t2.day_of_year() as u64 - 1) * 86_400_000_000_000 + t2.total_nanos_of_day();
         prop_assert!(ns2 > ns1, "time must advance: {} > {}", ns2, ns1);

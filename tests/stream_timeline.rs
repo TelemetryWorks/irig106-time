@@ -19,7 +19,10 @@ fn policy(mode: StreamMode) -> StreamPolicy {
 fn reference(ns: u64) -> ReferenceInput {
     ReferenceInput {
         value: ReferenceValue::Readable(
-            AbsoluteTime::new(100, 12, 0, 0, 0).unwrap().add_nanos(ns),
+            AbsoluteTime::new(100, 12, 0, 0, 0)
+                .unwrap()
+                .add_nanos(ns)
+                .unwrap(),
             true,
         ),
         scale: ScaleEvidence::assumed(TimeScale::Utc),

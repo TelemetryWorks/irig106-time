@@ -22,11 +22,15 @@ extern crate alloc;
 fn display_invalid_bcd_digit() {
     let err = TimeError::InvalidBcdDigit {
         nibble: 0xA,
-        position: "tens of seconds",
+        position: "units of seconds",
+        word: 0,
+        digit: 0,
+        bit_offset: 8,
+        raw_word: 0x0a00,
     };
     let msg = format!("{err}");
     assert!(msg.contains("10"));
-    assert!(msg.contains("tens of seconds"));
+    assert!(msg.contains("units of seconds"));
 }
 
 #[test]

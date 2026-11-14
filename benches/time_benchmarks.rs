@@ -218,10 +218,10 @@ fn main() {
     // AbsoluteTime
     let t = AbsoluteTime::new(100, 12, 30, 25, 340_000_000).unwrap();
     r.push(bench("abs_add_nanos", || {
-        black_box(black_box(t).add_nanos(black_box(15_000_000)));
+        let _ = black_box(black_box(t).add_nanos(black_box(15_000_000)));
     }));
     r.push(bench("abs_sub_nanos", || {
-        black_box(black_box(t).sub_nanos(black_box(15_000_000)));
+        let _ = black_box(black_box(t).sub_nanos(black_box(15_000_000)));
     }));
     r.push(bench("abs_total_nanos_of_day", || {
         black_box(black_box(t).total_nanos_of_day());

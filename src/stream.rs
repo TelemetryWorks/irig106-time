@@ -720,6 +720,30 @@ impl StreamTimeline {
         }
         Ok(())
     }
+    /// Bounded Format1 decode with original TF004 cause and streaming context.
+    /// **Traces:** L3-ERR-102 ← L2-ERR-102 ← L1-ERR-002
+    pub fn observe_format1(
+        &mut self,
+        packet: PacketObservation,
+        input: crate::format1::Format1Input<'_>,
+        progress: u64,
+        bytes: usize,
+        boundary: bool,
+    ) -> Result<StreamBatch> {
+        let id = packet.id;
+        let (packet, error) = crate::timeline::decode_observation(packet, input)?;
+        let mut batch = self.observe(packet, progress, bytes, boundary)?;
+        if let Some(error) = error {
+            crate::timeline::retain_decode_error(
+                &mut batch.findings,
+                id,
+                error,
+                input.reserved_body_bits().ok(),
+                self.policy.offline.finding_levels.get(&5).copied(),
+            )?;
+        }
+        Ok(batch)
+    }
     /// Explicit EOF releases as extrapolated (or counter-only), then closes.
     /// **Traces:** L3-STRM-203 ← L2-STRM-203 ← L1-STRM-001
     pub fn finish(&mut self, progress: u64) -> Result<StreamBatch> {

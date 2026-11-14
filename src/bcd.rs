@@ -32,13 +32,23 @@ const BCD_LUT: [u8; 16] = [
 ///
 /// **Traces:** L3-BCD-104 ← L2-BCD-104 ← L1-BCD-004; P4-03
 #[inline]
-fn extract_bcd_digit(word: u16, bit_offset: u8, position: &'static str) -> Result<u8> {
+fn extract_bcd_digit(
+    word: u16,
+    bit_offset: u8,
+    position: &'static str,
+    word_index: u8,
+    digit: u8,
+) -> Result<u8> {
     let nibble = ((word >> bit_offset) & 0x0F) as usize;
     let val = BCD_LUT[nibble];
     if val == 0xFF {
         return Err(TimeError::InvalidBcdDigit {
             nibble: nibble as u8,
             position,
+            word: word_index,
+            digit,
+            bit_offset,
+            raw_word: word,
         });
     }
     Ok(val)
@@ -239,40 +249,28 @@ impl DayFormatTime {
         check_reserved(w2, 0xFC00, "day_fmt word2 bits[15:10]")?;
 
         // Milliseconds: Hmn*100 + Tmn*10 (L3-BCD-105)
-        let tmn = extract_bcd_digit(w0, 0, "tens_of_ms")?;
-        let hmn = extract_bcd_digit(w0, 4, "hundreds_of_ms")?;
+        let tmn = extract_bcd_digit(w0, 0, "tens_of_ms", 0, 1)?;
+        let hmn = extract_bcd_digit(w0, 4, "hundreds_of_ms", 0, 2)?;
         let milliseconds = (hmn as u16) * 100 + (tmn as u16) * 10;
 
         // Seconds
-        let sn = extract_bcd_digit(w0, 8, "units_of_seconds")?;
+        let sn = extract_bcd_digit(w0, 8, "units_of_seconds", 0, 0)?;
         let tsn = ((w0 >> 12) & 0x07) as u8;
-        if tsn > 5 {
-            return Err(TimeError::InvalidBcdDigit {
-                nibble: tsn,
-                position: "tens_of_seconds",
-            });
-        }
         let seconds = tsn * 10 + sn;
 
         // Minutes
-        let mn = extract_bcd_digit(w1, 0, "units_of_minutes")?;
+        let mn = extract_bcd_digit(w1, 0, "units_of_minutes", 1, 0)?;
         let tmn_min = ((w1 >> 4) & 0x07) as u8;
-        if tmn_min > 5 {
-            return Err(TimeError::InvalidBcdDigit {
-                nibble: tmn_min,
-                position: "tens_of_minutes",
-            });
-        }
         let minutes = tmn_min * 10 + mn;
 
         // Hours
-        let hn = extract_bcd_digit(w1, 8, "units_of_hours")?;
+        let hn = extract_bcd_digit(w1, 8, "units_of_hours", 1, 0)?;
         let thn = ((w1 >> 12) & 0x03) as u8;
         let hours = thn * 10 + hn;
 
         // Day of year
-        let dn = extract_bcd_digit(w2, 0, "units_of_day")?;
-        let tdn = extract_bcd_digit(w2, 4, "tens_of_day")?;
+        let dn = extract_bcd_digit(w2, 0, "units_of_day", 2, 0)?;
+        let tdn = extract_bcd_digit(w2, 4, "tens_of_day", 2, 1)?;
         let hdn = ((w2 >> 8) & 0x03) as u8;
         let day_of_year = (hdn as u16) * 100 + (tdn as u16) * 10 + (dn as u16);
 
@@ -317,17 +315,10 @@ impl DayFormatTime {
 
     /// Convert to `AbsoluteTime`.
     ///
-    /// **Traces:** L3-BCD-105 ← L2-BCD-105
+    /// **Traces:** L3-BCD-105 ← L2-BCD-105 ← L1-BCD-005
+    /// **Traces:** L3-ABS-101 ← L2-ABS-101 ← L1-ABS-001
     pub fn to_absolute(&self) -> AbsoluteTime {
-        // Safe to unwrap: values were validated in from_le_bytes
-        AbsoluteTime::new(
-            self.day_of_year,
-            self.hours,
-            self.minutes,
-            self.seconds,
-            (self.milliseconds as u32) * 1_000_000,
-        )
-        .unwrap()
+        AbsoluteTime::from(*self)
     }
 
     /// Encode as 6 little-endian bytes (3× u16 LE) in the BCD Day-of-Year wire format.
@@ -604,51 +595,39 @@ impl DmyFormatTime {
         check_reserved(w3, 0xC000, "dmy_fmt word3 bits[15:14]")?;
 
         // Milliseconds
-        let tmn = extract_bcd_digit(w0, 0, "tens_of_ms")?;
-        let hmn = extract_bcd_digit(w0, 4, "hundreds_of_ms")?;
+        let tmn = extract_bcd_digit(w0, 0, "tens_of_ms", 0, 1)?;
+        let hmn = extract_bcd_digit(w0, 4, "hundreds_of_ms", 0, 2)?;
         let milliseconds = (hmn as u16) * 100 + (tmn as u16) * 10;
 
         // Seconds
-        let sn = extract_bcd_digit(w0, 8, "units_of_seconds")?;
+        let sn = extract_bcd_digit(w0, 8, "units_of_seconds", 0, 0)?;
         let tsn = ((w0 >> 12) & 0x07) as u8;
-        if tsn > 5 {
-            return Err(TimeError::InvalidBcdDigit {
-                nibble: tsn,
-                position: "tens_of_seconds",
-            });
-        }
         let seconds = tsn * 10 + sn;
 
         // Minutes
-        let mn = extract_bcd_digit(w1, 0, "units_of_minutes")?;
+        let mn = extract_bcd_digit(w1, 0, "units_of_minutes", 1, 0)?;
         let tmn_min = ((w1 >> 4) & 0x07) as u8;
-        if tmn_min > 5 {
-            return Err(TimeError::InvalidBcdDigit {
-                nibble: tmn_min,
-                position: "tens_of_minutes",
-            });
-        }
         let minutes = tmn_min * 10 + mn;
 
         // Hours
-        let hn = extract_bcd_digit(w1, 8, "units_of_hours")?;
+        let hn = extract_bcd_digit(w1, 8, "units_of_hours", 1, 0)?;
         let thn = ((w1 >> 12) & 0x03) as u8;
         let hours = thn * 10 + hn;
 
         // Day of month
-        let dn = extract_bcd_digit(w2, 0, "units_of_day")?;
-        let tdn = extract_bcd_digit(w2, 4, "tens_of_day")?;
+        let dn = extract_bcd_digit(w2, 0, "units_of_day", 2, 0)?;
+        let tdn = extract_bcd_digit(w2, 4, "tens_of_day", 2, 1)?;
         let day = tdn * 10 + dn;
 
         // Month
-        let on = extract_bcd_digit(w2, 8, "units_of_month")?;
+        let on = extract_bcd_digit(w2, 8, "units_of_month", 2, 0)?;
         let ton = ((w2 >> 12) & 0x01) as u8;
         let month = ton * 10 + on;
 
         // Year
-        let yn = extract_bcd_digit(w3, 0, "units_of_year")?;
-        let tyn = extract_bcd_digit(w3, 4, "tens_of_year")?;
-        let hyn = extract_bcd_digit(w3, 8, "hundreds_of_year")?;
+        let yn = extract_bcd_digit(w3, 0, "units_of_year", 3, 0)?;
+        let tyn = extract_bcd_digit(w3, 4, "tens_of_year", 3, 1)?;
+        let hyn = extract_bcd_digit(w3, 8, "hundreds_of_year", 3, 2)?;
         let oyn = ((w3 >> 12) & 0x03) as u8;
         let year = (oyn as u16) * 1000 + (hyn as u16) * 100 + (tyn as u16) * 10 + (yn as u16);
 

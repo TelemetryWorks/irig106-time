@@ -37,22 +37,14 @@ impl CalendarReading {
     /// date is not proof that a leap was historically scheduled on that date.
     /// **Traces:** L3-TAI-107 ← L2-TAI-107
     pub fn validate(&self) -> Result<()> {
-        if let Some(year) = self.year {
-            range("year", year as u32, 0, 9999)?;
-        }
-        range(
-            "day_of_year",
-            self.day_of_year as u32,
-            1,
-            if self.year.is_some_and(|y| !crate::util::is_leap_year(y)) {
-                365
-            } else {
-                366
-            },
-        )?;
-        range("hours", self.hours as u32, 0, 23)?;
-        range("minutes", self.minutes as u32, 0, 59)?;
-        range("nanoseconds", self.nanoseconds, 0, 999_999_999)?;
+        AbsoluteTime::new(
+            self.day_of_year,
+            self.hours,
+            self.minutes,
+            0,
+            self.nanoseconds,
+        )?
+        .with_year(self.year)?;
         let eligible_day = match self.year {
             None => matches!(self.day_of_year, 181 | 182 | 365 | 366),
             Some(y) => {
@@ -71,6 +63,47 @@ impl CalendarReading {
             0,
             if leap_ok { 60 } else { 59 },
         )
+    }
+
+    /// Shift a labelled reading without silently normalizing a leap label.
+    /// UTC day crossings and nonzero shifts of second60 require leap context;
+    /// unknown scale also needs context. Zero preserves any validated label.
+    /// **Traces:** L3-ABS-101 ← L2-ABS-101 ← L1-ABS-001
+    pub fn checked_shift(&self, nanos: crate::SignedNanos) -> Result<Self> {
+        self.validate()?;
+        if nanos.get() == 0 {
+            return Ok(*self);
+        }
+        if self.is_leap_second() || self.scale.effective() == TimeScale::Unknown {
+            return Err(TimeError::NeedsContext {
+                context: "leap/scale context for calendar arithmetic",
+            });
+        }
+        let t = AbsoluteTime::new(
+            self.day_of_year,
+            self.hours,
+            self.minutes,
+            self.seconds,
+            self.nanoseconds,
+        )?
+        .with_year(self.year)?
+        .checked_shift(nanos)?;
+        if self.scale.effective() == TimeScale::Utc
+            && (t.day_of_year() != self.day_of_year || t.year() != self.year)
+        {
+            return Err(TimeError::NeedsContext {
+                context: "UTC day crossing requires leap context",
+            });
+        }
+        Ok(Self {
+            year: t.year(),
+            day_of_year: t.day_of_year(),
+            hours: t.hours(),
+            minutes: t.minutes(),
+            seconds: t.seconds(),
+            nanoseconds: t.nanoseconds(),
+            scale: self.scale,
+        })
     }
 
     /// Attach an explicit year and recheck the leap-day interpretation.
@@ -125,12 +158,36 @@ pub struct Format1Reading {
     pub consumed: usize,
 }
 
+/// Caller-qualified bounded Format 1 input; payload need not exclude filler.
+/// **Traces:** L3-CSDW-105 ← L2-CSDW-105 ← L1-CSDW-005
+#[derive(Debug, Clone, Copy)]
+pub struct Format1Input<'a> {
+    /// Original bytes, including the data word.
+    pub payload: &'a [u8],
+    /// Header Data Length in bytes, excluding trailer/filler.
+    pub data_length: usize,
+    /// Explicit caller packet layout; never inferred from a version hint.
+    pub layout: TimeF1Layout,
+    /// Explicit scale assumptions for formats without a stated scale.
+    pub scales: ScalePolicy,
+}
+impl Format1Input<'_> {
+    /// Inspect raw always-zero intersections without requiring valid BCD digits.
+    pub fn reserved_body_bits(self) -> Result<[u16; 4]> {
+        bounded_words(self.payload, self.data_length).map(|(_, _, bits, _)| bits)
+    }
+    /// Decode with exact Data Length bounds and figure-defined diagnostics.
+    pub fn decode(self) -> Result<Format1Reading> {
+        decode_time_f1(self.payload, self.data_length, self.layout, self.scales)
+    }
+}
+
 /// Decode only within Data Length. Layout and scale assumptions are caller
 /// inputs, never inferred from a header, host clock, or TMATS default.
 /// Figures 11-13/14 (106-24R1 printed 11-25/PDF33); RDG-009/010.
 /// **Traces:** L3-ERR-105 ← L2-ERR-105
-/// **Traces:** L3-BCD-103 ← L2-BCD-103
-/// **Traces:** L3-BCD-104 ← L2-BCD-104
+/// **Traces:** L3-BCD-103 ← L2-BCD-103 ← L1-BCD-003
+/// **Traces:** L3-BCD-104 ← L2-BCD-104 ← L1-BCD-004
 /// **Traces:** L3-BCD-105 ← L2-BCD-105
 /// **Traces:** L3-BCD-106 ← L2-BCD-106
 pub fn decode_time_f1(
@@ -139,6 +196,83 @@ pub fn decode_time_f1(
     layout: TimeF1Layout,
     policy: ScalePolicy,
 ) -> Result<Format1Reading> {
+    let (csdw, words, reserved_body_bits, consumed) = bounded_words(payload, data_length)?;
+    let calendar = csdw.date_format() == DateFormat::DayMonthYear;
+    if !csdw.payload_is_valid(layout) {
+        return Ok(Format1Reading {
+            csdw,
+            time: None,
+            reserved_body_bits,
+            consumed,
+        });
+    }
+    let nanoseconds = (digit(words[0], 0, 0, 4, "milliseconds", 1)? * 10
+        + digit(words[0], 0, 4, 4, "milliseconds", 2)? * 100)
+        * 1_000_000;
+    let seconds = (digit(words[0], 0, 8, 4, "seconds", 0)?
+        + digit(words[0], 0, 12, 3, "seconds", 1)? * 10) as u8;
+    let minutes = (digit(words[1], 1, 0, 4, "minutes", 0)?
+        + digit(words[1], 1, 4, 3, "minutes", 1)? * 10) as u8;
+    let hours =
+        (digit(words[1], 1, 8, 4, "hours", 0)? + digit(words[1], 1, 12, 2, "hours", 1)? * 10) as u8;
+    let (year, day_of_year) = if calendar {
+        let day = digit(words[2], 2, 0, 4, "day_of_month", 0)?
+            + digit(words[2], 2, 4, 4, "day_of_month", 1)? * 10;
+        let month =
+            digit(words[2], 2, 8, 4, "month", 0)? + digit(words[2], 2, 12, 1, "month", 1)? * 10;
+        let year = digit(words[3], 3, 0, 4, "year", 0)?
+            + digit(words[3], 3, 4, 4, "year", 1)? * 10
+            + digit(words[3], 3, 8, 4, "year", 2)? * 100
+            + digit(words[3], 3, 12, 2, "year", 3)? * 1000;
+        range("month", month, 1, 12)?;
+        let months = month_lengths(year as u16);
+        range("day_of_month", day, 1, months[month as usize - 1] as u32)?;
+        (
+            Some(year as u16),
+            months[..month as usize - 1]
+                .iter()
+                .map(|d| *d as u16)
+                .sum::<u16>()
+                + day as u16,
+        )
+    } else {
+        (
+            None,
+            (digit(words[2], 2, 0, 4, "day_of_year", 0)?
+                + digit(words[2], 2, 4, 4, "day_of_year", 1)? * 10
+                + digit(words[2], 2, 8, 2, "day_of_year", 2)? * 100) as u16,
+        )
+    };
+    let time = CalendarReading {
+        year,
+        day_of_year,
+        hours,
+        minutes,
+        seconds,
+        nanoseconds,
+        scale: policy.for_format1(csdw.time_format_for_layout(layout)),
+    };
+    if time.seconds == 60 && csdw.time_format_for_layout(layout) == TimeFormat::Rtc {
+        return Err(TimeError::OutOfRange {
+            field: "seconds",
+            value: 60,
+            max: 59,
+        });
+    }
+    time.validate()?;
+    Ok(Format1Reading {
+        csdw,
+        time: Some(time),
+        reserved_body_bits,
+        consumed,
+    })
+}
+// Inspect figure words independently of decimal/calendar validity, so one
+// malformed digit cannot suppress an independently observed zero-bit warning.
+fn bounded_words(
+    payload: &[u8],
+    data_length: usize,
+) -> Result<(TimeF1Csdw, [u16; 4], [u16; 4], usize)> {
     let buf = payload
         .get(..data_length)
         .ok_or(TimeError::BufferTooShort {
@@ -173,67 +307,9 @@ pub fn decode_time_f1(
     for i in 0..4 {
         reserved_body_bits[i] = words[i] & masks[i];
     }
-    if !csdw.payload_is_valid(layout) {
-        return Ok(Format1Reading {
-            csdw,
-            time: None,
-            reserved_body_bits,
-            consumed,
-        });
-    }
-    let nanoseconds = (digit(words[0], 0, 4)? * 10 + digit(words[0], 4, 4)? * 100) * 1_000_000;
-    let seconds = (digit(words[0], 8, 4)? + digit(words[0], 12, 3)? * 10) as u8;
-    let minutes = (digit(words[1], 0, 4)? + digit(words[1], 4, 3)? * 10) as u8;
-    let hours = (digit(words[1], 8, 4)? + digit(words[1], 12, 2)? * 10) as u8;
-    let (year, day_of_year) = if calendar {
-        let day = digit(words[2], 0, 4)? + digit(words[2], 4, 4)? * 10;
-        let month = digit(words[2], 8, 4)? + digit(words[2], 12, 1)? * 10;
-        let year = digit(words[3], 0, 4)?
-            + digit(words[3], 4, 4)? * 10
-            + digit(words[3], 8, 4)? * 100
-            + digit(words[3], 12, 2)? * 1000;
-        range("month", month, 1, 12)?;
-        let months = month_lengths(year as u16);
-        range("day_of_month", day, 1, months[month as usize - 1] as u32)?;
-        (
-            Some(year as u16),
-            months[..month as usize - 1]
-                .iter()
-                .map(|d| *d as u16)
-                .sum::<u16>()
-                + day as u16,
-        )
-    } else {
-        (
-            None,
-            (digit(words[2], 0, 4)? + digit(words[2], 4, 4)? * 10 + digit(words[2], 8, 2)? * 100)
-                as u16,
-        )
-    };
-    let time = CalendarReading {
-        year,
-        day_of_year,
-        hours,
-        minutes,
-        seconds,
-        nanoseconds,
-        scale: policy.for_format1(csdw.time_format_for_layout(layout)),
-    };
-    if time.seconds == 60 && csdw.time_format_for_layout(layout) == TimeFormat::Rtc {
-        return Err(TimeError::OutOfRange {
-            field: "seconds",
-            value: 60,
-            max: 59,
-        });
-    }
-    time.validate()?;
-    Ok(Format1Reading {
-        csdw,
-        time: Some(time),
-        reserved_body_bits,
-        consumed,
-    })
+    Ok((csdw, words, reserved_body_bits, consumed))
 }
+
 fn range(field: &'static str, value: u32, min: u32, max: u32) -> Result<()> {
     if value < min || value > max {
         Err(TimeError::OutOfRange { field, value, max })
@@ -241,12 +317,23 @@ fn range(field: &'static str, value: u32, min: u32, max: u32) -> Result<()> {
         Ok(())
     }
 }
-fn digit(word: u16, shift: u8, bits: u8) -> Result<u32> {
+fn digit(
+    word: u16,
+    word_index: u8,
+    shift: u8,
+    bits: u8,
+    position: &'static str,
+    digit: u8,
+) -> Result<u32> {
     let nibble = ((word >> shift) & ((1 << bits) - 1)) as u8;
     if nibble > 9 {
         Err(TimeError::InvalidBcdDigit {
             nibble,
-            position: "Format 1 body",
+            position,
+            word: word_index,
+            digit,
+            bit_offset: shift,
+            raw_word: word,
         })
     } else {
         Ok(nibble as u32)

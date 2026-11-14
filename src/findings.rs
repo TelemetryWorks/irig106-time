@@ -150,6 +150,7 @@ pub struct FindingEvidence {
     raw_fields: Vec<RawField>,
     validity: ValueValidity,
     ntp: Option<NtpEvidence>,
+    decode_error: Option<TimeError>,
 }
 impl FindingEvidence {
     /// Original observation location.
@@ -197,6 +198,16 @@ impl FindingEvidence {
         self
     }
 
+    /// Original typed decode error, retained beside packet/channel/counter context.
+    /// **Traces:** L3-ERR-102 ← L2-ERR-102 ← L1-ERR-002
+    pub fn decode_error(&self) -> Option<&TimeError> {
+        self.decode_error.as_ref()
+    }
+    /// Attach a parser cause without changing factual validity or severity.
+    pub fn with_decode_error(mut self, error: TimeError) -> Self {
+        self.decode_error = Some(error);
+        self
+    }
     /// Explicit factual effect; empty optional fields stay absent.
     pub fn new(location: FindingLocation, validity: ValueValidity) -> Self {
         Self {
@@ -206,6 +217,7 @@ impl FindingEvidence {
             raw_fields: Vec::new(),
             validity,
             ntp: None,
+            decode_error: None,
         }
     }
 }

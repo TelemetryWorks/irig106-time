@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ⚠️ S02 calendar and raw Format 1 closure
+
+- BREAKING: `AbsoluteTime::add_nanos` / `sub_nanos` now return Result.
+  Propagate errors: known years advance with Gregorian lengths; unknown-year
+  boundaries require context instead of assuming 365/366 days. `with_year`
+  rejects day366 in a common year. These are nominal unscaled calendar shifts,
+  not leap-table elapsed UTC arithmetic. Compatibility correlators propagate
+  the errors; benchmark/test callers explicitly handle the Result.
+- BREAKING: `InvalidBcdDigit` gains word/digit/bit-offset/raw-word fields and
+  more precise Display text. Match with `..` or migrate constructed errors.
+  Valid decimal six in minute/second tens now produces a total-range error
+  instead of a false invalid-digit error in legacy body parsers.
+- Add checked labelled CalendarReading shifts: preserve scale/second60,
+  refuse missing leap/scale context. Add bounded Format1Input and offline/stream
+  ingestion retaining original typed TF-004 causes and TF-005 word/mask operands,
+  including simultaneous malformed-decimal and zero-bit findings. DATE selection
+  and filler exclusion are retained. Raw LY does not replace Gregorian year.
+- Strict legacy body-only parsers remain unscaled and reject reserved bits and
+  second60; canonical Format1 decoding preserves warnings and eligible leap
+  labels. No CLI output path is switched in this slice. See verification-s02:
+  15 focused tests, honest failing-first history, 17 initial plus 18 review
+  assertion-killed mutations;
+  matrix links 116→128/288 express links, not complete clause compliance.
+
 ### ⚠️ S01b shared-types adoption
 
 - Fuzz follow-up: migrate the missed correlation duration constant and older
