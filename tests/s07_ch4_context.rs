@@ -37,6 +37,7 @@ fn binary_counts_are_full_width_elapsed_values_without_an_origin() {
         let w = words(high, low, usec);
         let r = w.binary(None).unwrap();
         assert_eq!(r.raw(), w);
+        assert_eq!(r.scale(), irig106_time::scale::ScaleEvidence::unknown());
         assert_eq!(
             r.value(),
             Ch4Value::BinaryElapsed(irig106_time::NanosDuration::new(ns))
@@ -110,6 +111,7 @@ fn bcd_fields_require_all_three_context_items_and_keep_raw_partial_values() {
         let w = words(0x31c5, 0x5678, 1234);
         let r = w.bcd(c).unwrap();
         assert_eq!(r.raw(), w);
+        assert_eq!(r.scale(), irig106_time::scale::ScaleEvidence::unknown());
         assert_eq!(r.context(), Ch4Context::Bcd(c));
         assert_eq!(
             r.value(),
@@ -257,4 +259,58 @@ fn reserved_bcd_zero_is_separate_from_usable_time_and_binary_top_bit() {
             })
         ));
     }
+}
+
+// Added after implementation: partial validation must not rely on a later
+// complete-calendar constructor to reject malformed supplied year/day context.
+#[test]
+fn partial_bcd_validation_checks_provided_context_and_valid_field_extrema() {
+    for c in [
+        BcdContext {
+            year: Some(10000),
+            ..BcdContext::default()
+        },
+        BcdContext {
+            full_day: Some(0),
+            ..BcdContext::default()
+        },
+        BcdContext {
+            full_day: Some(367),
+            ..BcdContext::default()
+        },
+        BcdContext {
+            year: Some(2023),
+            full_day: Some(366),
+            ..BcdContext::default()
+        },
+    ] {
+        assert!(matches!(
+            words(0, 0, 0).bcd(c),
+            Err(TimeError::OutOfRange { .. })
+        ));
+    }
+    let mut c = bcd_context();
+    c.full_day = Some(360);
+    // high0x11d9: day fragment0,23h59m; low0x5999:59.99s +.009999s.
+    assert_eq!(
+        words(0x11d9, 0x5999, 9999).bcd(c).unwrap().calendar(),
+        Some(origin(2024, 360, 23, 59, 59, 999_999_000))
+    );
+    c.full_day = Some(366);
+    assert_eq!(
+        words(0xc000, 0, 0).bcd(c).unwrap().calendar(),
+        Some(origin(2024, 366, 0, 0, 0, 0))
+    );
+    let e = words(0x0500, 0, 0).bcd(BcdContext::default()).unwrap_err();
+    assert!(matches!(
+        e,
+        TimeError::InvalidBcdDigit {
+            nibble: 10,
+            word: 0,
+            digit: 0,
+            bit_offset: 7,
+            raw_word: 0x0500,
+            ..
+        }
+    ));
 }
