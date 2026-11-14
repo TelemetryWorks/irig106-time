@@ -20,9 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   source-loss policy and no revision. Close clock segments at jumps/scale barriers:
   late old-domain references cannot replace the later segment. Keep actual finding
   session/RTC/byte offset; NTF source absence never invents/erases Format1 source.
-- verification-s06b2:14 focused tests, six runtime failures on main, later probes,
-  71 killed mutations and clause-level limits. Matrix160/288 unchanged; partial
-  checks add no whole-requirement markers. No CLI output/dependency/level change.
+- verification-s06b2:17 focused tests (three review regressions), six runtime
+  failures on main, later probes, 71 initial +3 review killed mutations and
+  clause-level limits. Matrix160/288 unchanged; partial checks add no
+  whole-requirement markers. No CLI output/dependency/level change.
 
 ### ⚠️ S06b1 mixed-format offline references
 

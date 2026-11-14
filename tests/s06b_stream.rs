@@ -1055,3 +1055,122 @@ fn late_prejump_reference_cannot_replace_the_later_segment() {
         }
     }
 }
+
+// Clause evidence: STRM-205 session cuts are local, not whole-requirement coverage.
+#[test]
+fn review_new_session_clears_the_previous_clock_segment_cut() {
+    for boundary in [false, true] {
+        for mode in [StreamMode::Standard, StreamMode::Interpolate] {
+            let mut s = StreamTimeline::new(policy(mode), None).unwrap();
+            network(&mut s, (1, 1, 1, 0), [0x21, 1_483_315_237, 0], false);
+            // RTC2s, absolute10s => +8s jump, closing session1 below RTC2s.
+            let jump = network(
+                &mut s,
+                (1, 2, 1, 20_000_000),
+                [0x21, 1_483_315_247, 0],
+                false,
+            );
+            assert_eq!(code(&jump, 17).delta_ns, Some(8_000_000_000));
+            let r = net((2, 3, 1, 0), [0x21, 1_483_315_237, 0], false);
+            // Without an explicit boundary, -2s exceeds1100ms and infers reset.
+            let new = s
+                .observe(packet(3, 1, 0, Some(r)), 0, 100, boundary)
+                .unwrap();
+            assert!(!new.findings.iter().any(|f| f.code == 17));
+            if !boundary {
+                assert_eq!(code(&new, 18).session, 2);
+            }
+            assert_eq!(s.usage().references, 1);
+            let data = push(&mut s, 4, 9, 2_500_000, None);
+            let next = network(&mut s, (2, 5, 1, 10_000_000), [1, 3_692_304_001, 0], false);
+            let a = if mode == StreamMode::Standard {
+                &data.answers[0]
+            } else {
+                assert!(data.answers.is_empty());
+                &next.answers[0]
+            };
+            ordinary(a, 37, 250_000_000, TimeScale::Tai);
+            assert_eq!(a.basis.key.session, 2);
+            assert_eq!(a.basis.preceding.as_ref().unwrap().key.session, 2);
+            assert_eq!(a.basis.preceding.as_ref().unwrap().key.packet, 3);
+        }
+    }
+}
+
+// Clause evidence: STRM-205 monotonic closed cut under a late second barrier.
+#[test]
+fn review_late_second_barrier_cannot_keep_the_earlier_cut_open() {
+    for mode in [StreamMode::Standard, StreamMode::Interpolate] {
+        let mut s = StreamTimeline::new(policy(mode), None).unwrap();
+        network(&mut s, (1, 1, 1, 0), [0x21, 1_483_315_237, 0], false);
+        // First cut at RTC1s; the later domain is TAI47s at1s, TAI48s at2s.
+        network(
+            &mut s,
+            (1, 2, 1, 10_000_000),
+            [0x21, 1_483_315_247, 0],
+            false,
+        );
+        network(
+            &mut s,
+            (1, 3, 1, 20_000_000),
+            [0x21, 1_483_315_248, 0],
+            false,
+        );
+        // Late RTC1.5s has TAI37s: residuals -10.5s/+10.5s against its neighbours.
+        // The later endpoint closes the domain below RTC2s, never the old cut1s.
+        let barrier = network(
+            &mut s,
+            (1, 4, 1, 15_000_000),
+            [0x21, 1_483_315_237, 0],
+            false,
+        );
+        assert_eq!(barrier.findings.iter().filter(|f| f.code == 17).count(), 2);
+        let pre_cut = push(&mut s, 5, 9, 17_500_000, None);
+        assert!(pre_cut.answers[0].reading.is_none());
+        assert_eq!(pre_cut.answers[0].basis.release, ReleaseReason::NoReference);
+        let data = push(&mut s, 6, 9, 22_500_000, None);
+        let data = if mode == StreamMode::Standard {
+            data
+        } else {
+            s.finish(0).unwrap()
+        };
+        ordinary(&data.answers[0], 48, 250_000_000, TimeScale::Tai);
+        assert_eq!(
+            data.answers[0].basis.preceding.as_ref().unwrap().key.packet,
+            3
+        );
+    }
+}
+
+// Clause evidence: STRM-205 equal-counter old anchors must be evicted, not win ties or consume caps.
+#[test]
+fn review_equal_counter_jump_drops_the_prejump_reference() {
+    let mut p = policy(StreamMode::Interpolate);
+    p.caps.references = 2;
+    let mut s = StreamTimeline::new(p, None).unwrap();
+    network(&mut s, (1, 1, 1, 0), [0x21, 1_483_315_237, 0], false);
+    // Same RTC, different absolute time: +10s jump at zero counter displacement.
+    let jump = network(&mut s, (1, 2, 1, 0), [0x21, 1_483_315_247, 0], false);
+    assert_eq!(code(&jump, 17).delta_ns, Some(10_000_000_000));
+    assert_eq!(
+        s.usage().references,
+        1,
+        "only the post-jump anchor is retained"
+    );
+    assert!(push(&mut s, 3, 9, 5_000_000, None).answers.is_empty());
+    let next = network(
+        &mut s,
+        (1, 4, 1, 10_000_000),
+        [0x21, 1_483_315_248, 0],
+        false,
+    );
+    let a = &next.answers[0];
+    assert_eq!(
+        a.basis.release,
+        ReleaseReason::Interpolated,
+        "no obsolete anchor may consume the reference cap"
+    );
+    ordinary(a, 47, 500_000_000, TimeScale::Tai);
+    assert_eq!(a.basis.preceding.as_ref().unwrap().key.packet, 2);
+    assert_eq!(a.basis.following.as_ref().unwrap().key.packet, 4);
+}

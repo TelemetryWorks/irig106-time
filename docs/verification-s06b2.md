@@ -43,9 +43,9 @@ requires the later anchor for future data and counter-only for the closed domain
 A bounded counter cut now prevents reopening; late detections retain the later
 endpoint and relate the finding to the other packet, never to itself.
 
-All14 focused stream tests pass. Seventeen existing E2 regressions and sixteen
+Initially all14 focused stream tests passed. Seventeen existing E2 regressions and sixteen
 remaining S06b1 offline tests pass, including the literal RCC/contract examples.
-Final71 distinct isolated mutations compiled and failed test assertions, with
+Initial71 distinct isolated mutations compiled and failed test assertions, with
 original sources restored. Two initial segment mutants survived; added checks
 for premature draining and below-boundary queries kill them, plus the post-cut
 insertion guard. Equivalent fixture helpers only factor capture identity/access.
@@ -78,3 +78,33 @@ partial clause tests are ledger evidence only. Matrix remains160/288, with no
 new requirement promoted. Human interpretation Review fields remain pending.
 Full bounded CI equivalent: features/MSRV1.85/no_std WASM±serde/clippy/fmt/docs,
 CLI build/clippy, benches, all-fuzz locked compile, trace and deny; jobs/threads2.
+
+## PR24 review — closed-segment regressions
+
+Tests-only revision of reviewed head566c15f: three new public-API regressions;
+no production changes. All17 focused tests pass. Each new test was run against
+its isolated reviewer mutant, compiled, and failed an assertion; original source
+was restored after each run. Total mutation evidence is71 initial +3 review =74.
+These are partial STRM-205 clause checks, not whole-requirement markers; matrix
+remains160/288.
+
+| Test | Hand-derived fixture and required result | Isolated mutant / observed failure |
+|---|---|---|
+| review_new_session_clears_the_previous_clock_segment_cut | Session1 RTC2s / absolute10s creates +8s jump and cut2s. Explicit boundary and inferred reset (-2s, beyond1100ms), in both modes, start session2 at RTC0. RTC0.25s must use session2 packet3, TAI00:00:37.25. | Remove reset's `segment_start = None`: retained reference count0 instead of1; new-session anchor wrongly discarded. |
+| review_late_second_barrier_cannot_keep_the_earlier_cut_open | First cut1s; later endpoint2s at TAI48s. Late RTC1.5s at TAI37s gives residuals -10.5s/+10.5s. New cut2s excludes RTC1.75s; RTC2.25s uses packet3 and yields TAI48.25s, both modes. | `prior.max(cut)` to `prior.min(cut)`: RTC1.75s incorrectly has an absolute reading. |
+| review_equal_counter_jump_drops_the_prejump_reference | Equal RTC0 anchors TAI37/47s create +10s jump. Only new packet2 remains. RTC0.5s bracketed by TAI47/48s yields47.5s, preceding2/following4, interpolated with reference cap2. | Retain `>= incoming` instead of `> incoming`: retained count2 instead of1. Old anchor must not occupy the cap; newer-packet tie ordering alone cannot prove eviction. |
+
+Arithmetic uses the same cited 106-24R1 Figures11-15..17/RDG-012 endpoints
+above: PTP1483315237 = TAI00:00:37 on2017-01-02; RTC ticks are100ns.
+The session2 following NTP3692304001 denotes UTC00:00:01 = TAI00:00:38.
+
+Cut-probe qualification: the requested literal `min` mutant is killed, but the
+public path cannot detect an admitted barrier with a cut earlier than an existing
+segment_start: the front guard rejects an incoming counter below that start,
+and the barrier cut is its later endpoint. The exercised failure is retaining
+the earlier1s cut instead of advancing to2s, allowing a pre-cut reference to
+anchor data. No unreachable earlier-cut scenario is claimed.
+
+Full bounded CI equivalent rerun after this revision: feature suites,
+MSRV1.85/no_std WASM±serde, clippy/fmt/docs, CLI build/clippy, benches,
+all-fuzz locked compile, trace and deny; jobs/threads2. No new owner question.
