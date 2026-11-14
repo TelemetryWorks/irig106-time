@@ -44,9 +44,9 @@ Tests-only commit `53bb115`: one existing-API test compiled and failed on main
 because legacy `to_absolute()` invented a date. Nine new-API tests could not
 compile on main (missing `ch4` module), not nine executed assertion failures.
 One later test adds independent partial-context validation and valid extrema;
-scale assertions were added after implementation. Final focused suite:11 tests.
+scale assertions were added after implementation. Initial focused suite:11 tests; after review:12 tests.
 
-All28 isolated mutation probes compiled and failed assertions, original sources
+All28 initial isolated mutation probes compiled and failed assertions, original sources
 restored. A first day-range mutant failed type inference; it is NOT counted as
 assertion evidence. A type-preserving removal was rerun and failed the partial
 context assertion. No fuzz campaign is claimed.
@@ -92,3 +92,21 @@ partial elapsed time, or `.binary(Some(dated_origin))` and inspect calendar and
 context. BCD uses `.bcd(BcdContext { .. })`; returned raw words/wording/missing
 labels survive reconstruction. Fields of readings are private; no unchecked
 Deserialize or host-clock/nearest-reference fallback is added.
+
+## PR25 review — legacy validation order
+
+Tests-only revision of reviewed head98179ac. Added
+`legacy_ch4_conversion_rejects_invalid_microseconds_before_missing_context`:
+Ch4BinaryTime with microseconds10000 must return OutOfRange with field
+`ch4_microseconds`, value10000 and max9999, before NeedsContext. The fixture
+uses §4.7's maximum9999 (4-11/PDF15) and Fig11-4's binary usec word
+(11-10/PDF18); no new visual-page inspection is claimed.
+
+The assertion passes on unchanged production code. Isolated removal of the
+legacy call to `Ch4Words::from(*self).binary(None)?` compiled, then failed this
+exact assertion: the mutant returns NeedsContext instead of OutOfRange.
+Original source restored; no production changes. Total focused tests12;
+mutation evidence28 initial +1 review =29 assertion-killed mutants.
+No whole-requirement marker added; matrix160/288 unchanged. Full18 bounded
+local CI-equivalent checks rerun for this revision, including CLI/benches/fuzz,
+MSRV/no_std/features, formatting/lints/docs, trace and deny; jobs/threads2.

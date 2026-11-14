@@ -18,3 +18,23 @@ fn legacy_ch4_conversion_never_invents_day_one_or_a_day_from_binary_bits() {
         ));
     }
 }
+
+// Partial ABS-102 validation-order evidence; no whole-requirement marker.
+#[test]
+fn legacy_ch4_conversion_rejects_invalid_microseconds_before_missing_context() {
+    // Ch4 §4.7, printed4-11/PDF15: maximum9999 decimal;10000 is invalid
+    // even without a calendar origin (Fig11-4 usec word,11-10/PDF18).
+    let t = Ch4BinaryTime {
+        high_order: 0,
+        low_order: 0,
+        microseconds: 10_000,
+    };
+    assert!(matches!(
+        t.to_absolute(),
+        Err(TimeError::OutOfRange {
+            field: "ch4_microseconds",
+            value: 10_000,
+            max: 9999,
+        })
+    ));
+}
