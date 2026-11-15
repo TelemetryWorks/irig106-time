@@ -381,6 +381,11 @@ impl YearClock {
         if year_evidence(r) {
             if let Some(last) = self.last {
                 let elapsed = (r.key.ticks - last.ticks) * 100;
+                // Equal RTC keeps the phase, but must still reject a forbidden
+                // leap label before it can replace last and credit the next span.
+                if elapsed == 0 && invalid_leap_label(r, point.year) {
+                    return Ok(());
+                }
                 if elapsed != 0 {
                     let (d, residual, leap_ns) = match Self::nearest_phase(last, point, elapsed) {
                         // An impossible current-year day366 is malformed, not

@@ -907,6 +907,7 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 | DOY leap start |caller 2016; DOY 366 23:59:60 at RTC 0 -> DOY 1 midnight at RTC +1 s, no DMY |first label retains NeedsContext/TF-022 and year evidence 2016; next (2017,1), phase +1, no TF-017; raw and qualified offline/Standard/Interpolate |
 | I5 forbidden DOY leap |caller2016;365 23:59:59 ->23:59:60 ->366 midnight, RTC1s |middle TF-004 ERROR/unusable, no leap credit; readable span1s minus RTC2s gives TF-017 -1s, drift -500,000ppm offline; both stream modes agree |
 | I6 forbidden DOY leap |caller2017;182 23:59:59 ->23:59:60 ->183 midnight, RTC1s |same rejection/no-credit/-1s result; unknown year still permits all four potential dates |
+| J1 equal RTC forbidden leap |caller2016;365 23:59:59 atRTC0 ->365 23:59:60 atRTC0 ->366 midnight atRTC1s |middle TF-004 ERROR/Unusable/Malformed rejection; no observed leap credit or TF-017; offline drift0; both stream modes agree |
 | N2 segment guard |real2016Dec31 leap, then2017Jan1 ->365 at+181days (>182.5day best residual), followed by DMY2017Dec31 |new segment leap contribution0; cross-segment TF-017 +183days, never +183days-1s; offline path, stream rejects gap until explicit boundary |
 | DMY crossover |DMY2023Dec31 ->DOYJan1 / DMY2024Jan1 / DMY2023Jan1, RTC1s |DOY2024; consistent2024 DMY no TF-032; same-year2023 DMY retains contrary evidence and TF-032 |
 

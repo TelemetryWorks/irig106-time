@@ -414,6 +414,7 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 | DOY leap start |caller 2016; DOY 366 23:59:60 at RTC 0 -> DOY 1 midnight at RTC +1 s, no DMY |first label retains NeedsContext/TF-022 and year evidence 2016; next (2017,1), phase +1, no TF-017; raw and qualified offline/Standard/Interpolate |
 | I5 forbidden DOY leap |caller2016;365 23:59:59 ->23:59:60 ->366 midnight, RTC1s |middle TF-004 ERROR/unusable, no leap credit; readable span1s minus RTC2s gives TF-017 -1s, drift -500,000ppm offline; both stream modes agree |
 | I6 forbidden DOY leap |caller2017;182 23:59:59 ->23:59:60 ->183 midnight, RTC1s |same rejection/no-credit/-1s result; unknown year still permits all four potential dates |
+| J1 equal RTC forbidden leap |caller2016;365 23:59:59 atRTC0 ->365 23:59:60 atRTC0 ->366 midnight atRTC1s |middle TF-004 ERROR/Unusable/Malformed rejection; no observed leap credit or TF-017; offline drift0; both stream modes agree |
 | N2 segment guard |real2016Dec31 leap, then2017Jan1 ->365 at+181days (>182.5day best residual), followed by DMY2017Dec31 |new segment leap contribution0; cross-segment TF-017 +183days, never +183days-1s; offline path, stream rejects gap until explicit boundary |
 | DMY crossover |DMY2023Dec31 ->DOYJan1 / DMY2024Jan1 / DMY2023Jan1, RTC1s |DOY2024; consistent2024 DMY no TF-032; same-year2023 DMY retains contrary evidence and TF-032 |
 
@@ -727,15 +728,21 @@ year-evidence segment. DMY2017Dec31 anchors it; segment0 contribution1s must
 not be subtracted from segment1 contribution0. Stream cannot take this path:
 it rejects that residual and requires an explicit session boundary.
 
-Commit430ae08 adds unknown-year/anchor controls and the later-DMY test. The
-later-DMY test was executed against the intermediate working fix and failed:
-TF-004 was present but the old1s contribution survived. It is not claimed as a
-separate committed-main runtime reproduction. Earlier-DMY controls were added
-after the fix and are not claimed failing-first. Offline now replays phase
-tracking after newly malformed leap labels are removed, retaining original raw
-fields and year candidates. Rejected labels are skipped; replay is bounded by
-the finite reference count, with no hidden queue. Stream emitted answers are
-never revised.
+Commit430ae08 adds unknown-year/anchor controls and the later-DMY test.
+Correction to the earlier incomplete accounting: a detached checkout of that
+actual pre-fix commit reproduces TEN runtime failures (23 pass): I5/I6 x3,
+anchor_qualifies_doy_label x3, and
+future_dmy_year_rejects_forbidden_label_without_credit. No production fix had
+been committed there. The earlier report called anchor tests later controls
+because they were written against an uncommitted working fix; that describes
+development timing, not the failing tests in the committed snapshot. The
+future-DMY test also failed against that intermediate working fix: TF-004 was
+present but the old1s contribution survived. The detached reproduction uses
+the commit's own sources, tests, manifest and locked git dependency; its
+worktree was removed afterward. Offline now replays phase tracking after newly
+malformed leap labels are removed, retaining original raw fields and year
+candidates. Rejected labels are skipped; replay is bounded by the finite
+reference count, with no hidden queue. Stream emitted answers are never revised.
 
 Five isolated source mutations each compiled and failed runtime assertions:
 
@@ -759,3 +766,43 @@ compilation, fmt/docs/trace/cargo-deny. Initial clippy found only test-helper
 precedence; explicit parentheses fixed it, clippy and checks8..18 reran green.
 No arithmetic or fixture values changed. Actionlint/diff clean; all earlier
 L3 Source lines and Design/Review fields compare unchanged.
+
+
+## PR28 J1 review — forbidden leap label at equal RTC
+
+First ordinarily merged main5eeca7d (merge d8709d6), retaining both CHANGELOG
+entries and published shared types. No edits to frozen PR29. Owner's RDG-010
+rule is unchanged. The prior forbidden-label return was inside elapsed!=0;
+a rejected label at elapsed0 still replaced last, crediting the following span.
+Add the same validation on elapsed0 before last/phase commit. Nonzero elapsed
+still selects the target phase/year before validation; valid late leap labels
+are not checked prematurely against the wrong year.
+
+Tests-only983b139 at the merged pre-fix head reproduces TWO runtime failures:
+J1 Standard and Interpolate show observed leap contribution+1s instead of0.
+J1 offline already passes with TF-004, no contribution/jump and drift0; it is
+a passing control. All three paths assert TF-004 ERROR/Unusable; offline also
+requires Rejection::Malformed. The answer basis in each stream mode requires
+zero observed credit, and no path may emit TF-017. An initial test draft used
+the wrong StreamBasis field name and did not compile; not counted as evidence.
+
+Optional guards included: K8 checks the exact malformed rejection reason;
+K11 supplies future DMY2016Dec31 after yearless365 23:59:59 atRTC0 and the
+forbidden second60 atRTC1s, with DMY midnight atRTC3s. First-pass unreadable
+label->midnight residual is-1s, but replay must discard it: remaining readable
+59->midnight span1s against RTC3s gives TF-017 -2s only. No stale -1s finding.
+Hand-derived bytes remain Fig11-13/14 (printed11-25/PDF33), with DOY365=0365,
+HHMM2359 and seconds60=6000. No fresh page checks, host clock or encoder oracle.
+
+Three isolated mutations each compile and fail runtime assertions:
+J1 omit equal-counter rejection -> both stream basis credit assertions fail;
+K8 omit Rejection::Malformed -> offline exact-reason assertion fails;
+K11 omit phase_residual clearing on replay -> extra stale TF-017 -1s fails.
+All sources restored. New s08_late_leap total37 tests; combined S08 total139
+(prior135 plus4). Partial clauses only, no new whole-requirement markers;
+matrix160/288 unchanged. Full local/hosted CI results verified at reported head.
+
+J1 final local CI equivalent:18/18 pass with locked resolution/jobs2/threads2,
+including feature suites, MSRV1.85, no_std WASM±serde, CLI build/clippy,
+benches, all-fuzz compile, fmt/docs/trace and cargo-deny. Actionlint/diff pass.
+No Design/Review or finding-table changes; no merge/publish.
