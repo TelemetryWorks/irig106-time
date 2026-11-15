@@ -245,3 +245,22 @@ levels change; no new whole-requirement marker or deferral.
 The new residual bound supersedes the blanket365day RTC-gap guard: an exact
 common-year cycle is d=+1 with zero residual; unusable observations do not
 shorten gap evidence. The same shared function handles both engine directions.
+
+
+## Subsequent owner decision — DOY leap-label qualification, 2026-11-15 (PR28)
+
+Owner: once caller/anchor/phase supplies the year, a DOY23:59:60 label on a
+forbidden day is MALFORMED, exactly as DMY decode: TF-004 ERROR, value not used,
+no observed leap credited. Leap years permit182/366, common years181/365;
+unknown-year candidates remain181/182/365/366. RDG-010 already states the
+known-year June30/December31 restriction; this closes its deferred-year gap.
+RCC200-16 AppendixA.2: "If required, time changes are made on December 31 and
+on June 30 at 2400 hours." Figures11-13/14 (106-24R1 printed11-25/PDF33)
+supply the DOY/DMY fields, not the reader's finding IDs or year-source policy.
+
+RDG-010 Behaviour/analysis add the explicit revalidation decision;
+L3-TAI-107 clarifies when its existing known-year restriction is applied,
+with its L2/L1 parent chain intact and every prior source quote retained.
+S08 records I5/I6 and segment N2 evidence, including future-DMY qualification.
+No Design/Review field, finding row or severity changes. No whole-requirement
+marker is added for these partial clauses; coverage remains160/288.

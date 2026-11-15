@@ -276,13 +276,15 @@ edge-case tests, and two-person review remain outstanding.
 
 **Behaviour**: in UTC formats, 23:59:60 is accepted on day 181, 182, 365, or 366 (which can be 30 June or 31 December; with a known year, only the day that is) and reported as a leap second; second 60 at any other time, or in GPS, TAI, or real-time-clock time, is out of range.
 
+**Subsequent owner decision (2026-11-15)**: Revalidate DOY second 60 whenever caller, DMY anchor or year phase makes the year known. A leap year permits only days 182/366, a common year only 181/365. A forbidden label is malformed (TF-004 ERROR, value not used), exactly as for DMY; never credit its second to native spans or phase evidence. With no year, all four candidate days remain eligible. Later offline DMY evidence also removes a disqualified label's earlier contribution; stream answers already released remain immutable.
+
 **Reason**: Rejecting it loses a valid second of data; accepting it anywhere would hide malformed bodies.
 
 **Design**: accepted · **Review**: pending · **Origin**: T-16; contract 3.2
 
 **Test**: tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates, t16_calendar_known_year_and_wrong_time_boundaries
 
-**Development**: intensive testing and deep analysis required · **Analysis**: [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-010)
+**Development**: intensive testing and deep analysis required · **Analysis**: [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-010); [known-year DOY qualification and segment guard](verification-s08.md#pr28-review--known-year-doy-leap-validation)
 
 ### RDG-011
 

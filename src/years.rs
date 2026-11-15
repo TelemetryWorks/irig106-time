@@ -46,6 +46,7 @@ pub struct YearBasis {
     original: Option<ReferenceValue>,
     original_origin: Option<YearOrigin>,
     phase: i32,
+    observed_leap_ns: i128,
     resolved: bool,
     normalization_issue: Option<TimeError>,
     segment: usize,
@@ -96,6 +97,21 @@ impl YearBasis {
     pub fn gap_ticks(&self) -> Option<crate::SignedRtcTicks> {
         self.gap.map(crate::SignedRtcTicks::new)
     }
+    /// Signed contribution of explicit leap labels to native calendar spans.
+    /// This is observation evidence, not an assumed leap table or UTC offset.
+    /// **Traces:** L3-COR-110 ← L2-COR-110 ← L1-COR-010
+    pub fn observed_leap_adjustment(&self) -> crate::SignedNanos {
+        crate::SignedNanos::new(self.observed_leap_ns)
+    }
+    pub(crate) fn leap_delta(&self, other: &Self) -> Option<i128> {
+        if self.resolved && other.resolved && self.segment == other.segment {
+            other.observed_leap_ns.checked_sub(self.observed_leap_ns)
+        } else {
+            // Segment origins are independent; do not transport an observed
+            // contribution across a context reset.
+            Some(0)
+        }
+    }
     /// Selected signed year phase relative to the first observed calendar.
     pub fn rollovers(&self) -> i32 {
         self.phase
@@ -134,6 +150,7 @@ const DAY_NS: i128 = 86_400_000_000_000;
 pub(crate) struct YearClock {
     last: Option<Point>,
     phase: i32,
+    observed_leap_ns: i128,
     anchor: Option<Anchor>,
     latest: Option<Anchor>,
     segment: usize,
@@ -149,6 +166,17 @@ fn calendar(r: &TimelineReference) -> Option<(u16, Option<u16>)> {
             .or_else(|| r.input.qualified.as_ref().and_then(|q| q.time))
             .map(|t| (t.day_of_year, t.year)),
     }
+}
+// Revalidate a retained leap label after caller/anchor/phase supplies its year.
+// RDG-010 / owner2026-11-15: a forbidden DOY label is malformed, not
+// evidence for an observed leap contribution. Unknown-year dates stay eligible.
+fn invalid_leap_label(r: &TimelineReference, year: Option<u16>) -> bool {
+    r.input
+        .wire
+        .and_then(|(_, w)| w.time)
+        .or_else(|| r.input.qualified.as_ref().and_then(|q| q.time))
+        .filter(|t| t.is_leap_second())
+        .is_some_and(|t| year.is_some_and(|y| t.with_year(y).is_err()))
 }
 // These facts qualify for phase tracking, independently of ordinary leap-time
 // admission. Non-admitted invalid/None/malformed observations remain skippable.
@@ -269,7 +297,7 @@ impl YearClock {
     // algorithm (contract5.3; Fig11-13/14). The SAME function solves forward
     // and late observations: signed elapsed, d=-1/0/+1 regardless of day order.
     // d=0 is considered first and wins ties; the182.5day bound is inclusive.
-    fn nearest_phase(from: Point, to: Point, elapsed: i128) -> Result<(i32, i128)> {
+    fn nearest_phase(from: Point, to: Point, elapsed: i128) -> Result<(i32, i128, i128)> {
         let length = |y| {
             if crate::util::is_leap_year(y) {
                 366u16
@@ -277,7 +305,7 @@ impl YearClock {
                 365
             }
         };
-        let mut best: Option<(i32, i128)> = None;
+        let mut best: Option<(i32, i128, i128)> = None;
         for d in [0i32, -1, 1] {
             for days in [365u16, 366] {
                 let target_year = from
@@ -297,6 +325,7 @@ impl YearClock {
                 }
                 let mut span =
                     to.position - from.position + i128::from(d) * i128::from(days) * DAY_NS;
+                let nominal = span;
                 // second60 shares the following midnight's nominal position;
                 // preserve its extra second in either direction, including d=0.
                 if from.leap && !to.leap && span >= 0 {
@@ -306,12 +335,12 @@ impl YearClock {
                     span -= 1_000_000_000;
                 }
                 let residual = span - elapsed;
-                if best.is_none_or(|(_, r)| residual.unsigned_abs() < r.unsigned_abs()) {
-                    best = Some((d, residual));
+                if best.is_none_or(|(_, r, _)| residual.unsigned_abs() < r.unsigned_abs()) {
+                    best = Some((d, residual, span - nominal));
                 }
             }
         }
-        best.filter(|(_, r)| r.unsigned_abs() <= (365 * DAY_NS / 2) as u128)
+        best.filter(|(_, r, _)| r.unsigned_abs() <= (365 * DAY_NS / 2) as u128)
             .ok_or(TimeError::NeedsContext {
                 context: "year explanation residual exceeds half a common year",
             })
@@ -346,12 +375,19 @@ impl YearClock {
             return Ok(());
         };
         let mut phase = self.phase;
+        let mut observed_leap_ns = self.observed_leap_ns;
         r.input.year_basis.phase = phase;
+        r.input.year_basis.observed_leap_ns = observed_leap_ns;
         if year_evidence(r) {
             if let Some(last) = self.last {
                 let elapsed = (r.key.ticks - last.ticks) * 100;
+                // Equal RTC keeps the phase, but must still reject a forbidden
+                // leap label before it can replace last and credit the next span.
+                if elapsed == 0 && invalid_leap_label(r, point.year) {
+                    return Ok(());
+                }
                 if elapsed != 0 {
-                    let (d, residual) = match Self::nearest_phase(last, point, elapsed) {
+                    let (d, residual, leap_ns) = match Self::nearest_phase(last, point, elapsed) {
                         // An impossible current-year day366 is malformed, not
                         // a new anchor or a reason to repair it into a leap year.
                         Err(TimeError::NeedsContext { .. })
@@ -369,6 +405,17 @@ impl YearClock {
                         .ok_or(TimeError::QuantityOverflow {
                             quantity: "session year rollovers",
                         })?;
+                    if invalid_leap_label(r, self.point(r, phase).and_then(|p| p.year)) {
+                        // Do not commit phase/last/anchor or credit a leap from
+                        // this observation. resolve emits TF-004 with its year.
+                        r.input.year_basis.phase = phase;
+                        return Ok(());
+                    }
+                    observed_leap_ns = observed_leap_ns.checked_add(leap_ns).ok_or(
+                        TimeError::QuantityOverflow {
+                            quantity: "observed leap adjustment",
+                        },
+                    )?;
                     let unreadable = !last.readable || !point.readable;
                     if d != 0 || unreadable {
                         r.input.year_basis.phase_residual = Some((
@@ -381,18 +428,23 @@ impl YearClock {
                 }
                 if elapsed >= 0 {
                     self.phase = phase;
+                    self.observed_leap_ns = observed_leap_ns;
                     point = self.point(r, phase).unwrap_or(point);
                     self.last = Some(point);
                 }
-            } else if !point
-                .year
-                .is_some_and(|y| point.day == 366 && !crate::util::is_leap_year(y))
+            } else if !invalid_leap_label(r, point.year)
+                && !point
+                    .year
+                    .is_some_and(|y| point.day == 366 && !crate::util::is_leap_year(y))
             {
                 self.last = Some(point);
             }
         }
         r.input.year_basis.phase = phase;
-        self.remember_anchor(r);
+        r.input.year_basis.observed_leap_ns = observed_leap_ns;
+        if !invalid_leap_label(r, self.point(r, phase).and_then(|p| p.year)) {
+            self.remember_anchor(r);
+        }
         Ok(())
     }
     /// Resolve against evidence available now, preserving raw wire/year inputs.
@@ -516,8 +568,18 @@ impl YearClock {
                 context: "normalization year unknown after a reference gap",
             });
         }
-        let malformed = selected_year.is_some_and(|y| day == 366 && !crate::util::is_leap_year(y));
-        if let Some(ReferenceValue::Readable(t, valid)) = r.input.year_basis.original {
+        let malformed = selected_year.is_some_and(|y| day == 366 && !crate::util::is_leap_year(y))
+            || invalid_leap_label(r, selected_year);
+        if malformed {
+            r.input.value = ReferenceValue::Malformed;
+            r.admitted = false;
+            if !r.reasons.contains(&Rejection::Malformed) {
+                r.reasons.push(Rejection::Malformed);
+            }
+        }
+        if let Some(ReferenceValue::Readable(t, valid)) =
+            r.input.year_basis.original.filter(|_| !malformed)
+        {
             match t.with_year(selected_year) {
                 Ok(t) => {
                     r.input.value = ReferenceValue::Readable(t, valid);
@@ -686,17 +748,40 @@ pub(crate) fn resolve_session(
     refs: &mut [TimelineReference],
     policy: &OfflinePolicy,
 ) -> Result<Vec<TimelineFinding>> {
-    let mut order: Vec<_> = (0..refs.len()).collect();
-    order.sort_by_key(|&i| (refs[i].key.ticks, refs[i].key.packet));
+    // A future DMY can disqualify an earlier yearless leap label. Rebuild
+    // phase evidence without newly malformed labels so their contribution is
+    // not retained. Rejections are monotone: at most refs.len() new labels,
+    // with no unbounded queue and no revision of stream answers.
+    loop {
+        let before = refs.iter().filter(|r| invalid_resolved_label(r)).count();
+        let findings = resolve_session_pass(refs, policy)?;
+        let after = refs.iter().filter(|r| invalid_resolved_label(r)).count();
+        if after <= before {
+            return Ok(findings);
+        }
+    }
+}
+fn invalid_resolved_label(r: &TimelineReference) -> bool {
+    matches!(r.input.value, ReferenceValue::Malformed)
+        && invalid_leap_label(r, r.input.year_basis.selected().map(|c| c.year))
+}
+fn resolve_session_pass(
+    refs: &mut [TimelineReference],
+    policy: &OfflinePolicy,
+) -> Result<Vec<TimelineFinding>> {
     let mut clock = YearClock::default();
-    for &i in &order {
-        match clock.stamp(&mut refs[i], policy) {
+    // Apply the first observed origin BEFORE validating late day366 against its
+    // selected year, exactly as stream does. Query/quality indexes still sort RTC.
+    for reference in refs.iter_mut() {
+        reference.input.year_basis.resolved = false;
+        reference.input.year_basis.phase_residual = None;
+        match clock.stamp(reference, policy) {
             Err(TimeError::NeedsContext { .. }) => {
                 // An implausible nearest explanation breaks year continuity just
                 // like a full-cycle gap. Preserve native partial time and TF-020.
                 let gap = clock
                     .last
-                    .and_then(|last| refs[i].key.ticks.checked_sub(last.ticks));
+                    .and_then(|last| reference.key.ticks.checked_sub(last.ticks));
                 clock = YearClock {
                     segment: clock
                         .segment
@@ -707,7 +792,7 @@ pub(crate) fn resolve_session(
                     gap,
                     ..YearClock::default()
                 };
-                clock.stamp(&mut refs[i], policy)?;
+                clock.stamp(reference, policy)?;
             }
             result => result?,
         }

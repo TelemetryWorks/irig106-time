@@ -120,3 +120,10 @@ Actionlint/diff clean. Matrix170->176/288 (+6: FND104/RDG205/RDG206 L2+L3);
 no other whole requirement promoted. Every Design/Review field is retained
 byte-for-byte. Hosted checks are verified at the reported head. No merge or
 publication; no new owner decision required by this slice.
+
+
+Current-main update before reporting: PR28 merged as main71df0d5 while S09b
+was being prepared. Ordinarily merge it into this branch, retaining both
+CHANGELOG entries and regenerating TRACE-MATRIX. PR28's branch is not edited;
+its year/leap fixes are inherited from main. Re-run the full CI equivalent
+on the combined source before publishing the PR head.
