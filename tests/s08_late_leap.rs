@@ -440,3 +440,114 @@ fn n2_observed_leap_never_crosses_year_evidence_segment() {
         && f.packet == 5
         && f.delta_ns == Some(183 * 86_400_000_000_000 - 1_000_000_000)));
 }
+
+#[test]
+fn yearless_labels_keep_all_four_potential_dates() {
+    for day in [181, 182, 365, 366] {
+        for mode in [StreamMode::Standard, StreamMode::Interpolate] {
+            let mut s = StreamTimeline::new(policy(mode), None).unwrap();
+            let out = s
+                .observe(packet(1, 0, Some(doy(day, 60, false, None))), 0, 100, false)
+                .unwrap();
+            assert!(!out.findings.iter().any(|f| f.code == 4), "day{day}");
+        }
+        let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+        b.observe(packet(1, 0, Some(doy(day, 60, false, None))), false)
+            .unwrap();
+        let t = b.finish().unwrap();
+        assert!(!t.findings().iter().any(|f| f.code == 4), "day{day}");
+    }
+}
+
+#[test]
+fn future_dmy_year_rejects_forbidden_label_without_credit() {
+    let body = [1, 3, 0, 0, 0, 0, 0, 0, 0x31, 0x12, 0x16, 0x20]; //2016Dec31 midnight
+    let dated = ReferenceInput::format1(
+        &body,
+        body.len(),
+        TimeF1Layout::SourceWithIts17,
+        ScalePolicy::default(),
+    )
+    .unwrap();
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    for p in [
+        packet(1, 0, Some(doy(365, 59, false, None))),
+        packet(2, S, Some(doy(365, 60, false, None))),
+        packet(3, 2 * S, Some(dated)),
+    ] {
+        b.observe(p, false).unwrap();
+    }
+    let t = b.finish().unwrap();
+    assert_eq!(
+        t.sessions()[0].references[1].input.value,
+        ReferenceValue::Malformed
+    );
+    assert!(
+        t.sessions()[0].references.iter().all(|r| r
+            .input
+            .year_basis
+            .observed_leap_adjustment()
+            .get()
+            == 0)
+    );
+    assert!(
+        t.findings()
+            .iter()
+            .any(|f| f.packet == 3 && f.code == 17 && f.delta_ns == Some(-1_000_000_000))
+    );
+}
+
+fn anchor_qualified_label(_: bool, _: bool, mode: Option<StreamMode>) {
+    // Fig11-14 DMY2016Dec30 23:59:59; following DOY has no caller year.
+    let body = [1, 3, 0, 0, 0, 0x59, 0x59, 0x23, 0x30, 0x12, 0x16, 0x20];
+    let anchor = ReferenceInput::format1(
+        &body,
+        body.len(),
+        TimeF1Layout::SourceWithIts17,
+        ScalePolicy::default(),
+    )
+    .unwrap();
+    let packets = [
+        packet(1, 0, Some(anchor)),
+        packet(2, S, Some(doy(365, 60, false, None))),
+        packet(3, 2 * S, Some(doy(366, 0, true, None))),
+    ];
+    let findings = if let Some(mode) = mode {
+        let mut s = StreamTimeline::new(policy(mode), None).unwrap();
+        packets
+            .into_iter()
+            .flat_map(|p| s.observe(p, 0, 100, false).unwrap().findings)
+            .collect::<Vec<_>>()
+    } else {
+        let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+        for p in packets {
+            b.observe(p, false).unwrap();
+        }
+        let t = b.finish().unwrap();
+        assert_eq!(
+            t.sessions()[0].references[1].input.value,
+            ReferenceValue::Malformed
+        );
+        assert!(
+            t.sessions()[0].references.iter().all(|r| r
+                .input
+                .year_basis
+                .observed_leap_adjustment()
+                .get()
+                == 0)
+        );
+        t.findings().to_vec()
+    };
+    assert!(findings.iter().any(|f| f.packet == 2 && f.code == 4));
+    assert!(
+        findings
+            .iter()
+            .any(|f| f.packet == 3 && f.code == 17 && f.delta_ns == Some(-1_000_000_000))
+    );
+}
+scenarios!(
+    anchor_qualifies_doy_label,
+    anchor_qualified_label,
+    false,
+    false
+);
