@@ -13,8 +13,9 @@
 //! cargo bench --bench correlation_bench
 //! ```
 
-use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use irig106_time::*;
+use std::hint::black_box;
 
 fn build_correlator(n_refs: usize, n_channels: u16) -> TimeCorrelator {
     let mut c = TimeCorrelator::new();
