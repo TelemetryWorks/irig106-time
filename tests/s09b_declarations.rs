@@ -797,3 +797,166 @@ fn missing_and_override_suite() {
     assert!(codes(&r).contains(&11));
     assert_eq!(r.csdw.unwrap().resolution().basis(), EditionBasis::Override);
 }
+
+// Review clauses only; no new whole-requirement markers.
+#[test]
+fn tf008_requires_an_actual_governing_setup_for_both_time_packet_types() {
+    let absent = Declarations::absent();
+    let empty = Declarations::present(vec![]).unwrap();
+    let gap = Declarations::present(vec![setup(10, None, vec![ch(7, None, None)])]).unwrap();
+    let mut observed = Vec::new();
+    for (d, presence) in [
+        (&absent, DeclarationPresence::Absent),
+        (&empty, DeclarationPresence::NoGoverningRange),
+        (&gap, DeclarationPresence::NoGoverningRange),
+    ] {
+        for data_type in [0x11, 0x12] {
+            let mut a = DeclarationAudit::new(d);
+            let r = a
+                .observe(
+                    PacketFields {
+                        data_type,
+                        ..fields(1, 5, 7, 0)
+                    },
+                    None,
+                    None,
+                    &Default::default(),
+                )
+                .unwrap();
+            assert_eq!(r.basic.basis.presence, presence);
+            assert!(r.basic.basis.governing.is_none());
+            observed.push((
+                presence,
+                data_type,
+                r.activity.iter().any(|f| f.finding.code().number() == 8),
+            ));
+        }
+    }
+    // A real governing setup with no channel declarations DOES exclude channel7.
+    // This differs from present(vec![]), which supplies no setup at all.
+    for channels in [
+        vec![],
+        vec![ChannelDeclaration {
+            cdt: Some("PCM".into()),
+            ..ch(7, None, None)
+        }],
+    ] {
+        let d = Declarations::present(vec![setup(0, None, channels)]).unwrap();
+        for data_type in [0x11, 0x12] {
+            let mut a = DeclarationAudit::new(&d);
+            let r = a
+                .observe(
+                    PacketFields {
+                        data_type,
+                        ..fields(1, 5, 7, 0)
+                    },
+                    None,
+                    None,
+                    &Default::default(),
+                )
+                .unwrap();
+            assert_eq!(r.basic.basis.presence, DeclarationPresence::Present);
+            let f = r
+                .activity
+                .iter()
+                .find(|f| f.finding.code().number() == 8)
+                .unwrap();
+            assert_eq!(f.finding.severity(), Severity::Warning);
+        }
+    }
+    let expected: Vec<_> = observed
+        .iter()
+        .map(|(presence, kind, _)| (*presence, *kind, false))
+        .collect();
+    // Collect before asserting, so the pre-fix result displays all SIX failures.
+    assert_eq!(observed, expected);
+}
+
+#[test]
+fn repeated_sources_only_report_two_changes_with_exact_related_locations() {
+    let mut snapshot = setup(10, None, vec![ch(7, Some("E"), None), ch(8, None, None)]);
+    snapshot.setup_packet = 777;
+    snapshot.range = GoverningRange::new(2, SignedRtcTicks::new(10), None).unwrap();
+    let d = Declarations::present(vec![snapshot]).unwrap();
+    let mut a = DeclarationAudit::new(&d);
+    let mut changes = Vec::new();
+    for (i, src) in [1u32, 1, 0, 0, 1].into_iter().enumerate() {
+        let id = i as u64 + 1;
+        let q = word(src, Some(PacketEdition::V24R1));
+        let p = PacketFields {
+            key: timeline::PacketKey {
+                session: 2,
+                ..key(id, 10 + i as i128)
+            },
+            ..fields(id, 0, 7, src)
+        };
+        let r = a.observe(p, Some(&q), None, &Default::default()).unwrap();
+        for f in r
+            .findings
+            .iter()
+            .filter(|f| f.reason == DeclarationIssue::SourceChanged)
+        {
+            let related = f
+                .finding
+                .evidence()
+                .related()
+                .iter()
+                .find(|l| l.channel == Some(7))
+                .unwrap();
+            assert_eq!(
+                *related,
+                FindingLocation {
+                    session: Some(2),
+                    packet: Some(id - 1),
+                    channel: Some(7),
+                    byte_offset: None
+                }
+            );
+            changes.push(id);
+        }
+    }
+    assert_eq!(changes, vec![3, 5]);
+    let missing = a.finish(&Default::default()).unwrap();
+    assert_eq!(missing.len(), 1);
+    assert_eq!(missing[0].finding.code().number(), 9);
+    assert_eq!(missing[0].basis.channel.as_ref().unwrap().id, 8);
+    assert_eq!(
+        missing[0].finding.evidence().related(),
+        &[FindingLocation {
+            session: Some(2),
+            packet: Some(777),
+            channel: None,
+            byte_offset: None,
+        }]
+    );
+}
+
+#[test]
+fn reserved_source_on_non_applicable_channel_has_no_tf006() {
+    for cdt in [None, Some("PCM")] {
+        let d = Declarations::present(vec![setup(
+            0,
+            None,
+            vec![ChannelDeclaration {
+                cdt: cdt.map(Into::into),
+                ..ch(7, Some("E"), None)
+            }],
+        )])
+        .unwrap();
+        for channel in [7, 8] {
+            for src in 3..=14 {
+                let q = word(src, Some(PacketEdition::V24R1));
+                let r = d
+                    .compare_qualified(
+                        fields(1, 0, channel, src),
+                        Some(&q),
+                        None,
+                        &Default::default(),
+                    )
+                    .unwrap();
+                assert_eq!(r.tsrc.status, ComparisonStatus::NotApplicable);
+                assert!(!codes(&r).contains(&6));
+            }
+        }
+    }
+}
