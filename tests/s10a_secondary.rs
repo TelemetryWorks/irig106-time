@@ -33,7 +33,7 @@ fn ieee_wire_order_range_and_applicability_are_preserved() {
         panic!("IEEE required")
     };
     assert_eq!((t.seconds, t.nanoseconds), (0x01020304, 123456789));
-    assert_eq!(t.to_le_bytes(), IEEE[..8]);
+    assert_eq!(r.raw_bytes()[..8], IEEE[..8]);
     assert_eq!(r.scale(), ScaleEvidence::unknown());
     assert_eq!(r.applicability(), &TimeApplicability::FirstDataBit);
     let mut p = packet(0x84, &IEEE);
@@ -219,7 +219,7 @@ fn ertc_units_floor_modular_tick_tolerance_and_half_range_are_explicit() {
         let Some(SecondaryHeaderTime::Ertc(e)) = r.time() else {
             panic!("relative ERTC expected")
         };
-        assert_eq!(e.to_nanos(), n);
+        assert_eq!(e.to_nanos(), u128::from(n));
         let c = r.rtc_ertc().unwrap();
         assert_eq!(c.expected_rtc(), Rtc::from_raw(n / 100));
         assert_eq!(c.remainder_ns(), (n % 100) as u8);
@@ -229,7 +229,7 @@ fn ertc_units_floor_modular_tick_tolerance_and_half_range_are_explicit() {
     }
     let b = [199, 0, 0, 0, 0, 0, 0, 0, 0, 0, 199, 0];
     let mask = (1u64 << 48) - 1;
-    for (rtc, delta) in [(mask, -2), (0, -1), (1, 0), (2, 1), (3, 2)] {
+    for (rtc, delta) in [(mask, -2i128), (0, -1), (1, 0), (2, 1), (3, 2)] {
         let mut p = packet(0x88, &b);
         p.rtc = Rtc::from_raw(rtc);
         let r = inspect_secondary(p, &Default::default()).unwrap();
