@@ -167,6 +167,17 @@ fn calendar(r: &TimelineReference) -> Option<(u16, Option<u16>)> {
             .map(|t| (t.day_of_year, t.year)),
     }
 }
+// Revalidate a retained leap label after caller/anchor/phase supplies its year.
+// RDG-010 / owner2026-11-15: a forbidden DOY label is malformed, not
+// evidence for an observed leap contribution. Unknown-year dates stay eligible.
+fn invalid_leap_label(r: &TimelineReference, year: Option<u16>) -> bool {
+    r.input
+        .wire
+        .and_then(|(_, w)| w.time)
+        .or_else(|| r.input.qualified.as_ref().and_then(|q| q.time))
+        .filter(|t| t.is_leap_second())
+        .is_some_and(|t| year.is_some_and(|y| t.with_year(y).is_err()))
+}
 // These facts qualify for phase tracking, independently of ordinary leap-time
 // admission. Non-admitted invalid/None/malformed observations remain skippable.
 fn year_evidence(r: &TimelineReference) -> bool {
@@ -389,6 +400,12 @@ impl YearClock {
                         .ok_or(TimeError::QuantityOverflow {
                             quantity: "session year rollovers",
                         })?;
+                    if invalid_leap_label(r, self.point(r, phase).and_then(|p| p.year)) {
+                        // Do not commit phase/last/anchor or credit a leap from
+                        // this observation. resolve emits TF-004 with its year.
+                        r.input.year_basis.phase = phase;
+                        return Ok(());
+                    }
                     observed_leap_ns = observed_leap_ns.checked_add(leap_ns).ok_or(
                         TimeError::QuantityOverflow {
                             quantity: "observed leap adjustment",
@@ -410,16 +427,19 @@ impl YearClock {
                     point = self.point(r, phase).unwrap_or(point);
                     self.last = Some(point);
                 }
-            } else if !point
-                .year
-                .is_some_and(|y| point.day == 366 && !crate::util::is_leap_year(y))
+            } else if !invalid_leap_label(r, point.year)
+                && !point
+                    .year
+                    .is_some_and(|y| point.day == 366 && !crate::util::is_leap_year(y))
             {
                 self.last = Some(point);
             }
         }
         r.input.year_basis.phase = phase;
         r.input.year_basis.observed_leap_ns = observed_leap_ns;
-        self.remember_anchor(r);
+        if !invalid_leap_label(r, self.point(r, phase).and_then(|p| p.year)) {
+            self.remember_anchor(r);
+        }
         Ok(())
     }
     /// Resolve against evidence available now, preserving raw wire/year inputs.
@@ -543,8 +563,18 @@ impl YearClock {
                 context: "normalization year unknown after a reference gap",
             });
         }
-        let malformed = selected_year.is_some_and(|y| day == 366 && !crate::util::is_leap_year(y));
-        if let Some(ReferenceValue::Readable(t, valid)) = r.input.year_basis.original {
+        let malformed = selected_year.is_some_and(|y| day == 366 && !crate::util::is_leap_year(y))
+            || invalid_leap_label(r, selected_year);
+        if malformed {
+            r.input.value = ReferenceValue::Malformed;
+            r.admitted = false;
+            if !r.reasons.contains(&Rejection::Malformed) {
+                r.reasons.push(Rejection::Malformed);
+            }
+        }
+        if let Some(ReferenceValue::Readable(t, valid)) =
+            r.input.year_basis.original.filter(|_| !malformed)
+        {
             match t.with_year(selected_year) {
                 Ok(t) => {
                     r.input.value = ReferenceValue::Readable(t, valid);
@@ -713,10 +743,33 @@ pub(crate) fn resolve_session(
     refs: &mut [TimelineReference],
     policy: &OfflinePolicy,
 ) -> Result<Vec<TimelineFinding>> {
+    // A future DMY can disqualify an earlier yearless leap label. Rebuild
+    // phase evidence without newly malformed labels so their contribution is
+    // not retained. Rejections are monotone: at most refs.len() new labels,
+    // with no unbounded queue and no revision of stream answers.
+    loop {
+        let before = refs.iter().filter(|r| invalid_resolved_label(r)).count();
+        let findings = resolve_session_pass(refs, policy)?;
+        let after = refs.iter().filter(|r| invalid_resolved_label(r)).count();
+        if after <= before {
+            return Ok(findings);
+        }
+    }
+}
+fn invalid_resolved_label(r: &TimelineReference) -> bool {
+    matches!(r.input.value, ReferenceValue::Malformed)
+        && invalid_leap_label(r, r.input.year_basis.selected().map(|c| c.year))
+}
+fn resolve_session_pass(
+    refs: &mut [TimelineReference],
+    policy: &OfflinePolicy,
+) -> Result<Vec<TimelineFinding>> {
     let mut clock = YearClock::default();
     // Apply the first observed origin BEFORE validating late day366 against its
     // selected year, exactly as stream does. Query/quality indexes still sort RTC.
     for reference in refs.iter_mut() {
+        reference.input.year_basis.resolved = false;
+        reference.input.year_basis.phase_residual = None;
         match clock.stamp(reference, policy) {
             Err(TimeError::NeedsContext { .. }) => {
                 // An implausible nearest explanation breaks year continuity just

@@ -303,7 +303,7 @@ scenarios!(q15_dmy_native, span, true, false);
 // Partial RDG-010/COR-110 clauses; no whole-requirement marker. Fig11-13
 // (11-25/PDF33): day365=0x0365,182=0x0182, seconds59/60=0x5900/0x6000.
 fn doy(day: u16, sec: u8, midnight: bool, year: Option<u16>) -> ReferenceInput {
-    let bcd = |n: u16| ((n / 10) << 4 | n % 10) as u8;
+    let bcd = |n: u16| (((n / 10) << 4) | (n % 10)) as u8;
     let bytes = [
         1,
         if year.is_some_and(|y| y % 4 == 0) || year.is_none() {

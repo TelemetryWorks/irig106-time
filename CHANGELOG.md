@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### PR28 review — known-year DOY leap labels
+
+- Owner decision 2026-11-15: revalidate DOY 23:59:60 after caller, anchor or
+  phase supplies the year. Only days 182/366 in leap years or 181/365 in common
+  years qualify. Forbidden labels produce TF-004 ERROR and are not used or
+  credited as leap seconds. Unknown years retain all four candidate dates.
+- Offline later DMY evidence also removes a forbidden label's prior leap
+  contribution. Already emitted stream answers remain immutable. Observed leap
+  contributions never cross independent year-evidence segments (N2 regression).
+
 ### ⚠️ S08 session year evidence and LY validation
 
 - Resolve yearless Format 1 references from same-session DMY, then caller, then

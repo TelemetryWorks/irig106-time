@@ -412,6 +412,9 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 | Q13 late leap label |same Q14, late seconds=60 |late year evidence 2016, phase -1; NeedsContext/TF-022 retained, no TF-004/007, both engines |
 | Q5 / Q5n / Q15n |2016 Dec 31 23:59:59 ->23:59:60 ->2017 Jan 1 00:00:00 ->00:00:01, RTC steps 1 s; DOY+caller or DMY, native/normalized |physical 59->00 span 2 s, then 1 s; no TF-017/drift; observed leap contribution +1 s retained; normalized TAI must not count it twice |
 | DOY leap start |caller 2016; DOY 366 23:59:60 at RTC 0 -> DOY 1 midnight at RTC +1 s, no DMY |first label retains NeedsContext/TF-022 and year evidence 2016; next (2017,1), phase +1, no TF-017; raw and qualified offline/Standard/Interpolate |
+| I5 forbidden DOY leap |caller2016;365 23:59:59 ->23:59:60 ->366 midnight, RTC1s |middle TF-004 ERROR/unusable, no leap credit; readable span1s minus RTC2s gives TF-017 -1s, drift -500,000ppm offline; both stream modes agree |
+| I6 forbidden DOY leap |caller2017;182 23:59:59 ->23:59:60 ->183 midnight, RTC1s |same rejection/no-credit/-1s result; unknown year still permits all four potential dates |
+| N2 segment guard |real2016Dec31 leap, then2017Jan1 ->365 at+181days (>182.5day best residual), followed by DMY2017Dec31 |new segment leap contribution0; cross-segment TF-017 +183days, never +183days-1s; offline path, stream rejects gap until explicit boundary |
 | DMY crossover |DMY2023Dec31 ->DOYJan1 / DMY2024Jan1 / DMY2023Jan1, RTC1s |DOY2024; consistent2024 DMY no TF-032; same-year2023 DMY retains contrary evidence and TF-032 |
 
 
@@ -688,3 +691,71 @@ on the final code (jobs/threads 2): feature suites, MSRV 1.85, no_std WASM ±ser
 CLI build/clippy, benches, locked all-fuzz compile, fmt/docs/trace and cargo-deny.
 Actionlint/diff pass. Hosted CI is verified at the reported head. No merge or
 publication.
+
+
+## PR28 review — known-year DOY leap validation
+
+Owner2026-11-15 closes RDG-010's deferred-year validation gap. Its existing
+June30/December31 restriction applies when caller/anchor/phase supplies the
+DOY year, as DMY already does. Leap years allow182/366, common years181/365;
+unknown years retain all four potential dates. The shared CalendarReading
+validation is reused; a forbidden label is TF-004 ERROR with Unusable evidence,
+not an absolute/phase anchor or observed leap contribution. No finding row,
+Design or Review field changes. L3-TAI-107 clarifies this timing, retaining
+L2-TAI-107/L1-TAI-007 and all quoted sources.
+
+Sources remain RCC200-16 AppendixA.2, "If required, time changes are made on
+December 31 and on June 30 at 2400 hours."; §3.6 "excluding leap second days
+when a second may be added or subtracted"; 106-24R1 Fig11-13/14 (printed11-25/
+PDF33) for wire weighting. No fresh page inspection claimed. Hand-derived
+DOY365=0x0365,182=0x0182, seconds59/60=0x5900/0x6000, HHMM=0x2359.
+I5/I6 readable endpoints span1s against2s RTC: TF-017 -1s, offline drift
+(-1/2)*1e6=-500,000ppm. Forbidden labels contribute0. Separate tests cover
+caller context in offline/Standard/Interpolate and earlier DMY context in all
+three paths; all four unknown-year dates remain eligible. A future DMY control
+also verifies offline removal of a previously unqualified contribution.
+
+Tests-first commit5c3632e: SIX actual runtime failures at fec309e (I5/I6 in
+three paths); N2 passed there and is a guard test, not a failing-first defect.
+An initial test draft had an incorrect severity identifier and an N2 fixture
+that accidentally crossed RTC half-range without an intermediate observation;
+neither is counted as runtime defect evidence. The corrected N2 inserts a data
+packet at100days, so the181day gap unwraps in one session. Its2017Jan1 ->
+DOY365 span is364days, RTC181days: residual+183days. A previous-year hypothesis
+crosses leap2016 and gives-183days, so both exceed182.5 and start a new offline
+year-evidence segment. DMY2017Dec31 anchors it; segment0 contribution1s must
+not be subtracted from segment1 contribution0. Stream cannot take this path:
+it rejects that residual and requires an explicit session boundary.
+
+Commit430ae08 adds unknown-year/anchor controls and the later-DMY test. The
+later-DMY test was executed against the intermediate working fix and failed:
+TF-004 was present but the old1s contribution survived. It is not claimed as a
+separate committed-main runtime reproduction. Earlier-DMY controls were added
+after the fix and are not claimed failing-first. Offline now replays phase
+tracking after newly malformed leap labels are removed, retaining original raw
+fields and year candidates. Rejected labels are skipped; replay is bounded by
+the finite reference count, with no hidden queue. Stream emitted answers are
+never revised.
+
+Five isolated source mutations each compiled and failed runtime assertions:
+
+| Mutation | Observable failure |
+|---|---|
+| N2 remove segment equality in leap_delta | cross-segment residual becomes183days-1s, expected+183days fails |
+| omit known-year leap disqualification in resolve | I5 missing TF-004/Malformed |
+| allow forbidden label into phase clock | I5 stream loses real TF-017 -1s |
+| bypass future-label replay | future DMY retains a forbidden1s contribution |
+| reject yearless leap candidates | unknown-year four-date control produces TF-004 |
+
+All mutant sources restored. Final s08_late_leap suite33 tests, combined S08
+135 (prior123 plus12). New tests exercise partial COR-110/TAI-107/RDG-010
+clauses only: no new whole-requirement markers, matrix160/288 unchanged.
+Full bounded CI equivalent and hosted CI results are reported at the final
+head; no merge or publish.
+
+Final local checks:18/18 pass (jobs/threads2), including feature suites,
+MSRV1.85, no_std WASM±serde, CLI build/clippy, benches, locked all-fuzz
+compilation, fmt/docs/trace/cargo-deny. Initial clippy found only test-helper
+precedence; explicit parentheses fixed it, clippy and checks8..18 reran green.
+No arithmetic or fixture values changed. Actionlint/diff clean; all earlier
+L3 Source lines and Design/Review fields compare unchanged.
