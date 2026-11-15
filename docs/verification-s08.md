@@ -407,6 +407,7 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 | late |2024; first1 00:00:05 atRTC1s, then late365 23:59:59 atRTC0 |late(2023,365),-1; TF-017 +5s in earlier->later orientation |
 | unknown366 |no year;366 23:59:59 ->1 midnight;1s |(None,1),+1; TF-020, no TF-017; must consider366days |
 | invalid366 |2023;365 23:59:59 ->366 midnight;1s |malformed/unadmitted TF-004 and LY finding where applicable; no phase repair |
+| DOY leap start |caller 2016; DOY 366 23:59:60 at RTC 0 -> DOY 1 midnight at RTC +1 s, no DMY |first label retains NeedsContext/TF-022 and year evidence 2016; next (2017,1), phase +1, no TF-017; raw and qualified offline/Standard/Interpolate |
 | DMY crossover |DMY2023Dec31 ->DOYJan1 / DMY2024Jan1 / DMY2023Jan1, RTC1s |DOY2024; consistent2024 DMY no TF-032; same-year2023 DMY retains contrary evidence and TF-032 |
 
 
@@ -534,3 +535,64 @@ suites, MSRV1.85, no_std WASM±serde, CLI, benches and locked fuzz-target compil
 Actionlint/diff/trace pass; no campaign. Hosted CI is verified at the reported
 head. No source,
 configuration, requirement, decision, CHANGELOG or finding-catalog edits.
+
+
+## S08 follow-up — session starts on a yearless leap label
+
+Base main `b6ccf4dc52e79742651dfb51c13de0c752487a09` (PR26 merged).
+The former year_evidence guard accepted a NeedsContext leap label only when
+its BODY supplied a year. A first DOY second 60 with caller 2016 was therefore
+skipped for phase tracking and offline phase-origin selection. The next DOY
+day 1 stayed at phase 0/year 2016, a year early. This is a pre-existing defect,
+not a new calendar or leap-table policy.
+
+The fix qualifies a retained explicit second 60 as calendar/phase evidence,
+independent of whether its year comes from DMY or caller/session context. It
+keeps the NeedsContext value and all rejection filters: source None/undeclared
+leap observations cannot anchor phase, and no leap label is thereby admitted
+as an absolute-time reference. Unknown year still stays unknown. Raw-layout
+and edition-qualified inputs use the same guard/phase function. No API,
+dependency, CLI, finding level or Review/Design field changes.
+
+Sources: 106-24R1 Figure 11-13, printed 11-25/PDF 33 (DOY has no year),
+RDG-010 (explicit second 60 retained), contract 5.3 and the owner-adopted
+2026-11-15 YEAR-PHASE rule. First literal CSDW 0x00000101, words
+0x6000/0x2359/0x0366 represents day 366 23:59:60 with LY=1/DATE=0/SRC=1
+and caller 2016. Next CSDW 1, words 0/0/1 is day 1 midnight at RTC +1 s.
+Cyclic nominal span 0 plus the explicit leap second gives 1 s, residual 0,
+phase +1 and year 2017. First leap remains NeedsContext with TF-022; it cannot
+anchor an absolute answer before the usable midnight reference. The scenario
+is added to both copies of the S08 case table. No new page inspection or host
+clock use.
+
+Tests-only commit `02ae2c6` on main reproduced SIX runtime failures: raw and
+edition-qualified input independently through offline, Standard and Interpolate;
+each returned 2016 instead of 2017. The unusable-observation control already
+passed and is not claimed failing-first. Before committing, a missing import
+and an overbroad TF-002 expectation were corrected; this fix does not redefine
+before-first-time-packet finding semantics. A post-fix unknown-year control
+proves phase tracking does not invent a year. Eight focused follow-up tests;
+combined S08 suite 102 (prior 94 plus 8). These are partial COR-110/RDG-010
+clauses with no whole-requirement marker. Matrix stays 160/288, delta 0.
+CHANGELOG S08 prose spacing is corrected alongside its fix note.
+
+Executed isolated runtime mutations (generated from saved original source,
+restored at completion; no compile-error kills):
+
+| Mutation | Failed regression / observable |
+|---|---|
+| require a body year again | all six regression paths return 2016 instead of 2017 |
+| omit raw leap evidence | all three raw paths return 2016 |
+| omit qualified leap evidence | all three qualified paths return 2016 |
+| bypass NeedsContext-only rejection filter | unusable source-None control wrongly supplies phase/year 2017 |
+| omit from-end leap second in expected span | all six paths raise spurious TF-017 -1 s |
+| offline origin requires absolute admission | both offline paths rebase on midnight and return 2016 |
+
+Standard and Interpolate have separate test names, so neither mode's mutation
+evidence is inferred from a failing assertion in the other. The negative control
+also checks undeclared input in both engines/modes with correct production code;
+its mutant fails first on source None. All six mutations compile and fail runtime
+assertions, with production restored afterward. All 18 local CI-equivalent checks
+pass with jobs/threads 2, including feature suites, MSRV 1.85, no_std WASM ±serde,
+CLI, benches and all fuzz-target compile checks. Actionlint/diff/trace pass;
+no campaign. Hosted CI is verified at the reported head. No merge or publication.

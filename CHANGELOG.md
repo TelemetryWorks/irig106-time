@@ -9,54 +9,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ⚠️ S08 session year evidence and LY validation
 
-- Resolve yearless Format1 references from same-session DMY, then caller, then
+- Resolve yearless Format 1 references from same-session DMY, then caller, then
   governing R-x\RI4; never G\OD/host clock. Retain all applicable candidates,
   original values, governing context and selected provenance in `year_basis`.
   Year remains partial when evidence is absent (TF-020). Known years advance at
   observed year boundaries; recorded LY never supplies the year.
 - TF-032 is owner-accepted WARNING (2026-11-14): highest-priority year used,
-  contradictory candidates kept, time value still produced. All32 finding levels
+  contradictory candidates kept, time value still produced. All 32 finding levels
   are approved; TF-001..031 unchanged. Overrides do not alter factual validity.
-- Compare LY with known Gregorian years/day366 (TF-007); an impossible known-year
-  day366 also remains malformed (TF-004), never repaired or admitted.
+- Compare LY with known Gregorian years/day 366 (TF-007); an impossible known-year
+  day 366 also remains malformed (TF-004), never repaired or admitted.
 - BREAKING: `ReferenceInput` literals add `year_basis` (use Default); attach
   per-reference caller/RI4 context with `.with_year_context(...)`. Offline finish
   uses same-session later DMY; streams update only unreleased answers, including
   held fallbacks, and retain bounded first/latest DMY evidence across reference
   eviction. Session boundaries clear year evidence. Explicit normalization is
   recomputed on a changed year; unavailable context stays labelled, never stale.
-- Owner-accepted2026-11-15 stable-first for same-priority DMY conflicts:
+- Owner-accepted 2026-11-15 stable-first for same-priority DMY conflicts:
   first observed eligible DMY anchors yearless references in both engines
   (observation order/packet identity, never RTC order). Each DMY keeps its own
   calendar and contradictory candidates. Case (a): later DMY can backdate offline
   references, while stream cannot revise answers already emitted. TF-032 repeats
   per affected reference while retained candidates disagree, not once per session.
-  The first DMY anchor ADVANCES with the selected year phase: Dec31 2023 ->
-  Jan1 DOY gives2024, and consistent DMYJan1 2024 raises no TF-032. A contrary
+  The first DMY anchor ADVANCES with the selected year phase: Dec 31 2023 ->
+  Jan 1 DOY gives 2024, and consistent DMY Jan 1 2024 raises no TF-032. A contrary
   same-year DMY keeps raw evidence and raises TF-032; no configuration-date default.
-- Owner-adopted2026-11-15 YEAR-PHASE reader policy considers d=-1/0/+1
+- Owner-adopted 2026-11-15 YEAR-PHASE reader policy considers d=-1/0/+1
   for every strictly forward RTC reference, regardless of ordinal-day order;
   mirrored signed arithmetic handles late references. Choose the closest expected
   elapsed using the real crossed-year length (both when unknown); ties keep d=0.
   A backward correction may select the PREVIOUS year, then recover the next year;
   same-day corrections need not change phase. Equal counters do not change it.
-- Selection is independent of the jump threshold: a New Year+5s correction
-  advances to2024 and reports TF-017; threshold equality raises no finding.
+- Selection is independent of the jump threshold: a New Year +5 s correction
+  advances to 2024 and reports TF-017; threshold equality raises no finding.
   Explicit leap labels retain their second even in linear same-year spans.
   Unknown-year crossings cannot invent absolute deltas/drift but keep signed
-  TF-017 corrections. Known common-year day366 stays malformed (TF-004), not an
+  TF-017 corrections. Known common-year day 366 stays malformed (TF-004), not an
   anchor or a calendar repaired by guessing a different year.
-- Only a winning residual GREATER than182.5days requires context. Offline
+- Only a winning residual GREATER than 182.5 days requires context. Offline
   starts a new year-evidence segment, preserving partial values with TF-020,
   signed gap/context evidence and cleared stale absolute normalization; stream
   rejects before progress/draining/identity commit, allowing boundary retry.
-  This supersedes the previous blanket365day RTC-gap guard: an exact365day
+  This supersedes the previous blanket 365-day RTC-gap guard: an exact 365-day
   common-year calendar interval is resolved by d=+1 with zero residual. Unusable
-  observations neither reset phase nor cut its gap evidence. Existing365/400day
+  observations neither reset phase nor cut its gap evidence. Existing 365/400-day
   implausible-gap fixtures remain partial/rejected by the residual bound.
 - `verification-s08.md` records clause limits and honest tests-first/mutation
-  evidence. FND-102 is not promoted: this slice does not test every contract6
+  evidence. FND-102 is not promoted: this slice does not test every contract 6
   degraded case. Governing TMATS extraction remains S09; no CLI/dependency change.
+
+- A session starting with a DOY `23:59:60` label now carries the caller year
+  across midnight (2016 day 366 -> 2017 day 1). The retained leap label supplies
+  phase evidence while still needing context for absolute-time admission.
 
 ### ⚠️ S07 Chapter 4 explicit calendar context
 
