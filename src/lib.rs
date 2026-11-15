@@ -101,6 +101,8 @@ pub mod leap;
 pub mod network_time;
 /// RDG-012 NTP era/UTC and leap-ambiguity conversion with explicit evidence.
 pub mod ntp;
+/// Explicit secondary epochs, session ERTC correlation and signed comparison.
+pub mod own_time;
 /// Ch10/Ch11 packet format provenance (106-17 split).
 pub mod packet_standard;
 /// Time quality metrics for correlation health assessment.
