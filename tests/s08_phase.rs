@@ -100,7 +100,10 @@ fn run(label: &str, ctx: Option<u16>, steps: &[Step], stream: bool) {
             b.observe(p.clone(), false).unwrap();
         }
         let t = b.finish().unwrap();
-        for (r, step) in t.sessions()[0].references.iter().zip(steps) {
+        for (index, (r, step)) in t.sessions()[0].references.iter().zip(steps).enumerate() {
+            if ctx.is_none() {
+                assert_eq!(r.input.year_basis.rollovers(), i32::from(index > 0));
+            }
             let ReferenceValue::Readable(value, _) = r.input.value else {
                 panic!("{label}: unreadable")
             };
@@ -563,6 +566,48 @@ fn day366_does_not_repair_a_known_common_year() {
                 .findings
                 .iter()
                 .any(|f| f.code == 4)
+        );
+    }
+}
+
+// The owner rule bounds residual, not raw RTC spacing: a known365day span
+// with identical calendar position has zero residual under d=+1.
+case!(
+    annual_zero_residual,
+    Some(2023),
+    [
+        at(10, 0, 0, 0, 0, Some(2023), None),
+        at(10, 0, 0, 0, 365 * D, Some(2024), None)
+    ]
+);
+#[test]
+fn malformed_first_day366_cannot_become_a_year_anchor() {
+    let ctx = Some(2023);
+    let packets = [
+        packet(1, 0, Some(wire(at(366, 0, 0, 0, 0, Some(2023), None), ctx))),
+        packet(2, S, Some(wire(at(1, 0, 0, 0, S, Some(2023), None), ctx))),
+    ];
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    for p in &packets {
+        b.observe(p.clone(), false).unwrap();
+    }
+    let t = b.finish().unwrap();
+    assert!(!t.sessions()[0].references[0].admitted);
+    assert!(
+        matches!(t.sessions()[0].references[1].input.value,ReferenceValue::Readable(t,_) if t.year()==Some(2023))
+    );
+    for mode in [StreamMode::Standard, StreamMode::Interpolate] {
+        let mut s = StreamTimeline::new(policy(mode), None).unwrap();
+        s.observe(packets[0].clone(), 0, 100, false).unwrap();
+        s.observe(packets[1].clone(), 0, 100, false).unwrap();
+        assert_eq!(
+            s.observe(packet(3, S, None), 0, 100, false)
+                .unwrap()
+                .answers[0]
+                .time
+                .unwrap()
+                .year(),
+            Some(2023)
         );
     }
 }
