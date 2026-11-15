@@ -96,3 +96,5 @@ Pre-merge preparation:18/18 locked checks pass (jobs/threads2): four feature
 suites, three MSRV1.85 checks, clippy/fmt/docs, CLI build/clippy, no_std WASM
 with/without serde, trace check, benches, all10 fuzz targets and cargo-deny.
 Post-PR37-main merge verification remains mandatory before opening this PR.
+Dependency-only main3bedbd4 was then ordinary-merged; all18 checks repeated and
+passed with its lockfiles. PR37's merge/final recheck gate still applies.
