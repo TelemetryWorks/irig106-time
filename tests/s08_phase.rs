@@ -618,3 +618,195 @@ fn malformed_first_day366_cannot_become_a_year_anchor() {
         );
     }
 }
+
+// Review5: partial year-phase/finding clauses only (no whole-requirement tags).
+// Fig11-13,11-25/PDF33: unknown year permits366days despite day365 input.
+// Cyclic span366D-(365D-1s)=D+1s matches RTC86401s exactly.
+case!(
+    review5_p3_unknown_year_needs_366_hypothesis,
+    None,
+    [
+        at(365, 23, 59, 59, 0, None, None),
+        at(1, 0, 0, 0, 86401 * S, None, None)
+    ]
+);
+mod review5_f8_previous_crossed_year_is_leap {
+    use super::*;
+    fn packets() -> [PacketObservation; 3] {
+        // 2025 is common, but d=-1 crosses366day2024:364D-366D-181D=-183D.
+        // The same-year residual is+183D; both exceed182.5D. Substituting365D
+        // gives-182D, wrongly admitting a dated2024 reference.
+        [
+            packet(
+                1,
+                0,
+                Some(wire(at(1, 0, 0, 0, 0, Some(2025), None), Some(2025))),
+            ),
+            packet(2, 100 * D, None),
+            packet(
+                3,
+                181 * D,
+                Some(wire(at(365, 0, 0, 0, 181 * D, None, None), Some(2025))),
+            ),
+        ]
+    }
+    #[test]
+    fn offline() {
+        let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+        for p in packets() {
+            b.observe(p, false).unwrap();
+        }
+        let t = b.finish().unwrap();
+        let r = &t.sessions()[0].references[1];
+        assert!(matches!(r.input.value,ReferenceValue::Readable(t,_) if t.year().is_none()));
+        assert_eq!(r.input.year_basis.continuity_segment(), 1);
+        assert_eq!(
+            r.input.year_basis.gap_ticks().unwrap().get(),
+            i128::from(181 * D)
+        );
+        assert_eq!(r.input.year_basis.context().caller, Some(2025));
+        assert!(t.findings().iter().any(|f| f.code == 20 && f.packet == 3));
+    }
+    #[test]
+    fn stream() {
+        for mode in [StreamMode::Standard, StreamMode::Interpolate] {
+            let mut s = StreamTimeline::new(policy(mode), None).unwrap();
+            let packets = packets();
+            for p in &packets[..2] {
+                s.observe(p.clone(), 0, 100, false).unwrap();
+            }
+            assert!(matches!(
+                s.observe(packets[2].clone(), 0, 100, false),
+                Err(TimeError::NeedsContext { .. })
+            ));
+            // Rejection leaves packet identity/progress reusable with a boundary.
+            s.observe(packets[2].clone(), 0, 100, true).unwrap();
+        }
+    }
+}
+fn review5_midyear_dmy(month_day: u16, hhmm: u16, seconds: u8) -> ReferenceInput {
+    // Hand-derived Fig11-14 words: MMDD=0x0630/0x0701, year=0x2016,
+    // second60 in word0=0x6000, HHMM=0x2359/0. DATE=1,LY=1.
+    let mut bytes = vec![1, 3, 0, 0];
+    for w in [bcd(seconds.into()) << 8, hhmm, month_day, 0x2016] {
+        bytes.extend(w.to_le_bytes());
+    }
+    ReferenceInput::format1(
+        &bytes,
+        12,
+        TimeF1Layout::SourceWithIts17,
+        ScalePolicy::default(),
+    )
+    .unwrap()
+}
+fn review5_leap_findings(
+    first: ReferenceInput,
+    next: ReferenceInput,
+    late: bool,
+    expected: Option<i128>,
+    stream: bool,
+) {
+    let (first_ticks, next_ticks) = if late { (S, 0) } else { (0, S) };
+    let packets = [
+        packet(1, first_ticks, Some(first)),
+        packet(2, next_ticks, Some(next)),
+    ];
+    if !stream {
+        let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+        for p in packets {
+            b.observe(p, false).unwrap();
+        }
+        let t = b.finish().unwrap();
+        let jumps: Vec<_> = t
+            .findings()
+            .iter()
+            .filter(|f| f.code == 17)
+            .map(|f| f.delta_ns)
+            .collect();
+        assert_eq!(jumps, expected.map(|v| vec![Some(v)]).unwrap_or_default());
+        return;
+    }
+    for mode in [StreamMode::Standard, StreamMode::Interpolate] {
+        let mut s = StreamTimeline::new(policy(mode), None).unwrap();
+        let mut findings = s
+            .observe(packets[0].clone(), 0, 100, false)
+            .unwrap()
+            .findings;
+        findings.extend(
+            s.observe(packets[1].clone(), 0, 100, false)
+                .unwrap()
+                .findings,
+        );
+        let jumps: Vec<_> = findings
+            .iter()
+            .filter(|f| f.code == 17)
+            .map(|f| f.delta_ns)
+            .collect();
+        assert_eq!(
+            jumps,
+            expected.map(|v| vec![Some(v)]).unwrap_or_default(),
+            "{mode:?}"
+        );
+    }
+}
+macro_rules! review5_leap_case {
+    ($name:ident,$first:expr,$next:expr,$late:expr,$expected:expr) => {
+        mod $name {
+            use super::*;
+            #[test]
+            fn offline() {
+                review5_leap_findings($first, $next, $late, $expected, false);
+            }
+            #[test]
+            fn stream() {
+                review5_leap_findings($first, $next, $late, $expected, true);
+            }
+        }
+    };
+}
+// P4b: late leap label is nominally coincident with midnight, physically-1s.
+// Signed RTC is-1s, so the selected residual is zero. Offline sorts the earlier
+// leap first (from branch); stream sees the late label at the to end.
+review5_leap_case!(
+    review5_p4b_late_to_leap_label,
+    dmy(2017, false, 0),
+    dmy(2016, true, 60),
+    true,
+    None
+);
+// F20: calendar58->60=+2s, RTC+1s =>+1s. A positive nominal span must not
+// subtract the leap second merely because the to endpoint is a leap label.
+review5_leap_case!(
+    review5_f20_to_leap_positive_span,
+    dmy(2016, true, 58),
+    dmy(2016, true, 60),
+    false,
+    Some(1_000_000_000)
+);
+// F19: calendar60->58=-2s, RTC+1s =>-3s. A negative nominal span must not
+// add a leap second merely because the from endpoint is a leap label.
+review5_leap_case!(
+    review5_f19_from_leap_negative_span,
+    dmy(2016, true, 60),
+    dmy(2016, true, 58),
+    false,
+    Some(-3_000_000_000)
+);
+// F21: leap60->next00:00:05 is+6s, RTC+1s =>+5s, with KNOWN years.
+// Leap NeedsContext is not permission to omit the retained calendar correction.
+review5_leap_case!(
+    review5_f21_known_year_unreadable_endpoint,
+    dmy(2016, true, 60),
+    dmy(2017, false, 5),
+    false,
+    Some(5_000_000_000)
+);
+// F23: same+6s versus+1s, within2016 (d=0). June30 second60 is a caller
+// calendar label for parser/year-policy testing, not an IERS insertion claim.
+review5_leap_case!(
+    review5_f23_linear_unreadable_endpoint,
+    review5_midyear_dmy(0x0630, 0x2359, 60),
+    review5_midyear_dmy(0x0701, 0, 5),
+    false,
+    Some(5_000_000_000)
+);

@@ -419,10 +419,13 @@ stable-first DMY crossover variants. These passing controls are not claimed
 failing-first. Fixture development corrected an RTC getter and a late-reference
 index before that commit; these were test setup errors, not behavior failures.
 
-Tests-only follow-up `06c6ac0` adds annual_zero_residual separately in each
-engine: both runtime-failed the then-unmodified blanket365day-gap guard. A
-malformed-first366 control and unknown-phase assertions were also added; not
-claimed failing-first. The adopted rule bounds the BEST RESIDUAL, not RTC spacing:
+Tests-only follow-up `06c6ac0` has ELEVEN runtime failures in its full suite:
+the eight M/M3/N/P engine failures, both annual_zero_residual cases, and
+malformed_first_day366_cannot_become_a_year_anchor. Review5 replayed the commit's
+src/years.rs and tests/s08_phase.rs with jobs/threads2:30 passed,11 failed.
+The earlier record incorrectly treated malformed-first366 as a passing control
+and described only the separately observed annual pair. Unknown-phase assertions
+were added too, without an additional claimed runtime failure. The adopted rule bounds the BEST RESIDUAL, not RTC spacing:
 a365day common-year interval with identical calendar position selects d=+1,
 zero residual. The former unconditional365day guard is removed in both engines.
 Existing365/400day implausible intervals still exceed the residual bound and
@@ -431,7 +434,7 @@ not an intervening unusable source-None observation; the400day raw evidence
 assertion is updated from400days-.5s to400days. No value/rejection assertion is
 relaxed. This residual-versus-spacing distinction applies to the L3 rule/table.
 
-Current focused suite is80 tests:41 new phase tests,36 prior year tests and3
+Review4 focused suite was80 tests:41 new phase tests,36 prior year tests and3
 existing-API probes. Each table row runs offline and both standard/interpolate
 stream modes; literal cases assert calendar year/day AND exact signed TF-017
 residual. Stable-first checks first-DMY Dec31 -> DOYJan1, consistent next-year
@@ -440,15 +443,18 @@ phase+1 without inventing a year; linear second60, strict threshold/override,
 malformed first-anchor and atomic bound rejection have dedicated controls.
 No new whole-requirement marker; L3-COR-110 remains clause-level coverage.
 
-All nine named isolated mutations compile and fail runtime assertions after
-restoring source each time (no compile-error kills):
+The following nine local mutations compiled and failed assertions with source
+restored each time. Correction (review5): these local variants were overclaimed
+as killing all corresponding reviewer mutant families. The day366 test did NOT
+kill the reviewer's unknown-year-365-only mutant, and the leap-label test killed
+only the from half, not the to half. Missing coverage is added below.
 
 | Mutant | Targeted test / failed observable |
 |---|---|
 | tie-picks-crossing | tie_keeps_phase:2024 instead of2023 |
 | bound-inclusive (reject equality) | k_inclusive_half_year_bound: exact182.5day case becomes partial/error |
-| unknown-year-365-only | unknown_leap_year_uses_366: lost phase+1 / erroneous NeedsContext |
-| linear-leap-label-dropped | linear_span_keeps_an_explicit_leap_label: spurious TF-017 -1s |
+| local365-only loop restriction (not proof of reviewer P3) | unknown_leap_year_uses_366: lost phase+1 / erroneous NeedsContext under the narrower local variant; the reviewer365-only mutant survived |
+| leap-label from half only | linear_span_keeps_an_explicit_leap_label: spurious TF-017 -1s; the to half remained untested |
 | late-crossing-not-recorded | late_crossing_records_phase_and_signed_correction: unknown late +5s finding missing |
 | tf017-crossing-inclusive | crossing_threshold_is_strict_and_override_is_respected: finding at exact5s threshold |
 | tf017-crossing-ignores-threshold | same test:6s override ignored, spurious finding |
@@ -457,8 +463,9 @@ restoring source each time (no compile-error kills):
 
 The first365-only mutant attempt used an unimported vec macro and did not
 compile; it is NOT counted. Rewritten to a fixed array, it compiled and failed
-the expected runtime assertions on rerun. All nine final mutations were rerun
-successfully, then original production source restored. No fuzz campaign or
+the expected runtime assertions on rerun. These nine local variations were rerun
+successfully, then original production source restored; their limited reach must
+not be described as proof that the surviving reviewer variants were killed. No fuzz campaign or
 new visual-page inspection. All18 bounded local CI-equivalent checks pass
 (jobs/threads2), including feature suites, MSRV1.85, no_std WASM±serde, CLI,
 benches and all fuzz-target compile checks. Two clippy lints (nested condition,
@@ -466,3 +473,64 @@ fixture operator precedence) were corrected; completed test/MSRV checks passed
 before the final equivalent layout/parenthesis fix, then clippy and all remaining
 checks were rerun. Actionlint/diff/trace checks pass. Matrix160/288 (delta0).
 Hosted CI is verified at the reported head. No merge/publication.
+
+
+## PR26 review5 — seven surviving mutants; tests and record only
+
+Base `ea7e3b4e9c81189a88ac45b4e5262b3ed879f115`; production bytes unchanged.
+Added14 tests (offline and stream for each of seven scenarios; stream tests run
+both Standard and Interpolate). All14 passed against the reviewed production
+code before mutation. No failing-first behavior or production fix is claimed.
+Current focused suite:94 tests =55 phase +36 prior year +3 existing-API tests.
+No new Requirements marker: these are partial COR-110/finding clauses, not whole
+requirement coverage. Matrix160/288 unchanged.
+
+Source/fixture basis remains Fig11-13/14, printed11-25/PDF33, and the adopted
+YEAR-PHASE reader policy/contract5.3. Hand-positioned MMDD words0x1231,0x0630,
+0x0701, YYYY0x2016/0x2017 and second60 word0=0x6000 are independent of encoders.
+No new visual-page check or fuzz campaign. June30 2016 second60 is a legal
+calendar-label fixture for the reader's context path, not an IERS insertion
+claim. The unknown-year day365 fixture intentionally does not use LY as year
+or length evidence.
+
+Executed isolated mutations (all compile, all fail runtime assertions):
+
+| Probe / mutation | Fixture arithmetic and failed observable | Engine coverage |
+|---|---|---|
+| P3 unknown-year-365-only | unknown day365 23:59:59 ->day1 midnight atRTC86401s:366day hypothesis spans86401s, residual0; constraining unknown year to365days raises spurious TF-017 -86400s | offline and both stream modes |
+| F8 crossed-always-current |2025 day1 ->day365 atRTC181days: previous2024 is366days, previous-year residual=-183days (same-year=+183days); both exceed182.5days. Substituting current2025's365days admits dated2024/day365 at-182days instead of offline TF-020 partial / stream NeedsContext | offline and both stream modes; raw100day bridge, gap/context and retry assertions |
+| P4b drop to-end leap adjustment | late DMY2016Dec31 23:59:60 atRTC0 observed after2017Jan1 midnight atRTC1s: signed span-1s matches RTC-1s, no TF-017; mutant produces stream TF-017 -1s | both engines checked; only stream fails this mutant because offline sorts the leap first and uses the from branch |
+| F20 drop to-end sign guard | DMY2016Dec31 23:59:58 ->23:59:60 atRTC+1s: nominal+2s minusRTC1s=TF-017 +1s; wrongly subtracting1s on a positive span hides the finding | offline and both stream modes |
+| F19 drop from-end sign guard | DMY2016Dec31 23:59:60 ->23:59:58 atRTC+1s: nominal-2s minusRTC1s=TF-017 -3s; wrongly adding1s on a negative span changes it to-2s | offline and both stream modes |
+| F21 gate manual findings on unknown year only | DMY2016Dec31 23:59:60 ->2017Jan1 00:00:05 atRTC+1s: physical label span6s, residual+5s; selected year is known but leap endpoint NeedsContext, so dropping unreadable from the gate loses TF-017 | offline and both stream modes |
+| F23 record residual only when d!=0 | DMY2016Jun30 23:59:60 ->Jul1 00:00:05 atRTC+1s:6s label span, residual+5s, d=0; dropping unreadable from the record condition loses TF-017 | offline and both stream modes |
+
+Each mutation was generated independently from the saved original source and
+tested with its named scenario; production source was restored byte-for-byte
+at completion. P4b's passing offline check is explicitly not a
+mutant kill; its stream checks kill the missing to-end branch. Exact TF-017
+residual lists assert missing, extra and wrong-sign findings, rather than merely
+finding presence. F8 requires a partial, TF-020, gap/context and atomic stream
+rejection with reusable identity at an explicit boundary.
+
+### Correction: unknown-year366 LY fixture
+
+Between tests-only06c6ac0 and reviewed ea7e3b4, wire() changed its test CSDW
+for unknown-year day366 from byte1=0x00 to0x01 (LY bit8 set). DATE remains0;
+no year was supplied. This removes an unrelated TF-007 warning from that fixture;
+it does not infer a year or prove the365-only hypothesis mutant is killed.
+The prior record omitted this test-wire change. New P3 uses day365 with no year
+and LY clear; its zero residual requires the366day hypothesis independently.
+
+All seven mutations were also rerun with the stream-mode array temporarily
+restricted to Interpolate, independently of the Standard assertion that fails
+first in the ordinary two-mode run. All seven Interpolate reruns compile and
+fail, so both stream paths are checked rather than inferred. The original
+production AND test source bytes were restored at completion; each mutant/mode
+was generated independently from the saved originals.
+
+All18 local CI-equivalent checks pass with jobs/threads2, including all feature
+suites, MSRV1.85, no_std WASM±serde, CLI, benches and locked fuzz-target compile.
+Actionlint/diff/trace pass; no campaign. Hosted CI is verified at the reported
+head. No source,
+configuration, requirement, decision, CHANGELOG or finding-catalog edits.
