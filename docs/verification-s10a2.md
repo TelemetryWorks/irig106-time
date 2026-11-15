@@ -1,8 +1,8 @@
 # S10a2 — explicit own epochs, session ERTC and TF-014
 
-Preparation branch starts at PR37 c103d42 (S10a1), not an independent main.
-No PR may open until PR37 merges; carry its review fixes, ordinary-merge main,
-then repeat the full check set. This record supplements verification-s10a.md.
+Preparation started at PR37 c103d42 (S10a1), carrying its review fixes before
+PR37 merged. Main8016942 was ordinary-merged for PR opening after PR37/39/38
+merged. This record supplements verification-s10a.md; final checks follow below.
 
 ## Sources and interpretation boundary
 
@@ -95,9 +95,12 @@ Full verification and main-merge prerequisite are recorded below when executed.
 Pre-merge preparation:18/18 locked checks pass (jobs/threads2): four feature
 suites, three MSRV1.85 checks, clippy/fmt/docs, CLI build/clippy, no_std WASM
 with/without serde, trace check, benches, all10 fuzz targets and cargo-deny.
-Post-PR37-main merge verification remains mandatory before opening this PR.
+Opening check: main8016942 ordinary-merged; all18 checks pass in a fresh target.
 Dependency-only main3bedbd4 was then ordinary-merged; all18 checks repeated and
-passed with its lockfiles. PR37's merge/final recheck gate still applies.
+passed with its lockfiles. PR37's merge/final check gate was pending then.
 
 Carried PR37 review head a56a6a2 by ordinary merge, including its four evidence
 assertions and corrected figure pages; matching S10a2 citations corrected.
+
+The initial reused-target no-default run reported missing module imports; a
+fresh target with incremental off passes all18 with no Rust code changes.
