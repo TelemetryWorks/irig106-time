@@ -51,6 +51,7 @@ pub struct YearBasis {
     segment: usize,
     gap: Option<i128>,
     year_issue: Option<TimeError>,
+    crossing: Option<(u64, i128, u64)>,
 }
 impl YearBasis {
     // Relative calendar differences can be signed even without an absolute year,
@@ -117,6 +118,7 @@ struct Anchor {
 }
 #[derive(Debug, Clone, Copy)]
 struct Point {
+    packet: u64,
     ticks: i128,
     day: u16,
     position: i128,
@@ -126,7 +128,7 @@ struct Point {
 }
 const DAY_NS: i128 = 86_400_000_000_000;
 /// Constant-size session clock/first-DMY anchor, independent of stream caps.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub(crate) struct YearClock {
     last: Option<Point>,
     phase: i32,
@@ -274,6 +276,7 @@ impl YearClock {
                 })
         };
         Some(Point {
+            packet: r.key.packet,
             ticks: r.key.ticks,
             day,
             position,
@@ -282,15 +285,20 @@ impl YearClock {
             leap,
         })
     }
-    // Calendar consistency does not itself establish a year change: strict day
-    // order and positive RTC remain separate guards (also for same-day late data).
-    fn consistent(earlier: Point, later: Point, elapsed: i128, policy: &OfflinePolicy) -> bool {
-        let tolerance = i128::from(
-            policy
-                .jump_threshold_ns
-                .unwrap_or(earlier.precision.max(later.precision)),
-        );
-        [365u16, 366].into_iter().any(|days| {
+    // Reader policy, not a standard jump algorithm: compare the linear same-year
+    // explanation with each allowed cyclic explanation. A known year restricts
+    // its length; an unknown year remains unknown. Ties retain the current phase.
+    // Bound the winning residual to half the shortest Gregorian year (182.5d).
+    // Jump severity/threshold affects reporting, never selection of the year.
+    fn nearest_crossing(earlier: Point, later: Point, elapsed: i128) -> Result<(bool, i128)> {
+        let linear = later.position - earlier.position
+            + if earlier.leap && !later.leap {
+                1_000_000_000
+            } else {
+                0
+            };
+        let mut chosen = (false, linear - elapsed);
+        for days in [365u16, 366] {
             if earlier.day > days
                 || earlier.year.is_some_and(|y| {
                     days != if crate::util::is_leap_year(y) {
@@ -300,22 +308,24 @@ impl YearClock {
                     }
                 })
             {
-                return false;
+                continue;
             }
-            let mut span = later.position - earlier.position;
-            if span < 0 {
-                span += i128::from(days) * DAY_NS;
+            let residual = linear + i128::from(days) * DAY_NS - elapsed;
+            if residual.unsigned_abs() < chosen.1.unsigned_abs() {
+                chosen = (true, residual);
             }
-            if earlier.leap && !later.leap {
-                span += 1_000_000_000;
-            }
-            span >= 0 && (span - elapsed).unsigned_abs() <= tolerance as u128
-        })
+        }
+        if chosen.1.unsigned_abs() > (365 * DAY_NS / 2) as u128 {
+            return Err(TimeError::NeedsContext {
+                context: "year explanation residual exceeds half a common year",
+            });
+        }
+        Ok(chosen)
     }
     pub(crate) fn stamp(
         &mut self,
         r: &mut TimelineReference,
-        policy: &OfflinePolicy,
+        _policy: &OfflinePolicy,
     ) -> Result<()> {
         self.check_gap(r)?;
         if r.input.network.is_some() {
@@ -347,24 +357,34 @@ impl YearClock {
             if let Some(last) = self.last {
                 let ticks = last.ticks;
                 if r.key.ticks >= ticks {
-                    if r.key.ticks > ticks
-                        && point.day < last.day
-                        && Self::consistent(last, point, (r.key.ticks - ticks) * 100, policy)
-                    {
-                        self.phase =
-                            self.phase
-                                .checked_add(1)
-                                .ok_or(TimeError::QuantityOverflow {
-                                    quantity: "session year rollovers",
-                                })?;
+                    if r.key.ticks > ticks && point.day < last.day {
+                        let (crosses, residual) =
+                            Self::nearest_crossing(last, point, (r.key.ticks - ticks) * 100)?;
+                        if crosses {
+                            self.phase =
+                                self.phase
+                                    .checked_add(1)
+                                    .ok_or(TimeError::QuantityOverflow {
+                                        quantity: "session year rollovers",
+                                    })?;
+                            r.input.year_basis.crossing =
+                                Some((last.packet, residual, last.precision.max(point.precision)));
+                        }
                     }
                     phase = self.phase;
                     point = self.point(r, phase).unwrap_or(point);
                     self.last = Some(point);
                 } else if point.day > last.day {
                     let previous = self.point(r, phase - 1).unwrap_or(point);
-                    if Self::consistent(previous, last, (ticks - r.key.ticks) * 100, policy) {
+                    let (crosses, residual) =
+                        Self::nearest_crossing(previous, last, (ticks - r.key.ticks) * 100)?;
+                    if crosses {
                         phase -= 1;
+                        r.input.year_basis.crossing = Some((
+                            last.packet,
+                            residual,
+                            last.precision.max(previous.precision),
+                        ));
                     }
                 }
             } else {
@@ -482,7 +502,7 @@ impl YearClock {
         r.input.year_basis.year_issue =
             if selected_year.is_none() && r.input.year_basis.gap.is_some() {
                 Some(TimeError::NeedsContext {
-                    context: "year unknown after a long reference gap",
+                    context: "year continuity requires dated context",
                 })
             } else {
                 None
@@ -548,6 +568,24 @@ impl YearClock {
                 .any(|c| c.year != winner.year)
         });
         let mut out = Vec::new();
+        // Unknown calendar years cannot supply absolute_delta across a rollover,
+        // but the selected cyclic explanation still reports its clock correction.
+        if selected_year.is_none() {
+            if let Some((related, residual, precision)) = r.input.year_basis.crossing {
+                if residual.unsigned_abs()
+                    > u128::from(policy.jump_threshold_ns.unwrap_or(precision))
+                {
+                    out.push(TimelineFinding::observed(
+                        17,
+                        policy.finding_levels.get(&17).copied(),
+                        r.key,
+                        Some(r.channel),
+                        Some(related),
+                        Some(residual),
+                    )?);
+                }
+            }
+        }
         if normalization_rebased {
             if let Some(f) =
                 crate::reference::normalization_warning(&r.input, r.key, r.channel, policy)?
@@ -672,7 +710,27 @@ pub(crate) fn resolve_session(
                 ..YearClock::default()
             };
         }
-        clock.stamp(&mut refs[i], policy)?;
+        match clock.stamp(&mut refs[i], policy) {
+            Err(TimeError::NeedsContext { .. }) => {
+                // An implausible nearest explanation breaks year continuity just
+                // like a full-cycle gap. Preserve native partial time and TF-020.
+                let gap = clock
+                    .last
+                    .and_then(|last| refs[i].key.ticks.checked_sub(last.ticks));
+                clock = YearClock {
+                    segment: clock
+                        .segment
+                        .checked_add(1)
+                        .ok_or(TimeError::QuantityOverflow {
+                            quantity: "year continuity segments",
+                        })?,
+                    gap,
+                    ..YearClock::default()
+                };
+                clock.stamp(&mut refs[i], policy)?;
+            }
+            result => result?,
+        }
     }
     let mut groups = BTreeMap::<usize, Vec<usize>>::new();
     for (i, r) in refs

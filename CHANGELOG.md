@@ -32,11 +32,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   references, while stream cannot revise answers already emitted. TF-032 repeats
   per affected reference while retained candidates disagree, not once per session.
   No new nearest-year or configuration-date default.
-- Sparse rollovers require strictly decreasing ordinal day, positive RTC and
-  a matching cyclic calendar interval within the explicit jump threshold or
-  coarser endpoint resolution. Backward clock jumps retain the year and TF-017;
-  late correction is symmetric. Equal-counter and same-day late data do not
-  change the year. Explicit leap-second labels retain their second.
+- Sparse rollovers require strictly decreasing ordinal day and positive RTC.
+  Reader policy chooses the smaller residual between a cyclic year crossing and
+  a linear same-year explanation, using the known Gregorian year length when
+  available; ties keep the year. This selection is independent of the jump
+  threshold: a New Year clock correction advances the year and raises TF-017.
+  Backward clock jumps retain the year; late correction is symmetric. Winning
+  residuals beyond182.5days require context, with offline partials/TF-020 and
+  atomic stream rejection as for full-year gaps. Equal-counter and same-day
+  late data do not change the year. Explicit leap labels retain their second.
+  Unknown-year crossings cannot supply absolute deltas/drift; a selected cyclic
+  correction still carries its signed TF-017 finding without inventing a year.
 - Offline gaps of365days or more keep yearless partials with TF-020 INFORMATION,
   signed gap/context evidence and a year-evidence continuity segment. Earlier
   known values remain usable; fully dated values retain their year and a new

@@ -1741,12 +1741,85 @@ fn review3_unknown_year_rollover_has_no_delta_jump_or_drift() {
         1
     );
     assert!(!t.findings().iter().any(|f| f.code == 17));
-    assert!(t.quality(t.sessions()[0].id, 1).unwrap().drift_ppm.is_none());
+    assert!(
+        t.quality(t.sessions()[0].id, 1)
+            .unwrap()
+            .drift_ppm
+            .is_none()
+    );
     for mode in [StreamMode::Standard, StreamMode::Interpolate] {
         let mut s = StreamTimeline::new(sp(mode), None).unwrap();
         for packet in &packets {
             let batch = s.observe(packet.clone(), 0, 100, false).unwrap();
             assert!(!batch.findings.iter().any(|f| f.code == 17));
         }
+    }
+}
+// Additional post-fix controls: cyclic correction is reported even without a
+// full year, and late references use the same nearest-explanation comparison.
+#[test]
+fn review3_partial_and_late_crossing_corrections_keep_signed_findings() {
+    let mut packets = review3_new_year_packets();
+    for packet in &mut packets {
+        packet.reference = packet
+            .reference
+            .take()
+            .map(|r| r.with_year_context(YearContext::default()).unwrap());
+    }
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    for packet in &packets {
+        b.observe(packet.clone(), false).unwrap();
+    }
+    let t = b.finish().unwrap();
+    assert!(
+        t.findings()
+            .iter()
+            .any(|f| f.code == 17 && f.delta_ns == Some(5_000_000_000) && f.related == Some(1))
+    );
+    for mode in [StreamMode::Standard, StreamMode::Interpolate] {
+        let mut s = StreamTimeline::new(sp(mode), None).unwrap();
+        s.observe(packets[0].clone(), 0, 100, false).unwrap();
+        let batch = s.observe(packets[1].clone(), 0, 100, false).unwrap();
+        assert!(
+            batch
+                .findings
+                .iter()
+                .any(|f| f.code == 17 && f.delta_ns == Some(5_000_000_000) && f.related == Some(1))
+        );
+        let mut s = StreamTimeline::new(sp(mode), None).unwrap();
+        // Jan1 00:00:05 (caller2024) is observed first atRTC1s;
+        // late Dec31 23:59:59 atRTC0 must be2023, with residual+5s.
+        let jan = review2_wire(&[1, 1, 0, 0, 0, 5, 0, 0, 1, 0])
+            .with_year_context(YearContext {
+                caller: Some(2024),
+                recording: None,
+            })
+            .unwrap();
+        s.observe(p(1, 10_000_000, Some(jan)), 0, 100, false)
+            .unwrap();
+        let batch = s
+            .observe(
+                p(
+                    2,
+                    0,
+                    Some(review_year_end(
+                        2023,
+                        YearContext {
+                            caller: Some(2024),
+                            recording: None,
+                        },
+                    )),
+                ),
+                0,
+                100,
+                false,
+            )
+            .unwrap();
+        assert!(
+            batch
+                .findings
+                .iter()
+                .any(|f| f.code == 17 && f.delta_ns == Some(5_000_000_000))
+        );
     }
 }

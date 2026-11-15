@@ -48,7 +48,7 @@ Another failing-before-fix probe showed newly invalid day366 could mask a
 previous eligible stream anchor. Invalidated retained references are now removed;
 held fallback snapshots select a remaining eligible anchor before jump release.
 
-Initial focused suite:17 tests; after first review:23; current review:33 tests (3 existing-API +30 year integration tests), plus
+Initial focused suite:17 tests; after first review:23; review2:33 tests (3 existing-API +30 year integration tests); current review3:39 tests (3+36), plus
 the existing catalog/policy and complete feature regression suites. Targeted
 mutations:34 isolated probes compiled and failed assertions, sources restored.
 Groups cover DMY/caller/RI4 priority and context, first/latest/own DMY evidence,
@@ -173,6 +173,9 @@ lints/docs/format, trace and deny. Actionlint/diff clean; matrix unchanged160/28
 
 ## PR26 second review — jumps versus rollovers; offline gap partials
 
+Historical rule below is superseded by review3 nearest-explanation policy;
+its gap/partial behavior and strict comparator guards remain in force.
+
 Tests-only commit `1eadd5f`, against reviewed22f8631: the combined backward-jump
 regression failed at its offline assertion (2024 rather than2023); its stream
 cases were already present in that commit and are exercised by the final suite.
@@ -266,3 +269,80 @@ is corrected. Full bounded CI equivalent is rerun after these final changes.
 Final review2 verification: all33 focused tests, all14 isolated mutation assertions,
 and all18 bounded local CI-equivalent checks passed (jobs/threads2). Actionlint,
 diff and trace checks pass; matrix160/288 unchanged. No merge or publication.
+
+
+## PR26 third review — nearest calendar explanation (2026-11-15)
+
+Tests-only commit `9cc7d82` runs against reviewed `e31e21b`. Five new tests
+compiled: THREE runtime failures (New Year correction separately in offline and
+stream, and the common-year bounded-explanation case); two controls already
+passed (late larger-day jump and unknown-year rollover). They are not claimed
+failing-first. The revised existing threshold test also changes its expected
+year to2024 at all three thresholds. A sixth test, partial/late correction,
+was added after implementation to cover signed findings and the mirrored rule.
+An initial test-development run used an invalid session0 quality lookup; that
+fixture was corrected before the tests-only commit and is not behavioral evidence.
+
+**Reader policy, not an IRIG jump rule:** contract5.3 requires advancing the
+year across31December; Figures11-13/14 define the calendar fields, but the
+standard supplies no algorithm to disambiguate clock jumps. For strictly
+forward RTC and a smaller ordinal day, compute the signed linear calendar span
+and each allowed cyclic span (linear plus365/366days). Compare each span with
+elapsed RTC: choose the smallest absolute residual. A known earlier year permits
+only its Gregorian length; with no year, both lengths are considered without
+assigning an absolute year. A tie keeps the same year. Late references mirror
+this comparison using the candidate previous-year point and the retained later
+point. Strict forward RTC/day order remain separate guards. Same-day late
+observations and equal-counter day changes cannot advance the phase.
+
+The selected residual must be at most half the shortest Gregorian year,
+182.5days. This conservative reader bound is independent of the jump threshold;
+above it the year is unresolved rather than guessed. Offline starts a fresh
+year-evidence segment, preserves native partial clocks and emits existing TF-020
+INFORMATION, including gap/context evidence. Stream preflights a constant-size
+clock clone before progress, draining or identity commit, returns NeedsContext
+and allows retry with an explicit boundary. This extends the existing full-cycle
+gap behavior without adding a finding or changing the recording session.
+
+Jump reporting remains the caller threshold or coarser endpoint resolution:
+chosen residuals above it raise TF-017. Known-year comparisons use existing
+absolute_delta; unknown-year cyclic corrections retain a separate signed
+residual/related packet for TF-017 and never create an absolute delta or drift
+across an unqualified year. Severity overrides remain factual-validity neutral.
+
+Hand-derived Fig11-13 fixtures and observations:
+
+- 2023 day365 23:59:59 -> day1 00:00:05 at RTC+1s: crossing span6s,
+  residual+5s, versus linear span6s-365days. Both engines choose2024 and TF-017;
+  day1 00:00:06 at RTC+2s stays2024. Existing day200->199 backward-jump
+  fixture retains2023 and TF-017 residual-7s.
+- Late day200 00:00:05 atRTC0.5s, observed after day199 23:59:59 atRTC1s:
+  linear span-6s, residual-6.5s is nearest; the late value retains2023. A late
+  Dec31 observed after Jan1 with a+5s correction instead selects the prior year.
+- Known common2023 year-end->day1 at RTC+183days: allowed365day crossing span1s
+  has residual183days-1s, outside182.5days; the forbidden366day hypothesis
+  would give182days-1s. Offline must keep a partial with TF-020, stream must
+  reject atomically. Intervening100day data makes48-bit RTC unwrap unambiguous.
+- Unknown-year end->day1 at RTC+1s gets phase0->1, no absolute delta, no TF-017,
+  no drift. Unknown-year+5s correction still emits TF-017 with+5s and related
+  packet1 while remaining partial.
+
+Eight isolated source mutations compiled and failed runtime assertions; each
+source was restored immediately (no compile-error kills):
+
+| Mutation | Test / failed observable |
+|---|---|
+| late-consistency-skipped (force late phase decrement) | `review3_late_larger_day_is_a_jump_not_a_prior_year`: signed-6.5s stream finding disappears |
+| year-length-check-ignored | `review3_common_year_cannot_use_leap_hypothesis`: forbidden366day model gives a dated year instead of an offline partial |
+| same-calendar-year-ignores-phase | `review3_unknown_year_rollover_has_no_delta_jump_or_drift`: invented cross-year delta emits TF-017 |
+| year selection still gated at10ms | `review3_new_year_correction_*`:2023 or missing+5s TF-017 |
+| always select cyclic explanation | existing backward-jump regression:2024 instead of2023 |
+| omit182.5day residual bound | common-year bounded test: dated result instead of partial |
+| omit partial cyclic TF-017 | partial/late control: missing signed+5s finding |
+| reverse late comparison | partial/late control: late crossing loses signed+5s finding |
+
+No whole-requirement markers added for these partial clauses. Matrix stays
+160/288 (delta0); same-priority stable-first remains PROPOSAL pending owner.
+All39 focused tests and all18 bounded local CI-equivalent checks passed,
+with jobs/threads2. Actionlint, diff and trace checks passed. Hosted checks are
+verified at the reported head; no merge or publication.
