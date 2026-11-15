@@ -1,4 +1,4 @@
-//! Existing raw baselines: 106-24R1 Figures11-5/6 (11-11/PDF19).
+//! Existing raw baselines: 106-24R1 Figures11-5/6 (11-10/PDF18).
 use irig106_time::secondary::*;
 #[test]
 fn ieee_distinct_words_and_bounds_are_not_a_format2_body() {

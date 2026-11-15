@@ -13,7 +13,7 @@ Existing requirement/contract/register quotations, not fresh page rendering:
 - 106-24R1 §11.2.1.2 / Figures11-4/5/6: "The length of the packet secondary
   header is fixed at 12 bytes (96 bits)". Time occupies[0..8), header-reserved
   bytes[8..10), stored checksum[10..12). Figure11-4 is printed11-10/PDF18;
-  Figures11-5/6 printed11-11/PDF19. Retain both Chapter4's internal reserved
+  Figures11-5/6 printed11-10/PDF18. Retain both Chapter4's internal reserved
   word[0..2) and the header-reserved word independently.
 - §11.2.1.1g, printed11-9/PDF17: "The 32 bits indicating seconds shall be
   placed into the MSLW portion of the secondary header and the 32 bits
@@ -216,3 +216,16 @@ Matrix test-link status cannot express clause completeness: earlier Implemented
 raw-parser rows are not evidence that S10a2 conversions/adapters or human/local-
 recording settlement are complete. This ledger carries those remaining clauses.
 No Review/Design field changes; hosted checks are verified at reported head.
+
+### PR37 review: page citations and finding evidence
+
+Correct the figure citations to printed11-10/PDF18: Figures11-4/5/6 and
+§11.2.1.2a-c share that page; printed11-11/PDF19 is Packet Body §11.2.1.3.
+No new page rendering or change to the accepted word layout is claimed.
+Ordinary-merged main3bedbd4. Existing tests now assert TF028 Unusable, TF025
+and TF013 Kept, and checksum-finding offset header+10 (24+10=34), not+8.
+Each isolated reviewer mutant X5/X24/X30/X15 compiled and failed these runtime
+assertions; production restored. Ten focused tests pass; matrix178/288 unchanged.
+All18 locked local CI-equivalent checks repeated successfully after the merge
+and assertions; actionlint, trace check and diff clean. No production behaviour
+or requirement/Review/Design changes.
