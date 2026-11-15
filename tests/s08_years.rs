@@ -958,11 +958,8 @@ fn review_full_year_gap_needs_context_without_consuming_stream_state() {
         assert_eq!(t.lookup(post.key).unwrap().time.unwrap().year(), None);
         assert_eq!(post.input.year_origin, YearOrigin::Unknown);
         assert_eq!(post.input.year_basis.context().caller, Some(2023));
-        let expected_gap = if days == 365 {
-            315_360_000_000_000i128
-        } else {
-            345_599_995_000_000
-        };
+        // Unusable source-None observations cannot cut the year-evidence span.
+        let expected_gap = i128::from(days * DAY);
         assert_eq!(
             post.input.year_basis.gap_ticks().unwrap().get(),
             expected_gap

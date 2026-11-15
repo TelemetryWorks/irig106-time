@@ -408,3 +408,61 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 | unknown366 |no year;366 23:59:59 ->1 midnight;1s |(None,1),+1; TF-020, no TF-017; must consider366days |
 | invalid366 |2023;365 23:59:59 ->366 midnight;1s |malformed/unadmitted TF-004 and LY finding where applicable; no phase repair |
 | DMY crossover |DMY2023Dec31 ->DOYJan1 / DMY2024Jan1 / DMY2023Jan1, RTC1s |DOY2024; consistent2024 DMY no TF-032; same-year2023 DMY retains contrary evidence and TF-032 |
+
+
+### Review4 execution and evidence
+
+Docs-first commit `e90b0cd` records the adopted rule/case table before code.
+Tests-only `72abcee` against036dd14 adds38 tests: EIGHT runtime failures,
+M/M3/N/P separately offline and stream;30 controls passed, including all three
+stable-first DMY crossover variants. These passing controls are not claimed
+failing-first. Fixture development corrected an RTC getter and a late-reference
+index before that commit; these were test setup errors, not behavior failures.
+
+Tests-only follow-up `06c6ac0` adds annual_zero_residual separately in each
+engine: both runtime-failed the then-unmodified blanket365day-gap guard. A
+malformed-first366 control and unknown-phase assertions were also added; not
+claimed failing-first. The adopted rule bounds the BEST RESIDUAL, not RTC spacing:
+a365day common-year interval with identical calendar position selects d=+1,
+zero residual. The former unconditional365day guard is removed in both engines.
+Existing365/400day implausible intervals still exceed the residual bound and
+stay partial/rejected. Their signed gap now runs from the last usable reference,
+not an intervening unusable source-None observation; the400day raw evidence
+assertion is updated from400days-.5s to400days. No value/rejection assertion is
+relaxed. This residual-versus-spacing distinction applies to the L3 rule/table.
+
+Current focused suite is80 tests:41 new phase tests,36 prior year tests and3
+existing-API probes. Each table row runs offline and both standard/interpolate
+stream modes; literal cases assert calendar year/day AND exact signed TF-017
+residual. Stable-first checks first-DMY Dec31 -> DOYJan1, consistent next-year
+DMY with no TF-032, and contrary same-year DMY with TF-032. Unknown366 checks
+phase+1 without inventing a year; linear second60, strict threshold/override,
+malformed first-anchor and atomic bound rejection have dedicated controls.
+No new whole-requirement marker; L3-COR-110 remains clause-level coverage.
+
+All nine named isolated mutations compile and fail runtime assertions after
+restoring source each time (no compile-error kills):
+
+| Mutant | Targeted test / failed observable |
+|---|---|
+| tie-picks-crossing | tie_keeps_phase:2024 instead of2023 |
+| bound-inclusive (reject equality) | k_inclusive_half_year_bound: exact182.5day case becomes partial/error |
+| unknown-year-365-only | unknown_leap_year_uses_366: lost phase+1 / erroneous NeedsContext |
+| linear-leap-label-dropped | linear_span_keeps_an_explicit_leap_label: spurious TF-017 -1s |
+| late-crossing-not-recorded | late_crossing_records_phase_and_signed_correction: unknown late +5s finding missing |
+| tf017-crossing-inclusive | crossing_threshold_is_strict_and_override_is_respected: finding at exact5s threshold |
+| tf017-crossing-ignores-threshold | same test:6s override ignored, spurious finding |
+| offline-implausible-no-gap-evidence | l_outside_bound_keeps_gap_and_context_evidence: missing gap ticks/context reason |
+| day366-guard-removed (allow malformed first anchor) | malformed_first_day366_cannot_become_a_year_anchor: next reference loses2023/NeedsContext |
+
+The first365-only mutant attempt used an unimported vec macro and did not
+compile; it is NOT counted. Rewritten to a fixed array, it compiled and failed
+the expected runtime assertions on rerun. All nine final mutations were rerun
+successfully, then original production source restored. No fuzz campaign or
+new visual-page inspection. All18 bounded local CI-equivalent checks pass
+(jobs/threads2), including feature suites, MSRV1.85, no_std WASM±serde, CLI,
+benches and all fuzz-target compile checks. Two clippy lints (nested condition,
+fixture operator precedence) were corrected; completed test/MSRV checks passed
+before the final equivalent layout/parenthesis fix, then clippy and all remaining
+checks were rerun. Actionlint/diff/trace checks pass. Matrix160/288 (delta0).
+Hosted CI is verified at the reported head. No merge/publication.

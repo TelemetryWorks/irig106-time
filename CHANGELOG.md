@@ -25,31 +25,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   held fallbacks, and retain bounded first/latest DMY evidence across reference
   eviction. Session boundaries clear year evidence. Explicit normalization is
   recomputed on a changed year; unavailable context stays labelled, never stale.
-- PROPOSAL pending owner confirmation for same-priority DMY conflicts:
+- Owner-accepted2026-11-15 stable-first for same-priority DMY conflicts:
   first observed eligible DMY anchors yearless references in both engines
   (observation order/packet identity, never RTC order). Each DMY keeps its own
   calendar and contradictory candidates. Case (a): later DMY can backdate offline
   references, while stream cannot revise answers already emitted. TF-032 repeats
   per affected reference while retained candidates disagree, not once per session.
-  No new nearest-year or configuration-date default.
-- Sparse rollovers require strictly decreasing ordinal day and positive RTC.
-  Reader policy chooses the smaller residual between a cyclic year crossing and
-  a linear same-year explanation, using the known Gregorian year length when
-  available; ties keep the year. This selection is independent of the jump
-  threshold: a New Year clock correction advances the year and raises TF-017.
-  Backward clock jumps retain the year; late correction is symmetric. Winning
-  residuals beyond182.5days require context, with offline partials/TF-020 and
-  atomic stream rejection as for full-year gaps. Equal-counter and same-day
-  late data do not change the year. Explicit leap labels retain their second.
-  Unknown-year crossings cannot supply absolute deltas/drift; a selected cyclic
-  correction still carries its signed TF-017 finding without inventing a year.
-- Offline gaps of365days or more keep yearless partials with TF-020 INFORMATION,
-  signed gap/context evidence and a year-evidence continuity segment. Earlier
-  known values remain usable; fully dated values retain their year and a new
-  DMY can restore other years inside the segment. Session-origin years and cached absolute normalization cannot
-  silently bridge an unresolved gap. Stream keeps NeedsContext before progress/
-  draining/identity commit, accepting retry with explicit session/date context.
-  No finding ID/title/level changed. RI4-only rollover has independent tests.
+  The first DMY anchor ADVANCES with the selected year phase: Dec31 2023 ->
+  Jan1 DOY gives2024, and consistent DMYJan1 2024 raises no TF-032. A contrary
+  same-year DMY keeps raw evidence and raises TF-032; no configuration-date default.
+- Owner-adopted2026-11-15 YEAR-PHASE reader policy considers d=-1/0/+1
+  for every strictly forward RTC reference, regardless of ordinal-day order;
+  mirrored signed arithmetic handles late references. Choose the closest expected
+  elapsed using the real crossed-year length (both when unknown); ties keep d=0.
+  A backward correction may select the PREVIOUS year, then recover the next year;
+  same-day corrections need not change phase. Equal counters do not change it.
+- Selection is independent of the jump threshold: a New Year+5s correction
+  advances to2024 and reports TF-017; threshold equality raises no finding.
+  Explicit leap labels retain their second even in linear same-year spans.
+  Unknown-year crossings cannot invent absolute deltas/drift but keep signed
+  TF-017 corrections. Known common-year day366 stays malformed (TF-004), not an
+  anchor or a calendar repaired by guessing a different year.
+- Only a winning residual GREATER than182.5days requires context. Offline
+  starts a new year-evidence segment, preserving partial values with TF-020,
+  signed gap/context evidence and cleared stale absolute normalization; stream
+  rejects before progress/draining/identity commit, allowing boundary retry.
+  This supersedes the previous blanket365day RTC-gap guard: an exact365day
+  common-year calendar interval is resolved by d=+1 with zero residual. Unusable
+  observations neither reset phase nor cut its gap evidence. Existing365/400day
+  implausible-gap fixtures remain partial/rejected by the residual bound.
 - `verification-s08.md` records clause limits and honest tests-first/mutation
   evidence. FND-102 is not promoted: this slice does not test every contract6
   degraded case. Governing TMATS extraction remains S09; no CLI/dependency change.

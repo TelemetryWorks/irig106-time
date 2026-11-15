@@ -874,6 +874,9 @@ IRIG106 supplies no clock-jump/year-phase selection algorithm. These choices
 and the182.5day bound are the owner's reader policy, not a standard mandate.
 
 
+The bound applies to residual, not raw RTC spacing: a known common-year365day
+interval at identical calendar position selects d=+1 with zero residual.
+
 All clocks below are nominal UTC calendar labels; RTC elapsed is independent.
 D=86400s; listed TF-017 residual is calendar minus RTC, at default10ms threshold.
 Rows with unknown years retain None; no host date or LY inference. Every row is

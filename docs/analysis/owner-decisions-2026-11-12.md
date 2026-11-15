@@ -1,4 +1,4 @@
-# Owner decisions of 2026-11-12/13/14 — requirement and source audit
+# Owner decisions of 2026-11-12/13/14/15 — requirement and source audit
 
 Documentation-only update based on origin/main
 `b839c4343cd8bddc7509ce0462cc86923a3f2737` (merged PR7).
@@ -241,3 +241,7 @@ case table, verification-s08 records execution separately; code comments and
 CHANGELOG cease calling this proposal. L2-COR-110 parent and L1-COR-010 retain
 their statements and all quoted sources. No Review/Design fields or finding
 levels change; no new whole-requirement marker or deferral.
+
+The new residual bound supersedes the blanket365day RTC-gap guard: an exact
+common-year cycle is d=+1 with zero residual; unusable observations do not
+shorten gap evidence. The same shared function handles both engine directions.

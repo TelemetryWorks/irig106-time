@@ -51,7 +51,8 @@ pub struct YearBasis {
     segment: usize,
     gap: Option<i128>,
     year_issue: Option<TimeError>,
-    crossing: Option<(u64, i128, u64)>,
+    // Related packet, chronological residual ns, resolution ns, unreadable endpoint.
+    phase_residual: Option<(u64, i128, u64, bool)>,
 }
 impl YearBasis {
     // Relative calendar differences can be signed even without an absolute year,
@@ -95,7 +96,7 @@ impl YearBasis {
     pub fn gap_ticks(&self) -> Option<crate::SignedRtcTicks> {
         self.gap.map(crate::SignedRtcTicks::new)
     }
-    /// RTC-consistent year transitions relative to the first observed calendar.
+    /// Selected signed year phase relative to the first observed calendar.
     pub fn rollovers(&self) -> i32 {
         self.phase
     }
@@ -125,6 +126,7 @@ struct Point {
     year: Option<u16>,
     precision: u64,
     leap: bool,
+    readable: bool,
 }
 const DAY_NS: i128 = 86_400_000_000_000;
 /// Constant-size session clock/first-DMY anchor, independent of stream caps.
@@ -168,28 +170,6 @@ fn year_evidence(r: &TimelineReference) -> bool {
                 .all(|reason| matches!(reason, Rejection::NeedsContext)))
 }
 impl YearClock {
-    // A gap of365days can hide an entire ordinal-day cycle (or two year
-    // boundaries near year end). Conservatively request context instead of
-    // guessing how many years passed. This is a reader guard, not an IRIG rate.
-    pub(crate) fn long_gap(&self, ticks: i128) -> Result<bool> {
-        let Some(last) = self.last else {
-            return Ok(false);
-        };
-        let elapsed = ticks
-            .checked_sub(last.ticks)
-            .ok_or(TimeError::QuantityOverflow {
-                quantity: "year evidence counter gap",
-            })?;
-        Ok(elapsed.unsigned_abs() >= 365 * 86_400 * 10_000_000u128)
-    }
-    pub(crate) fn check_gap(&self, r: &TimelineReference) -> Result<()> {
-        if year_evidence(r) && self.long_gap(r.key.ticks)? {
-            return Err(TimeError::NeedsContext {
-                context: "year evidence gap of365days or more; supply a new session/date context",
-            });
-        }
-        Ok(())
-    }
     // Call in observation order, separately from counter order used for phase.
     fn remember_anchor(&mut self, r: &TimelineReference) {
         if year_evidence(r)
@@ -241,40 +221,36 @@ impl YearClock {
             .year_basis
             .original_origin
             .unwrap_or(r.input.year_origin);
-        let year = if origin == YearOrigin::Packet {
-            raw_year
-        } else {
-            self.anchor
-                .and_then(|a| {
-                    phase
-                        .checked_sub(a.phase)
-                        .and_then(|delta| adjust(a.year, delta))
-                })
-                .or_else(|| raw_year.filter(|_| origin != YearOrigin::RecordingDate))
-                .or_else(|| {
-                    if self.segment == 0 {
-                        r.input
-                            .year_basis
-                            .context
-                            .caller
-                            .and_then(|y| adjust(y, phase))
-                    } else {
-                        None
-                    }
-                })
-                .or(raw_year)
-                .or_else(|| {
-                    if self.segment == 0 {
-                        r.input
-                            .year_basis
-                            .context
-                            .recording
-                            .and_then(|y| adjust(y, phase))
-                    } else {
-                        None
-                    }
-                })
-        };
+        // The first DMY anchors phase, including when the next observation is
+        // another DMY. Its raw explicit year is separately retained by resolve.
+        let year = self
+            .anchor
+            .and_then(|a| {
+                phase
+                    .checked_sub(a.phase)
+                    .and_then(|delta| adjust(a.year, delta))
+            })
+            .or_else(|| {
+                if origin == YearOrigin::Packet {
+                    raw_year
+                } else {
+                    raw_year
+                        .filter(|_| origin != YearOrigin::RecordingDate)
+                        .or_else(|| {
+                            (self.segment == 0)
+                                .then_some(r.input.year_basis.context.caller)
+                                .flatten()
+                                .and_then(|y| adjust(y, phase))
+                        })
+                        .or(raw_year)
+                        .or_else(|| {
+                            (self.segment == 0)
+                                .then_some(r.input.year_basis.context.recording)
+                                .flatten()
+                                .and_then(|y| adjust(y, phase))
+                        })
+                }
+            });
         Some(Point {
             packet: r.key.packet,
             ticks: r.key.ticks,
@@ -283,51 +259,65 @@ impl YearClock {
             year,
             precision: r.input.precision_ns,
             leap,
+            readable: matches!(r.input.value, ReferenceValue::Readable(_, _)),
         })
     }
-    // Reader policy, not a standard jump algorithm: compare the linear same-year
-    // explanation with each allowed cyclic explanation. A known year restricts
-    // its length; an unknown year remains unknown. Ties retain the current phase.
-    // Bound the winning residual to half the shortest Gregorian year (182.5d).
-    // Jump severity/threshold affects reporting, never selection of the year.
-    fn nearest_crossing(earlier: Point, later: Point, elapsed: i128) -> Result<(bool, i128)> {
-        let linear = later.position - earlier.position
-            + if earlier.leap && !later.leap {
-                1_000_000_000
+    // Owner-adopted YEAR-PHASE reader policy2026-11-15, not a standard jump
+    // algorithm (contract5.3; Fig11-13/14). The SAME function solves forward
+    // and late observations: signed elapsed, d=-1/0/+1 regardless of day order.
+    // d=0 is considered first and wins ties; the182.5day bound is inclusive.
+    fn nearest_phase(from: Point, to: Point, elapsed: i128) -> Result<(i32, i128)> {
+        let length = |y| {
+            if crate::util::is_leap_year(y) {
+                366u16
             } else {
-                0
-            };
-        let mut chosen = (false, linear - elapsed);
-        for days in [365u16, 366] {
-            if earlier.day > days
-                || earlier.year.is_some_and(|y| {
-                    days != if crate::util::is_leap_year(y) {
-                        366
-                    } else {
-                        365
+                365
+            }
+        };
+        let mut best: Option<(i32, i128)> = None;
+        for d in [0i32, -1, 1] {
+            for days in [365u16, 366] {
+                let target_year = from
+                    .year
+                    .and_then(|y| i32::from(y).checked_add(d))
+                    .filter(|y| (0..=9999).contains(y))
+                    .map(|y| y as u16);
+                if let Some(year) = from.year {
+                    let Some(target) = target_year else { continue };
+                    let crossed = if d < 0 { target } else { year };
+                    if days != length(crossed) || from.day > length(year) || to.day > length(target)
+                    {
+                        continue;
                     }
-                })
-            {
-                continue;
-            }
-            let residual = linear + i128::from(days) * DAY_NS - elapsed;
-            if residual.unsigned_abs() < chosen.1.unsigned_abs() {
-                chosen = (true, residual);
+                } else if (d >= 0 && from.day > days) || (d <= 0 && to.day > days) {
+                    continue;
+                }
+                let mut span =
+                    to.position - from.position + i128::from(d) * i128::from(days) * DAY_NS;
+                // second60 shares the following midnight's nominal position;
+                // preserve its extra second in either direction, including d=0.
+                if from.leap && !to.leap && span >= 0 {
+                    span += 1_000_000_000;
+                }
+                if to.leap && !from.leap && span <= 0 {
+                    span -= 1_000_000_000;
+                }
+                let residual = span - elapsed;
+                if best.is_none_or(|(_, r)| residual.unsigned_abs() < r.unsigned_abs()) {
+                    best = Some((d, residual));
+                }
             }
         }
-        if chosen.1.unsigned_abs() > (365 * DAY_NS / 2) as u128 {
-            return Err(TimeError::NeedsContext {
+        best.filter(|(_, r)| r.unsigned_abs() <= (365 * DAY_NS / 2) as u128)
+            .ok_or(TimeError::NeedsContext {
                 context: "year explanation residual exceeds half a common year",
-            });
-        }
-        Ok(chosen)
+            })
     }
     pub(crate) fn stamp(
         &mut self,
         r: &mut TimelineReference,
         _policy: &OfflinePolicy,
     ) -> Result<()> {
-        self.check_gap(r)?;
         if r.input.network.is_some() {
             return Ok(());
         }
@@ -353,41 +343,48 @@ impl YearClock {
             return Ok(());
         };
         let mut phase = self.phase;
+        r.input.year_basis.phase = phase;
         if year_evidence(r) {
             if let Some(last) = self.last {
-                let ticks = last.ticks;
-                if r.key.ticks >= ticks {
-                    if r.key.ticks > ticks && point.day < last.day {
-                        let (crosses, residual) =
-                            Self::nearest_crossing(last, point, (r.key.ticks - ticks) * 100)?;
-                        if crosses {
-                            self.phase =
-                                self.phase
-                                    .checked_add(1)
-                                    .ok_or(TimeError::QuantityOverflow {
-                                        quantity: "session year rollovers",
-                                    })?;
-                            r.input.year_basis.crossing =
-                                Some((last.packet, residual, last.precision.max(point.precision)));
+                let elapsed = (r.key.ticks - last.ticks) * 100;
+                if elapsed != 0 {
+                    let (d, residual) = match Self::nearest_phase(last, point, elapsed) {
+                        // An impossible current-year day366 is malformed, not
+                        // a new anchor or a reason to repair it into a leap year.
+                        Err(TimeError::NeedsContext { .. })
+                            if point.year.is_some_and(|y| {
+                                point.day == 366 && !crate::util::is_leap_year(y)
+                            }) =>
+                        {
+                            return Ok(());
                         }
-                    }
-                    phase = self.phase;
-                    point = self.point(r, phase).unwrap_or(point);
-                    self.last = Some(point);
-                } else if point.day > last.day {
-                    let previous = self.point(r, phase - 1).unwrap_or(point);
-                    let (crosses, residual) =
-                        Self::nearest_crossing(previous, last, (ticks - r.key.ticks) * 100)?;
-                    if crosses {
-                        phase -= 1;
-                        r.input.year_basis.crossing = Some((
+                        result => result?,
+                    };
+                    phase = self
+                        .phase
+                        .checked_add(d)
+                        .ok_or(TimeError::QuantityOverflow {
+                            quantity: "session year rollovers",
+                        })?;
+                    let unreadable = !last.readable || !point.readable;
+                    if d != 0 || unreadable {
+                        r.input.year_basis.phase_residual = Some((
                             last.packet,
-                            residual,
-                            last.precision.max(previous.precision),
+                            if elapsed < 0 { -residual } else { residual },
+                            last.precision.max(point.precision),
+                            unreadable,
                         ));
                     }
                 }
-            } else {
+                if elapsed >= 0 {
+                    self.phase = phase;
+                    point = self.point(r, phase).unwrap_or(point);
+                    self.last = Some(point);
+                }
+            } else if !point
+                .year
+                .is_some_and(|y| point.day == 366 && !crate::util::is_leap_year(y))
+            {
                 self.last = Some(point);
             }
         }
@@ -433,8 +430,9 @@ impl YearClock {
             .year_basis
             .original_origin
             .unwrap_or(r.input.year_origin);
-        // Same-priority choice PROPOSAL: first observed eligible DMY anchors yearless
-        // references; pending owner confirmation (verification-s08).
+        // Owner-accepted2026-11-15: first observed eligible DMY anchors yearless
+        // references AND advances with the shared year-phase rule. A consistent
+        // next-year DMY is not a contradiction (verification-s08).
         // A DMY packet retains its own explicit calendar. Other references use
         // the first eligible DMY anchor; all disagreements remain candidates.
         if origin == YearOrigin::Packet {
@@ -568,22 +566,22 @@ impl YearClock {
                 .any(|c| c.year != winner.year)
         });
         let mut out = Vec::new();
-        // Unknown calendar years cannot supply absolute_delta across a rollover,
-        // but the selected cyclic explanation still reports its clock correction.
-        if selected_year.is_none() {
-            if let Some((related, residual, precision)) = r.input.year_basis.crossing {
-                if residual.unsigned_abs()
+        // absolute_delta cannot compare unknown years across phases or a leap
+        // label needing normalization. Still report the selected signed residual.
+        if let Some((related, residual, precision, unreadable)) = r.input.year_basis.phase_residual
+        {
+            if (selected_year.is_none() || unreadable)
+                && residual.unsigned_abs()
                     > u128::from(policy.jump_threshold_ns.unwrap_or(precision))
-                {
-                    out.push(TimelineFinding::observed(
-                        17,
-                        policy.finding_levels.get(&17).copied(),
-                        r.key,
-                        Some(r.channel),
-                        Some(related),
-                        Some(residual),
-                    )?);
-                }
+            {
+                out.push(TimelineFinding::observed(
+                    17,
+                    policy.finding_levels.get(&17).copied(),
+                    r.key,
+                    Some(r.channel),
+                    Some(related),
+                    Some(residual),
+                )?);
             }
         }
         if normalization_rebased {
@@ -689,27 +687,6 @@ pub(crate) fn resolve_session(
     order.sort_by_key(|&i| (refs[i].key.ticks, refs[i].key.packet));
     let mut clock = YearClock::default();
     for &i in &order {
-        // Offline keeps the timeline usable. Break only year continuity, not the
-        // recording session or the decoded clock, including intervening unusable
-        // calendar observations that cannot restore the missing year.
-        if refs[i].input.network.is_none()
-            && calendar(&refs[i]).is_some()
-            && clock.long_gap(refs[i].key.ticks)?
-        {
-            let gap = clock
-                .last
-                .and_then(|last| refs[i].key.ticks.checked_sub(last.ticks));
-            clock = YearClock {
-                segment: clock
-                    .segment
-                    .checked_add(1)
-                    .ok_or(TimeError::QuantityOverflow {
-                        quantity: "year continuity segments",
-                    })?,
-                gap,
-                ..YearClock::default()
-            };
-        }
         match clock.stamp(&mut refs[i], policy) {
             Err(TimeError::NeedsContext { .. }) => {
                 // An implausible nearest explanation breaks year continuity just

@@ -5,7 +5,7 @@ use irig106_time::{stream::*, timeline::*, years::*, *};
 const S: u64 = 10_000_000;
 const D: u64 = 86400 * S;
 fn bcd(v: u16) -> u16 {
-    (v / 1000) << 12 | (v / 100 % 10) << 8 | (v / 10 % 10) << 4 | v % 10
+    (v / 1000) << 12 | (v / 100 % 10) << 8 | (v / 10 % 10) << 4 | (v % 10)
 }
 #[derive(Clone, Copy)]
 struct Step {
@@ -30,7 +30,12 @@ fn at(day: u16, h: u8, m: u8, s: u8, ticks: u64, year: Option<u16>, jump: Option
 }
 fn wire(step: Step, ctx: Option<u16>) -> ReferenceInput {
     // Hand-place Fig11-13 words; no encoder-under-test or host date.
-    let mut bytes = vec![1, u8::from(step.year.is_some_and(|y| y % 4 == 0)), 0, 0];
+    let mut bytes = vec![
+        1,
+        u8::from(step.year.is_some_and(|y| y % 4 == 0) || (step.year.is_none() && step.day == 366)),
+        0,
+        0,
+    ];
     for w in [
         bcd(step.s.into()) << 8,
         bcd(step.h.into()) << 8 | bcd(step.m.into()),
@@ -476,8 +481,10 @@ fn late_crossing_records_phase_and_signed_correction() {
 #[test]
 fn crossing_threshold_is_strict_and_override_is_respected() {
     for threshold in [5_000_000_000, 6_000_000_000, 4_999_999_999] {
-        let mut op = OfflinePolicy::default();
-        op.jump_threshold_ns = Some(threshold);
+        let op = OfflinePolicy {
+            jump_threshold_ns: Some(threshold),
+            ..Default::default()
+        };
         let packets = [
             packet(1, 0, Some(wire(at(365, 23, 59, 59, 0, None, None), None))),
             packet(2, S, Some(wire(at(1, 0, 0, 5, S, None, None), None))),
