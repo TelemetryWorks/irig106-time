@@ -404,7 +404,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1-FND-001 | L2-FND-101 | `tests/s01_existing.rs::all_accepted_ntp_edition_and_year_levels_are_configurable`<br>`tests/s01_existing.rs::both_engines_keep_related_identity_and_signed_residual`<br>`tests/s01_existing.rs::both_engines_keep_structured_malformed_evidence_under_level_override`<br>`tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::every_catalog_level_and_identity_is_explicit`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::raw_evidence_offsets_relations_and_validity_survive_override`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value`<br>`tests/s02_readings.rs::malformed_digit_zero_bit_finding_honours_both_engine_level_overrides`<br>`tests/s05_ntp.rs::tf030_nonzero_era_keeps_exact_evidence_and_unix_mapping`<br>`tests/s06a_format2.rs::review_each_converted_finding_uses_policy_level_without_changing_value`<br>`tests/s06a_format2.rs::review_invalid_status_retains_readable_diagnostic_value`<br>`tests/s06b_offline.rs::review_raw_rate_qualification_preserves_default_and_overridden_gap_level` | Implemented |
 | L1-FND-002 | L2-FND-102 | _(none)_ | Draft |
 | L1-FND-003 | L2-FND-103 | `tests/offline_timeline.rs::review_rtc_sync_error_is_tf024_warning_value_kept`<br>`tests/offline_timeline.rs::review_sync_finding_retains_counter_evidence`<br>`tests/stream_timeline.rs::admission_findings_and_raw_sync_counter` | Implemented |
-| L1-FND-004 | L2-FND-104 | _(none)_ | Draft |
+| L1-FND-004 | L2-FND-104 | `tests/s09b_declarations.rs::combined_registered_comparisons_cover_the_whole_finding_contract` | Implemented |
 | L1-FND-005 | L2-FND-105 | _(none)_ | Draft |
 
 **L2 -> L3 -> Verification Artifacts**
@@ -414,7 +414,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L2-FND-101 | L3-FND-101 | `tests/s01_existing.rs::all_accepted_ntp_edition_and_year_levels_are_configurable`<br>`tests/s01_existing.rs::both_engines_keep_related_identity_and_signed_residual`<br>`tests/s01_existing.rs::both_engines_keep_structured_malformed_evidence_under_level_override`<br>`tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::every_catalog_level_and_identity_is_explicit`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::raw_evidence_offsets_relations_and_validity_survive_override`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value`<br>`tests/s02_readings.rs::malformed_digit_zero_bit_finding_honours_both_engine_level_overrides`<br>`tests/s05_ntp.rs::tf030_nonzero_era_keeps_exact_evidence_and_unix_mapping`<br>`tests/s06a_format2.rs::review_each_converted_finding_uses_policy_level_without_changing_value`<br>`tests/s06a_format2.rs::review_invalid_status_retains_readable_diagnostic_value`<br>`tests/s06b_offline.rs::review_raw_rate_qualification_preserves_default_and_overridden_gap_level` | Implemented |
 | L2-FND-102 | L3-FND-102 | _(TBD)_ | Draft |
 | L2-FND-103 | L3-FND-103 | `tests/offline_timeline.rs::review_rtc_sync_error_is_tf024_warning_value_kept`<br>`tests/offline_timeline.rs::review_sync_finding_retains_counter_evidence`<br>`tests/stream_timeline.rs::admission_findings_and_raw_sync_counter` | Implemented |
-| L2-FND-104 | L3-FND-104 | _(TBD)_ | Draft |
+| L2-FND-104 | L3-FND-104 | `tests/s09b_declarations.rs::combined_registered_comparisons_cover_the_whole_finding_contract` | Implemented |
 | L2-FND-105 | L3-FND-105 | _(TBD)_ | Draft |
 
 ### L1-RDG: Readings between TMATS and the packets
@@ -436,8 +436,8 @@ This matrix is the single source of truth for live status; the requirement docum
 | L2-RDG-202 | L3-RDG-202 | `tests/s09a_declarations.rs::format1_pairs_missing_required_defaults_and_absence_are_distinct` | Implemented |
 | L2-RDG-203 | L3-RDG-203 | `tests/s09a_declarations.rs::all_seven_bidirectional_pairs_and_rcc124_chapter7_example_keep_inference` | Implemented |
 | L2-RDG-204 | L3-RDG-204 | `tests/s09a_declarations.rs::numeric_format2_context_never_uses_letter_or_ntp_fallbacks` | Implemented |
-| L2-RDG-205 | L3-RDG-205 | _(TBD)_ | Draft |
-| L2-RDG-206 | L3-RDG-206 | _(TBD)_ | Draft |
+| L2-RDG-205 | L3-RDG-205 | `tests/s09b_declarations.rs::all_source_pairs_reserved_missing_and_loss_regain_are_informational` | Implemented |
+| L2-RDG-206 | L3-RDG-206 | `tests/s09b_declarations.rs::all_shtf_pairs_flags_channels_and_binary_dispatch_keep_wording_discrepancy` | Implemented |
 | L2-RDG-207 | L3-RDG-207 | `tests/s03_edition.rs::independent_edition_rule_boundaries_and_its_evidence`<br>`tests/s03_edition.rs::reserved_its_is_a_value_warning_only_in_an_applicable_layout` | Implemented |
 | L2-RDG-208 | L3-RDG-208 | _(TBD)_ | Draft |
 | L2-RDG-209 | L3-RDG-209 | _(TBD)_ | Draft |
@@ -636,8 +636,8 @@ This matrix is the single source of truth for live status; the requirement docum
 | COR | 13 | 13 | 13 | 11 | 11 | 11 | 11 |
 | ANS | 5 | 5 | 5 | 2 | 2 | 2 | 2 |
 | POL | 3 | 4 | 4 | 3 | 3 | 3 | 3 |
-| FND | 5 | 5 | 5 | 2 | 2 | 2 | 2 |
-| RDG | 2 | 14 | 14 | 6 | 6 | 6 | 6 |
+| FND | 5 | 5 | 5 | 3 | 3 | 3 | 3 |
+| RDG | 2 | 14 | 14 | 8 | 8 | 8 | 8 |
 | STRM | 1 | 7 | 7 | 7 | 7 | 7 | 7 |
 | ERR | 5 | 5 | 5 | 4 | 4 | 4 | 4 |
 | API | 11 | 11 | 11 | 1 | 1 | 1 | 1 |
@@ -645,13 +645,13 @@ This matrix is the single source of truth for live status; the requirement docum
 | CLI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
 | REL | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
 | TST | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
-| **Total** | **124** | **144** | **144** | **85** | **85** | **85** | **85** |
+| **Total** | **124** | **144** | **144** | **88** | **88** | **88** | **88** |
 
 The countable requirement set is every L2 and L3 requirement plus the 0 L1 *leaf* requirement(s) (L1s with no L2 decomposition yet). Composite L1s are verified through their children.
 
-**Tested by at least one test marker**: 170 of 288 (59.0%).
+**Tested by at least one test marker**: 176 of 288 (61.1%).
 
-**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 170 of 288 (59.0%).
+**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 176 of 288 (61.1%).
 
 ### Orphan check
 
@@ -664,12 +664,12 @@ Every entry of `docs/INTERPRETATIONS.md` with its written analysis and the tests
 
 | Entry | Title | Design | Analysis | Tests |
 |-------|-------|--------|----------|-------|
-| RDG-001 | `R-x\TTF-n` 1 and 2 name the packet formats `0x11` and `0x12` | accepted | [governing declarations and mappings](verification-s09a.md) | `tests/s09a_declarations.rs::every_ttf_value_packet_type_missing_unknown_and_range_context_is_reported` |
-| RDG-002 | `R-x\TFMT-n` letters A, B, G, N, U, X name Format 1 FMT values | accepted | [governing declarations and mappings](verification-s09a.md) | `tests/s09a_declarations.rs::all_seven_bidirectional_pairs_and_rcc124_chapter7_example_keep_inference`<br>`tests/s09a_declarations.rs::format1_pairs_missing_required_defaults_and_absence_are_distinct` |
-| RDG-003 | `R-x\TFMT-n` I "Internal" has no clear FMT value | accepted | [governing declarations and mappings](verification-s09a.md) | `tests/s09a_declarations.rs::all_seven_bidirectional_pairs_and_rcc124_chapter7_example_keep_inference` |
-| RDG-004 | `R-x\TFMT-n` 0, 1, 2 name Format 2 NTF values | accepted | [governing declarations and mappings](verification-s09a.md) | `tests/s09a_declarations.rs::numeric_format2_context_never_uses_letter_or_ntp_fallbacks` |
-| RDG-005 | `R-x\TSRC-n` letters name Format 1 SRC values; a difference is information | accepted | not yet written | _(none)_ |
-| RDG-006 | `R-x\SHTF-n` 0 "Chapter 4 BCD" names packet flags `00`, "Chapter 4 binary weighted" | accepted | not yet written | _(none)_ |
+| RDG-001 | `R-x\TTF-n` 1 and 2 name the packet formats `0x11` and `0x12` | accepted | [governing declarations and mappings](verification-s09a.md) | `tests/s09a_declarations.rs::every_ttf_value_packet_type_missing_unknown_and_range_context_is_reported`<br>`tests/s09b_declarations.rs::combined_registered_comparisons_cover_the_whole_finding_contract` |
+| RDG-002 | `R-x\TFMT-n` letters A, B, G, N, U, X name Format 1 FMT values | accepted | [governing declarations and mappings](verification-s09a.md) | `tests/s09a_declarations.rs::all_seven_bidirectional_pairs_and_rcc124_chapter7_example_keep_inference`<br>`tests/s09a_declarations.rs::format1_pairs_missing_required_defaults_and_absence_are_distinct`<br>`tests/s09b_declarations.rs::combined_registered_comparisons_cover_the_whole_finding_contract` |
+| RDG-003 | `R-x\TFMT-n` I "Internal" has no clear FMT value | accepted | [governing declarations and mappings](verification-s09a.md) | `tests/s09a_declarations.rs::all_seven_bidirectional_pairs_and_rcc124_chapter7_example_keep_inference`<br>`tests/s09b_declarations.rs::combined_registered_comparisons_cover_the_whole_finding_contract` |
+| RDG-004 | `R-x\TFMT-n` 0, 1, 2 name Format 2 NTF values | accepted | [governing declarations and mappings](verification-s09a.md) | `tests/s09a_declarations.rs::numeric_format2_context_never_uses_letter_or_ntp_fallbacks`<br>`tests/s09b_declarations.rs::combined_registered_comparisons_cover_the_whole_finding_contract` |
+| RDG-005 | `R-x\TSRC-n` letters name Format 1 SRC values; a difference is information | accepted | [TSRC/SHTF reading and clause evidence](verification-s09b.md) | `tests/s09b_declarations.rs::all_source_pairs_reserved_missing_and_loss_regain_are_informational`<br>`tests/s09b_declarations.rs::combined_registered_comparisons_cover_the_whole_finding_contract` |
+| RDG-006 | `R-x\SHTF-n` 0 "Chapter 4 BCD" names packet flags `00`, "Chapter 4 binary weighted" | accepted | [TSRC/SHTF reading and clause evidence](verification-s09b.md) | `tests/s09b_declarations.rs::all_shtf_pairs_flags_channels_and_binary_dispatch_keep_wording_discrepancy`<br>`tests/s09b_declarations.rs::combined_registered_comparisons_cover_the_whole_finding_contract` |
 | RDG-007 | ITS (Format 1 bits 15–12) is read only for recordings declared 106-17 or later | accepted | [qualified edition fields](analysis/RDG-007-edition-fields.md) | `tests/rebuild_layout.rs::t7_its_requires_explicit_applicable_layout`<br>`tests/s03_edition.rs::independent_edition_rule_boundaries_and_its_evidence`<br>`tests/s03_edition.rs::reserved_its_is_a_value_warning_only_in_an_applicable_layout` |
 | RDG-008 | The secondary header checksum sums bytes, not 16-bit words | suspect | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-008) | `tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither`<br>`tests/slice2_wire.rs::rdg008_byte_only_checksum_is_valid`<br>`tests/slice2_wire.rs::rdg008_word_only_checksum_is_not_trusted` |
 | RDG-009 | The time scale of each time format; IRIG time is UTC by assumption | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-009) | `tests/s06a_format2.rs::native_scales_and_d7_conversion_basis_are_preserved`<br>`tests/s06b_offline.rs::gps_uses_inferred_nineteen_seconds_and_unknown_scale_blocks_normalization`<br>`tests/s06b_offline.rs::mixed_utc_ptp_and_f1_use_one_physical_scale_without_fake_fields`<br>`tests/s06b_stream.rs::normalized_gps_to_ptp_bracket_keeps_the_native_gps_scale`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance`<br>`tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` |
@@ -677,8 +677,8 @@ Every entry of `docs/INTERPRETATIONS.md` with its written analysis and the tests
 | RDG-011 | "The first dynamic data packet" is checked per session | accepted | not yet written | `tests/stream_timeline.rs::early_data_none_and_no_time_findings` |
 | RDG-012 | NTP follows UTC reckoning; era evidence, zero sentinel and leap ambiguity are explicit | accepted | [written all-edition/RFC analysis and planned edge cases](analysis/RDG-012-ntp-utc-era.md) | `tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value`<br>`tests/s05_ntp.rs::covered_duplicate_coordinate_is_ambiguous_value_kept_not_a_read_leap`<br>`tests/s05_ntp.rs::missing_stale_and_partial_coverage_keep_utc_without_false_certainty`<br>`tests/s05_ntp.rs::sentinel_precedes_era_and_rounding_but_nonzero_fraction_is_time`<br>`tests/s05_ntp.rs::tf030_nonzero_era_keeps_exact_evidence_and_unix_mapping`<br>`tests/s06a_format2.rs::explicit_era_and_unresolved_context_reach_the_converter`<br>`tests/s06a_format2.rs::native_scales_and_d7_conversion_basis_are_preserved`<br>`tests/s06a_format2.rs::ntp_admission_keeps_sentinel_ambiguity_era_and_context`<br>`tests/s06a_format2.rs::ptp_inserted_second_survives_the_boundary_with_its_own_finding`<br>`tests/s06a_format2.rs::review_each_converted_finding_uses_policy_level_without_changing_value`<br>`tests/s06b_offline.rs::ambiguous_ntp_does_not_establish_an_exact_physical_bracket`<br>`tests/s06b_offline.rs::mixed_utc_ptp_and_f1_use_one_physical_scale_without_fake_fields`<br>`tests/s06b_offline.rs::stale_ptp_basis_and_epoch_identity_survive_offline_admission`<br>`tests/s06b_stream.rs::ambiguity_keeps_capture_value_but_blocks_displacement_and_interpolation` |
 
-* Entries without a written analysis: **3** of 12
-* Entries without a test: **2** of 12
+* Entries without a written analysis: **1** of 12
+* Entries without a test: **0** of 12
 * Entries missing the development mark: **0**
 
 ### Marker reference check
