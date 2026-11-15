@@ -111,6 +111,43 @@ fn governing_ranges_keep_all_plain_facts_and_exact_counter_boundary() {
     let mut duplicate = first.clone();
     duplicate.channels.push(duplicate.channels[0].clone());
     assert!(Declarations::present(vec![duplicate]).is_err());
+    for ticks in [9, 10] {
+        let original = PacketObservation {
+            rtc: Rtc::from_raw(ticks),
+            ..time_packet()
+        };
+        let prepared = ds
+            .prepare(original.clone(), key(i128::from(ticks)))
+            .unwrap();
+        assert_eq!(prepared.observation.rtc, original.rtc);
+        assert_eq!(
+            prepared.observation.reference.as_ref().unwrap().value,
+            original.reference.unwrap().value
+        );
+        assert_eq!(
+            prepared
+                .observation
+                .reference
+                .as_ref()
+                .unwrap()
+                .year_basis
+                .context()
+                .recording,
+            if ticks == 9 { Some(2016) } else { None }
+        );
+    }
+    let carried = ds.prepare(time_packet(), key(9)).unwrap().observation;
+    let updated = ds.prepare(carried, key(10)).unwrap();
+    assert_eq!(
+        updated
+            .observation
+            .reference
+            .unwrap()
+            .year_basis
+            .context()
+            .recording,
+        None
+    );
     assert_eq!(ds.snapshots().unwrap()[0], first);
     assert_eq!(ds.snapshots().unwrap()[1], next);
 }
@@ -163,6 +200,12 @@ fn every_ttf_value_packet_type_missing_unknown_and_range_context_is_reported() {
             .status,
         ComparisonStatus::NotApplicable
     );
+    assert!(
+        !ds.prepare(time_packet(), key(5))
+            .unwrap()
+            .observation
+            .declared_external
+    );
     let r = ds
         .compare(
             PacketFields {
@@ -188,7 +231,18 @@ fn all_format1_pairs() {
         let m = format1_mapping(letter).unwrap();
         assert_eq!(m.wire, fmt);
         assert_eq!(m.inferred, letter == "I");
-        assert_eq!(format1_letter(fmt), Some(letter));
+        let reverse = format1_declaration(fmt).unwrap();
+        assert_eq!(reverse.declared, letter);
+        assert_eq!(reverse.inferred, letter == "I");
+        assert_eq!(reverse.reading, m.reading);
+        assert_eq!(
+            m.reading,
+            if letter == "I" {
+                Reading::Rdg003
+            } else {
+                Reading::Rdg002
+            }
+        );
         for observed in 0..16 {
             let r = compare(Some("1"), Some(letter), 0x11, observed, false);
             assert_eq!(
@@ -220,7 +274,7 @@ fn all_format1_pairs() {
         }
     }
     for fmt in 6..15 {
-        assert_eq!(format1_letter(fmt), None);
+        assert_eq!(format1_declaration(fmt), None);
     }
     for text in ["", "a", " B ", "3", "A123", "?"] {
         assert!(format1_mapping(text).is_none());
@@ -278,6 +332,17 @@ fn format1_pairs_missing_required_defaults_and_absence_are_distinct() {
             assert_eq!(ds.snapshots().unwrap(), before);
             assert_eq!(r.basis.channel.unwrap().tfmt, None);
         }
+    }
+    for text in ["", "a", "?"] {
+        let r = compare(Some("1"), Some(text), 0x11, 0, true);
+        assert_eq!(r.tfmt.effective.as_deref(), Some(text));
+        assert!(!r.tfmt.default_derived);
+        assert_eq!(r.tfmt.status, ComparisonStatus::UnknownDeclaration);
+        assert!(
+            !r.findings
+                .iter()
+                .any(|f| f.reason == DeclarationIssue::MissingRequired)
+        );
     }
     let r = compare(Some("1"), Some("A"), 0x11, 1, true);
     assert!(!r.tfmt.default_derived);
@@ -362,6 +427,9 @@ fn numeric_format2_context_never_uses_letter_or_ntp_fallbacks() {
         compare(None, Some("0"), 0x12, 0, false).tfmt.status,
         ComparisonStatus::ContextMismatch
     );
+    let wrong = compare(Some("1"), Some("0"), 0x12, 0, false);
+    assert_eq!(wrong.tfmt.expected, None);
+    assert_eq!(wrong.tfmt.observed, Some(0));
     let r = compare(Some("2"), None, 0x12, 0, true);
     assert!(r.tfmt.default_derived);
     assert_eq!(r.tfmt.effective, Some("A".into()));
@@ -375,6 +443,14 @@ fn numeric_format2_context_never_uses_letter_or_ntp_fallbacks() {
 }
 #[test]
 fn each_finding_keeps_governing_raw_comparison_and_severity_basis() {
+    for (r, id) in [
+        (Reading::Rdg001, "RDG-001"),
+        (Reading::Rdg002, "RDG-002"),
+        (Reading::Rdg003, "RDG-003"),
+        (Reading::Rdg004, "RDG-004"),
+    ] {
+        assert_eq!(r.id(), id);
+    }
     let mut p = DeclarationPolicy::default();
     p.levels.insert(10, Severity::Information);
     let ds = Declarations::present(vec![setup(0, None, channel(Some("1"), Some("I")))]).unwrap();
@@ -391,6 +467,77 @@ fn each_finding_keeps_governing_raw_comparison_and_severity_basis() {
     assert!(f.comparison.inferred);
     assert_eq!(f.comparison.reading.id(), "RDG-003");
     assert_eq!(f.finding.evidence().related()[0].packet, Some(100));
+    assert_eq!(f.finding.evidence().related()[0].channel, None);
+    assert!(
+        f.finding
+            .evidence()
+            .raw_fields()
+            .iter()
+            .any(|v| v.name == "packet.rtc_ticks_unwrapped" && v.observed == RawValue::Signed(5))
+    );
+    p.levels.insert(6, Severity::Information);
+    let ds_missing = Declarations::present(vec![setup(0, None, channel(Some("1"), None))]).unwrap();
+    let r = ds_missing
+        .compare(
+            facts(0x11, Some(6)),
+            &DeclarationPolicy {
+                use_tfmt_default: true,
+                ..p.clone()
+            },
+        )
+        .unwrap();
+    assert_eq!(r.findings.len(), 3);
+    assert!(
+        r.findings
+            .iter()
+            .all(|f| f.finding.severity() == Severity::Information)
+    );
+    assert!(
+        r.findings
+            .iter()
+            .all(|f| f.finding.evidence().validity() == ValueValidity::Undetermined)
+    );
+
+    assert_eq!(
+        f.finding.evidence().raw_fields()[0].observed,
+        RawValue::Unsigned(0)
+    );
+    assert_eq!(
+        f.finding.evidence().raw_fields()[0].expected,
+        Some(RawValue::Unsigned(3))
+    );
+    assert_eq!(
+        ds.compare(facts(0x11, None), &Default::default())
+            .unwrap()
+            .tfmt
+            .status,
+        ComparisonStatus::UnavailablePacketField
+    );
+    assert!(
+        ds.compare(facts(0x11, Some(16)), &Default::default())
+            .is_err()
+    );
+    assert!(
+        ds.prepare(
+            time_packet(),
+            PacketKey {
+                packet: 99,
+                ..key(5)
+            }
+        )
+        .is_err()
+    );
+    assert!(
+        Declarations::absent()
+            .basis(
+                PacketKey {
+                    session: 0,
+                    ..key(5)
+                },
+                7
+            )
+            .is_err()
+    );
 }
 fn time_packet() -> PacketObservation {
     let b = [1, 0, 0, 0, 0, 0, 0, 0, 1, 0];
@@ -429,6 +576,14 @@ fn absent_empty_gap_and_undeclared_policy_work_in_both_engines_without_counter_r
     let mut empty_setup = setup(0, None, channel(None, None));
     empty_setup.channels.clear();
     let present_empty = Declarations::present(vec![empty_setup]).unwrap();
+    assert_eq!(
+        Declarations::present(vec![])
+            .unwrap()
+            .basis(key(5), 7)
+            .unwrap()
+            .presence,
+        DeclarationPresence::NoGoverningRange
+    );
     assert_eq!(
         absent.basis(key(5), 7).unwrap().presence,
         DeclarationPresence::Absent

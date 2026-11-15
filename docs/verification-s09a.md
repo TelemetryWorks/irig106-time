@@ -77,3 +77,22 @@ values, 3×16 numeric NTF comparisons, raw unknowns, defaults, ranges, provenanc
 and offline/Standard/Interpolate admission. Additional assertions after the API
 prototype are not retroactively claimed failing-first. No real recording/fuzz
 campaign or fresh page checks. Mutation and full CI results follow execution.
+
+
+Mutation checks:23 independent variants compiled and failed runtime assertions:
+all seven letter/value pairs, half-open end, session isolation, TTF1 mapping,
+silent/default-on-explicit application, missing finding suppressed by default,
+raw absence lost, inferred flag hidden, numeric context ignored, mapping leaked
+outside context, severity override ignored, reserved packet finding dropped,
+absent mode remaining declared, external flag ignoring TIMEIN, stale RI4 year
+and related setup identity replaced by the observed packet. Each starts from
+saved source; original source restored at completion. No compile-error kills.
+No source-global negative test is claimed to prove future unrelated code.
+
+Whole markers are limited to DECL-101 and RDG-201..204, whose full statements
+are exercised by the comprehensive tests. DECL-102, RDG-101 and FND-104 remain
+clause-level, as above. Register Test/Analysis links are updated for001..004;
+Design and Review fields are byte-for-byte unchanged. All18 bounded local CI-equivalent checks pass (jobs/threads2), including
+MSRV1.85, no_std WASM±serde, CLI, benches, locked fuzz compile and cargo-deny.
+Actionlint/diff/trace pass. Matrix160→170/288 (+10: five L2/L3 chains).
+Hosted CI is verified at the reported head.
