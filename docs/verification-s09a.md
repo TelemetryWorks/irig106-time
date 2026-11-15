@@ -61,7 +61,7 @@ comparison severity never admits or discards decoded time.
 
 | L2/L3 suffix | S09a evidence | Remaining |
 |---|---|---|
-| DECL-101 | All plain attributes/version/RI4/provenance, multiple channels, half-open counter ranges, session isolation, original spelling, no payload/counter reset | Closed for caller-supplied facts; upstream parsing remains external |
+| DECL-101 | All plain attributes/version/RI4/provenance, two TIMEIN channels with independent TTF/TFMT and per-channel basis/comparisons/preparation, half-open counter ranges, session isolation, original spelling, no payload/counter reset; RI4 versus G\OD structural boundary (review follow-up below) | Closed for caller-supplied facts; upstream TMATS extraction is external, not claimed tested |
 | DECL-102 | Explicit absence/present-empty/gap, default exclusion and opt-in undeclared operation in offline and both stream modes; prepared/report basis | Universal propagation into legacy core answers and parser findings is S10b/S12; no whole-requirement marker |
 | RDG-101 | One closed comparison module, only RDG001..004, inference provenance, numeric context gate | RDG005/006 added in S09b; no whole-requirement claim |
 | RDG-201..204 | All current vocabularies, missing/unknown/reserved, every mismatch, bidirectional seven-letter table, RCC example, default provenance | Closed for caller-qualified comparisons; edition adapters/all-edition evidence remain separate |
@@ -96,3 +96,62 @@ Design and Review fields are byte-for-byte unchanged. All18 bounded local CI-equ
 MSRV1.85, no_std WASM±serde, CLI, benches, locked fuzz compile and cargo-deny.
 Actionlint/diff/trace pass. Matrix160→170/288 (+10: five L2/L3 chains).
 Hosted CI is verified at the reported head.
+
+
+## PR29 review follow-up — DECL-101 and surviving mutants
+
+Ordinary merge of current main5eeca7d (published types0.1.0) before changes;
+merge82ebd1c retains both CHANGELOG entries. Frozen PR28 is untouched. No
+production source, requirement statement/planned-verification item, dependency
+policy or Design/Review changes are introduced by this follow-up.
+
+The original DECL-101 test's second channel had no CDT, so the claim of testing
+multiple TIMEIN channels was not supported. Its comprehensive test now calls
+an additional fixture with TIMEIN7:TTF1/TFMTB/TSRCE/SHTF0 and
+TIMEIN8:TTF2/TFMT2/TSRCI/SHTF2 in ONE setup. Both matching and swapped wire
+data types retain the correct independent TTF/TFMT and complete per-channel
+basis; preparation independently retains channel facts and governing RI4.
+The original two-range/exact-boundary/session/absence/spelling tests remain.
+Thus the full DECL-101 marker remains on that expanded comprehensive test.
+
+### Recording date versus TMATS origination date — structural coverage
+
+SetupDeclarations accepts only the named RI4 string and caller-extracted
+recording_year as date inputs; it has no G\OD input, generic attribute map,
+TMATS parser or date-extraction fallback. prepare copies only recording_year
+into YearContext.recording. Consequently G\OD cannot be selected by this API.
+The fixture uses RI4=2016-12-31/year2016, while opaque provenance explicitly
+mentions G\OD=2025-01-01. It asserts the RI4/year2016 survives in both channel
+bases and prepared year contexts, then clears RI4/year and asserts absence
+without fallback despite that provenance. Provenance is not parsed or scanned.
+This is structural separation plus copy/no-fallback testing, NOT a claim of
+parsing a real TMATS file containing both attributes. Upstream callers must
+supply the correct named fields; that TMATS extraction stays external. The
+existing planned item is retained with this explicit interpretation, without
+loosening either requirement statement.
+
+### Executed review evidence
+
+Nine tests pass on the merged implementation (seven existing tests expanded,
+two new test functions). These are new assertions on correct code, not new
+failing-first defect claims. Five isolated source mutations each compiled and
+failed runtime assertions; saved production source was restored after each:
+
+| Reviewer mutant | New assertion that fails |
+|---|---|
+| D21 reserved range6..15 ->6..=15 | exhaustive seven-letter ×16 Format1 comparisons assert NO TF-006 for FMT0..5/F, TF-006 for6..E; NONE/F now fails |
+| D12 drop applicability from default_derived | missing TFMT on non-TIMEIN with opt-in must have default_derived=false and effective=None |
+| D13 publish A on non-applicable channel | same fixture requires published_default=None |
+| D24 omit applicability from reserved-observed finding | non-TIMEIN, observed FMT/NTF0..15, must never emit TF-006 |
+| D7 omit recording-year range check |10000/u16::MAX rejected,0/9999 accepted |
+
+Non-TIMEIN fixtures cover missing CDT, PCM and lowercase timein, opt-in enabled,
+packet types0x11/0x12 and all16 format nibbles. Production files are unchanged
+from the pre-mutation merged implementation. No compile-failure mutant counts.
+Matrix stays170/288 (delta0 against reviewed PR29, +10 against current main),
+with five whole L2/L3 chains. DECL-102/RDG-101/FND-104 remain partial as above.
+
+All18 bounded local checks pass with locked Cargo resolution (jobs/threads2):
+feature suites, MSRV1.85, no_std WASM±serde, CLI build/clippy, benches, all-fuzz
+compile, fmt/docs/trace and cargo-deny. Actionlint and diff check pass. Hosted
+CI is verified at the reported head. No new source/page review or fuzz campaign.

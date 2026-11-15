@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Centralize RDG-001..004, every Format 1 letter/FMT pair (I↔3 inferred in both
   directions) and numeric Format 2 comparisons. Missing required TFMT remains
   a finding; default A is effective only on explicit opt-in and never inserted.
+- Review coverage now includes two TIMEIN channels with independent TTF/TFMT
+  and channel basis, the structural RI4/G\OD boundary, all defined/reserved FMT
+  values, non-TIMEIN default/finding exclusion and recording-year bounds.
 - Comparison findings retain raw/effective/default/observed/range/RDG evidence.
   TSRC/SHTF and universal legacy answer/report propagation remain later slices.
 

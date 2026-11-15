@@ -150,6 +150,92 @@ fn governing_ranges_keep_all_plain_facts_and_exact_counter_boundary() {
     );
     assert_eq!(ds.snapshots().unwrap()[0], first);
     assert_eq!(ds.snapshots().unwrap()[1], next);
+    two_timein_channels_select_independent_declarations_and_basis();
+}
+fn two_timein_channels_select_independent_declarations_and_basis() {
+    let first = channel(Some("1"), Some("B"));
+    let mut second = channel(Some("2"), Some("2"));
+    second.id = 8;
+    second.tsrc = Some("I".into());
+    second.shtf = Some("2".into());
+    let mut snapshot = setup(0, None, first.clone());
+    snapshot.channels.push(second.clone());
+    // G\OD is NOT an API input. This opaque caller provenance mentions a
+    // different origination date to ensure no scanning/fallback into RI4.
+    snapshot.provenance = "caller: RI4=2016-12-31; G\\OD=2025-01-01".into();
+    let ds = Declarations::present(vec![snapshot.clone()]).unwrap();
+    for (ch, data_type, fmt, reading) in [
+        (&first, 0x11, 0, Reading::Rdg002),
+        (&second, 0x12, 2, Reading::Rdg004),
+    ] {
+        let packet = PacketFields {
+            channel: ch.id,
+            ..facts(data_type, Some(fmt))
+        };
+        let r = ds.compare(packet, &Default::default()).unwrap();
+        assert_eq!(r.ttf.status, ComparisonStatus::Match);
+        assert_eq!(r.tfmt.status, ComparisonStatus::Match);
+        assert_eq!(r.ttf.expected, Some(data_type));
+        assert_eq!(r.tfmt.expected, Some(fmt));
+        assert_eq!(r.tfmt.reading, reading);
+        assert_eq!(r.basis.channel.as_ref(), Some(ch));
+        let governing = r.basis.governing.unwrap();
+        assert_eq!(governing.setup_packet, snapshot.setup_packet);
+        assert_eq!(governing.provenance, snapshot.provenance);
+        assert_eq!(governing.ri4.as_deref(), Some("2016-12-31"));
+        assert_eq!(governing.recording_year, Some(2016));
+        // Swap the wire facts: each channel still uses its OWN TTF/TFMT,
+        // never the other TIMEIN channel in the same setup.
+        let wrong = ds
+            .compare(
+                PacketFields {
+                    data_type: if data_type == 0x11 { 0x12 } else { 0x11 },
+                    ..packet
+                },
+                &Default::default(),
+            )
+            .unwrap();
+        assert_eq!(wrong.ttf.status, ComparisonStatus::Mismatch);
+        assert_eq!(wrong.ttf.expected, Some(data_type));
+        assert_eq!(wrong.basis.channel.as_ref(), Some(ch));
+        let prepared = ds
+            .prepare(
+                PacketObservation {
+                    channel: ch.id,
+                    ..time_packet()
+                },
+                key(5),
+            )
+            .unwrap();
+        assert!(prepared.observation.declared_timein);
+        assert_eq!(prepared.observation.declared_external, ch.id == 7);
+        assert_eq!(prepared.declarations.channel.as_ref(), Some(ch));
+        assert_eq!(
+            prepared
+                .observation
+                .reference
+                .unwrap()
+                .year_basis
+                .context()
+                .recording,
+            Some(2016)
+        );
+    }
+    snapshot.ri4 = None;
+    snapshot.recording_year = None;
+    let ds = Declarations::present(vec![snapshot]).unwrap();
+    let prepared = ds.prepare(time_packet(), key(5)).unwrap();
+    assert_eq!(prepared.declarations.governing.unwrap().ri4, None);
+    assert_eq!(
+        prepared
+            .observation
+            .reference
+            .unwrap()
+            .year_basis
+            .context()
+            .recording,
+        None
+    );
 }
 /// Requirements: L2-RDG-201, L3-RDG-201
 /// Interpretations: RDG-001
@@ -252,6 +338,13 @@ fn all_format1_pairs() {
                 } else {
                     ComparisonStatus::Mismatch
                 }
+            );
+            // §11.2.3.2a: 0..5 are defined, 6..14 reserved, 15 is NONE.
+            // Assert the negative cases too: X/NONE must never become TF-006.
+            assert_eq!(
+                r.findings.iter().any(|f| f.finding.code().number() == 6),
+                matches!(observed, 6..=14),
+                "FMT={observed:#x}, TFMT={letter}"
             );
             assert_eq!(r.tfmt.inferred, letter == "I");
             assert_eq!(
@@ -665,4 +758,45 @@ fn absent_empty_gap_and_undeclared_policy_work_in_both_engines_without_counter_r
         after.observation.reference.as_ref().unwrap().value,
         before.reference.unwrap().value
     );
+}
+
+// Partial applicability/validation clauses only; no additional whole marker.
+#[test]
+fn non_timein_channels_never_receive_tfmt_defaults_or_reserved_findings() {
+    for cdt in [None, Some("PCM"), Some("timein")] {
+        let mut ch = channel(Some("1"), None);
+        ch.cdt = cdt.map(Into::into);
+        let ds = Declarations::present(vec![setup(0, None, ch)]).unwrap();
+        for data_type in [0x11, 0x12] {
+            for fmt in 0..=15 {
+                let r = ds
+                    .compare(
+                        facts(data_type, Some(fmt)),
+                        &DeclarationPolicy {
+                            use_tfmt_default: true,
+                            ..Default::default()
+                        },
+                    )
+                    .unwrap();
+                assert_eq!(r.tfmt.status, ComparisonStatus::NotApplicable);
+                assert!(!r.tfmt.default_derived);
+                assert_eq!(r.tfmt.effective, None);
+                assert_eq!(r.tfmt.published_default, None);
+                assert!(!r.findings.iter().any(|f| f.finding.code().number() == 6));
+                assert!(r.findings.is_empty());
+            }
+        }
+    }
+}
+#[test]
+fn recording_year_validation_accepts_boundary_and_rejects_out_of_domain() {
+    for year in [0, 9999, 10000, u16::MAX] {
+        let mut s = setup(0, None, channel(None, None));
+        s.recording_year = Some(year);
+        assert_eq!(
+            Declarations::present(vec![s]).is_ok(),
+            year <= 9999,
+            "year={year}"
+        );
+    }
 }
