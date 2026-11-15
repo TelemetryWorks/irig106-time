@@ -91,6 +91,15 @@ fn source_suite() {
                 assert_eq!(f.finding.severity(), Severity::Information);
                 assert_eq!(f.field, DeclarationField::Tsrc);
                 assert_eq!(f.comparison.reading.id(), "RDG-005");
+                assert!(
+                    f.finding
+                        .evidence()
+                        .raw_fields()
+                        .iter()
+                        .any(|v| v.name == "packet.time_source"
+                            && v.observed == RawValue::Unsigned(observed.into())
+                            && v.expected == Some(RawValue::Unsigned(expected.into())))
+                );
                 assert_eq!(f.finding.evidence().validity(), ValueValidity::Undetermined);
             }
             assert_eq!(r.basic.packet, p);
@@ -201,6 +210,22 @@ fn secondary_suite() {
             );
             assert_eq!(codes(&r).contains(&6), flags & 0x80 != 0 && fmt == 3);
             assert_eq!(r.secondary_wording.is_some(), flags & 0x80 != 0 && fmt == 0);
+            for f in r
+                .findings
+                .iter()
+                .filter(|f| f.field == DeclarationField::Shtf)
+            {
+                assert_eq!(f.finding.severity(), Severity::Warning);
+                assert!(
+                    f.finding
+                        .evidence()
+                        .raw_fields()
+                        .iter()
+                        .any(|v| v.name == "packet.secondary_time_format"
+                            && v.observed == RawValue::Unsigned(fmt.into())
+                            && v.expected == Some(RawValue::Unsigned(expected.into())))
+                );
+            }
             assert_eq!(r.basic.basis.channel.unwrap().shtf.as_deref(), Some(text));
         }
         let r = d
@@ -236,17 +261,21 @@ fn secondary_suite() {
     }
     // Fig11-4 reserved/usec/low/high: BCD-looking bytes still mean binary
     // usec0x0123=291, low0x1234=4660, NOT decimal123 /1234.
-    let d = ds(None, Some("0"));
-    let r = d
-        .compare_qualified(fields(1, 0, 7, 0), None, Some(0x80), &Default::default())
-        .unwrap();
-    assert!(r.secondary_wording.unwrap().contains("binary weighted"));
-    let bytes = [0, 0, 0x23, 1, 0x34, 0x12, 0, 0, 0, 0, 0x6a, 0]; // byte sum0x6a
-    let t = secondary::parse_secondary_header(&bytes, secondary::SecHdrTimeFormat::Ch4).unwrap();
-    let secondary::SecondaryHeaderTime::Ch4(t) = t else {
-        panic!("binary Ch4 required")
-    };
-    assert_eq!((t.high_order, t.low_order, t.microseconds), (0, 4660, 291));
+    for declared in [Some("0"), Some("1"), None] {
+        let d = ds(None, declared);
+        let r = d
+            .compare_qualified(fields(1, 0, 7, 0), None, Some(0x80), &Default::default())
+            .unwrap();
+        assert!(r.secondary_wording.unwrap().contains("binary weighted"));
+        let bytes = [0, 0, 0x23, 1, 0x34, 0x12, 0, 0, 0, 0, 0x6a, 0]; // byte sum0x6a
+        // Derive dispatch from retained actual flags, never the declared SHTF.
+        let format = secondary::SecHdrTimeFormat::from_packet_flags(r.flags.unwrap());
+        let t = secondary::parse_secondary_header(&bytes, format).unwrap();
+        let secondary::SecondaryHeaderTime::Ch4(t) = t else {
+            panic!("binary Ch4 required")
+        };
+        assert_eq!((t.high_order, t.low_order, t.microseconds), (0, 4660, 291));
+    }
 }
 /// Requirements: L2-RDG-206, L3-RDG-206
 /// Interpretations: RDG-006
@@ -449,6 +478,7 @@ fn combined_registered_comparisons_cover_the_whole_finding_contract() {
     basic_suite();
     source_suite();
     secondary_suite();
+    missing_and_override_suite();
     let d = Declarations::present(vec![
         setup(0, Some(10), vec![ch(7, Some("E"), Some("0"))]),
         setup(10, None, vec![ch(7, Some("I"), Some("1"))]),
@@ -540,6 +570,24 @@ fn audit_counts_time_packets_per_range_not_valid_references_and_keeps_severities
         assert_eq!(f.finding.evidence().location().packet, None);
         assert_eq!(f.finding.evidence().validity(), ValueValidity::Undetermined);
     }
+    // Charge observed packets to the exact governing range, not merely channel7.
+    let mut a = DeclarationAudit::new(&d);
+    a.observe(fields(1, 10, 7, 0), None, None, &Default::default())
+        .unwrap();
+    let missing = a.finish(&Default::default()).unwrap();
+    assert_eq!(missing.len(), 2);
+    assert!(
+        missing
+            .iter()
+            .all(|f| f.basis.governing.as_ref().unwrap().range.start().get() == 0)
+    );
+    assert_eq!(
+        missing
+            .iter()
+            .map(|f| f.basis.channel.as_ref().unwrap().id)
+            .collect::<Vec<_>>(),
+        vec![7, 8]
+    );
     let d = ds(Some("E"), Some("1"));
     let mut p = DeclarationPolicy::default();
     for id in [6, 8, 9, 10, 11] {
@@ -568,59 +616,184 @@ fn audit_counts_time_packets_per_range_not_valid_references_and_keeps_severities
 // Partial context/activity guards; no broader requirement promotion.
 #[test]
 fn only_qualified_defined_sources_enter_session_channel_history() {
-    let mut second=setup(0,None,vec![ch(7,Some("E"),None)]);
-    second.range=GoverningRange::new(2,SignedRtcTicks::new(0),None).unwrap();
-    let d=Declarations::present(vec![setup(0,None,vec![ch(7,Some("E"),None),ch(8,Some("E"),None)]),second]).unwrap();
-    let mut a=DeclarationAudit::new(&d);
-    let q=word(1,Some(PacketEdition::V24R1));
-    a.observe(fields(1,0,7,1),Some(&q),None,&Default::default()).unwrap();
-    for (id,q) in [(2,word(0,None)),(3,word(0,Some(PacketEdition::V04))),(4,word(3,Some(PacketEdition::V24R1)))] {
-        let r=a.observe(fields(id,id as i128,7,q.raw().as_raw()),Some(&q),None,&Default::default()).unwrap();
-        assert!(!r.findings.iter().any(|f|f.reason==DeclarationIssue::SourceChanged));
+    let mut second = setup(0, None, vec![ch(7, Some("E"), None)]);
+    second.range = GoverningRange::new(2, SignedRtcTicks::new(0), None).unwrap();
+    let d = Declarations::present(vec![
+        setup(
+            0,
+            None,
+            vec![ch(7, Some("E"), None), ch(8, Some("E"), None)],
+        ),
+        second,
+    ])
+    .unwrap();
+    let mut a = DeclarationAudit::new(&d);
+    let q = word(1, Some(PacketEdition::V24R1));
+    a.observe(fields(1, 0, 7, 1), Some(&q), None, &Default::default())
+        .unwrap();
+    for (id, q) in [
+        (2, word(0, None)),
+        (3, word(0, Some(PacketEdition::V04))),
+        (4, word(3, Some(PacketEdition::V24R1))),
+    ] {
+        let r = a
+            .observe(
+                fields(id, id as i128, 7, q.raw().as_raw()),
+                Some(&q),
+                None,
+                &Default::default(),
+            )
+            .unwrap();
+        assert!(
+            !r.findings
+                .iter()
+                .any(|f| f.reason == DeclarationIssue::SourceChanged)
+        );
     }
-    let q=word(0,Some(PacketEdition::V24R1));
-    let r=a.observe(fields(5,5,8,0),Some(&q),None,&Default::default()).unwrap();
-    assert!(!r.findings.iter().any(|f|f.reason==DeclarationIssue::SourceChanged));
-    let r=a.observe(PacketFields{data_type:0x12,..fields(6,6,7,0)},None,None,&Default::default()).unwrap();
-    assert_eq!(r.tsrc.status,ComparisonStatus::NotApplicable);
-    let mut p=DeclarationPolicy::default();p.levels.insert(11,Severity::Error);
-    let r=a.observe(fields(7,7,7,0),Some(&q),None,&p).unwrap();
-    let change=r.findings.iter().find(|f|f.reason==DeclarationIssue::SourceChanged).unwrap();
-    assert_eq!(change.finding.severity(),Severity::Error);
-    assert!(change.finding.evidence().related().iter().any(|l|l.packet==Some(1)));
-    assert!(change.finding.evidence().raw_fields().iter().any(|v|v.name=="packet.previous_source"&&v.observed==RawValue::Unsigned(1)));
-    let q=word(1,Some(PacketEdition::V24R1));
-    let r=a.observe(PacketFields{key:timeline::PacketKey{session:2,..key(8,0)},..fields(8,0,7,1)},Some(&q),None,&Default::default()).unwrap();
-    assert!(!r.findings.iter().any(|f|f.reason==DeclarationIssue::SourceChanged));
+    let q = word(0, Some(PacketEdition::V24R1));
+    let r = a
+        .observe(fields(5, 5, 8, 0), Some(&q), None, &Default::default())
+        .unwrap();
+    assert!(
+        !r.findings
+            .iter()
+            .any(|f| f.reason == DeclarationIssue::SourceChanged)
+    );
+    let r = a
+        .observe(
+            PacketFields {
+                data_type: 0x12,
+                ..fields(6, 6, 7, 0)
+            },
+            None,
+            None,
+            &Default::default(),
+        )
+        .unwrap();
+    assert_eq!(r.tsrc.status, ComparisonStatus::NotApplicable);
+    let mut p = DeclarationPolicy::default();
+    p.levels.insert(11, Severity::Error);
+    let r = a.observe(fields(7, 7, 7, 0), Some(&q), None, &p).unwrap();
+    let change = r
+        .findings
+        .iter()
+        .find(|f| f.reason == DeclarationIssue::SourceChanged)
+        .unwrap();
+    assert_eq!(change.finding.severity(), Severity::Error);
+    assert!(
+        change
+            .finding
+            .evidence()
+            .related()
+            .iter()
+            .any(|l| l.packet == Some(1))
+    );
+    assert!(
+        change
+            .finding
+            .evidence()
+            .raw_fields()
+            .iter()
+            .any(|v| v.name == "packet.previous_source" && v.observed == RawValue::Unsigned(1))
+    );
+    let q = word(1, Some(PacketEdition::V24R1));
+    let r = a
+        .observe(
+            PacketFields {
+                key: timeline::PacketKey {
+                    session: 2,
+                    ..key(8, 0)
+                },
+                ..fields(8, 0, 7, 1)
+            },
+            Some(&q),
+            None,
+            &Default::default(),
+        )
+        .unwrap();
+    assert!(
+        !r.findings
+            .iter()
+            .any(|f| f.reason == DeclarationIssue::SourceChanged)
+    );
     assert!(a.finish(&Default::default()).unwrap().is_empty());
     // Session1 seeing7 does not discharge session2's same-counter declaration.
-    let mut a=DeclarationAudit::new(&d);
-    a.observe(fields(1,0,7,1),Some(&q),None,&Default::default()).unwrap();
-    let missing=a.finish(&Default::default()).unwrap();
-    assert!(missing.iter().any(|f|f.finding.evidence().location().session==Some(2)&&f.basis.channel.as_ref().unwrap().id==7));
+    let mut a = DeclarationAudit::new(&d);
+    a.observe(fields(1, 0, 7, 1), Some(&q), None, &Default::default())
+        .unwrap();
+    let missing = a.finish(&Default::default()).unwrap();
+    assert!(
+        missing
+            .iter()
+            .any(|f| f.finding.evidence().location().session == Some(2)
+                && f.basis.channel.as_ref().unwrap().id == 7)
+    );
 }
 
 #[test]
 fn absent_non_timein_missing_fields_and_qualified_overrides_do_not_guess() {
-    for d in [Declarations::absent(),Declarations::present(vec![setup(0,None,vec![ChannelDeclaration{cdt:Some("PCM".into()),..ch(7,Some("E"),None)}])]).unwrap()] {
-        let q=word(0,Some(PacketEdition::V24R1));
-        let p=DeclarationPolicy{use_tfmt_default:true,..Default::default()};
-        let r=d.compare_qualified(fields(1,0,7,0),Some(&q),None,&p).unwrap();
-        assert_eq!(r.tsrc.status,ComparisonStatus::NotApplicable);assert!(!codes(&r).contains(&11));
-        assert!(!r.basic.tfmt.default_derived);assert_eq!(r.basic.tfmt.published_default,None);
-        let mut a=DeclarationAudit::new(&d);
-        let r=a.observe(PacketFields{data_type:0x19,..fields(1,0,7,0)},None,None,&p).unwrap();
-        assert!(r.activity.is_empty());assert!(a.finish(&p).unwrap().is_empty());
+    missing_and_override_suite();
+}
+fn missing_and_override_suite() {
+    for d in [
+        Declarations::absent(),
+        Declarations::present(vec![setup(
+            0,
+            None,
+            vec![ChannelDeclaration {
+                cdt: Some("PCM".into()),
+                ..ch(7, Some("E"), None)
+            }],
+        )])
+        .unwrap(),
+    ] {
+        let q = word(0, Some(PacketEdition::V24R1));
+        let p = DeclarationPolicy {
+            use_tfmt_default: true,
+            ..Default::default()
+        };
+        let r = d
+            .compare_qualified(fields(1, 0, 7, 0), Some(&q), None, &p)
+            .unwrap();
+        assert_eq!(r.tsrc.status, ComparisonStatus::NotApplicable);
+        assert!(!codes(&r).contains(&11));
+        assert!(!r.basic.tfmt.default_derived);
+        assert_eq!(r.basic.tfmt.published_default, None);
+        let mut a = DeclarationAudit::new(&d);
+        let r = a
+            .observe(
+                PacketFields {
+                    data_type: 0x19,
+                    ..fields(1, 0, 7, 0)
+                },
+                None,
+                None,
+                &p,
+            )
+            .unwrap();
+        assert!(r.activity.is_empty());
+        assert!(a.finish(&p).unwrap().is_empty());
     }
-    let mut c=ch(7,None,None);c.ttf=None;
-    let d=Declarations::present(vec![setup(0,None,vec![c])]).unwrap();
-    let r=d.compare_qualified(fields(1,0,7,0),None,None,&Default::default()).unwrap();
-    assert_eq!(r.basic.ttf.status,ComparisonStatus::MissingDeclaration);
+    let mut c = ch(7, None, None);
+    c.ttf = None;
+    let d = Declarations::present(vec![setup(0, None, vec![c])]).unwrap();
+    let r = d
+        .compare_qualified(fields(1, 0, 7, 0), None, None, &Default::default())
+        .unwrap();
+    assert_eq!(r.basic.ttf.status, ComparisonStatus::MissingDeclaration);
     assert!(codes(&r).contains(&10));
-    let q=TimeF1Csdw::from_raw(0).qualify(resolve_edition(EditionEvidence {
-        override_edition:Some(PacketEdition::V24R1),tmats_edition:Some("04".into()),use_tmats:true,data_type_version:Some(1),..Default::default()
+    let q = TimeF1Csdw::from_raw(0).qualify(resolve_edition(EditionEvidence {
+        override_edition: Some(PacketEdition::V24R1),
+        tmats_edition: Some("04".into()),
+        use_tmats: true,
+        data_type_version: Some(1),
+        ..Default::default()
     }));
-    let d=ds(Some("E"),None);let r=d.compare_qualified(fields(1,0,7,0),Some(&q),None,&Default::default()).unwrap();
-    assert_eq!(r.tsrc.status,ComparisonStatus::Mismatch);assert!(codes(&r).contains(&11));
-    assert_eq!(r.csdw.unwrap().resolution().basis(),EditionBasis::Override);
+    let d = ds(Some("E"), None);
+    let r = d
+        .compare_qualified(fields(1, 0, 7, 0), Some(&q), None, &Default::default())
+        .unwrap();
+    assert_eq!(r.tsrc.status, ComparisonStatus::Mismatch);
+    assert!(codes(&r).contains(&11));
+    assert_eq!(r.csdw.unwrap().resolution().basis(), EditionBasis::Override);
 }

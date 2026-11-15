@@ -65,3 +65,58 @@ any whole marker. RDG205/206 require exhaustive pairs, missing/reserved/wrong
 contexts, loss/regain, mixed channels and BCD-looking binary bytes. RDG101
 inspection and DECL102 universal legacy propagation remain clause records;
 this slice does not claim all-edition field evidence or full report adapters.
+
+
+## Executed evidence and final clause ledger
+
+Tests-only daacbac precedes implementation and fails at main2e562eb because
+compare_qualified, mapping/audit APIs and new enum variants are absent. This
+is compile-time API evidence, NOT seven runtime failures. One fixture's
+inferred integer needed an explicit u8 once the API compiled. Tests-only
+93c67f2 adds missing/edition/inventory guards before any implementation commit;
+later formatted assertions are not retroactively claimed failing-first.
+Seven final tests exercise4x16 TSRC pairs,3x256 SHTF flag bytes including
+non-time channels, exhaustive existing TTF/TFMT vocabularies/mismatches,
+explicit/default/missing TFMT, exact setup boundaries, source loss/regain,
+EXT/unresolved/override contexts, reserved source3..14, session/channel isolation,
+TF008/009, level overrides and raw/related finding evidence. Combined FND104
+calls all mapping/default/missing suites, so its whole marker is not claimed
+from one informational-source test. Literal Ch4 bytes[0,0,23,01,34,12,0,0]
+(hex) give usec291 and low4660, byte checksum006a; dispatch comes from actual
+flags80 even when SHTF says1 or is absent. No encoder/host-clock oracle, fresh
+page review, real-recording comparison or fuzz campaign.
+
+23 isolated mutations each compiled and failed runtime assertions: all4 source
+pairs; all3 SHTF pairs; bit selection; bit7 presence; EXT/unresolved SRC guess;
+non-TIMEIN source comparison; reserved SRC and flag findings; source level
+mapped incorrectly to warning; reserved source admitted to transition history;
+change suppressed; regain suppressed; session history mixed; TF008 suppressed;
+TF009 suppressed; data packet counted as time; activity overrides ignored; range
+identity lost. Sources restored. Initial range-identity mutation survived because
+only the first range had observed packets; add a packet ONLY in the second
+range and assert missing channels remain only in the first, then rerun all23:
+all killed. This is a test gap corrected, not a production bug.
+
+| L2/L3 suffix | Covered clauses | Remaining |
+|---|---|---|
+| RDG205 | four source pairs/mismatches, reserved3 not GPS, loss/regain information, original observed source authoritative, missing/unknown, layout qualification | Closed for caller-qualified packet/declaration facts; upstream edition parsing remains S03/caller |
+| RDG206 |0/1/2 versus flags00/01/10, all256 flags, enabled-only, mixed TIMEIN/PCM channels, missing/unknown/reserved, wording retained, binary dispatch proof | Closed; Chapter4 calendar answers remain separate S07/adapters |
+| FND104 | combined RDG001..006 comparisons, all mappings/mismatches/missing/context/boundary, inferredI warning, source difference/change information, TFMT opt-in default/raw absence/no insertion, standalone evidence/overrides | Closed at declaration comparison/audit boundary; automatic legacy answer/CLI propagation is S10b/S12, not this requirement |
+| RDG101 | six centralized reading IDs and typed results; comparison-site inspection finds mappings only in declarations modules | No new whole marker from this slice: inspection/all consumer adoption remains explicit audit work |
+| DECL102 | existing declaration-free operation and reduced comparison/activity basis | Universal legacy answer/parser-finding propagation stays S10b/S12; no whole marker |
+| FND102/103 | TF008/009 default levels and scoped raw/related evidence, plus source findings | Only partial clauses; no claim of every contract6 finding or global final report coverage |
+
+TF009 requires explicit scope completion; absence is per supplied range/channel,
+not inferred from an early stream prefix. State is bounded by declared TIMEIN
+inventory. Existing core engines may also report membership/source findings;
+future report adapters must combine these facts deliberately, not blindly append
+duplicate diagnostics. No hidden channel switch/admission or queue is added.
+
+
+Final checks:18/18 bounded local CI-equivalent checks pass with locked Cargo
+resolution, jobs/threads2: all feature suites, MSRV1.85, no_std WASM±serde,
+CLI build/clippy, benches, all-fuzz compile, fmt/docs/trace and cargo-deny.
+Actionlint/diff clean. Matrix170->176/288 (+6: FND104/RDG205/RDG206 L2+L3);
+no other whole requirement promoted. Every Design/Review field is retained
+byte-for-byte. Hosted checks are verified at the reported head. No merge or
+publication; no new owner decision required by this slice.

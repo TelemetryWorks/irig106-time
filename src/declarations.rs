@@ -1,5 +1,5 @@
 //! Caller-supplied governing declarations; no TMATS parser or inserted defaults.
-//! Contract2.3C/4.5; Ch9 Table9-4; RDG-001..004 and owner Q-TFMT-DEFAULT.
+//! Contract2.3C/4.5; Ch9 Table9-4; RDG-001..006 and owner Q-TFMT-DEFAULT.
 use crate::{
     Result, SignedRtcTicks, TimeError,
     findings::*,
@@ -9,6 +9,12 @@ use alloc::{
     collections::{BTreeMap, BTreeSet},
     string::String,
     vec::Vec,
+};
+
+#[path = "declaration_checks.rs"]
+mod checks;
+pub use checks::{
+    DeclarationAudit, DeclarationFinding, DetailedComparison, secondary_mapping, source_mapping,
 };
 /// Half-open unwrapped counter range, scoped to one caller session.
 /// **Traces:** L3-DECL-101 ← L2-DECL-101 ← L1-DECL-001
@@ -59,9 +65,9 @@ pub struct ChannelDeclaration {
     pub ttf: Option<String>,
     /// R-x\TFMT-n, never filled with a default.
     pub tfmt: Option<String>,
-    /// R-x\TSRC-n; retained for S09b, used as static channel-selection evidence.
+    /// R-x\TSRC-n; compared with qualified SRC, also static selection evidence.
     pub tsrc: Option<String>,
-    /// R-x\SHTF-n; retained for S09b.
+    /// R-x\SHTF-n; compared only when the secondary header is present.
     pub shtf: Option<String>,
 }
 /// One caller-supplied configuration snapshot; no dependency on irig106-tmats.
@@ -242,7 +248,8 @@ impl Declarations {
             declarations,
         })
     }
-    /// Compare only accepted RDG-001..004 vocabularies; never change packet facts.
+    /// Context-free RDG-001..004 comparisons; never change packet facts.
+    /// Use [`Self::compare_qualified`] for SRC/SHTF with edition/flag evidence.
     /// **Traces:** L3-RDG-101 ← L2-RDG-101 ← L1-RDG-001
     pub fn compare(
         &self,
@@ -405,7 +412,7 @@ impl Declarations {
         })
     }
 }
-/// Only readings implemented in this slice; RDG-005/006 remain S09b.
+/// The only accepted declaration-to-packet mapping vocabularies (D8).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Reading {
     /// TTF to packet type.
@@ -416,6 +423,10 @@ pub enum Reading {
     Rdg003,
     /// Numeric Format2 NTF.
     Rdg004,
+    /// TSRC letters to qualified Format1 SRC.
+    Rdg005,
+    /// SHTF to enabled secondary-header flags.
+    Rdg006,
 }
 impl Reading {
     /// Permanent interpretation identity.
@@ -425,6 +436,8 @@ impl Reading {
             Self::Rdg002 => "RDG-002",
             Self::Rdg003 => "RDG-003",
             Self::Rdg004 => "RDG-004",
+            Self::Rdg005 => "RDG-005",
+            Self::Rdg006 => "RDG-006",
         }
     }
 }
@@ -513,7 +526,7 @@ pub struct PacketFields {
     /// Caller-qualified FMT/NTF nibble; None if unreadable or meaning unresolved.
     /// Edition qualification is S03's responsibility, never inferred here.
     pub format: Option<u8>,
-    /// SRC retained unchanged for the S09b comparison.
+    /// Original source nibble; SRC comparison additionally requires QualifiedCsdw.
     pub source: Option<u8>,
 }
 /// Why a declaration/packet comparison cannot silently imply equality.
@@ -565,6 +578,10 @@ pub enum DeclarationField {
     Ttf,
     /// R-x\TFMT-n.
     Tfmt,
+    /// R-x\TSRC-n.
+    Tsrc,
+    /// R-x\SHTF-n.
+    Shtf,
 }
 /// Diagnostic reason, independent of accepted severity defaults.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -581,6 +598,8 @@ pub enum DeclarationIssue {
     Mismatch,
     /// Packet field itself is reserved (TF-006).
     ReservedObserved,
+    /// Qualified SRC changed from the previous observed defined source.
+    SourceChanged,
 }
 /// Finding with standalone string/range/RDG provenance beside numeric evidence.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -635,10 +654,11 @@ fn diagnostic(
     }
     if let Some(observed) = comparison.observed {
         evidence = evidence.with_raw_field(RawField {
-            name: if field == DeclarationField::Ttf {
-                "packet.data_type"
-            } else {
-                "packet.time_format"
+            name: match field {
+                DeclarationField::Ttf => "packet.data_type",
+                DeclarationField::Tfmt => "packet.time_format",
+                DeclarationField::Tsrc => "packet.time_source",
+                DeclarationField::Shtf => "packet.secondary_time_format",
             },
             observed: RawValue::Unsigned(observed.into()),
             expected: comparison.expected.map(|e| RawValue::Unsigned(e.into())),

@@ -174,9 +174,9 @@ edge-case tests, and two-person review remain outstanding.
 
 **Design**: accepted · **Review**: pending · **Origin**: contract 3.7, 5.2 rule 6
 
-**Test**: not yet written
+**Test**: `tests/s09b_declarations.rs` (exhaustive pairs, qualified layouts, loss/regain, flag contexts and findings)
 
-**Development**: intensive testing and deep analysis required · **Analysis**: not yet written
+**Development**: intensive testing and deep analysis required · **Analysis**: [TSRC/SHTF reading and clause evidence](verification-s09b.md)
 
 ### RDG-006
 
@@ -193,9 +193,9 @@ edge-case tests, and two-person review remain outstanding.
 
 **Design**: accepted · **Review**: pending · **Origin**: contract 3.7
 
-**Test**: not yet written
+**Test**: `tests/s09b_declarations.rs` (exhaustive pairs, qualified layouts, loss/regain, flag contexts and findings)
 
-**Development**: intensive testing and deep analysis required · **Analysis**: not yet written
+**Development**: intensive testing and deep analysis required · **Analysis**: [TSRC/SHTF reading and clause evidence](verification-s09b.md)
 
 ---
 

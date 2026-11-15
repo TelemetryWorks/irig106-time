@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S09b TSRC/SHTF comparisons and declaration audit
+
+- Add `compare_qualified` using S03 edition-qualified CSDW and primary flags.
+  RDG-005 maps TSRC I/E/R/X to SRC 0/1/2/15; EXT/unresolved layouts never
+  invent SRC comparisons. Source differences/loss/regain are TF-011 information
+  by default. RDG-006 maps SHTF 0/1/2 to enabled secondary formats 00/01/10;
+  Chapter 11 binary dispatch governs despite Chapter 9's BCD wording.
+- Add inventory-bounded `DeclarationAudit` for transitions, TF-008 undeclared
+  time packets and per-range TF-009 missing time channels at explicit finish.
+  No default insertion, channel switch, admission or payload/counter changes.
+  Existing context-free `compare` remains available; full answer/CLI propagation
+  belongs to later adapters. The clause record separates these limits.
+- BREAKING for exhaustive matches: `Reading` adds `Rdg005`/`Rdg006`,
+  `DeclarationField` adds `Tsrc`/`Shtf`, and `DeclarationIssue` adds
+  `SourceChanged`. Existing structs/CLI output and decoding APIs are unchanged.
+
 ### S09a governing declarations and TTF/TFMT comparisons
 
 - Add caller-supplied setup ranges, raw channel/version/RI4 provenance and an
