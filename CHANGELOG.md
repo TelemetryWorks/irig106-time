@@ -26,9 +26,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   eviction. Session boundaries clear year evidence. Explicit normalization is
   recomputed on a changed year; unavailable context stays labelled, never stale.
 - PROPOSAL pending owner confirmation for same-priority DMY conflicts:
-  first eligible DMY anchors yearless references; a DMY retains its own explicit
-  calendar, and contradictory DMYs remain findings/candidates rather than silently
-  overwriting the first anchor. No new nearest-year or configuration-date default.
+  first observed eligible DMY anchors yearless references in both engines
+  (observation order/packet identity, never RTC order). Each DMY keeps its own
+  calendar and contradictory candidates. Case (a): later DMY can backdate offline
+  references, while stream cannot revise answers already emitted. TF-032 repeats
+  per affected reference while retained candidates disagree, not once per session.
+  No new nearest-year or configuration-date default.
+- Sparse forward day-of-year decreases advance the year even without a Jan1
+  reference; late correction is symmetric. A gap of365days or more between
+  eligible year references now returns NeedsContext instead of guessing cycles.
+  Stream rejects it before advancing progress/draining held answers; explicit
+  session/date context permits retry. RI4-only rollover has independent tests.
 - `verification-s08.md` records clause limits and honest tests-first/mutation
   evidence. FND-102 is not promoted: this slice does not test every contract6
   degraded case. Governing TMATS extraction remains S09; no CLI/dependency change.

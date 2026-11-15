@@ -71,7 +71,7 @@ impl YearBasis {
     pub fn normalization_issue(&self) -> Option<&TimeError> {
         self.normalization_issue.as_ref()
     }
-    /// Observed Dec31/Jan1 transitions relative to session start.
+    /// Observed forward day-of-year decreases relative to session start.
     pub fn rollovers(&self) -> i32 {
         self.phase
     }
@@ -111,8 +111,68 @@ fn calendar(r: &TimelineReference) -> Option<(u16, Option<u16>)> {
             .map(|t| (t.day_of_year, t.year)),
     }
 }
+// These facts qualify for phase tracking, independently of ordinary leap-time
+// admission. Non-admitted invalid/None/malformed observations remain skippable.
+fn year_evidence(r: &TimelineReference) -> bool {
+    if r.input.network.is_some() || calendar(r).is_none() {
+        return false;
+    }
+    let body_year = r
+        .input
+        .wire
+        .and_then(|(_, w)| w.time)
+        .or_else(|| r.input.qualified.as_ref().and_then(|q| q.time))
+        .and_then(|t| t.year);
+    r.admitted
+        || (matches!(r.input.value, ReferenceValue::NeedsContext)
+            && body_year.is_some()
+            && r.reasons
+                .iter()
+                .all(|reason| matches!(reason, Rejection::NeedsContext)))
+}
 impl YearClock {
+    // A gap of365days can hide an entire ordinal-day cycle (or two year
+    // boundaries near year end). Conservatively request context instead of
+    // guessing how many years passed. This is a reader guard, not an IRIG rate.
+    pub(crate) fn long_gap(&self, ticks: i128) -> Result<bool> {
+        let Some((last, _)) = self.last else {
+            return Ok(false);
+        };
+        let elapsed = ticks.checked_sub(last).ok_or(TimeError::QuantityOverflow {
+            quantity: "year evidence counter gap",
+        })?;
+        Ok(elapsed.unsigned_abs() >= 365 * 86_400 * 10_000_000u128)
+    }
+    pub(crate) fn check_gap(&self, r: &TimelineReference) -> Result<()> {
+        if year_evidence(r) && self.long_gap(r.key.ticks)? {
+            return Err(TimeError::NeedsContext {
+                context: "year evidence gap of365days or more; supply a new session/date context",
+            });
+        }
+        Ok(())
+    }
+    // Call in observation order, separately from counter order used for phase.
+    fn remember_anchor(&mut self, r: &TimelineReference) {
+        if year_evidence(r)
+            && r.input.year_basis.original_origin == Some(YearOrigin::Packet)
+            && matches!(
+                r.input.value,
+                ReferenceValue::Readable(_, true) | ReferenceValue::NeedsContext
+            )
+        {
+            if let Some((_, Some(year))) = calendar(r) {
+                let anchor = Anchor {
+                    year,
+                    phase: r.input.year_basis.phase,
+                    packet: r.key.packet,
+                };
+                self.anchor.get_or_insert(anchor);
+                self.latest = Some(anchor);
+            }
+        }
+    }
     pub(crate) fn stamp(&mut self, r: &mut TimelineReference) -> Result<()> {
+        self.check_gap(r)?;
         if r.input.network.is_some() {
             return Ok(());
         }
@@ -132,21 +192,14 @@ impl YearClock {
             .year_basis
             .original_origin
             .get_or_insert(original_origin);
-        let Some((day, year)) = calendar(r) else {
+        let Some((day, _)) = calendar(r) else {
             return Ok(());
         };
         let mut phase = self.phase;
-        // A validated leap-label body can supply a DMY year without being a
-        // usable ordinary time reference. Other rejection reasons still block it.
-        let readable_year = matches!(r.input.value, ReferenceValue::NeedsContext)
-            && body_year.is_some()
-            && r.reasons
-                .iter()
-                .all(|reason| matches!(reason, Rejection::NeedsContext));
-        if r.admitted || readable_year {
+        if year_evidence(r) {
             if let Some((ticks, last)) = self.last {
                 if r.key.ticks >= ticks {
-                    if last >= 365 && day == 1 {
+                    if r.key.ticks > ticks && day < last {
                         self.phase =
                             self.phase
                                 .checked_add(1)
@@ -156,30 +209,15 @@ impl YearClock {
                     }
                     phase = self.phase;
                     self.last = Some((r.key.ticks, day));
-                } else if last == 1 && day >= 365 {
+                } else if day > last {
                     phase -= 1;
                 }
             } else {
                 self.last = Some((r.key.ticks, day));
             }
-            if r.input.year_basis.original_origin == Some(YearOrigin::Packet)
-                && matches!(
-                    r.input.value,
-                    ReferenceValue::Readable(_, true) | ReferenceValue::NeedsContext
-                )
-            {
-                if let Some(year) = year {
-                    let anchor = Anchor {
-                        year,
-                        phase,
-                        packet: r.key.packet,
-                    };
-                    self.anchor.get_or_insert(anchor);
-                    self.latest = Some(anchor);
-                }
-            }
         }
         r.input.year_basis.phase = phase;
+        self.remember_anchor(r);
         Ok(())
     }
     /// Resolve against evidence available now, preserving raw wire/year inputs.
@@ -220,7 +258,7 @@ impl YearClock {
             .year_basis
             .original_origin
             .unwrap_or(r.input.year_origin);
-        // Same-priority choice PROPOSAL: first eligible DMY anchors yearless
+        // Same-priority choice PROPOSAL: first observed eligible DMY anchors yearless
         // references; pending owner confirmation (verification-s08).
         // A DMY packet retains its own explicit calendar. Other references use
         // the first eligible DMY anchor; all disagreements remain candidates.
@@ -403,6 +441,30 @@ pub(crate) fn resolve_session(
     let mut clock = YearClock::default();
     for &i in &order {
         clock.stamp(&mut refs[i])?;
+    }
+    // Stamp in counter order to classify sparse/late rollovers, but select
+    // first/latest DMY in recording observation order (packet identities), just
+    // as stream does. A late earlier-RTC DMY cannot replace the first observed.
+    // Context years name the first observed eligible calendar, even when a
+    // later-arriving reference sorts into the preceding counter year.
+    let origin = refs
+        .iter()
+        .find(|r| year_evidence(r))
+        .map_or(0, |r| r.input.year_basis.phase);
+    for r in refs.iter_mut().filter(|r| r.input.network.is_none()) {
+        r.input.year_basis.phase =
+            r.input
+                .year_basis
+                .phase
+                .checked_sub(origin)
+                .ok_or(TimeError::QuantityOverflow {
+                    quantity: "year evidence phase origin",
+                })?;
+    }
+    clock.anchor = None;
+    clock.latest = None;
+    for r in refs.iter() {
+        clock.remember_anchor(r);
     }
     let mut findings = Vec::new();
     for i in order {

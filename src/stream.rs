@@ -478,6 +478,28 @@ impl StreamTimeline {
                 ));
             }
         }
+        // Reject ambiguous year gaps before progress/timeouts or packet identity
+        // are committed. Preserve held answers and allow an explicit-boundary retry.
+        if self.first.is_some()
+            && !boundary
+            && !reset
+            && packet
+                .reference
+                .as_ref()
+                .is_some_and(|r| r.network.is_none())
+            && self.years.long_gap(ticks)?
+        {
+            let key = PacketKey {
+                session,
+                ticks,
+                packet: packet.id,
+            };
+            let (reference, _) =
+                crate::timeline::stream_observation(packet.clone(), &self.policy.offline, key)?;
+            if let Some(r) = reference {
+                self.years.check_gap(&r)?;
+            }
+        }
         let mut b = self.advance(progress)?;
         if self.first.is_none() || boundary || reset {
             self.flush(&mut b, ReleaseReason::SessionBoundary);

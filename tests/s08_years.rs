@@ -649,8 +649,8 @@ fn newly_invalid_day366_does_not_hide_a_previous_eligible_stream_reference() {
             .unwrap();
             s.observe(p(3, DAY_TICKS + 5_000_000, None), 0, 100, false)
                 .unwrap();
-            // Other-channel DMY2023Dec31 00:00:01 supplies year only; no channel switch.
-            let bytes = [1, 2, 0, 0, 0, 1, 0, 0, 0x31, 0x12, 0x23, 0x20];
+            // DMY2024Jan1 00:00:02 dates preceding year; +1s jump if committed.
+            let bytes = [1, 3, 0, 0, 0, 2, 0, 0, 1, 1, 0x24, 0x20];
             let dated = ReferenceInput::format1(
                 &bytes,
                 12,
@@ -678,15 +678,9 @@ fn newly_invalid_day366_does_not_hide_a_previous_eligible_stream_reference() {
                 s.finish(0).unwrap().answers
             };
             let a = answers.iter().find(|a| a.basis.key.packet == 5).unwrap();
-            assert_eq!(
-                a.time.unwrap().year(),
-                Some(if committed { 2023 } else { 2024 })
-            );
-            assert_eq!(
-                a.time.unwrap().day_of_year(),
-                if committed { 365 } else { 1 }
-            );
-            assert_eq!(a.time.unwrap().seconds(), 2);
+            assert_eq!(a.time.unwrap().year(), Some(2024));
+            assert_eq!(a.time.unwrap().day_of_year(), 1);
+            assert_eq!(a.time.unwrap().seconds(), if committed { 3 } else { 2 });
             assert_eq!(
                 a.basis.preceding.as_ref().unwrap().key.packet,
                 if committed { 4 } else { 1 }
@@ -906,56 +900,63 @@ fn review_late_sparse_year_end_keeps_previous_year() {
 #[test]
 fn review_full_year_gap_needs_context_without_consuming_stream_state() {
     const DAY: u64 = 864_000_000_000;
-    let ctx = YearContext {
-        caller: Some(2023),
-        recording: None,
-    };
-    let mut packets = vec![p(1, 0, Some(review_year_end(2023, ctx)))];
-    // Each100-day step is < half a48-bit wrap; both engines can unwrap400days.
-    for step in 1..=4 {
-        packets.push(p(step + 1, step * 100 * DAY, None));
-    }
-    let mut bad = r(2, false, ctx);
-    bad.source = Some(TimeF1Source::Source(TimeSource::None));
-    packets.push(p(6, 400 * DAY + 5_000_000, Some(bad))); // unusable observation is skipped
-    let target = p(7, 400 * DAY + 10_000_000, Some(r(2, false, ctx)));
-    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
-    for packet in &packets {
-        b.observe(packet.clone(), false).unwrap();
-    }
-    b.observe(target.clone(), false).unwrap();
-    assert!(matches!(b.finish(), Err(TimeError::NeedsContext { .. })));
-    for mode in [StreamMode::Standard, StreamMode::Interpolate] {
-        let mut s = StreamTimeline::new(sp(mode), None).unwrap();
-        for packet in &packets {
-            s.observe(packet.clone(), 0, 100, false).unwrap();
+    for days in [365, 400] {
+        let ctx = YearContext {
+            caller: Some(2023),
+            recording: None,
+        };
+        let mut packets = vec![p(1, 0, Some(review_year_end(2023, ctx)))];
+        // Each100-day step is < half a48-bit wrap; both engines can unwrap365/400days.
+        for (id, ticks) in [
+            (2, 100 * DAY),
+            (3, 200 * DAY),
+            (4, 300 * DAY),
+            (5, days * DAY - 10_000_000),
+        ] {
+            packets.push(p(id, ticks, None));
         }
-        assert!(matches!(
-            s.observe(target.clone(), 2_000_000_000, 100, false),
-            Err(TimeError::NeedsContext { .. })
-        ));
-        if mode == StreamMode::Interpolate {
-            assert_eq!(
-                s.usage().packets,
-                4,
-                "gap rejection must precede progress/timeouts"
-            );
-            assert_eq!(s.finish(2_000_000_000).unwrap().answers.len(), 4);
-        } else {
-            // The rejected ID is reusable with explicit new-session/year context.
-            let dated = p(
-                7,
-                400 * DAY + 10_000_000,
-                Some(r(
-                    2,
-                    false,
-                    YearContext {
-                        caller: Some(2025),
-                        recording: None,
-                    },
-                )),
-            );
-            s.observe(dated, 2_000_000_000, 100, true).unwrap();
+        let mut bad = r(2, false, ctx);
+        bad.source = Some(TimeF1Source::Source(TimeSource::None));
+        packets.push(p(6, days * DAY - 5_000_000, Some(bad))); // unusable observation is skipped
+        let target = p(7, days * DAY, Some(r(2, false, ctx)));
+        let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+        for packet in &packets {
+            b.observe(packet.clone(), false).unwrap();
+        }
+        b.observe(target.clone(), false).unwrap();
+        assert!(matches!(b.finish(), Err(TimeError::NeedsContext { .. })));
+        for mode in [StreamMode::Standard, StreamMode::Interpolate] {
+            let mut s = StreamTimeline::new(sp(mode), None).unwrap();
+            for packet in &packets {
+                s.observe(packet.clone(), 0, 100, false).unwrap();
+            }
+            assert!(matches!(
+                s.observe(target.clone(), 2_000_000_000, 100, false),
+                Err(TimeError::NeedsContext { .. })
+            ));
+            if mode == StreamMode::Interpolate {
+                assert_eq!(
+                    s.usage().packets,
+                    4,
+                    "gap rejection must precede progress/timeouts"
+                );
+                assert_eq!(s.finish(2_000_000_000).unwrap().answers.len(), 4);
+            } else {
+                // The rejected ID is reusable with explicit new-session/year context.
+                let dated = p(
+                    7,
+                    days * DAY,
+                    Some(r(
+                        2,
+                        false,
+                        YearContext {
+                            caller: Some(2025),
+                            recording: None,
+                        },
+                    )),
+                );
+                s.observe(dated, 2_000_000_000, 100, true).unwrap();
+            }
         }
     }
 }
@@ -1024,6 +1025,44 @@ fn review_stable_first_uses_observation_order_not_counter_order() {
                 .unwrap()
                 .packet,
             Some(2)
+        );
+    }
+    // Caller/RI4 base year also names the first observed calendar, not the
+    // earliest-RTC late reference. Counter sorting must preserve that origin.
+    let ctx = YearContext {
+        caller: Some(2023),
+        recording: None,
+    };
+    let packets = [
+        p(1, 10_000_000, Some(r(100, false, ctx))),
+        p(2, 5_000_000, Some(r(300, false, ctx))),
+    ];
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    let key = b.observe(packets[0].clone(), false).unwrap();
+    b.observe(packets[1].clone(), false).unwrap();
+    assert_eq!(
+        b.finish()
+            .unwrap()
+            .lookup(key)
+            .unwrap()
+            .time
+            .unwrap()
+            .year(),
+        Some(2023)
+    );
+    for mode in [StreamMode::Standard, StreamMode::Interpolate] {
+        let mut s = StreamTimeline::new(sp(mode), None).unwrap();
+        for packet in &packets {
+            s.observe(packet.clone(), 0, 100, false).unwrap();
+        }
+        assert_eq!(
+            s.observe(p(3, 10_000_000, None), 0, 100, false)
+                .unwrap()
+                .answers[0]
+                .time
+                .unwrap()
+                .year(),
+            Some(2023)
         );
     }
 }
