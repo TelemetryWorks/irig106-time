@@ -1,10 +1,10 @@
-# S10a preparation — secondary own time and RTC/ERTC consistency
+# S10a1 — secondary validation, evidence and RTC/ERTC consistency
 
-Preparation starts from main `e068372e5fd8dab70c897867812542323a2fe325`.
+Initial preparation started from main `e068372e5fd8dab70c897867812542323a2fe325`.
 Owner GO 2026-11-15 is conditional on PR31 merging; the coordinator will relay
-that merge. This preparation is analysis/fixtures only: no production changes,
-new API, requirements/Design/Review changes, implementation claims or PR.
-After the relay, ordinarily merge current main before tests/implementation.
+that merge. The initial preparation commit contained analysis/fixtures only,
+with no production/API or requirements/Design/Review changes. GitHub then
+confirmed PR31 merged; current S10a1 implementation/evidence is recorded below.
 
 ## Sources and constraints to preserve
 
@@ -102,7 +102,7 @@ requirement statement is exercised; partial clauses remain in this ledger.
 If validation/adapter/context code exceeds about1500 changed lines, propose a
 checksum/evidence versus conversion/comparison split before implementation.
 Full bounded CI equivalent is for the eventual implemented slice, not this
-analysis-only preparation. No Rust builds/full tests executed for this file.
+analysis-only preparation. No Rust builds/full tests were executed at the initial preparation stage.
 
 ## CLI naming carried forward (owner2026-11-15)
 
@@ -129,3 +129,90 @@ RDG208 real-recording/human-settlement work stays explicit and suspect; no
 Review field changes. Later conversion must use D7 rather than inventing a
 no-UTC stale-table rule. Source/clock assumptions require explicit provenance.
 No code changes to existing correlation/streaming/CLI are planned in S10a1.
+
+
+## S10a1 implemented boundary and evidence
+
+Implementation adds secondary_packet inspection/audit and a borrowed counter
+carrier. It is additive: existing raw parsers, correlation, streaming and CLI
+code are unchanged. Raw header storage is capped at12 bytes. Audit state is a
+first format plus at most one entry per u16 channel and checked u64 counters;
+there is no packet/answer queue. Format facts come from primary flags even when
+an independent secondary checksum fails. Reserved selectors do not establish
+a canonical format; missing headers do not imply00. Same-channel returns to
+the original format remain changes. Actual packet flags always select dispatch.
+
+TF004/005/006/012/013/025/027/028 use catalog levels with independent factual
+validity. CRC/field errors keep the original borrowed offline OR stream answer.
+The caller supplies the same packet's counter answer; the carrier does not
+prove compatibility or compute a discrepancy. Metadata errors return Result
+without consuming the caller's answer. Reserved fields remain Kept even with
+Error override; checksum/range failures remain Unusable even with Information.
+Invalid format has separate ReservedPacketTimeFormat/UndefinedSecondaryTimeFormat
+evidence. First-data-bit/caller-cited exceptions and source bytes are retained.
+No clock epoch or UTC/TAI/GPS label is guessed; raw own scale stays Unknown.
+
+Same-packet ERTC checks use floor(ns/100), modulo2^48 and observed-minus-expected
+nearest signed phase. The sub-tick remainder is a shared NanosDuration, phase
+distance is a nonnegative SignedRtcTicks, and full raw ERTC remains shared.
+Exactly half-range has known unsigned distance outside tolerance, TF025 and
+AmbiguousCounterDelta for its sign; no guessed signed zero. Both raw counters,
+expected value, signed delta when unique and unsigned distance are evidence.
+This does not correlate ERTC to an absolute date or select another session.
+
+### Honest tests-first execution
+
+Existing raw baseline s10a_existing passes at the merged main: distinct IEEE
+words and ns=10^9 rejection were already correct. No runtime defect claimed.
+Tests-only862a264 had the missing new module plus three fixture/API assumptions
+(no Ieee1588Time::to_le_bytes, Ertc::to_nanos returns u128, integer inference).
+Corrected tests-only733bc67 fails ONLY with E0432: secondary_packet API absent.
+It precedes any implementation commit. This is compile-time API evidence, not
+seven runtime failures. Later override, metadata, stream, format-registry and
+raw-operand guards are explicitly post-prototype tests, not failing-first claims.
+
+Final focused tests: nine new inspection/audit tests plus one passing raw
+baseline. Header/checksum arithmetic is tabulated above. The ERTC fixtures add
+each of eight literal byte weights for their checksum without a crate encoder;
+reserved-bit fixtures use one set bit's BYTE weight, not its word weight.
+No fresh page inspection, local recording, fuzz campaign or encoder oracle.
+
+31 isolated mutants compiled and failed runtime assertions, sources restored:
+all eight finding suppressions (004/005/006/012/013/025/027/028); absence default00;
+unbounded raw prefix; each reserved field skipped; wrong per-packet decoder;
+word-only admission; ERTC*100 instead of/100; tick tolerance >=1 or>2; signed
+evidence reversed; lost remainder; half-range guessed zero; format finding
+suppressed; checksum both misclassified; ignored level override; missing citation,
+overflowed byte offset or mismatched cited type accepted; header error propagated
+instead of returning the counter carrier; reserved format poisoning the registry;
+return-to-canonical change hidden; checksum failure hiding format facts; and
+word sum losing modulo arithmetic. No compile-error mutant counts.
+
+| L2/L3 suffix | S10a1 clauses | Remaining / marker scope |
+|---|---|---|
+| ABS103 | distinct IEEE raw order and ns bounds; Unknown scale, no Format2 epoch reuse | calendar/context conversion and encoder compatibility audit in S10a2; no new whole marker |
+| ABS104 | full64 relative1ns, remainders and same-packet floor relationship | absolute session correlation in S10a2; no new whole marker |
+| SEC101 | bounded12, Ch4 byte-trust gate, raw values and both reserved fields | whole marker supported by comprehensive raw/bounds/reserved test |
+| SEC102 | validated IEEE raw result and first-bit/cited-exception metadata | own calendar/context adapter S10a2; no whole marker |
+| SEC103 | validated raw relative ERTC without a reference; RTC disagreement separate | absolute session adapter S10a2; no whole marker |
+| SEC104 | stored/byte/word trust and per-recording aggregation | real-recording/human settlement remains; no new whole marker |
+| SEC105 | all32 reserved-bit positions, both fields, raw bits, original bytes, Kept semantics | whole marker; no reserved warning discards a value |
+| SEC106 | all defined format pairs, per-channel change, reserved/missing exclusion, actual dispatch and failed-checksum independence | whole marker |
+| ANS102 | borrowed independent answer beside raw own evidence | epoch/scale normalization, compatibility/discrepancy/TF014/tolerance all S10a2; no whole marker |
+| FND105 | floor/modulo, ±ticks/wrap, raw/expected/delta/remainder and half-range sign unresolved | conservative clause evidence in this partial adapter slice; no new whole marker before S10a2 integration |
+| ERR104 | checksum errors preserve original borrowed offline/stream answer and all checksums | full final own-answer integration S10a2; no new whole marker |
+| RDG208 | strict byte trust, word-only TF012+027 and aggregate evidence | suspect status/local-recording/human review unchanged; no new whole marker |
+
+S10a2 is remaining0.8 work, NOT an owner-approved release deferral. RDG008's
+Design/Review and all finding rows remain unchanged. New whole markers are
+limited to SEC101/105/106; all other new evidence is clause-level only.
+
+
+Final local verification:18/18 locked checks pass with jobs/threads2: all feature
+suites, MSRV1.85, no_std WASM±serde, CLI build/clippy, benches, all-fuzz compile,
+fmt/docs/trace/cargo-deny; actionlint/diff clean. Matrix176->178/288 (+2: SEC106
+L2/L3); SEC101/105 were already marked and gain tests. No other status promoted.
+Matrix test-link status cannot express clause completeness: earlier Implemented
+raw-parser rows are not evidence that S10a2 conversions/adapters or human/local-
+recording settlement are complete. This ledger carries those remaining clauses.
+No Review/Design field changes; hosted checks are verified at reported head.

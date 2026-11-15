@@ -222,7 +222,7 @@ fn ertc_units_floor_modular_tick_tolerance_and_half_range_are_explicit() {
         assert_eq!(e.to_nanos(), u128::from(n));
         let c = r.rtc_ertc().unwrap();
         assert_eq!(c.expected_rtc(), Rtc::from_raw(n / 100));
-        assert_eq!(c.remainder_ns(), (n % 100) as u8);
+        assert_eq!(c.remainder_ns().get(), n % 100);
         assert_eq!(c.delta_ticks().unwrap().get(), 0);
         assert!(!ids(&r).contains(&25));
         assert_eq!(r.scale(), ScaleEvidence::unknown());
@@ -234,6 +234,10 @@ fn ertc_units_floor_modular_tick_tolerance_and_half_range_are_explicit() {
         p.rtc = Rtc::from_raw(rtc);
         let r = inspect_secondary(p, &Default::default()).unwrap();
         assert_eq!(r.rtc_ertc().unwrap().delta_ticks().unwrap().get(), delta);
+        assert_eq!(
+            r.rtc_ertc().unwrap().phase_distance_ticks().get(),
+            delta.abs()
+        );
         assert_eq!(ids(&r).contains(&25), delta.abs() > 1);
         if delta.abs() > 1 {
             let f = r
@@ -242,6 +246,20 @@ fn ertc_units_floor_modular_tick_tolerance_and_half_range_are_explicit() {
                 .find(|f| f.code().number() == 25)
                 .unwrap();
             assert_eq!(f.evidence().raw_rtc(), Some(Rtc::from_raw(rtc)));
+            assert!(
+                f.evidence()
+                    .raw_fields()
+                    .iter()
+                    .any(|v| v.name == "ertc.nanoseconds" && v.observed == RawValue::Unsigned(199))
+            );
+            assert!(
+                f.evidence()
+                    .raw_fields()
+                    .iter()
+                    .any(|v| v.name == "rtc_ertc.rtc_ticks"
+                        && v.observed == RawValue::Unsigned(rtc.into())
+                        && v.expected == Some(RawValue::Unsigned(1)))
+            );
             assert!(
                 f.evidence()
                     .raw_fields()
@@ -314,6 +332,42 @@ fn formats_are_recording_wide_but_each_header_uses_its_own_flags() {
     assert!(ids(&r).contains(&6));
     assert!(ids(&r).contains(&28));
     assert!(r.time().is_none());
+    assert!(matches!(
+        r.errors()[0],
+        TimeError::UndefinedSecondaryTimeFormat { flags: 0x8c }
+    ));
+    assert!(r.findings().iter().any(|f| f.code().number() == 6
+        && matches!(
+            f.evidence().decode_error(),
+            Some(TimeError::ReservedPacketTimeFormat { flags: 0x8c })
+        )));
+    // Invalid selectors cannot establish a recording's canonical format.
+    let mut a = SecondaryAudit::new();
+    a.observe(packet(0x8c, &zero), &Default::default()).unwrap();
+    assert!(!ids(&a.observe(packet(0x84, &zero), &Default::default()).unwrap()).contains(&13));
+    // A return to the recording's first format is still a channel change.
+    let mut a = SecondaryAudit::new();
+    for (fmt, changed) in [(0, false), (1, true), (0, true)] {
+        let r = a
+            .observe(packet(0x80 | (fmt << 2), &zero), &Default::default())
+            .unwrap();
+        assert_eq!(ids(&r).contains(&13), changed);
+    }
+    // Primary format facts survive an independent secondary-checksum failure.
+    let mut a = SecondaryAudit::new();
+    a.observe(packet(0x80, &zero), &Default::default()).unwrap();
+    let mut bad = zero;
+    bad[10] = 1;
+    let r = a.observe(packet(0x84, &bad), &Default::default()).unwrap();
+    assert!(ids(&r).contains(&12));
+    assert!(ids(&r).contains(&13));
+    assert!(r.time().is_none());
+}
+fn matching_packet<'a>(flags: u8, bytes: &'a [u8], key: PacketKey) -> SecondaryPacket<'a> {
+    let mut p = packet(flags, bytes);
+    p.key = key;
+    p.rtc = Rtc::from_raw((key.ticks & ((1i128 << 48) - 1)) as u64);
+    p
 }
 fn offline_counter() -> OfflineAnswer {
     let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
@@ -367,7 +421,7 @@ fn failed_own_time_keeps_independent_counter_and_policy_cannot_repair_validity()
     for id in [4, 5, 6, 12, 13, 25, 27, 28] {
         p.levels.insert(id, Severity::Information);
     }
-    let r = with_counter(&counter, packet(0x84, &bad), &p).unwrap();
+    let r = with_counter(&counter, matching_packet(0x84, &bad, counter.basis.key), &p).unwrap();
     assert!(core::ptr::eq(r.counter, &counter));
     assert_eq!(r.counter.time, counter.time);
     assert!(r.header.time().is_none());
@@ -378,7 +432,12 @@ fn failed_own_time_keeps_independent_counter_and_policy_cannot_repair_validity()
             .all(|f| f.severity() == Severity::Information
                 && f.evidence().validity() == ValueValidity::Unusable)
     );
-    let r = with_counter(&counter, packet(0x88, &[0; 11]), &p).unwrap();
+    let r = with_counter(
+        &counter,
+        matching_packet(0x88, &[0; 11], counter.basis.key),
+        &p,
+    )
+    .unwrap();
     assert!(core::ptr::eq(r.counter, &counter));
     assert!(r.header.time().is_none());
     let r = inspect_secondary(packet(0x8c, &[0; 12]), &p).unwrap();
@@ -390,4 +449,135 @@ fn failed_own_time_keeps_independent_counter_and_policy_cannot_repair_validity()
     let mut invalid = packet(0x84, &IEEE);
     invalid.key.session = 0;
     assert!(inspect_secondary(invalid, &p).is_err());
+}
+
+#[test]
+fn level_overrides_never_change_trust_and_counter_borrow_supports_stream_answers() {
+    let mut policy = SecondaryPolicy::default();
+    for id in [4, 5, 6, 12, 13, 25, 27, 28] {
+        policy.levels.insert(id, Severity::Information);
+    }
+    policy.levels.insert(5, Severity::Error);
+    policy.levels.insert(13, Severity::Error);
+    policy.levels.insert(25, Severity::Error);
+    let reserved = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0];
+    let r = inspect_secondary(packet(0x80, &reserved), &policy).unwrap();
+    assert!(r.time().is_some());
+    assert_eq!(r.findings()[0].severity(), Severity::Error);
+    assert_eq!(r.findings()[0].evidence().validity(), ValueValidity::Kept);
+    let mut p = packet(0x88, &[0; 12]);
+    p.rtc = Rtc::from_raw(2);
+    let r = inspect_secondary(p, &policy).unwrap();
+    assert!(r.time().is_some());
+    assert_eq!(
+        r.findings()
+            .iter()
+            .find(|f| f.code().number() == 25)
+            .unwrap()
+            .severity(),
+        Severity::Error
+    );
+    let invalid = [0, 0xca, 0x9a, 0x3b, 0, 0, 0, 0, 0, 0, 0x9f, 1];
+    let r = inspect_secondary(packet(0x84, &invalid), &policy).unwrap();
+    assert!(r.time().is_none());
+    assert_eq!(r.findings()[0].severity(), Severity::Information);
+    let mut word = IEEE;
+    word[10..].copy_from_slice(&[0x76, 0xd8]);
+    let r = inspect_secondary(packet(0x84, &word), &policy).unwrap();
+    assert_eq!(ids(&r), vec![12, 27]);
+    assert!(r.time().is_none());
+    assert!(
+        r.findings()
+            .iter()
+            .all(|f| f.severity() == Severity::Information)
+    );
+    let mut a = SecondaryAudit::new();
+    a.observe(packet(0x80, &[0; 12]), &policy).unwrap();
+    let r = a.observe(packet(0x84, &[0; 12]), &policy).unwrap();
+    assert!(r.time().is_some());
+    assert_eq!(r.findings()[0].severity(), Severity::Error);
+    use irig106_time::stream::*;
+    let mut p = StreamPolicy::new(
+        1,
+        BufferCaps {
+            packets: 2,
+            bytes: 200,
+            references: 2,
+        },
+    );
+    p.offline.channel = Some(7);
+    let mut s = StreamTimeline::new(p, None).unwrap();
+    let bytes = [1, 0, 0, 0, 0, 0, 0, 0, 1, 0];
+    s.observe(
+        PacketObservation {
+            id: 1,
+            channel: 7,
+            rtc: Rtc::from_raw(0),
+            kind: PacketKind::Time,
+            declared_timein: true,
+            declared_external: false,
+            flags: 0,
+            reference: Some(
+                ReferenceInput::format1(
+                    &bytes,
+                    10,
+                    TimeF1Layout::SourceWithIts17,
+                    ScalePolicy::default(),
+                )
+                .unwrap(),
+            ),
+        },
+        0,
+        100,
+        false,
+    )
+    .unwrap();
+    let answer = s
+        .observe(
+            PacketObservation {
+                id: 2,
+                channel: 7,
+                rtc: Rtc::from_raw(1),
+                kind: PacketKind::Data,
+                declared_timein: false,
+                declared_external: false,
+                flags: 0,
+                reference: None,
+            },
+            0,
+            100,
+            false,
+        )
+        .unwrap()
+        .answers
+        .remove(0);
+    assert!(answer.time.is_some());
+    let held = with_counter(
+        &answer,
+        matching_packet(0x84, &word, answer.basis.key),
+        &policy,
+    )
+    .unwrap();
+    assert!(core::ptr::eq(held.counter, &answer));
+    assert_eq!(held.counter.time, answer.time);
+    assert!(held.header.time().is_none());
+    let mut p = packet(0x84, &IEEE);
+    p.byte_offset = Some(u64::MAX);
+    assert!(inspect_secondary(p, &policy).is_err());
+    let mut p = packet(0x84, &IEEE);
+    p.applicability = TimeApplicability::CitedException {
+        data_type: 0x19,
+        citation: "".into(),
+    };
+    assert!(inspect_secondary(p, &policy).is_err());
+}
+
+#[test]
+fn applicability_and_byte_offsets_require_valid_caller_metadata() {
+    let mut p = packet(0x84, &IEEE);
+    p.applicability = TimeApplicability::CitedException {
+        data_type: 0x21,
+        citation: "synthetic caller fixture".into(),
+    };
+    assert!(inspect_secondary(p, &Default::default()).is_err());
 }

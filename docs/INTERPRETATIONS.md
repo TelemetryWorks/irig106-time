@@ -237,9 +237,9 @@ edge-case tests, and two-person review remain outstanding.
 
 **Design**: suspect · **Review**: pending · **Origin**: T-15
 
-**Test**: tests/slice2_wire.rs::rdg008_byte_only_checksum_is_valid, rdg008_word_only_checksum_is_not_trusted; tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither
+**Test**: `tests/s10a_secondary.rs` (checksum trust, aggregate counts, independent counter retention); tests/slice2_wire.rs::rdg008_byte_only_checksum_is_valid, rdg008_word_only_checksum_is_not_trusted; tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither
 
-**Development**: intensive testing and deep analysis required · **Analysis**: [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-008)
+**Development**: intensive testing and deep analysis required · **Analysis**: [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-008); [S10a1 validation and remaining clauses](verification-s10a.md)
 
 ---
 
