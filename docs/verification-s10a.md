@@ -110,3 +110,22 @@ Later CLI units use crate `irig106-time-cli`, binary `irigtime` (L1), mounted
 as `irig106 time` in `irig106-cli`. Owner says the crates.io name is being
 reserved by a0.0.1 placeholder whose binary is `irigtime`. This is a naming
 note for that later slice, not a dependency/version/CLI or publishing action.
+
+## Merge and split before implementation
+
+GitHub confirms PR31 merged as mainca63a20; preparation branch merged that
+main (c5204a0). The conditional owner GO is now satisfied. To keep reviews
+bounded, split the planned work before writing production code:
+
+1. S10a1: twelve-byte inspection, both checksums/trust, independent reserved
+   evidence, IEEE/Ch4 range validation, raw relative ERTC, same-packet RTC/ERTC
+   check, format registry/aggregation, applicability metadata, and a borrowed
+   counter-answer carrier that cannot discard the caller's independent answer.
+2. S10a2: epoch/scale/calendar conversions and session correlation, normalized
+   own-minus-counter comparison/TF014/tolerance and full own-answer adapters.
+
+S10a1 must not promote ANS102 or conversion clauses by partial tests. SEC104/
+RDG208 real-recording/human-settlement work stays explicit and suspect; no
+Review field changes. Later conversion must use D7 rather than inventing a
+no-UTC stale-table rule. Source/clock assumptions require explicit provenance.
+No code changes to existing correlation/streaming/CLI are planned in S10a1.
