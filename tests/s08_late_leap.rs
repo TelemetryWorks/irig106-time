@@ -551,3 +551,110 @@ scenarios!(
     false,
     false
 );
+
+// Partial RDG-010/COR-110 clause, Fig11-13 (11-25/PDF33).
+// Equal-counter forbidden label must not replace the readable clock endpoint.
+fn equal_counter_forbidden_label(_: bool, _: bool, mode: Option<StreamMode>) {
+    let packets = [
+        packet(1, 0, Some(doy(365, 59, false, Some(2016)))),
+        packet(2, 0, Some(doy(365, 60, false, Some(2016)))),
+        packet(3, S, Some(doy(366, 0, true, Some(2016)))),
+    ];
+    let findings = if let Some(mode) = mode {
+        let mut s = StreamTimeline::new(policy(mode), None).unwrap();
+        let mut findings = Vec::new();
+        for p in packets {
+            findings.extend(s.observe(p, 0, 100, false).unwrap().findings);
+        }
+        let answer = s
+            .observe(packet(4, S, None), 0, 100, false)
+            .unwrap()
+            .answers
+            .remove(0);
+        assert_eq!(
+            answer
+                .basis
+                .preceding
+                .unwrap()
+                .input
+                .year_basis
+                .observed_leap_adjustment()
+                .get(),
+            0
+        );
+        findings
+    } else {
+        let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+        for p in packets {
+            b.observe(p, false).unwrap();
+        }
+        let t = b.finish().unwrap();
+        let refs = &t.sessions()[0].references;
+        assert_eq!(refs[1].input.value, ReferenceValue::Malformed);
+        assert!(!refs[1].admitted);
+        assert!(refs[1].reasons.contains(&Rejection::Malformed));
+        assert!(
+            refs.iter()
+                .all(|r| r.input.year_basis.observed_leap_adjustment().get() == 0)
+        );
+        assert_eq!(
+            t.quality(t.sessions()[0].id, 1).unwrap().drift_ppm,
+            Some(0.)
+        );
+        t.findings().to_vec()
+    };
+    let malformed = findings
+        .iter()
+        .find(|f| f.packet == 2 && f.code == 4)
+        .expect("TF-004 on equal-counter label");
+    assert_eq!(malformed.severity, findings::Severity::Error);
+    assert_eq!(
+        malformed.evidence.validity(),
+        findings::ValueValidity::Unusable
+    );
+    assert!(!findings.iter().any(|f| f.code == 17), "{findings:?}");
+}
+scenarios!(
+    j1_equal_counter,
+    equal_counter_forbidden_label,
+    false,
+    false
+);
+
+#[test]
+fn k11_replay_clears_stale_unreadable_phase_residual() {
+    // Before year qualification, the leap label -> midnight step has residual
+    // -1s (nominal0 + explicit1 minus RTC2). After rejecting the forbidden
+    // 2016day365 label, readable59 -> midnight spans1s minus RTC3 = -2s.
+    // Do not transport the discarded -1s phase finding into the replay.
+    let body = [1, 3, 0, 0, 0, 0, 0, 0, 0x31, 0x12, 0x16, 0x20];
+    let dated = ReferenceInput::format1(
+        &body,
+        body.len(),
+        TimeF1Layout::SourceWithIts17,
+        ScalePolicy::default(),
+    )
+    .unwrap();
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    for p in [
+        packet(1, 0, Some(doy(365, 59, false, None))),
+        packet(2, S, Some(doy(365, 60, false, None))),
+        packet(3, 3 * S, Some(dated)),
+    ] {
+        b.observe(p, false).unwrap();
+    }
+    let t = b.finish().unwrap();
+    assert!(
+        t.sessions()[0].references[1]
+            .reasons
+            .contains(&Rejection::Malformed)
+    );
+    let jumps: Vec<_> = t.findings().iter().filter(|f| f.code == 17).collect();
+    assert!(!jumps.is_empty());
+    assert!(
+        jumps
+            .iter()
+            .all(|f| f.packet == 3 && f.delta_ns == Some(-2_000_000_000)),
+        "{jumps:?}"
+    );
+}
