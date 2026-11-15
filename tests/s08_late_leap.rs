@@ -299,3 +299,144 @@ fn corrected(dmy: bool, normalize: bool, mode: Option<StreamMode>) {
 }
 scenarios!(q5_real_five_second_correction, corrected, false, false);
 scenarios!(q15_dmy_native, span, true, false);
+
+// Partial RDG-010/COR-110 clauses; no whole-requirement marker. Fig11-13
+// (11-25/PDF33): day365=0x0365,182=0x0182, seconds59/60=0x5900/0x6000.
+fn doy(day: u16, sec: u8, midnight: bool, year: Option<u16>) -> ReferenceInput {
+    let bcd = |n: u16| ((n / 10) << 4 | n % 10) as u8;
+    let bytes = [
+        1,
+        if year.is_some_and(|y| y % 4 == 0) || year.is_none() {
+            1
+        } else {
+            0
+        },
+        0,
+        0,
+        0,
+        bcd(sec.into()),
+        if midnight { 0 } else { 0x59 },
+        if midnight { 0 } else { 0x23 },
+        bcd(day % 100),
+        (day / 100) as u8,
+    ];
+    ReferenceInput::format1(
+        &bytes,
+        bytes.len(),
+        TimeF1Layout::SourceWithIts17,
+        ScalePolicy::default(),
+    )
+    .unwrap()
+    .with_year_context(YearContext {
+        caller: year,
+        recording: None,
+    })
+    .unwrap()
+}
+fn forbidden_label(year: u16, day: u16, mode: Option<StreamMode>) {
+    let packets = [
+        packet(1, 0, Some(doy(day, 59, false, Some(year)))),
+        packet(2, S, Some(doy(day, 60, false, Some(year)))),
+        packet(3, 2 * S, Some(doy(day + 1, 0, true, Some(year)))),
+    ];
+    let findings = if let Some(mode) = mode {
+        let mut s = StreamTimeline::new(policy(mode), None).unwrap();
+        let mut findings = Vec::new();
+        for p in packets {
+            findings.extend(s.observe(p, 0, 100, false).unwrap().findings);
+        }
+        findings
+    } else {
+        let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+        for p in packets {
+            b.observe(p, false).unwrap();
+        }
+        let t = b.finish().unwrap();
+        let refs = &t.sessions()[0].references;
+        assert_eq!(refs[1].input.value, ReferenceValue::Malformed);
+        assert!(!refs[1].admitted);
+        assert!(
+            refs.iter()
+                .all(|r| r.input.year_basis.observed_leap_adjustment().get() == 0)
+        );
+        // Only readable endpoints remain: calendar 1s minus RTC2s = -1s;
+        // drift = -1s/2s * 1e6 = -500,000 ppm.
+        assert_eq!(
+            t.quality(t.sessions()[0].id, 1).unwrap().drift_ppm,
+            Some(-500_000.)
+        );
+        t.findings().to_vec()
+    };
+    let malformed = findings
+        .iter()
+        .find(|f| f.packet == 2 && f.code == 4)
+        .expect("TF-004 on forbidden leap label");
+    assert_eq!(
+        malformed.evidence.validity(),
+        findings::ValueValidity::Unusable
+    );
+    assert_eq!(malformed.severity, findings::Severity::Error);
+    let jumps: Vec<_> = findings.iter().filter(|f| f.code == 17).collect();
+    assert!(!jumps.is_empty(), "real -1s discrepancy must remain");
+    assert!(
+        jumps.iter().all(|f| f.delta_ns == Some(-1_000_000_000)),
+        "{jumps:?}"
+    );
+}
+scenarios!(
+    i5_forbidden_common_day_in_leap_year,
+    forbidden_label,
+    2016,
+    365
+);
+scenarios!(
+    i6_forbidden_leap_day_in_common_year,
+    forbidden_label,
+    2017,
+    182
+);
+
+#[test]
+fn n2_observed_leap_never_crosses_year_evidence_segment() {
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    // Segment0: real 2016 Dec31 leap. Segment1 begins with an explanation
+    // residual of183 days (>182.5): 2017 Jan1 -> DOY365 at+181 days.
+    // DMY2017 Dec31 supplies a new-segment anchor, without caller context.
+    let body = [1, 2, 0, 0, 0, 0, 0, 0, 0x31, 0x12, 0x17, 0x20];
+    let dated = ReferenceInput::format1(
+        &body,
+        body.len(),
+        TimeF1Layout::SourceWithIts17,
+        ScalePolicy::default(),
+    )
+    .unwrap();
+    for p in [
+        packet(1, 0, Some(wire(false, false, 59, 2016, false))),
+        packet(2, S, Some(wire(false, false, 60, 2016, false))),
+        packet(3, 2 * S, Some(wire(false, true, 0, 2016, false))),
+        packet(4, (2 + 100 * 86400) * S, None),
+        packet(
+            5,
+            (2 + 181 * 86400) * S,
+            Some(doy(365, 0, true, Some(2016))),
+        ),
+        packet(6, (3 + 181 * 86400) * S, Some(dated)),
+    ] {
+        b.observe(p, false).unwrap();
+    }
+    let t = b.finish().unwrap();
+    let refs = &t.sessions()[0].references;
+    assert_eq!(
+        refs[2].input.year_basis.observed_leap_adjustment().get(),
+        1_000_000_000
+    );
+    assert_eq!(refs[3].input.year_basis.observed_leap_adjustment().get(), 0);
+    assert!(
+        t.findings()
+            .iter()
+            .any(|f| f.code == 17 && f.packet == 5 && f.delta_ns == Some(183 * 86_400_000_000_000))
+    );
+    assert!(!t.findings().iter().any(|f| f.code == 17
+        && f.packet == 5
+        && f.delta_ns == Some(183 * 86_400_000_000_000 - 1_000_000_000)));
+}
