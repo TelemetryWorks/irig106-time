@@ -57,10 +57,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `verification-s08.md` records clause limits and honest tests-first/mutation
   evidence. FND-102 is not promoted: this slice does not test every contract 6
   degraded case. Governing TMATS extraction remains S09; no CLI/dependency change.
-
 - A session starting with a DOY `23:59:60` label now carries the caller year
   across midnight (2016 day 366 -> 2017 day 1). The retained leap label supplies
   phase evidence while still needing context for absolute-time admission.
+- Offline now applies the observed session year origin before validating late
+  day 366, matching stream for ordinary and second-60 references (2017 day 1
+  followed by late 2016 day 366). Query indexes remain ordered by RTC.
+- Native UTC span/quality arithmetic retains the contribution of observed leap
+  labels: `23:59:59 -> 23:59:60 -> 00:00:00` spans two seconds, without a
+  spurious TF-017. `YearBasis::observed_leap_adjustment()` exposes the signed
+  evidence. Explicit TAI normalization already includes it and is not counted
+  twice; the leap label still needs context for absolute-time admission.
 
 ### ⚠️ S07 Chapter 4 explicit calendar context
 

@@ -5,7 +5,7 @@ const S: u64 = 10_000_000;
 fn wire(dmy: bool, midnight: bool, sec: u8, caller: u16, normalize: bool) -> ReferenceInput {
     // BCD seconds58/59/60 live in word0's high byte; HHMM2359.
     // DOY366=0366; DMY MMDD=1231/0101, YYYY=2016/2017.
-    let second = (sec / 10) << 4 | sec % 10;
+    let second = (sec / 10) << 4 | (sec % 10);
     let mut bytes = if midnight {
         vec![
             1,
@@ -13,7 +13,7 @@ fn wire(dmy: bool, midnight: bool, sec: u8, caller: u16, normalize: bool) -> Ref
             0,
             0,
             0,
-            0,
+            second,
             0,
             0,
             1,
@@ -143,10 +143,18 @@ fn late(leap: bool, mode: Option<StreamMode>) {
     }
 }
 fn span(dmy: bool, normalize: bool, mode: Option<StreamMode>) {
+    span_with_correction(dmy, normalize, mode, 0);
+}
+fn span_with_correction(dmy: bool, normalize: bool, mode: Option<StreamMode>, correction: u8) {
     let packets = [
         packet(1, 0, Some(wire(dmy, false, 59, 2016, normalize))),
         packet(2, S, Some(wire(dmy, false, 60, 2016, normalize))),
-        packet(3, 2 * S, Some(wire(dmy, true, 0, 2016, normalize))),
+        packet(3, 2 * S, Some(wire(dmy, true, correction, 2016, normalize))),
+        packet(
+            4,
+            3 * S,
+            Some(wire(dmy, true, correction + 1, 2016, normalize)),
+        ),
     ];
     if let Some(mode) = mode {
         let mut s = StreamTimeline::new(policy(mode), None).unwrap();
@@ -159,9 +167,19 @@ fn span(dmy: bool, normalize: bool, mode: Option<StreamMode>) {
             .filter(|f| f.code == 17)
             .map(|f| (f.packet, f.delta_ns))
             .collect();
-        assert!(jumps.is_empty(), "{jumps:?}");
+        if correction == 0 {
+            assert!(jumps.is_empty(), "{jumps:?}");
+        } else {
+            assert!(!jumps.is_empty());
+            assert!(
+                jumps
+                    .iter()
+                    .all(|(_, d)| *d == Some(i128::from(correction) * 1_000_000_000)),
+                "{jumps:?}"
+            );
+        }
         assert_eq!(
-            s.observe(packet(4, 2 * S, None), 0, 100, false)
+            s.observe(packet(5, 3 * S, None), 0, 100, false)
                 .unwrap()
                 .answers[0]
                 .time
@@ -181,15 +199,49 @@ fn span(dmy: bool, normalize: bool, mode: Option<StreamMode>) {
             .filter(|f| f.code == 17)
             .map(|f| (f.packet, f.delta_ns))
             .collect();
-        assert!(jumps.is_empty(), "{jumps:?}");
+        if correction == 0 {
+            assert!(jumps.is_empty(), "{jumps:?}");
+        } else {
+            assert!(!jumps.is_empty());
+            assert!(
+                jumps
+                    .iter()
+                    .all(|(_, d)| *d == Some(i128::from(correction) * 1_000_000_000)),
+                "{jumps:?}"
+            );
+        }
         assert!(
             t.quality(t.sessions()[0].id, 1)
                 .unwrap()
                 .drift_ppm
-                .is_some_and(|p| p.abs() < 0.0001)
+                .is_some_and(|p| (p - f64::from(correction) * 250_000.).abs() < 0.0001)
+        );
+        assert_eq!(
+            t.sessions()[0].references[0]
+                .input
+                .year_basis
+                .observed_leap_adjustment()
+                .get(),
+            0
+        );
+        assert_eq!(
+            t.sessions()[0].references[2]
+                .input
+                .year_basis
+                .observed_leap_adjustment()
+                .get(),
+            1_000_000_000
         );
         assert!(
             matches!(t.sessions()[0].references[2].input.value,ReferenceValue::Readable(t,_) if t.year()==Some(2017))
+        );
+        assert_eq!(
+            t.sessions()[0].references[3]
+                .input
+                .year_basis
+                .observed_leap_adjustment()
+                .get(),
+            1_000_000_000
         );
     }
 }
@@ -240,3 +292,10 @@ fn q13_interpolate() {
 scenarios!(q5_doy, span, false, false);
 scenarios!(q5n_doy_normalized, span, false, true);
 scenarios!(q15n_dmy_normalized, span, true, true);
+
+// Post-fix controls: do not hide a real clock correction or double count a table.
+fn corrected(dmy: bool, normalize: bool, mode: Option<StreamMode>) {
+    span_with_correction(dmy, normalize, mode, 5);
+}
+scenarios!(q5_real_five_second_correction, corrected, false, false);
+scenarios!(q15_dmy_native, span, true, false);

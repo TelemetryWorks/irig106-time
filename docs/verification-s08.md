@@ -76,9 +76,10 @@ also found an old Format2 test treating32 as pending; it now checks unknown33. N
 Both engines define **first by recording observation order**: the first observed
 eligible DMY packet (identified by packet ID), never the smallest RTC. Stream
 requires increasing packet IDs; offline preserves its observation sequence.
-Offline still sorts counters to classify rollovers, but then rebases the phase
-to the first observed eligible calendar and selects first/latest DMY in observation
-order. A later-observed DMY with an earlier RTC cannot replace the first anchor.
+Both engines classify year phases in observation order, so the session origin
+is applied before late day-366 validity checks (Q13/Q14 follow-up below).
+Offline query and quality indexes remain sorted by RTC. First/latest DMY
+selection also uses observation order. A later-observed DMY with an earlier RTC cannot replace the first anchor.
 
 Stream retains constant-size phase, first DMY and latest DMY candidate in addition
 to its bounded references/pending queue. Superseded contradictory packets remain
@@ -407,6 +408,9 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 | late |2024; first1 00:00:05 atRTC1s, then late365 23:59:59 atRTC0 |late(2023,365),-1; TF-017 +5s in earlier->later orientation |
 | unknown366 |no year;366 23:59:59 ->1 midnight;1s |(None,1),+1; TF-020, no TF-017; must consider366days |
 | invalid366 |2023;365 23:59:59 ->366 midnight;1s |malformed/unadmitted TF-004 and LY finding where applicable; no phase repair |
+| Q14 late day 366 |caller 2017; DOY 1 midnight at RTC 1 s, then late DOY 366 23:59:59 at RTC 0 |late (2016,366), phase -1, admitted; no TF-004/007, both engines |
+| Q13 late leap label |same Q14, late seconds=60 |late year evidence 2016, phase -1; NeedsContext/TF-022 retained, no TF-004/007, both engines |
+| Q5 / Q5n / Q15n |2016 Dec 31 23:59:59 ->23:59:60 ->2017 Jan 1 00:00:00 ->00:00:01, RTC steps 1 s; DOY+caller or DMY, native/normalized |physical 59->00 span 2 s, then 1 s; no TF-017/drift; observed leap contribution +1 s retained; normalized TAI must not count it twice |
 | DOY leap start |caller 2016; DOY 366 23:59:60 at RTC 0 -> DOY 1 midnight at RTC +1 s, no DMY |first label retains NeedsContext/TF-022 and year evidence 2016; next (2017,1), phase +1, no TF-017; raw and qualified offline/Standard/Interpolate |
 | DMY crossover |DMY2023Dec31 ->DOYJan1 / DMY2024Jan1 / DMY2023Jan1, RTC1s |DOY2024; consistent2024 DMY no TF-032; same-year2023 DMY retains contrary evidence and TF-032 |
 
@@ -596,3 +600,91 @@ assertions, with production restored afterward. All 18 local CI-equivalent check
 pass with jobs/threads 2, including feature suites, MSRV 1.85, no_std WASM ±serde,
 CLI, benches and all fuzz-target compile checks. Actionlint/diff/trace pass;
 no campaign. Hosted CI is verified at the reported head. No merge or publication.
+
+
+## S08 follow-up — late day 366 and native UTC leap spans
+
+Base main `58b1cf0070779c0e2ca0805b954d17cc0d1bedf9` (PR27 merged).
+Scope: two pre-existing defects, S08 case rows and CHANGELOG list spacing.
+S09a is not started. No dependency, CLI, Review/Design or finding-level change.
+
+**Q14 / Q13:** offline previously stamped in RTC order before establishing the
+first observed year origin. A late DOY 366 hit the caller's 2017 common-year
+check before its phase could shift to 2016. Phase classification now follows
+observation order, exactly as stream does; resolve applies the selected phase
+and year before day validity. YEAR-PHASE selection arithmetic and nearest-query
+ordering remain unchanged. Offline query/quality indexes still sort RTC.
+
+**Q5:** valid readable references at 59 and midnight were compared directly by
+nominal Gregorian subtraction, skipping the non-admitted explicit second 60
+between them. That span is physically 2 s but nominally 1 s, producing TF-017
+-1 s and incorrect quality/drift. The existing signed year-phase calculation
+now also retains the leap-label contribution it already applies to each step.
+A constant-size checked signed sum is copied into YearBasis and exposed as
+`observed_leap_adjustment() -> SignedNanos`. Native UTC span differences use
+that contribution. It is not a TAI-UTC offset, an inferred leap table or a new
+year source. Independent year-evidence segments never transport their offsets.
+Normalized TAI coordinates take precedence and are not adjusted twice; other
+scales/unknown-year guards remain. Leap labels stay NeedsContext, TF-022 and
+unadmitted for absolute answers. This does not implement the deferred calendar/
+answer adapters or leap-table-free rendering of arbitrary UTC instants.
+
+Sources remain 106-24R1 Figures 11-13/14, printed 11-25/PDF 33, contract 5.3
+and owner 2026-11-15 YEAR-PHASE/RDG-010. RCC 200-16 §3.6 explicitly says
+"excluding leap second days when a second may be added or subtracted".
+The native contribution comes from the observed second 60, never a host clock
+or implicit table. Normalized controls explicitly call normalize_to_tai with
+the validated builtin S04 table. No fresh page inspection or fuzz campaign.
+
+Hand-derived Fig 11-13 words: DOY 366=0x0366, HHMM=0x2359, seconds 59/60 in
+word0=0x5900/0x6000; day 1 midnight=0/0/1. DMY Fig 11-14 uses MMDD
+0x1231/0x0101, YYYY 0x2016/0x2017. In Q14 caller 2017 and first observed
+Jan 1 at RTC 1 s fixes phase 0; late Dec 31 at RTC 0 is phase -1/year 2016,
+making day 366 valid. Q13 keeps its second-60 NeedsContext label with that
+same 2016 year evidence. Rows are added to both S08 case-table copies.
+
+Tests-only `27215f9` reproduced FIVE runtime failures on main: Q13/Q14 offline
+selected 2017 instead of 2016; Q5 native DOY emitted TF-017 -1 s offline,
+Standard and Interpolate. Ten controls already passed and are not claimed
+failing-first. These Q5n tests explicitly attach the caller's actual 2016/2017
+endpoint dates before normalize_to_tai; normalized DOY and normalized DMY
+already passed. This distinguishes the executed fixture from a blanket claim
+that every normalized DOY variant failed. No normalization error is ignored or
+leap label silently converted to AbsoluteTime.
+
+Post-implementation controls add native DMY and a real +5 s midnight correction
+in all engines/modes, plus a fourth 00:00:01 reference and typed basis checks.
+No failing-first claim for those additions. Native 59->60->00 has span 2 s and
+zero drift; the fourth reference proves the +1 s contribution persists. With
+midnight advanced 5 s, physical span 7 s minus RTC 2 s gives +5 s, rather than
+a suppressed finding. The next 1 s interval has zero drift; adjacent-pair mean
+is 1,250,000 ppm. All reported TF-017 residuals in that control must equal
++5 s; it does not assert one finding per packet when different related references
+supply comparisons.
+
+Eight isolated mutations compile and fail runtime assertions, independently
+generated from saved originals and restored at completion:
+
+| Mutation | Failed observable / scope |
+|---|---|
+| restore RTC-order phase classification | Q13/Q14 offline loses year 2016 or marks it malformed |
+| omit previous-year candidate | Q13/Q14 fail in offline and both named stream modes |
+| omit native leap contribution | Q5 raises spurious TF-017 -1 s in all three paths |
+| reverse native contribution | Q5 raises TF-017 -2 s in all three paths |
+| discard chosen leap adjustment | Q5 loses the observed contribution and raises TF-017 -1 s |
+| drop retained leap sum | fourth reference raises spurious TF-017 -1 s |
+| add observed correction to normalized TAI | Q5n/Q15n raise spurious TF-017 +1 s in all three paths |
+| replace native physical span with RTC | real +5 s correction quality becomes zero drift; offline fails, stream manual finding remains a passing control |
+
+An initial last-mutant harness failed to insert a local RTC variable after
+formatting and did not compile; that attempt is not a kill. The corrected
+single-behavior mutation compiled and failed the offline quality assertion.
+Final suite: 21 new tests, combined S08 total 123 (prior 102 plus 21).
+Standard and Interpolate have separate test names. Partial clauses only: no
+whole-requirement markers; matrix 160/288 unchanged. A needless-range-loop
+clippy warning was corrected to an equivalent mutable iterator, then all eight
+mutations and all 18 bounded local CI-equivalent checks were rerun successfully
+on the final code (jobs/threads 2): feature suites, MSRV 1.85, no_std WASM ±serde,
+CLI build/clippy, benches, locked all-fuzz compile, fmt/docs/trace and cargo-deny.
+Actionlint/diff pass. Hosted CI is verified at the reported head. No merge or
+publication.

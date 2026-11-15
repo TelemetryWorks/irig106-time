@@ -901,6 +901,9 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 | late |2024; first1 00:00:05 atRTC1s, then late365 23:59:59 atRTC0 |late(2023,365),-1; TF-017 +5s in earlier->later orientation |
 | unknown366 |no year;366 23:59:59 ->1 midnight;1s |(None,1),+1; TF-020, no TF-017; must consider366days |
 | invalid366 |2023;365 23:59:59 ->366 midnight;1s |malformed/unadmitted TF-004 and LY finding where applicable; no phase repair |
+| Q14 late day 366 |caller 2017; DOY 1 midnight at RTC 1 s, then late DOY 366 23:59:59 at RTC 0 |late (2016,366), phase -1, admitted; no TF-004/007, both engines |
+| Q13 late leap label |same Q14, late seconds=60 |late year evidence 2016, phase -1; NeedsContext/TF-022 retained, no TF-004/007, both engines |
+| Q5 / Q5n / Q15n |2016 Dec 31 23:59:59 ->23:59:60 ->2017 Jan 1 00:00:00 ->00:00:01, RTC steps 1 s; DOY+caller or DMY, native/normalized |physical 59->00 span 2 s, then 1 s; no TF-017/drift; observed leap contribution +1 s retained; normalized TAI must not count it twice |
 | DOY leap start |caller 2016; DOY 366 23:59:60 at RTC 0 -> DOY 1 midnight at RTC +1 s, no DMY |first label retains NeedsContext/TF-022 and year evidence 2016; next (2017,1), phase +1, no TF-017; raw and qualified offline/Standard/Interpolate |
 | DMY crossover |DMY2023Dec31 ->DOYJan1 / DMY2024Jan1 / DMY2023Jan1, RTC1s |DOY2024; consistent2024 DMY no TF-032; same-year2023 DMY retains contrary evidence and TF-032 |
 
