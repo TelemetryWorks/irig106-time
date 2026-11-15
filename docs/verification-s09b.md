@@ -125,5 +125,5 @@ publication; no new owner decision required by this slice.
 Current-main update before reporting: PR28 merged as main71df0d5 while S09b
 was being prepared. Ordinarily merge it into this branch, retaining both
 CHANGELOG entries and regenerating TRACE-MATRIX. PR28's branch is not edited;
-its year/leap fixes are inherited from main. Re-run the full CI equivalent
-on the combined source before publishing the PR head.
+its year/leap fixes are inherited from main. All18 locked local checks reran and passed
+on the combined source before opening the PR.
