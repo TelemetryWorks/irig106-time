@@ -62,7 +62,8 @@ dependencies = [
 [[package]]
 name = "irig106-types"
 version = "0.1.0"
-source = "git+https://github.com/TelemetryWorks/irig106-types?rev=7bfe47fc903efea342f3efba1ad0f527dd059a0d#7bfe47fc903efea342f3efba1ad0f527dd059a0d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f5ddd5baf4fbc4fa5579bd739561274bc5fc9cc36ba50d610b0442cc0635420"
 
 [[package]]
 name = "jobserver"
