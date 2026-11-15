@@ -1320,8 +1320,8 @@ fn review2_adjacent_ordinal_days_can_span_a_real_year_boundary() {
     }
 }
 #[test]
-fn review2_rollover_clock_tolerance_is_explicit_and_inclusive() {
-    for (threshold, year) in [(0, 2023), (99, 2023), (100, 2024)] {
+fn review2_jump_threshold_does_not_choose_the_year() {
+    for (threshold, year) in [(0, 2024), (99, 2024), (100, 2024)] {
         let first = review2_wire(&[1, 0, 0, 0, 0x99, 0x59, 0x59, 0x23, 0x65, 3]);
         let packets = [
             p(1, 0, Some(first)),
@@ -1572,4 +1572,181 @@ fn review2_unknown_year_jump_checks_never_bridge_a_year_gap() {
         !t.findings().iter().any(|f| f.code == 17),
         "no signed year comparison across an unknown cycle count"
     );
+}
+
+// Partial COR-110 clause evidence only; no whole-requirement marker.
+// Fig11-13 (11-25/PDF33): word0 seconds in bits8..14, word1 HHMM,
+// word2 decimal ordinal day. Calendar spans below are hand-derived.
+#[test]
+fn review3_new_year_correction_offline() {
+    let packets = review3_new_year_packets();
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    for packet in &packets {
+        b.observe(packet.clone(), false).unwrap();
+    }
+    let t = b.finish().unwrap();
+    for r in &t.sessions()[0].references[1..] {
+        assert!(matches!(r.input.value, ReferenceValue::Readable(t, _) if t.year()==Some(2024)));
+    }
+    // Calendar+6s versus RTC+1s: selected crossing residual+5s.
+    assert!(
+        t.findings()
+            .iter()
+            .any(|f| f.code == 17 && f.delta_ns == Some(5_000_000_000))
+    );
+}
+fn review3_new_year_packets() -> [PacketObservation; 3] {
+    let ctx = YearContext {
+        caller: Some(2023),
+        recording: None,
+    };
+    [
+        p(1, 0, Some(review_year_end(2023, ctx))),
+        p(
+            2,
+            10_000_000,
+            Some(review2_wire(&[1, 1, 0, 0, 0, 5, 0, 0, 1, 0])),
+        ),
+        p(
+            3,
+            20_000_000,
+            Some(review2_wire(&[1, 1, 0, 0, 0, 6, 0, 0, 1, 0])),
+        ),
+    ]
+}
+#[test]
+fn review3_new_year_correction_stream() {
+    for mode in [StreamMode::Standard, StreamMode::Interpolate] {
+        let mut s = StreamTimeline::new(sp(mode), None).unwrap();
+        let packets = review3_new_year_packets();
+        s.observe(packets[0].clone(), 0, 100, false).unwrap();
+        let b = s.observe(packets[1].clone(), 0, 100, false).unwrap();
+        assert!(
+            b.findings
+                .iter()
+                .any(|f| f.code == 17 && f.delta_ns == Some(5_000_000_000))
+        );
+        for (id, ticks, packet) in [
+            (3, 10_000_000, None),
+            (5, 20_000_000, Some(packets[2].clone())),
+        ] {
+            if let Some(mut packet) = packet {
+                packet.id = 4;
+                s.observe(packet, 0, 100, false).unwrap();
+            }
+            assert_eq!(
+                s.observe(p(id, ticks, None), 0, 100, false)
+                    .unwrap()
+                    .answers[0]
+                    .time
+                    .unwrap()
+                    .year(),
+                Some(2024)
+            );
+        }
+    }
+}
+#[test]
+fn review3_late_larger_day_is_a_jump_not_a_prior_year() {
+    // Observation order: day199 23:59:59 atRTC1s, then late day200 00:00:05
+    // atRTC0.5s. Earlier->later calendar=-6s, RTC=+0.5s: residual=-6.5s.
+    let packets = [
+        p(
+            1,
+            10_000_000,
+            Some(review2_wire(&[1, 0, 0, 0, 0, 0x59, 0x59, 0x23, 0x99, 1])),
+        ),
+        p(
+            2,
+            5_000_000,
+            Some(review2_wire(&[1, 0, 0, 0, 0, 5, 0, 0, 0, 2])),
+        ),
+    ];
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    for packet in &packets {
+        b.observe(packet.clone(), false).unwrap();
+    }
+    let t = b.finish().unwrap();
+    for r in &t.sessions()[0].references {
+        assert!(matches!(r.input.value,ReferenceValue::Readable(t,_) if t.year()==Some(2023)));
+    }
+    for mode in [StreamMode::Standard, StreamMode::Interpolate] {
+        let mut s = StreamTimeline::new(sp(mode), None).unwrap();
+        s.observe(packets[0].clone(), 0, 100, false).unwrap();
+        let b = s.observe(packets[1].clone(), 0, 100, false).unwrap();
+        assert!(
+            b.findings
+                .iter()
+                .any(|f| f.code == 17 && f.delta_ns == Some(-6_500_000_000))
+        );
+    }
+}
+#[test]
+fn review3_common_year_cannot_use_leap_hypothesis() {
+    const DAY: u64 = 864_000_000_000;
+    // Common-year span1s vs elapsed183d -> residual183d-1s, beyond the
+    // reader's182.5d bound. A forbidden366d hypothesis gives182d-1s instead.
+    let packets = [
+        p(
+            1,
+            0,
+            Some(review_year_end(
+                2023,
+                YearContext {
+                    caller: Some(2023),
+                    recording: None,
+                },
+            )),
+        ),
+        p(2, 100 * DAY, None),
+        p(
+            3,
+            183 * DAY,
+            Some(review2_wire(&[1, 0, 0, 0, 0, 0, 0, 0, 1, 0])),
+        ),
+    ];
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    for packet in &packets {
+        b.observe(packet.clone(), false).unwrap();
+    }
+    let t = b.finish().unwrap();
+    assert!(
+        matches!(t.sessions()[0].references[1].input.value,ReferenceValue::Readable(t,_) if t.year().is_none())
+    );
+    assert!(t.findings().iter().any(|f| f.code == 20 && f.packet == 3));
+    for mode in [StreamMode::Standard, StreamMode::Interpolate] {
+        let mut s = StreamTimeline::new(sp(mode), None).unwrap();
+        for packet in &packets[..2] {
+            s.observe(packet.clone(), 0, 100, false).unwrap();
+        }
+        assert!(matches!(
+            s.observe(packets[2].clone(), 0, 100, false),
+            Err(TimeError::NeedsContext { .. })
+        ));
+    }
+}
+#[test]
+fn review3_unknown_year_rollover_has_no_delta_jump_or_drift() {
+    let packets = [
+        p(1, 0, Some(review_year_end(2023, YearContext::default()))),
+        p(2, 10_000_000, Some(r(1, false, YearContext::default()))),
+    ];
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    for packet in &packets {
+        b.observe(packet.clone(), false).unwrap();
+    }
+    let t = b.finish().unwrap();
+    assert_eq!(
+        t.sessions()[0].references[1].input.year_basis.rollovers(),
+        1
+    );
+    assert!(!t.findings().iter().any(|f| f.code == 17));
+    assert!(t.quality(t.sessions()[0].id, 1).unwrap().drift_ppm.is_none());
+    for mode in [StreamMode::Standard, StreamMode::Interpolate] {
+        let mut s = StreamTimeline::new(sp(mode), None).unwrap();
+        for packet in &packets {
+            let batch = s.observe(packet.clone(), 0, 100, false).unwrap();
+            assert!(!batch.findings.iter().any(|f| f.code == 17));
+        }
+    }
 }
