@@ -48,7 +48,7 @@ Another failing-before-fix probe showed newly invalid day366 could mask a
 previous eligible stream anchor. Invalidated retained references are now removed;
 held fallback snapshots select a remaining eligible anchor before jump release.
 
-Initial focused suite:17 tests; after review:23 tests (3 existing-API +20 year integration tests), plus
+Initial focused suite:17 tests; after first review:23; current review:33 tests (3 existing-API +30 year integration tests), plus
 the existing catalog/policy and complete feature regression suites. Targeted
 mutations:34 isolated probes compiled and failed assertions, sources restored.
 Groups cover DMY/caller/RI4 priority and context, first/latest/own DMY evidence,
@@ -131,8 +131,8 @@ in a detached worktree of be38bdc, then the task-owned worktree was removed.
 - Literal Fig11-13 words0x5900/0x2359/0x0365 or0x0366 give23:59:59 on
   common/leap year-end. At +86401s RTC, next reference is day2 midnight;
   both engines now return2024/2025 respectively with no false TF-007/017.
-  Any ordinal-day decrease with positive RTC advances one year, not only a
-  reference on Jan1. Late references with a greater ordinal day use the prior
+  The22f8631 rule treated any ordinal-day decrease with positive RTC as a
+  rollover; review2 below supersedes that rule with a clock-consistency check. Late references with a greater ordinal day use the prior
   phase symmetrically. The late half-second fixture uses word0=0x5950;
   caller late tolerance2days is explicit test policy, not a changed default.
 - RI4 alone, caller absent, advances at common/leap rollover in both engines;
@@ -143,7 +143,8 @@ in a detached worktree of be38bdc, then the task-owned worktree was removed.
   reader ambiguity guard, not an IRIG-specified threshold or guessed year count.
   Tests cover exactly365days and400days, bridging raw48-bit wraps using data
   observations at most100days apart. Unusable source-None observations are skipped.
-  Offline finish reports NeedsContext; stream rejects before caller progress,
+  At22f8631 offline finish reported NeedsContext (superseded by partials in
+  review2 below); stream rejects before caller progress,
   timeouts or packet ID commit, preserving all four held answers. The caller can
   retry with an explicit session boundary and appropriate date/year context.
 - A later DMY with earlier RTC keeps the same first observed anchor in both
@@ -169,3 +170,99 @@ and these11 review runs are recorded separately; no fuzz campaign claimed.
 This revision passed all23 focused tests and all18 bounded local CI-equivalent
 checks (jobs/threads2), including CLI/benches/fuzz compile, MSRV/no_std/features,
 lints/docs/format, trace and deny. Actionlint/diff clean; matrix unchanged160/288.
+
+## PR26 second review — jumps versus rollovers; offline gap partials
+
+Tests-only commit `1eadd5f`, against reviewed22f8631: the combined backward-jump
+regression failed at its offline assertion (2024 rather than2023); its stream
+cases were already present in that commit and are exercised by the final suite.
+The changed offline-gap expectation also failed because finish returned
+NeedsContext. Equal-counter/same-day-late/adjacent-day cases passed before the fix
+and are not claimed failing-first; their specified comparator mutations fail.
+Tolerance, recovery, normalization and leap-label probes were added after the
+initial implementation. The normalization probe failed before its targeted fix.
+
+**Rollover qualification:** compare full cyclic calendar positions with RTC
+elapsed time, using the caller's `jump_threshold_ns` when set, otherwise the
+coarser endpoint resolution (Format1 normally10ms, accepted C3 policy). The
+residual bound is inclusive. Positive RTC and strictly decreasing ordinal day
+are independent forward guards; late correction mirrors the order and interval.
+The calendar check alone does not establish a year change. LY never selects a
+year; unknown-year comparisons try both Gregorian lengths without assigning a
+year. A nonmatching decrease remains in the same year and TF-017 reports the
+clock jump through the existing timeline machinery. This tolerance is reader
+policy, not a new timing guarantee claimed from IRIG106.
+
+- Fig11-13 fixtures: day200 00:00:05 -> day199 23:59:59 is a6s backward
+  reading at RTC+1s, so TF-017 residual=-7s, year2023 retained in both engines.
+- Equal RTC at Dec31 23:59:59.99 -> Jan1 cannot advance the year, even though
+  its10ms cyclic interval is within the default10ms resolution tolerance of0.
+- A day200 00:00:04.50 reference arriving after00:00:05 with RTC-.5s stays
+  in2023. It is ordinary late data, not a prior-year reference.
+- Jan2 2023 23:59:59 -> Jan1 2024 midnight spans363days+1s and differs by
+  only one ordinal day: the `day+1<last` mutation misses the valid rollover.
+  Data observations bridge raw48-bit wraps in<=100day steps.
+- A10ms calendar interval versus RTC10ms+100ns crosses with tolerance100ns,
+  but not99ns or0. An explicit Dec31 23:59:60 label retains its own second
+  when comparing to Jan1; this is a format-allowed fixture, not an IERS claim.
+
+**Offline>=365day gaps:** preserve the timeline. Start a new year-evidence
+continuity segment and keep yearless references as admitted partial clocks;
+TF-020 INFORMATION applies because the affected reference's year is unknown
+(contract5.3/6.8 and the existing architecture§8 row). It does not erase known
+years before the gap. No identifier/title/level is invented or changed. Original
+caller/RI4 context, signed gap ticks and a NeedsContext year_issue remain in the
+basis; TF-020 carries the gap and unapplied session-origin years as evidence.
+A session-origin year cannot count unknown cycles, so it is not silently reused.
+A fully dated value keeps its own year; a DMY within the new segment can
+re-establish the year for other references (including earlier references in
+that segment). Pre-gap anchors cannot cross it.
+Cached absolute normalization is cleared while year is unknown. Native capture
+partials survive; physical normalization needs dated context again.
+
+**Stream choice:** keep the approved reject/retry behavior. An eligible reference
+after such a gap returns NeedsContext before progress/timeouts/packet identity
+commit; explicit boundary/date context permits retry. Unusable observations do
+not flush previous references. Offline can inspect/finalize all observations and
+retain labelled partials; stream does not retroactively edit emitted answers.
+
+Earlier year-only fixtures placed midnight year-end and Jan1 just1 RTC second
+apart. They now use86400s (or86401s to Jan1+1s), and the ordinary late fixture
+uses consistent half-second clock fields plus explicit2day caller late tolerance.
+The invalid-day366 fallback fixture is again DMY2023Dec31 at RTC day+1s:
+that backward day is correctly a jump without changing year; its held-fallback
+and earlier-eligible-reference assertions are preserved.
+
+Fourteen isolated mutations compiled and failed assertions, sources restored:
+`>`→`>=` forward progress (equal-counter test), `day<last`→`day+1<last`
+(adjacent-day true rollover), late `>`→`>=` (same-day late), bypassed clock check,
+exclusive tolerance boundary, omitted explicit leap second, fatal offline gap,
+reused session-origin year, cached absolute normalization, missing TF-020, wrong
+gap evidence, missing post-gap dated anchor, signed unknown-year jump loss,
+and a signed comparison bridging an unknown year gap. A first gap-evidence probe
+survived; exact signed-field assertions killed it on rerun. Historical34+11
+mutation runs remain dated evidence; these14 are the current review's runs.
+No whole-requirement marker added; matrix remains160/288. FND-102 stays clause
+coverage only. No Review/Design field, CLI, dependency or release-scope change.
+
+The same-year signed clock comparison also works for unknown absolute years,
+but only within a resolved relative phase and year-continuity segment. It reports
+the same-7s residual without inventing a year and does not bridge unknown gaps.
+The new unknown-year regression first failed with no TF-017, then passed after
+that signed-relative comparison change. These additions are after the first
+review2 tests-only commit, not extra main-first failures.
+
+Exact surviving-mutant checks (isolated source edits, compiled assertions):
+
+| Mutation | Killing assertion |
+|---|---|
+| `ticks > last` → `>=` | equal-counter year-end/day1: phase1 instead of0 |
+| `day < last` → `day + 1 < last` | real Jan2→Jan1 rollover:2023 instead of2024 |
+| late `day > last` → `>=` | same-day-.5s observation spuriously emits TF-017 |
+
+A first full-check pass found a test-initializer clippy warning; its initializer
+is corrected. Full bounded CI equivalent is rerun after these final changes.
+
+Final review2 verification: all33 focused tests, all14 isolated mutation assertions,
+and all18 bounded local CI-equivalent checks passed (jobs/threads2). Actionlint,
+diff and trace checks pass; matrix160/288 unchanged. No merge or publication.

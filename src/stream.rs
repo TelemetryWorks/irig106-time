@@ -555,7 +555,7 @@ impl StreamTimeline {
             crate::timeline::stream_observation(packet, &self.policy.offline, key)?;
         b.findings.extend(findings);
         if let Some(r) = reference.as_mut() {
-            self.years.stamp(r)?;
+            self.years.stamp(r, &self.policy.offline)?;
             b.findings
                 .extend(self.years.resolve(r, &self.policy.offline)?);
             for prior in &mut self.refs {

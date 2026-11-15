@@ -32,11 +32,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   references, while stream cannot revise answers already emitted. TF-032 repeats
   per affected reference while retained candidates disagree, not once per session.
   No new nearest-year or configuration-date default.
-- Sparse forward day-of-year decreases advance the year even without a Jan1
-  reference; late correction is symmetric. A gap of365days or more between
-  eligible year references now returns NeedsContext instead of guessing cycles.
-  Stream rejects it before advancing progress/draining held answers; explicit
-  session/date context permits retry. RI4-only rollover has independent tests.
+- Sparse rollovers require strictly decreasing ordinal day, positive RTC and
+  a matching cyclic calendar interval within the explicit jump threshold or
+  coarser endpoint resolution. Backward clock jumps retain the year and TF-017;
+  late correction is symmetric. Equal-counter and same-day late data do not
+  change the year. Explicit leap-second labels retain their second.
+- Offline gaps of365days or more keep yearless partials with TF-020 INFORMATION,
+  signed gap/context evidence and a year-evidence continuity segment. Earlier
+  known values remain usable; fully dated values retain their year and a new
+  DMY can restore other years inside the segment. Session-origin years and cached absolute normalization cannot
+  silently bridge an unresolved gap. Stream keeps NeedsContext before progress/
+  draining/identity commit, accepting retry with explicit session/date context.
+  No finding ID/title/level changed. RI4-only rollover has independent tests.
 - `verification-s08.md` records clause limits and honest tests-first/mutation
   evidence. FND-102 is not promoted: this slice does not test every contract6
   degraded case. Governing TMATS extraction remains S09; no CLI/dependency change.

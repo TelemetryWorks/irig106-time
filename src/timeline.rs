@@ -1174,6 +1174,8 @@ fn year_days(year: u16) -> i128 {
     }
 }
 /// **Traces:** L3-F2COR-102 ← L2-F2COR-102 ← L1-F2COR-002
+/// **Traces:** L3-COR-110 ← L2-COR-110 ← L1-COR-010
+/// **Traces:** L3-COR-104 ← L2-COR-104 ← L1-COR-004
 pub(crate) fn absolute_delta(a: &TimelineReference, b: &TimelineReference) -> Option<i128> {
     if let (Some(a), Some(b)) = (&a.input.normalization, &b.input.normalization) {
         return b.tai_nanoseconds().checked_sub(a.tai_nanoseconds());
@@ -1190,6 +1192,8 @@ pub(crate) fn absolute_delta(a: &TimelineReference, b: &TimelineReference) -> Op
     {
         return None;
     }
+    let same_calendar_year = a.key.session == b.key.session
+        && a.input.year_basis.same_calendar_year(&b.input.year_basis);
     let (ReferenceValue::Readable(a, _), ReferenceValue::Readable(b, _)) =
         (a.input.value, b.input.value)
     else {
@@ -1203,7 +1207,7 @@ pub(crate) fn absolute_delta(a: &TimelineReference, b: &TimelineReference) -> Op
                     - i128::from(a.as_total_ns()),
             )
         }
-        (None, None) if b.day_of_year() >= a.day_of_year() => {
+        (None, None) if same_calendar_year => {
             Some(i128::from(b.as_total_ns()) - i128::from(a.as_total_ns()))
         }
         _ => None,
