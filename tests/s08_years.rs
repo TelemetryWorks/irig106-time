@@ -924,7 +924,24 @@ fn review_full_year_gap_needs_context_without_consuming_stream_state() {
             b.observe(packet.clone(), false).unwrap();
         }
         b.observe(target.clone(), false).unwrap();
-        assert!(matches!(b.finish(), Err(TimeError::NeedsContext { .. })));
+        let t = b.finish().unwrap();
+        assert_eq!(
+            t.lookup(t.sessions()[0].references[0].key)
+                .unwrap()
+                .time
+                .unwrap()
+                .year(),
+            Some(2023)
+        );
+        let post = t.sessions()[0].references.last().unwrap();
+        assert!(post.admitted);
+        assert_eq!(t.lookup(post.key).unwrap().time.unwrap().year(), None);
+        assert_eq!(post.input.year_origin, YearOrigin::Unknown);
+        assert_eq!(post.input.year_basis.context().caller, Some(2023));
+        assert!(t.findings().iter().any(|f| f.code == 20
+            && f.packet == 7
+            && f.severity == Severity::Information
+            && f.evidence.validity() == ValueValidity::Kept));
         for mode in [StreamMode::Standard, StreamMode::Interpolate] {
             let mut s = StreamTimeline::new(sp(mode), None).unwrap();
             for packet in &packets {
@@ -1063,6 +1080,192 @@ fn review_stable_first_uses_observation_order_not_counter_order() {
                 .unwrap()
                 .year(),
             Some(2023)
+        );
+    }
+}
+
+// Review2 clause evidence: Fig11-13 word groups, contract5.3 / COR-110.
+fn review2_wire(bytes: &[u8]) -> ReferenceInput {
+    ReferenceInput::format1(
+        bytes,
+        bytes.len(),
+        TimeF1Layout::SourceWithIts17,
+        ScalePolicy::default(),
+    )
+    .unwrap()
+    .with_year_context(YearContext {
+        caller: Some(2023),
+        recording: None,
+    })
+    .unwrap()
+}
+#[test]
+fn review2_backward_day_jump_keeps_year_in_both_engines() {
+    // Day200 00:00:05 -> day199 23:59:59: reading -6s, RTC+1s => TF-017 residual-7s.
+    let first = review2_wire(&[1, 0, 0, 0, 0, 5, 0, 0, 0, 2]);
+    let back = review2_wire(&[1, 0, 0, 0, 0, 0x59, 0x59, 0x23, 0x99, 1]);
+    let packets = [p(1, 0, Some(first)), p(2, 10_000_000, Some(back))];
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    let mut k = None;
+    for packet in &packets {
+        k = Some(b.observe(packet.clone(), false).unwrap());
+    }
+    let t = b.finish().unwrap();
+    assert_eq!(
+        t.lookup(k.unwrap()).unwrap().time.unwrap().year(),
+        Some(2023)
+    );
+    assert!(
+        t.findings()
+            .iter()
+            .any(|f| f.code == 17 && f.delta_ns == Some(-7_000_000_000))
+    );
+    for mode in [StreamMode::Standard, StreamMode::Interpolate] {
+        let mut s = StreamTimeline::new(sp(mode), None).unwrap();
+        s.observe(packets[0].clone(), 0, 100, false).unwrap();
+        let b = s.observe(packets[1].clone(), 0, 100, false).unwrap();
+        assert!(
+            b.findings
+                .iter()
+                .any(|f| f.code == 17 && f.delta_ns == Some(-7_000_000_000))
+        );
+        assert_eq!(
+            s.observe(p(3, 10_000_000, None), 0, 100, false)
+                .unwrap()
+                .answers[0]
+                .time
+                .unwrap()
+                .year(),
+            Some(2023)
+        );
+    }
+}
+#[test]
+fn review2_equal_counter_day_change_is_a_jump_not_a_rollover() {
+    // Dec31 23:59:59.99 -> Jan1:10ms cyclic interval, within default10ms
+    // resolution tolerance of zero RTC, but positive RTC progress is mandatory.
+    let first = review2_wire(&[1, 0, 0, 0, 0x99, 0x59, 0x59, 0x23, 0x65, 3]);
+    let next = review2_wire(&[1, 0, 0, 0, 0, 0, 0, 0, 1, 0]);
+    let packets = [p(1, 0, Some(first)), p(2, 0, Some(next))];
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    for packet in &packets {
+        b.observe(packet.clone(), false).unwrap();
+    }
+    let t = b.finish().unwrap();
+    let input = &t.sessions()[0].references[1].input;
+    assert_eq!(input.year_basis.rollovers(), 0);
+    assert!(matches!(input.value,ReferenceValue::Readable(t,_) if t.year()==Some(2023)));
+    assert!(t.findings().iter().any(|f| f.code == 17));
+    for mode in [StreamMode::Standard, StreamMode::Interpolate] {
+        let mut s = StreamTimeline::new(sp(mode), None).unwrap();
+        for packet in &packets {
+            s.observe(packet.clone(), 0, 100, false).unwrap();
+        }
+        assert_eq!(
+            s.observe(p(3, 0, None), 0, 100, false).unwrap().answers[0]
+                .time
+                .unwrap()
+                .year(),
+            Some(2023)
+        );
+    }
+}
+#[test]
+fn review2_same_day_late_reference_does_not_lose_a_year() {
+    // Day200 00:00:04.50 arrives after00:00:05, half a second earlier in RTC.
+    let packets = [
+        p(
+            1,
+            10_000_000,
+            Some(review2_wire(&[1, 0, 0, 0, 0, 5, 0, 0, 0, 2])),
+        ),
+        p(
+            2,
+            5_000_000,
+            Some(review2_wire(&[1, 0, 0, 0, 0x50, 4, 0, 0, 0, 2])),
+        ),
+    ];
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    let mut k = None;
+    for packet in &packets {
+        k = Some(b.observe(packet.clone(), false).unwrap());
+    }
+    let t = b.finish().unwrap();
+    assert_eq!(
+        t.lookup(k.unwrap()).unwrap().time.unwrap().year(),
+        Some(2023)
+    );
+    assert!(!t.findings().iter().any(|f| f.code == 17));
+    for mode in [StreamMode::Standard, StreamMode::Interpolate] {
+        let mut s = StreamTimeline::new(sp(mode), None).unwrap();
+        for packet in &packets {
+            assert!(
+                !s.observe(packet.clone(), 0, 100, false)
+                    .unwrap()
+                    .findings
+                    .iter()
+                    .any(|f| f.code == 17)
+            );
+        }
+        let a = s.observe(p(3, 5_000_000, None), 0, 100, false).unwrap();
+        assert_eq!(a.answers[0].time.unwrap().year(), Some(2023));
+        assert_eq!(a.answers[0].time.unwrap().seconds(), 4);
+        assert_eq!(a.answers[0].time.unwrap().nanoseconds(), 500_000_000);
+    }
+}
+#[test]
+fn review2_adjacent_ordinal_days_can_span_a_real_year_boundary() {
+    const DAY: u64 = 864_000_000_000;
+    // Jan2 2023 23:59:59 -> Jan1 2024 midnight =363days+1s;
+    // bridge RTC wraps with <=100day data steps. day1+1<day2 would miss this.
+    let mut packets = vec![p(
+        1,
+        0,
+        Some(review2_wire(&[1, 0, 0, 0, 0, 0x59, 0x59, 0x23, 2, 0])),
+    )];
+    for step in 1..=3 {
+        packets.push(p(step + 1, step * 100 * DAY, None));
+    }
+    packets.push(p(
+        5,
+        363 * DAY + 10_000_000,
+        Some(r(
+            1,
+            true,
+            YearContext {
+                caller: Some(2023),
+                recording: None,
+            },
+        )),
+    ));
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    let mut k = None;
+    for packet in &packets {
+        k = Some(b.observe(packet.clone(), false).unwrap());
+    }
+    assert_eq!(
+        b.finish()
+            .unwrap()
+            .lookup(k.unwrap())
+            .unwrap()
+            .time
+            .unwrap()
+            .year(),
+        Some(2024)
+    );
+    for mode in [StreamMode::Standard, StreamMode::Interpolate] {
+        let mut s = StreamTimeline::new(sp(mode), None).unwrap();
+        for packet in &packets {
+            s.observe(packet.clone(), 0, 100, false).unwrap();
+        }
+        assert_eq!(
+            s.observe(p(6, 363 * DAY + 10_000_000, None), 0, 100, false)
+                .unwrap()
+                .answers[0]
+                .time
+                .unwrap()
+                .year(),
+            Some(2024)
         );
     }
 }
