@@ -1,5 +1,5 @@
 //! S10a1 validation/evidence. Ch11 §11.2.1.1g (11-9/PDF17),
-//! §11.2.1.2/Fig11-4/5/6 (11-10/11, PDF18/19); RDG008 (suspect).
+//! §11.2.1.2/Fig11-4/5/6 (11-10, PDF18); RDG008 (suspect).
 //! Epoch/calendar conversion and own-minus-counter/TF014 remain S10a2.
 use crate::{
     Result, Rtc, SignedRtcTicks, TimeError,

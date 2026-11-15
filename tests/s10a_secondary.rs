@@ -1,4 +1,4 @@
-//! S10a1: §11.2.1.1g (11-9/PDF17), Fig11-4/5/6 (11-10/11/PDF18/19),
+//! S10a1: §11.2.1.1g (11-9/PDF17), Fig11-4/5/6 (11-10/PDF18),
 //! §11.2.1.2, RDG008/RCC123-20 B-31. Literal wire/checksum arithmetic.
 use irig106_time::{findings::*, scale::*, secondary::*, secondary_packet::*, timeline::*, *};
 const IEEE: [u8; 12] = [0x15, 0xcd, 0x5b, 7, 4, 3, 2, 1, 0, 0, 0x4e, 1];
@@ -89,6 +89,7 @@ fn both_checksum_readings_trust_and_aggregate_counts_are_independent() {
             assert_eq!((c.stored, c.byte_sum, c.word_sum), (0x14e, 0x14e, 0xd876));
         }
         for f in r.findings() {
+            assert_eq!(f.evidence().location().byte_offset, Some(34)); // header24 + checksum10, not reserved8.
             assert_eq!(f.evidence().raw_rtc(), Some(Rtc::from_raw(0)));
             for (name, value) in [
                 ("secondary.checksum.stored", c.stored),
@@ -245,6 +246,7 @@ fn ertc_units_floor_modular_tick_tolerance_and_half_range_are_explicit() {
                 .iter()
                 .find(|f| f.code().number() == 25)
                 .unwrap();
+            assert_eq!(f.evidence().validity(), ValueValidity::Kept);
             assert_eq!(f.evidence().raw_rtc(), Some(Rtc::from_raw(rtc)));
             assert!(
                 f.evidence()
@@ -305,6 +307,17 @@ fn formats_are_recording_wide_but_each_header_uses_its_own_flags() {
             p.key.packet = 10;
             let r = a.observe(p, &Default::default()).unwrap();
             assert_eq!(ids(&r).contains(&13), left != right);
+            if left != right {
+                assert_eq!(
+                    r.findings()
+                        .iter()
+                        .find(|f| f.code().number() == 13)
+                        .unwrap()
+                        .evidence()
+                        .validity(),
+                    ValueValidity::Kept
+                );
+            }
             assert_eq!(
                 r.format(),
                 Some(SecHdrTimeFormat::from_packet_flags(0x80 | (right << 2)))
@@ -331,6 +344,15 @@ fn formats_are_recording_wide_but_each_header_uses_its_own_flags() {
     let r = a.observe(packet(0x8c, &zero), &Default::default()).unwrap();
     assert!(ids(&r).contains(&6));
     assert!(ids(&r).contains(&28));
+    assert_eq!(
+        r.findings()
+            .iter()
+            .find(|f| f.code().number() == 28)
+            .unwrap()
+            .evidence()
+            .validity(),
+        ValueValidity::Unusable
+    );
     assert!(r.time().is_none());
     assert!(matches!(
         r.errors()[0],
