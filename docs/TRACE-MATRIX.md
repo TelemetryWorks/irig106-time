@@ -81,23 +81,23 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-SEC-001 | L2-SEC-101 | `tests/rebuild_wire.rs::ch4_reserved_words_report_independent_warnings_and_keep_time`<br>`tests/rebuild_wire.rs::t10_intra_ch4_reserved_word_keeps_value`<br>`tests/rebuild_wire.rs::t10_secondary_ch4_has_usec_low_high_words` | Implemented |
+| L1-SEC-001 | L2-SEC-101 | `tests/rebuild_wire.rs::ch4_reserved_words_report_independent_warnings_and_keep_time`<br>`tests/rebuild_wire.rs::t10_intra_ch4_reserved_word_keeps_value`<br>`tests/rebuild_wire.rs::t10_secondary_ch4_has_usec_low_high_words`<br>`tests/s10a_secondary.rs::bounded_ch4_header_and_independent_reserved_fields_keep_raw_values` | Implemented |
 | L1-SEC-002 | L2-SEC-102 | _(none)_ | Draft |
 | L1-SEC-003 | L2-SEC-103 | _(none)_ | Draft |
 | L1-SEC-004 | L2-SEC-104 | `tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither`<br>`tests/slice2_wire.rs::rdg008_byte_only_checksum_is_valid`<br>`tests/slice2_wire.rs::rdg008_word_only_checksum_is_not_trusted` | Implemented |
-| L1-SEC-005 | L2-SEC-105 | `tests/rebuild_wire.rs::ch4_reserved_words_report_independent_warnings_and_keep_time` | Implemented |
-| L1-SEC-006 | L2-SEC-106 | _(none)_ | Draft |
+| L1-SEC-005 | L2-SEC-105 | `tests/rebuild_wire.rs::ch4_reserved_words_report_independent_warnings_and_keep_time`<br>`tests/s10a_secondary.rs::every_reserved_bit_has_its_own_position_and_kept_value` | Implemented |
+| L1-SEC-006 | L2-SEC-106 | `tests/s10a_secondary.rs::formats_are_recording_wide_but_each_header_uses_its_own_flags` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L2-SEC-101 | L3-SEC-101 | `tests/rebuild_wire.rs::ch4_reserved_words_report_independent_warnings_and_keep_time`<br>`tests/rebuild_wire.rs::t10_intra_ch4_reserved_word_keeps_value` | Implemented |
+| L2-SEC-101 | L3-SEC-101 | `tests/rebuild_wire.rs::ch4_reserved_words_report_independent_warnings_and_keep_time`<br>`tests/rebuild_wire.rs::t10_intra_ch4_reserved_word_keeps_value`<br>`tests/s10a_secondary.rs::bounded_ch4_header_and_independent_reserved_fields_keep_raw_values` | Implemented |
 | L2-SEC-102 | L3-SEC-102 | _(TBD)_ | Draft |
 | L2-SEC-103 | L3-SEC-103 | _(TBD)_ | Draft |
 | L2-SEC-104 | L3-SEC-104 | `tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither`<br>`tests/slice2_wire.rs::rdg008_byte_only_checksum_is_valid`<br>`tests/slice2_wire.rs::rdg008_word_only_checksum_is_not_trusted` | Implemented |
-| L2-SEC-105 | L3-SEC-105 | `tests/rebuild_wire.rs::ch4_reserved_words_report_independent_warnings_and_keep_time` | Implemented |
-| L2-SEC-106 | L3-SEC-106 | _(TBD)_ | Draft |
+| L2-SEC-105 | L3-SEC-105 | `tests/rebuild_wire.rs::ch4_reserved_words_report_independent_warnings_and_keep_time`<br>`tests/s10a_secondary.rs::every_reserved_bit_has_its_own_position_and_kept_value` | Implemented |
+| L2-SEC-106 | L3-SEC-106 | `tests/s10a_secondary.rs::formats_are_recording_wide_but_each_header_uses_its_own_flags` | Implemented |
 
 ### L1-CSDW: Format 1 channel-specific data word
 
@@ -621,7 +621,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | RTC | 4 | 4 | 4 | 4 | 4 | 4 | 4 |
 | ABS | 4 | 4 | 4 | 3 | 3 | 3 | 3 |
 | IPT | 3 | 3 | 3 | 3 | 3 | 3 | 3 |
-| SEC | 6 | 6 | 6 | 3 | 3 | 3 | 3 |
+| SEC | 6 | 6 | 6 | 4 | 4 | 4 | 4 |
 | CSDW | 7 | 7 | 7 | 6 | 6 | 6 | 6 |
 | BCD | 4 | 4 | 4 | 4 | 4 | 4 | 4 |
 | F2CSDW | 4 | 4 | 4 | 4 | 4 | 4 | 4 |
@@ -645,13 +645,13 @@ This matrix is the single source of truth for live status; the requirement docum
 | CLI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
 | REL | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
 | TST | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
-| **Total** | **124** | **144** | **144** | **88** | **88** | **88** | **88** |
+| **Total** | **124** | **144** | **144** | **89** | **89** | **89** | **89** |
 
 The countable requirement set is every L2 and L3 requirement plus the 0 L1 *leaf* requirement(s) (L1s with no L2 decomposition yet). Composite L1s are verified through their children.
 
-**Tested by at least one test marker**: 176 of 288 (61.1%).
+**Tested by at least one test marker**: 178 of 288 (61.8%).
 
-**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 176 of 288 (61.1%).
+**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 178 of 288 (61.8%).
 
 ### Orphan check
 
@@ -671,7 +671,7 @@ Every entry of `docs/INTERPRETATIONS.md` with its written analysis and the tests
 | RDG-005 | `R-x\TSRC-n` letters name Format 1 SRC values; a difference is information | accepted | [TSRC/SHTF reading and clause evidence](verification-s09b.md) | `tests/s09b_declarations.rs::all_source_pairs_reserved_missing_and_loss_regain_are_informational`<br>`tests/s09b_declarations.rs::combined_registered_comparisons_cover_the_whole_finding_contract` |
 | RDG-006 | `R-x\SHTF-n` 0 "Chapter 4 BCD" names packet flags `00`, "Chapter 4 binary weighted" | accepted | [TSRC/SHTF reading and clause evidence](verification-s09b.md) | `tests/s09b_declarations.rs::all_shtf_pairs_flags_channels_and_binary_dispatch_keep_wording_discrepancy`<br>`tests/s09b_declarations.rs::combined_registered_comparisons_cover_the_whole_finding_contract` |
 | RDG-007 | ITS (Format 1 bits 15–12) is read only for recordings declared 106-17 or later | accepted | [qualified edition fields](analysis/RDG-007-edition-fields.md) | `tests/rebuild_layout.rs::t7_its_requires_explicit_applicable_layout`<br>`tests/s03_edition.rs::independent_edition_rule_boundaries_and_its_evidence`<br>`tests/s03_edition.rs::reserved_its_is_a_value_warning_only_in_an_applicable_layout` |
-| RDG-008 | The secondary header checksum sums bytes, not 16-bit words | suspect | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-008) | `tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither`<br>`tests/slice2_wire.rs::rdg008_byte_only_checksum_is_valid`<br>`tests/slice2_wire.rs::rdg008_word_only_checksum_is_not_trusted` |
+| RDG-008 | The secondary header checksum sums bytes, not 16-bit words | suspect | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-008); [S10a1 validation and remaining clauses](verification-s10a.md) | `tests/s10a_secondary.rs::both_checksum_readings_trust_and_aggregate_counts_are_independent`<br>`tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither`<br>`tests/slice2_wire.rs::rdg008_byte_only_checksum_is_valid`<br>`tests/slice2_wire.rs::rdg008_word_only_checksum_is_not_trusted` |
 | RDG-009 | The time scale of each time format; IRIG time is UTC by assumption | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-009) | `tests/s06a_format2.rs::native_scales_and_d7_conversion_basis_are_preserved`<br>`tests/s06b_offline.rs::gps_uses_inferred_nineteen_seconds_and_unknown_scale_blocks_normalization`<br>`tests/s06b_offline.rs::mixed_utc_ptp_and_f1_use_one_physical_scale_without_fake_fields`<br>`tests/s06b_stream.rs::normalized_gps_to_ptp_bracket_keeps_the_native_gps_scale`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance`<br>`tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` |
 | RDG-010 | Second 60 is a leap second on a day that can be 30 June or 31 December | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-010); [known-year DOY qualification and segment guard](verification-s08.md#pr28-review--known-year-doy-leap-validation) | `tests/s02_readings.rs::leap_label_is_distinct_and_arithmetic_refuses_missing_context`<br>`tests/s04_leaps.rs::empty_and_pre1972_have_missing_context_not_a_default_offset`<br>`tests/s04_leaps.rs::every_positive_transition_selects_on_tai_and_preserves_second60`<br>`tests/s05_ntp.rs::covered_duplicate_coordinate_is_ambiguous_value_kept_not_a_read_leap`<br>`tests/s06a_format2.rs::ptp_inserted_second_survives_the_boundary_with_its_own_finding`<br>`tests/s06a_format2.rs::review_each_converted_finding_uses_policy_level_without_changing_value`<br>`tests/s06b_offline.rs::physical_shift_across_insertion_retains_second_sixty_and_not_a_jump`<br>`tests/s06b_offline.rs::review_negative_step_shifts_skip_a_second_without_inventing_sixty`<br>`tests/s06b_stream.rs::normalized_stream_answers_keep_a_derived_utc_second_sixty`<br>`tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` |
 | RDG-011 | "The first dynamic data packet" is checked per session | accepted | not yet written | `tests/stream_timeline.rs::early_data_none_and_no_time_findings` |

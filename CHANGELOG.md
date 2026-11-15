@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S10a1 secondary validation and counter consistency
+
+- Add bounded secondary inspection with raw/checksum/field evidence. Byte trust
+  remains mandatory; word-only headers produce TF-012 and TF-027. Reserved
+  warnings retain values and positions independently of checksum/field errors.
+- Preserve a caller's borrowed offline or stream counter answer alongside own
+  validation failures. No UTC/epoch guess, time replacement or channel switch.
+- Check ERTC/100 against RTC modulo 2^48 with the fixed one-tick tolerance
+  (TF-025); keep full relative ERTC, typed remainder and signed/ambiguous phase
+  evidence. Aggregate checksum readings and report per-channel/recording mixed
+  formats (TF-013), decoding every packet from its actual flags.
+- This is the first S10a part. Own calendar/session conversion, compatible
+  own-minus-counter discrepancy/TF-014 and full answer integration remain S10a2.
+  The clause ledger records partial coverage; no new release deferral or claim
+  that RDG-008's suspect reading/local-recording review is settled.
+
 ### S09b TSRC/SHTF comparisons and declaration audit
 
 - Add `compare_qualified` using S03 edition-qualified CSDW and primary flags.
