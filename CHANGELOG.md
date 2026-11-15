@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S10a2 own calendar/session conversion and comparison
+
+- Add explicit IEEE/Chapter4 epoch, scale/counting and citation context; missing
+  context keeps labelled raw partials. Native GPS/TAI remain distinct from UTC.
+  Reuse validated leap tables, signed checked arithmetic and D7 stale-offset
+  UTC/TF-021; no host-clock, implicit Unix epoch or nearby-packet origin.
+- Correlate full relative ERTC through the named session's released counter
+  answer, preserving stream interpolation floor, original policy and fallback.
+  Retain own and counter independently; normalized signed discrepancy emits
+  TF-014 strictly above reference resolution or explicit caller tolerance.
+- Add only the eight-byte IEEE time-word encoder; the complete secondary/stamp
+  encoder API remains deferred. No existing API/CLI behaviour change.
+- Clause evidence: verification-s10a2.md; matrix178→186/288. Only ABS103,
+  SEC102/103 and ANS102 gain whole links; RDG-008/local/human settlement,
+  stamp adapters and downstream reporting remain separate work.
+
 ### S10a1 secondary validation and counter consistency
 
 - Add bounded secondary inspection with raw/checksum/field evidence. Byte trust
