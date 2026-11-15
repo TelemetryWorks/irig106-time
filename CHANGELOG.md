@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ⚠️ S08 session year evidence and LY validation
+
+- Resolve yearless Format1 references from same-session DMY, then caller, then
+  governing R-x\RI4; never G\OD/host clock. Retain all applicable candidates,
+  original values, governing context and selected provenance in `year_basis`.
+  Year remains partial when evidence is absent (TF-020). Known years advance at
+  observed year boundaries; recorded LY never supplies the year.
+- TF-032 is owner-accepted WARNING (2026-11-14): highest-priority year used,
+  contradictory candidates kept, time value still produced. All32 finding levels
+  are approved; TF-001..031 unchanged. Overrides do not alter factual validity.
+- Compare LY with known Gregorian years/day366 (TF-007); an impossible known-year
+  day366 also remains malformed (TF-004), never repaired or admitted.
+- BREAKING: `ReferenceInput` literals add `year_basis` (use Default); attach
+  per-reference caller/RI4 context with `.with_year_context(...)`. Offline finish
+  uses same-session later DMY; streams update only unreleased answers, including
+  held fallbacks, and retain bounded first/latest DMY evidence across reference
+  eviction. Session boundaries clear year evidence. Explicit normalization is
+  recomputed on a changed year; unavailable context stays labelled, never stale.
+- Owner-accepted2026-11-15 stable-first for same-priority DMY conflicts:
+  first observed eligible DMY anchors yearless references in both engines
+  (observation order/packet identity, never RTC order). Each DMY keeps its own
+  calendar and contradictory candidates. Case (a): later DMY can backdate offline
+  references, while stream cannot revise answers already emitted. TF-032 repeats
+  per affected reference while retained candidates disagree, not once per session.
+  The first DMY anchor ADVANCES with the selected year phase: Dec31 2023 ->
+  Jan1 DOY gives2024, and consistent DMYJan1 2024 raises no TF-032. A contrary
+  same-year DMY keeps raw evidence and raises TF-032; no configuration-date default.
+- Owner-adopted2026-11-15 YEAR-PHASE reader policy considers d=-1/0/+1
+  for every strictly forward RTC reference, regardless of ordinal-day order;
+  mirrored signed arithmetic handles late references. Choose the closest expected
+  elapsed using the real crossed-year length (both when unknown); ties keep d=0.
+  A backward correction may select the PREVIOUS year, then recover the next year;
+  same-day corrections need not change phase. Equal counters do not change it.
+- Selection is independent of the jump threshold: a New Year+5s correction
+  advances to2024 and reports TF-017; threshold equality raises no finding.
+  Explicit leap labels retain their second even in linear same-year spans.
+  Unknown-year crossings cannot invent absolute deltas/drift but keep signed
+  TF-017 corrections. Known common-year day366 stays malformed (TF-004), not an
+  anchor or a calendar repaired by guessing a different year.
+- Only a winning residual GREATER than182.5days requires context. Offline
+  starts a new year-evidence segment, preserving partial values with TF-020,
+  signed gap/context evidence and cleared stale absolute normalization; stream
+  rejects before progress/draining/identity commit, allowing boundary retry.
+  This supersedes the previous blanket365day RTC-gap guard: an exact365day
+  common-year calendar interval is resolved by d=+1 with zero residual. Unusable
+  observations neither reset phase nor cut its gap evidence. Existing365/400day
+  implausible-gap fixtures remain partial/rejected by the residual bound.
+- `verification-s08.md` records clause limits and honest tests-first/mutation
+  evidence. FND-102 is not promoted: this slice does not test every contract6
+  degraded case. Governing TMATS extraction remains S09; no CLI/dependency change.
+
 ### ⚠️ S07 Chapter 4 explicit calendar context
 
 - Add `ch4::Ch4Words` binary elapsed/BCD clock readings with raw words,
@@ -133,8 +184,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Existing explicit-layout helpers/CLI output paths are not automatically changed.
 - TF-031 now emits WARNING only for the accepted no-override contradiction
   case: **owner-accepted WARNING (2026-11-14)**, time body kept and EXT/SRC
-  qualification withheld. Catalog/policy can configure this approved level; TF-032 still
-  has no default. Reserved ITS yields TF-006; reserved bits yield TF-005.
+  qualification withheld. Catalog/policy can configure this approved level; TF-032 is now owner-accepted WARNING
+  (2026-11-14), highest-priority year used with contrary candidates retained. Reserved ITS yields TF-006; reserved bits yield TF-005.
   No TF-001..028 row or Design/Review status changes.
 - Eight S03 tests, 20 assertion-killed mutations, 128→136/288 matrix links.
   verification-s03 distinguishes one main-first assertion failure, missing-API
@@ -204,8 +255,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   factual value effect independent of severity. TF-029/030 evidence retains
   raw NTP words and sentinel-no-value / ambiguity-value-kept effects; conversion
   and leap-window detection remain S05. TF-031 is owner-accepted WARNING
-  (2026-11-14), configurable/emittable in S03; only TF-032 remains pending
-  and cannot be emitted by a default or explicit override.
+  (2026-11-14), configurable/emittable in S03; TF-032 WARNING is also owner-approved
+  (2026-11-14) and configurable/emittable in S08.
 - S01 verification: 15 focused tests, unit/epoch/privacy compile-fail controls and
   12 initial + 10 reviewer assertion-killed mutations; see `docs/verification-s01.md` for honest
   failing-first history and clause-level limits. Matrix links rise 106→116/288;
@@ -228,8 +279,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cross-session subtraction and quantity overflow. Legacy `Rtc::from_raw`
   still explicitly masks; use `checked_rtc` to reject high bits. Signed
   conversion refuses overflow/negative-to-unsigned rather than truncating.
-- Policies accept approved TF-029/030/031 severity overrides; TF-031 WARNING
-  is owner-accepted (2026-11-14). Only TF-032 and unknown IDs remain rejected. Shared catalog defaults follow architecture §8;
+- Policies accept approved TF-029/030/031/032 severity overrides; TF-031 WARNING
+  is owner-accepted (2026-11-14). TF-032 is now WARNING by owner decision2026-11-14; only unknown IDs remain rejected. Shared catalog defaults follow architecture §8;
   level selection never repairs malformed input. No CLI/schema/dependency or
   published version change is made. The Q-CH4 warning now cites the accepted
   2026-11-12 caller-context decision; the unsafe prototype conversion is not fixed here.
@@ -238,7 +289,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Owner 2026-11-13 plan decisions (ADR-0018): permanent TF-029 zero-NTP and
   TF-030 NTP ambiguity WARNING findings. TF-031 packet-layout conflict is
   owner-accepted WARNING (2026-11-14, time body kept/EXT-SRC qualification
-  withheld); only TF-032 year-conflict level remains pending owner (S08).
+  withheld); TF-032 WARNING is now owner-accepted2026-11-14: highest-priority
+  year used/candidates retained/time kept.
   Catalog/requirements only; no new producer is implemented by this docs PR.
 - 0.8.0 release scope: defer only COR-111 inverse queries (half-open semantics
   accepted), the new complete ENC-103 secondary/stamp API, complex API-110

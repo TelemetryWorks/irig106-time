@@ -135,3 +135,7 @@ local CI equivalent uses CARGO_BUILD_JOBS=2/RUST_TEST_THREADS=2, including
 feature tests, MSRV1.85, clippy, fmt, rustdoc, CLI, WASM and cargo-deny; actual
 head/CI results are reported in the PR. Source fixtures remain synthetic;
 no real recordings, host clock, dependency installation or settings changes.
+
+> Subsequent owner decision2026-11-14 (S08): TF-032 WARNING, highest-priority
+> year used, contradictory candidates retained, time kept. All32 levels are now
+> approved; any pending TF-032 text above describes the historical slice only.

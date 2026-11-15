@@ -381,7 +381,7 @@ fn admission_policy_and_severity_do_not_rewrite_facts() {
     assert_eq!(r.observation().csdw().time_status(), TimeStatus::NotValid);
     assert_eq!(r.policy(), &p);
     let mut bad = p;
-    bad.finding_levels.insert(32, Severity::Warning);
+    bad.finding_levels.insert(33, Severity::Warning); // TF-032 is approved;33 is unknown.
     assert!(
         o.convert(&NtpContext::new(1), &LeapSecondTable::empty(), bad)
             .is_err()

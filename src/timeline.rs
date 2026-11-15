@@ -1,6 +1,6 @@
 //! Offline timeline: native Format1/2 evidence and explicit TAI normalization.
-//! Inputs arrive in recording order; no file walking. Automatic year inference,
-//! inverse queries and offline drift-corrected queries remain follow-ups.
+//! Inputs arrive in recording order; no file walking. Session year evidence is
+//! resolved on finalization; inverse queries and offline drift-corrected queries remain follow-ups.
 extern crate alloc;
 use crate::findings::{
     Finding, FindingCode, FindingEvidence, FindingLocation, RawField, RawValue, ValueValidity,
@@ -211,7 +211,7 @@ pub enum PacketKind {
     /// Other dynamic data.
     Data,
 }
-/// Year provenance supplied by a reviewed decoder/caller; no inference here.
+/// Selected year provenance retained with all competing session evidence.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum YearOrigin {
     /// Calendar derived by the network converter; consult its era/table basis.
@@ -261,6 +261,8 @@ pub struct ReferenceInput {
     pub raw_csdw: Option<u32>,
     /// Basis of a resolved year; unknown remains unknown.
     pub year_origin: YearOrigin,
+    /// Original year/context and all selected/contradictory year candidates.
+    pub year_basis: crate::years::YearBasis,
     /// Full native network evidence; None for Format1.
     pub network: Option<alloc::boxed::Box<crate::reference::NetworkReference>>,
     /// Explicit caller-qualified TAI arithmetic; native scale stays recorded.
@@ -315,6 +317,7 @@ impl ReferenceInput {
             precision_ns: 10_000_000,
             raw_csdw: Some(reading.csdw.raw().as_raw()),
             year_origin,
+            year_basis: crate::years::YearBasis::default(),
             wire: None,
             qualified: Some(reading),
             network: None,
@@ -369,6 +372,7 @@ impl ReferenceInput {
             normalization: None,
             raw_csdw: Some(reading.csdw.as_raw()),
             year_origin,
+            year_basis: crate::years::YearBasis::default(),
         })
     }
 }
@@ -784,6 +788,12 @@ impl TimelineBuilder {
     /// **Traces:** L3-COR-104 ← L2-COR-104 ← L1-COR-004
     /// **Traces:** L3-COR-108 ← L2-COR-108 ← L1-COR-008
     pub fn finish(mut self) -> Result<OfflineTimeline> {
+        for session in &mut self.sessions {
+            self.findings.extend(crate::years::resolve_session(
+                &mut session.references,
+                &self.policy,
+            )?);
+        }
         let mut indexes = BTreeMap::<(usize, u16), Vec<usize>>::new();
         let mut events = Vec::new();
         for s in &self.sessions {
@@ -1164,6 +1174,8 @@ fn year_days(year: u16) -> i128 {
     }
 }
 /// **Traces:** L3-F2COR-102 ← L2-F2COR-102 ← L1-F2COR-002
+/// **Traces:** L3-COR-110 ← L2-COR-110 ← L1-COR-010
+/// **Traces:** L3-COR-104 ← L2-COR-104 ← L1-COR-004
 pub(crate) fn absolute_delta(a: &TimelineReference, b: &TimelineReference) -> Option<i128> {
     if let (Some(a), Some(b)) = (&a.input.normalization, &b.input.normalization) {
         return b.tai_nanoseconds().checked_sub(a.tai_nanoseconds());
@@ -1180,6 +1192,8 @@ pub(crate) fn absolute_delta(a: &TimelineReference, b: &TimelineReference) -> Op
     {
         return None;
     }
+    let same_calendar_year = a.key.session == b.key.session
+        && a.input.year_basis.same_calendar_year(&b.input.year_basis);
     let (ReferenceValue::Readable(a, _), ReferenceValue::Readable(b, _)) =
         (a.input.value, b.input.value)
     else {
@@ -1193,7 +1207,7 @@ pub(crate) fn absolute_delta(a: &TimelineReference, b: &TimelineReference) -> Op
                     - i128::from(a.as_total_ns()),
             )
         }
-        (None, None) if b.day_of_year() >= a.day_of_year() => {
+        (None, None) if same_calendar_year => {
             Some(i128::from(b.as_total_ns()) - i128::from(a.as_total_ns()))
         }
         _ => None,

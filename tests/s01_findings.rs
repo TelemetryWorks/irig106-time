@@ -11,12 +11,13 @@ fn location() -> FindingLocation {
 }
 /// Requirements: L1-FND-001, L2-FND-101, L3-FND-101
 #[test]
-fn every_catalog_level_and_pending_identity_is_explicit() {
+fn every_catalog_level_and_identity_is_explicit() {
     // Independent table copied from accepted architecture rows, not code logic.
     use Severity::{Error as E, Information as I, Warning as W};
-    // Last row TF-031 is owner-accepted WARNING (2026-11-14).
+    // Last rows TF-031/032 are owner-accepted WARNING (2026-11-14).
     let levels = [
-        W, W, W, E, W, W, W, W, I, W, I, E, W, W, E, W, W, I, W, I, W, I, I, W, W, W, I, E, W, W, W,
+        W, W, W, E, W, W, W, W, I, W, I, E, W, W, E, W, W, I, W, I, W, I, I, W, W, W, I, E, W, W,
+        W, W,
     ];
     for (i, level) in levels.into_iter().enumerate() {
         let id = FindingCode::from_number((i + 1) as u8).unwrap();
@@ -28,14 +29,10 @@ fn every_catalog_level_and_pending_identity_is_explicit() {
         FindingCode::from_number(31).unwrap().title(),
         "Packet-layout edition evidence is contradictory"
     );
-    for (id, title) in [(32, "Year evidence is contradictory")] {
-        let code = FindingCode::from_number(id).unwrap();
-        assert_eq!(code.title(), title);
-        assert_eq!(code.default_severity(), None);
-        for level in [None, Some(W), Some(E)] {
-            assert!(code.resolve_level(level).is_err());
-        }
-    }
+    assert_eq!(
+        FindingCode::from_number(32).unwrap().title(),
+        "Year evidence is contradictory"
+    );
     for id in [0, 33, 255] {
         assert!(FindingCode::from_number(id).is_err());
     }

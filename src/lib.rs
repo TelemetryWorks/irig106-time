@@ -117,6 +117,8 @@ pub mod streaming;
 pub mod timeline;
 /// IRIG 106 standard version detection and version-aware dispatch.
 pub mod version;
+/// Session year evidence, priority and LY validation without host-clock guesses.
+pub mod years;
 
 /// Crate-internal utilities (leap year helper, MSRV documentation).
 pub(crate) mod util;

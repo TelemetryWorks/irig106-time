@@ -113,8 +113,8 @@ The coordinator's saved `coordination-work/irig106-time-0.8.0-plan.md` is a
 planning artifact, not a new release-scope approval. At S00, its **plan Q1–Q6,
 Q3 deferrals and C1–C4 were pending**; the owner has since accepted the
 recommendations on 2026-11-13. The owner subsequently accepted TF-031 WARNING
-on 2026-11-14 (time body kept, EXT/SRC qualification withheld); only TF-032
-level remains pending owner (S08). Those labels differ from the older,
+on 2026-11-14 (time body kept, EXT/SRC qualification withheld); TF-032 WARNING is also accepted2026-11-14: highest-priority year used,
+contradicting candidates kept as evidence and time retained. All32 levels are approved. Those labels differ from the older,
 already answered roadmap questions below. No new IDs/levels, inverse bounds,
 JSON form, failure precedence, distribution mode, default policy or deferral
 is chosen by S00. No further code slice is started by this audit.
@@ -125,8 +125,8 @@ The owner said "accept your recommendations". [ADR-0018](adr/0018-0-8-release-sc
 and [the decision/source audit](analysis/plan-decisions-2026-11-13.md) record
 Q1–Q6 and C1–C4. TF-029/030 are WARNING with distinct sentinel/ambiguity
 value effects; TF-031 is owner-accepted WARNING (2026-11-14, time body kept,
-EXT/SRC qualification withheld). TF-031/032 IDs/titles are approved; **only
-TF-032 level remains pending owner (S08)**. Inverse queries have decided half-open semantics for later.
+EXT/SRC qualification withheld). TF-031/032 IDs/titles are approved; **all32 levels are approved**, TF-032 WARNING accepted2026-11-14: highest-priority
+year used, contradictory candidates retained and time kept. Inverse queries have decided half-open semantics for later.
 JSON is versioned with units, decimal-string 64/128-bit quantities, validated
 loads and raw/stated/assumed provenance; schema review precedes freeze.
 CLI usage precedes input, first fatal operational failure wins 3/4, later

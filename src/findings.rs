@@ -19,7 +19,7 @@ pub enum Severity {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FindingCode(u8, &'static str);
 impl FindingCode {
-    /// Look up an approved permanent identity, including pending-level 32.
+    /// Look up an approved permanent identity, all32 with owner-approved levels.
     pub fn from_number(number: u8) -> Result<Self> {
         const TITLES: [&str; 32] = [
             "A session has no time packet",
@@ -72,19 +72,20 @@ impl FindingCode {
     }
 
     /// TF-031 WARNING is owner-accepted (2026-11-14): body kept, EXT/SRC withheld.
-    /// None remains level pending owner for TF-032 (S08).
+    /// TF-032 WARNING is owner-accepted (2026-11-14): highest-priority year used,
+    /// contradictory candidates kept and time retained. All32 levels are approved.
     pub fn default_severity(self) -> Option<Severity> {
         match self.0 {
             4 | 12 | 15 | 28 => Some(Severity::Error),
             9 | 11 | 18 | 20 | 22 | 23 | 27 => Some(Severity::Information),
-            1..=31 => Some(Severity::Warning),
+            1..=32 => Some(Severity::Warning),
             _ => None,
         }
     }
-    /// Apply a caller override to an owner-approved default, including TF-031.
+    /// Apply a caller override to an owner-approved default, including TF-031/032.
     pub fn resolve_level(self, level: Option<Severity>) -> Result<Severity> {
         let default = self.default_severity().ok_or(TimeError::NeedsContext {
-            context: "finding level pending owner (TF-032 S08)",
+            context: "unknown finding level",
         })?;
         Ok(level.unwrap_or(default))
     }
@@ -262,7 +263,7 @@ impl Finding {
         self.evidence
     }
 
-    /// Build evidence without accepting an unknown/pending-level emission.
+    /// Build evidence with an approved identity/level and validated factual effect.
     pub fn new(
         code: FindingCode,
         level: Option<Severity>,

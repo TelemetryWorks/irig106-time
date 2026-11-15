@@ -48,3 +48,7 @@ Sources and requirement lineage are in the
 release and reader policies; no behaviour, workflow, credentials or publication
 is implemented or authorized by this documentation change. Human Review fields
 remain unchanged.
+
+> Subsequent owner decision2026-11-14 (S08): TF-032 WARNING, highest-priority
+> year used, contradictory candidates retained, time kept. All32 levels are now
+> approved; any pending TF-032 text above describes the historical slice only.

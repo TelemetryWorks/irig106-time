@@ -1,4 +1,4 @@
-# Owner decisions of 2026-11-12/13/14 — requirement and source audit
+# Owner decisions of 2026-11-12/13/14/15 — requirement and source audit
 
 Documentation-only update based on origin/main
 `b839c4343cd8bddc7509ce0462cc86923a3f2737` (merged PR7).
@@ -200,3 +200,48 @@ clarifications; ADR-0018 and plan-decisions-2026-11-13.md remain dated records
 and are not edited. No Design or Review field changes; TF-001..030 and TF-032
 rows retain their prior values. The exact TF-031 title assertion is restored.
 Matrix marker links remain 136/288; no new coverage claim or release deferral.
+
+## Subsequent owner decision — TF-032, 2026-11-14 (S08)
+
+Coordinator relays owner: TF-032 "Year evidence is contradictory" = WARNING
+("highest-priority year used, contradicting candidates kept as evidence,
+time value still produced"). All32 finding levels are now owner-approved.
+The standard supplies evidence, not these product severities: Figures11-13/14
+(106-24R1 printed11-25/PDF33); "Bit 8: Indicates if this is a leap year"
+(§11.2.3.2a); "Date and time original recording was created" (R-x\RI4, Ch9).
+Contract5.3/D9 defines DMY→caller→RI4 priority, never G\OD. No Review field changes.
+
+S08 updates architecture§8 TF-032 only (TF-001..031 unchanged), L2/L3 header
+notes, COR-110 and FND-101/102 (including repeated Source-line acceptance notes),
+contract header, ROADMAP, CHANGELOG and findings catalog. Source quotes retained.
+Old ADR/plan/verification records remain dated evidence, with subsequent-decision
+banners where they describe the former pending status. FND-102 remains clause
+coverage only; no test here claims all contract6 degraded cases.
+
+Exact changed requirement blocks (including Source-note-only changes): L2-NTP-104, L2-TAI-107, L2-EDN-201, L2-COR-110, L2-FND-101, L2-FND-102, L2-RDG-212, L3-NTP-104, L3-TAI-107, L3-EDN-201, L3-COR-110, L3-FND-101, L3-FND-102, L3-RDG-212.
+A source-quote subset check retained every earlier quoted Source excerpt;
+architecture TF-001..031 rows compare byte-for-byte unchanged.
+
+
+## Subsequent owner decision — YEAR-PHASE and stable-first, 2026-11-15 (S08)
+
+Owner adopts symmetric d=-1/0/+1 nearest RTC explanation irrespective of day
+order, real crossed-year lengths (both when unknown), d=0 ties,182.5day inclusive
+residual bound, equal-counter guard and mirrored late references. TF-017 is
+strictly above the configured/coarser-resolution jump threshold; selection is
+independent of that threshold. No plausible phase means offline partial/TF-020
+with gap/context or atomic stream NeedsContext/boundary retry. This is reader
+policy; contract5.3/Ch11 Figures11-13/14 do not define jump selection.
+
+Stable-first is accepted with the condition that the first observed DMY anchors
+and ADVANCES with the year phase. A consistent next-year DMY is not a conflict;
+a contrary DMY retains evidence and TF-032. Offline future evidence versus stream
+release-time evidence/no revision remains. L3-COR-110 is refined with the full
+case table, verification-s08 records execution separately; code comments and
+CHANGELOG cease calling this proposal. L2-COR-110 parent and L1-COR-010 retain
+their statements and all quoted sources. No Review/Design fields or finding
+levels change; no new whole-requirement marker or deferral.
+
+The new residual bound supersedes the blanket365day RTC-gap guard: an exact
+common-year cycle is d=+1 with zero residual; unusable observations do not
+shorten gap evidence. The same shared function handles both engine directions.

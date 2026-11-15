@@ -228,6 +228,7 @@ pub struct StreamTimeline {
     source: Option<TimeF1Source>,
     external_seen: bool,
     finished: bool,
+    years: crate::years::YearClock,
 }
 impl StreamTimeline {
     /// Commit from caller choice or complete inventory, before any data.
@@ -267,6 +268,7 @@ impl StreamTimeline {
             source: None,
             external_seen: false,
             finished: false,
+            years: crate::years::YearClock::default(),
         })
     }
     /// Frozen effective policy. Replacement requires a fresh caller ID.
@@ -476,6 +478,27 @@ impl StreamTimeline {
                 ));
             }
         }
+        // Reject ambiguous year gaps/explanations before progress/timeouts or packet
+        // identity are committed. Preserve held answers and allow an explicit-boundary retry.
+        if self.first.is_some()
+            && !boundary
+            && !reset
+            && packet
+                .reference
+                .as_ref()
+                .is_some_and(|r| r.network.is_none())
+        {
+            let key = PacketKey {
+                session,
+                ticks,
+                packet: packet.id,
+            };
+            let (reference, _) =
+                crate::timeline::stream_observation(packet.clone(), &self.policy.offline, key)?;
+            if let Some(mut r) = reference {
+                self.years.clone().stamp(&mut r, &self.policy.offline)?;
+            }
+        }
         let mut b = self.advance(progress)?;
         if self.first.is_none() || boundary || reset {
             self.flush(&mut b, ReleaseReason::SessionBoundary);
@@ -484,6 +507,7 @@ impl StreamTimeline {
             self.high = ticks;
             self.time_seen = false;
             self.segment_start = None;
+            self.years = crate::years::YearClock::default();
             self.refs.clear();
             self.source = None;
             self.external_seen = false;
@@ -526,9 +550,46 @@ impl StreamTimeline {
         if let Some(n) = packet.reference.as_mut().and_then(|r| r.network.as_mut()) {
             n.record_rate_policy(self.policy.id, self.policy.raw_network_rate);
         }
-        let (reference, findings) =
+        let (mut reference, findings) =
             crate::timeline::stream_observation(packet, &self.policy.offline, key)?;
         b.findings.extend(findings);
+        if let Some(r) = reference.as_mut() {
+            self.years.stamp(r, &self.policy.offline)?;
+            b.findings
+                .extend(self.years.resolve(r, &self.policy.offline)?);
+            for prior in &mut self.refs {
+                b.findings
+                    .extend(self.years.resolve(prior, &self.policy.offline)?);
+            }
+            self.refs
+                .retain(|r| r.admitted && matches!(r.input.value, ReferenceValue::Readable(..)));
+            for pending in &mut self.pending {
+                if let Some(prior) = pending.preceding.as_mut() {
+                    for f in self.years.resolve(prior, &self.policy.offline)? {
+                        if !b.findings.contains(&f) {
+                            b.findings.push(f);
+                        }
+                    }
+                }
+                if pending.preceding.as_ref().is_some_and(|r| {
+                    !r.admitted || !matches!(r.input.value, ReferenceValue::Readable(..))
+                }) {
+                    pending.preceding = self
+                        .refs
+                        .iter()
+                        .filter(|r| r.key.ticks <= pending.key.ticks)
+                        .max_by_key(|r| {
+                            (
+                                self.policy.mode == StreamMode::Interpolate
+                                    && matches!(r.input.value, ReferenceValue::Readable(_, true)),
+                                r.key.ticks,
+                                r.key.packet,
+                            )
+                        })
+                        .cloned();
+                }
+            }
+        }
         if kind == PacketKind::Time {
             self.time_seen = true;
             if self.channel.is_some_and(|(id, _)| id == ch) {

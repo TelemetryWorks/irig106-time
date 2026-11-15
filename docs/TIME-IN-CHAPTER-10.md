@@ -50,8 +50,9 @@ validated loads and raw/stated/assumed provenance; schema review precedes freeze
 Finding identities extend through TF-032 (architecture §8): TF-029 WARNING
 keeps raw zero NTP but no absolute answer; TF-030 WARNING keeps the mapped
 leap-ambiguous value. TF-031 packet-layout conflict is owner-accepted WARNING
-(2026-11-14): time body kept, EXT/SRC qualification withheld. Only TF-032 year
-conflict remains level pending owner (S08). Override precedence and existing year
+(2026-11-14): time body kept, EXT/SRC qualification withheld. TF-032 year conflict
+is also owner-accepted WARNING (2026-11-14): highest-priority year used,
+contradictory candidates kept, time produced. All32 levels are approved. Override precedence and existing year
 policy do not change. CLI classes remain 0–4: usage before input, first fatal
 operational failure decides 3/4, later failures are diagnostics. Release is
 crates.io-only via Trusted Publishing/OIDC GitHub Actions; no stored publishing

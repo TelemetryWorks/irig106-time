@@ -134,3 +134,7 @@ whole-statement verification; partial coverage is recorded only in this ledger.
 Subsequent S06b2 integration: [verification-s06b2](verification-s06b2.md) closes
 the stream clauses deferred above and retires the temporary rejection test.
 This dated S06b1 evidence is otherwise unchanged; remaining scopes stay explicit.
+
+> Subsequent owner decision2026-11-14 (S08): TF-032 WARNING, highest-priority
+> year used, contradictory candidates retained, time kept. All32 levels are now
+> approved; any pending TF-032 text above describes the historical slice only.

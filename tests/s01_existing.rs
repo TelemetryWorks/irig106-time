@@ -14,17 +14,17 @@ fn packet(id: u64, rtc: Rtc) -> PacketObservation {
 }
 /// Requirements: L1-FND-001, L2-FND-101, L3-FND-101
 #[test]
-fn available_ntp_and_edition_levels_keep_year_pending() {
+fn all_accepted_ntp_edition_and_year_levels_are_configurable() {
     let mut p = OfflinePolicy::default();
-    // TF-031 WARNING is owner-accepted (2026-11-14); only TF-032 is pending.
-    for id in [29, 30, 31] {
+    // TF-031/032 WARNING levels are owner-accepted (2026-11-14).
+    for id in [29, 30, 31, 32] {
         p.finding_levels.insert(id, Severity::Information);
         assert!(p.validate().is_ok(), "available TF-{id:03}");
     }
-    for id in [0, 32, 33, 255] {
+    for id in [0, 33, 255] {
         let mut bad = p.clone();
         bad.finding_levels.insert(id, Severity::Error);
-        assert!(bad.validate().is_err(), "pending/unknown TF-{id:03}");
+        assert!(bad.validate().is_err(), "unknown TF-{id:03}");
     }
 }
 /// Requirements: L1-RTC-003, L2-RTC-103, L3-RTC-103
@@ -137,6 +137,7 @@ fn both_engines_keep_related_identity_and_signed_residual() {
                 qualified: None,
                 raw_csdw: None,
                 year_origin: YearOrigin::Unknown,
+                year_basis: irig106_time::years::YearBasis::default(),
                 network: None,
                 normalization: None,
             });
