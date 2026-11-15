@@ -63,9 +63,9 @@ reads both.
 
 **Design**: accepted · **Review**: pending · **Origin**: contract 3.7, 6.4
 
-**Test**: not yet written
+**Test**: `tests/s09a_declarations.rs` (exhaustive tables, required/default provenance, range context and RCC example)
 
-**Development**: intensive testing and deep analysis required · **Analysis**: not yet written
+**Development**: intensive testing and deep analysis required · **Analysis**: [governing declarations and mappings](verification-s09a.md)
 
 ### RDG-002
 
@@ -119,9 +119,9 @@ edge-case tests, and two-person review remain outstanding.
 
 **Design**: accepted · **Review**: pending · **Origin**: contract 3.7
 
-**Test**: not yet written
+**Test**: `tests/s09a_declarations.rs` (exhaustive tables, required/default provenance, range context and RCC example)
 
-**Development**: intensive testing and deep analysis required · **Analysis**: not yet written
+**Development**: intensive testing and deep analysis required · **Analysis**: [governing declarations and mappings](verification-s09a.md)
 
 ### RDG-003
 
@@ -138,9 +138,9 @@ edge-case tests, and two-person review remain outstanding.
 
 **Design**: accepted · **Review**: pending · **Origin**: contract 3.7
 
-**Test**: not yet written
+**Test**: `tests/s09a_declarations.rs` (exhaustive tables, required/default provenance, range context and RCC example)
 
-**Development**: intensive testing and deep analysis required · **Analysis**: not yet written
+**Development**: intensive testing and deep analysis required · **Analysis**: [governing declarations and mappings](verification-s09a.md)
 
 ### RDG-004
 
@@ -156,9 +156,9 @@ edge-case tests, and two-person review remain outstanding.
 
 **Design**: accepted · **Review**: pending · **Origin**: contract 3.7
 
-**Test**: not yet written
+**Test**: `tests/s09a_declarations.rs` (exhaustive tables, required/default provenance, range context and RCC example)
 
-**Development**: intensive testing and deep analysis required · **Analysis**: not yet written
+**Development**: intensive testing and deep analysis required · **Analysis**: [governing declarations and mappings](verification-s09a.md)
 
 ### RDG-005
 

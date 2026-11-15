@@ -66,6 +66,8 @@ extern crate std;
 
 extern crate alloc;
 
+/// Caller-supplied governing declarations and RDG-qualified comparisons.
+pub mod declarations;
 /// Stable finding catalog and structured factual evidence.
 pub mod findings;
 /// Scale-qualified, leap-preserving Format 1 wire readings.
