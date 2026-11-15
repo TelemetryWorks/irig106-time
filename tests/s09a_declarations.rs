@@ -1,0 +1,148 @@
+//! S09a: Table9-4 (9-50/9-72), Ch9 definitions9-5/9-6;
+//! Ch11 Table11-4 and §11.2.3.2/3; RCC124-22 Ch7,7-3/PDF149.
+//! Plain caller facts; no TMATS parser/encoder oracle.
+use irig106_time::{declarations::*,findings::*,timeline::*,stream::*,*};
+fn channel(ttf:Option<&str>,tfmt:Option<&str>)->ChannelDeclaration {
+    ChannelDeclaration{id:7,cdt:Some("TIMEIN".into()),ttf:ttf.map(Into::into),tfmt:tfmt.map(Into::into),tsrc:Some("E".into()),shtf:Some("0".into())}
+}
+fn setup(start:i128,end:Option<i128>,ch:ChannelDeclaration)->SetupDeclarations {
+    SetupDeclarations{range:GoverningRange::new(1,SignedRtcTicks::new(start),end.map(SignedRtcTicks::new)).unwrap(),setup_packet:100,
+        provenance:"caller:setup-one".into(),declared_version:Some("106-24R1".into()),ri4:Some("2016-12-31".into()),recording_year:Some(2016),channels:vec![ch]}
+}
+fn key(ticks:i128)->PacketKey {PacketKey{session:1,ticks,packet:42}}
+fn facts(data_type:u8,format:Option<u8>)->PacketFields {PacketFields{key:key(5),channel:7,data_type,format,source:Some(0)}}
+fn compare(ttf:Option<&str>,tfmt:Option<&str>,data_type:u8,format:u8,defaults:bool)->ComparisonReport {
+    Declarations::present(vec![setup(0,None,channel(ttf,tfmt))]).unwrap()
+        .compare(facts(data_type,Some(format)),&DeclarationPolicy{use_tfmt_default:defaults,..Default::default()}).unwrap()
+}
+/// Requirements: L1-DECL-001, L2-DECL-101, L3-DECL-101
+#[test]
+fn governing_ranges_keep_all_plain_facts_and_exact_counter_boundary() {
+    let first=setup(0,Some(10),channel(Some("1"),Some(" B ")));
+    let mut next=setup(10,None,channel(Some("2"),Some("2")));next.setup_packet=101;next.provenance="caller:setup-two".into();
+    next.ri4=Some("unparsed original date".into());next.recording_year=None;next.declared_version=Some("unknown version spelling".into());
+    next.channels.push(ChannelDeclaration{id:8,..Default::default()});
+    let ds=Declarations::present(vec![next.clone(),first.clone()]).unwrap();
+    for (ticks,expected) in [(0,&first),(9,&first),(10,&next),(999,&next)] {
+        let b=ds.basis(key(ticks),7).unwrap();assert_eq!(b.presence,DeclarationPresence::Present);
+        let g=b.governing.unwrap();assert_eq!(g.range,expected.range);assert_eq!(g.setup_packet,expected.setup_packet);
+        assert_eq!(g.provenance,expected.provenance);assert_eq!(g.declared_version,expected.declared_version);
+        assert_eq!(g.ri4,expected.ri4);assert_eq!(g.recording_year,expected.recording_year);assert_eq!(b.channel,Some(expected.channels[0].clone()));
+    }
+    assert_eq!(ds.basis(key(-1),7).unwrap().presence,DeclarationPresence::NoGoverningRange);
+    assert!(ds.basis(key(11),8).unwrap().channel.is_some());assert!(ds.basis(key(11),9).unwrap().channel.is_none());
+    assert_eq!(ds.basis(PacketKey{session:2,..key(10)},7).unwrap().presence,DeclarationPresence::NoGoverningRange);
+    assert!(GoverningRange::new(0,SignedRtcTicks::new(0),None).is_err());
+    assert!(GoverningRange::new(1,SignedRtcTicks::new(1),Some(SignedRtcTicks::new(1))).is_err());
+    assert!(Declarations::present(vec![first.clone(),setup(9,None,channel(None,None)))]).is_err());
+    let mut duplicate=first.clone();duplicate.channels.push(duplicate.channels[0].clone());assert!(Declarations::present(vec![duplicate]).is_err());
+    assert_eq!(ds.snapshots().unwrap()[0],first);assert_eq!(ds.snapshots().unwrap()[1],next);
+}
+/// Requirements: L2-RDG-201, L3-RDG-201
+/// Interpretations: RDG-001
+#[test]
+fn every_ttf_value_packet_type_missing_unknown_and_range_context_is_reported() {
+    for (ttf,expected) in [("1",0x11),("2",0x12)] {
+        for observed in 0..=255 {
+            let r=compare(Some(ttf),Some("B"),observed,0,false);
+            assert_eq!(r.ttf.status,if observed==expected {ComparisonStatus::Match}else{ComparisonStatus::Mismatch});
+            assert_eq!(r.ttf.expected,Some(expected));assert_eq!(r.ttf.observed,Some(observed));assert_eq!(r.ttf.reading,Reading::Rdg001);
+            assert_eq!(r.findings.iter().any(|f|f.field==DeclarationField::Ttf),observed!=expected);
+        }
+    }
+    for (ttf,state) in [(None,ComparisonStatus::MissingDeclaration),(Some("0"),ComparisonStatus::ReservedDeclaration),(Some("3"),ComparisonStatus::UnknownDeclaration),(Some("01"),ComparisonStatus::UnknownDeclaration)] {
+        let r=compare(ttf,Some("B"),0x11,0,false);assert_eq!(r.ttf.status,state);assert_eq!(r.ttf.raw,ttf.map(Into::into));assert!(r.findings.iter().any(|f|f.field==DeclarationField::Ttf));
+    }
+    let mut ch=channel(Some("1"),Some("B"));ch.cdt=Some("PCM".into());let ds=Declarations::present(vec![setup(0,Some(10),ch),setup(10,None,channel(Some("2"),Some("0")))]).unwrap();
+    assert_eq!(ds.compare(facts(0x11,Some(0)),&Default::default()).unwrap().ttf.status,ComparisonStatus::NotApplicable);
+    let r=ds.compare(PacketFields{key:key(10),..facts(0x12,Some(0))},&Default::default()).unwrap();assert_eq!(r.ttf.status,ComparisonStatus::Match);assert_eq!(r.basis.governing.unwrap().range.start().get(),10);
+}
+fn all_format1_pairs() {
+    for (letter,fmt) in [("B",0),("A",1),("G",2),("I",3),("U",4),("N",5),("X",15)] {
+        let m=format1_mapping(letter).unwrap();assert_eq!(m.wire,fmt);assert_eq!(m.inferred,letter=="I");assert_eq!(format1_letter(fmt),Some(letter));
+        for observed in 0..16 {
+            let r=compare(Some("1"),Some(letter),0x11,observed,false);
+            assert_eq!(r.tfmt.status,if fmt==observed {ComparisonStatus::Match}else{ComparisonStatus::Mismatch});
+            assert_eq!(r.tfmt.inferred,letter=="I");assert_eq!(r.tfmt.reading,if letter=="I" {Reading::Rdg003}else{Reading::Rdg002});
+            if fmt!=observed {let f=r.findings.iter().find(|f|f.finding.code().number()==10 && f.field==DeclarationField::Tfmt).unwrap();assert_eq!(f.finding.severity(),Severity::Warning);assert_eq!(f.comparison.inferred,letter=="I");}
+        }
+    }
+    for fmt in 6..15 {assert_eq!(format1_letter(fmt),None);}
+    for text in ["", "a", " B ", "3", "A123", "?"] {assert!(format1_mapping(text).is_none());assert_eq!(compare(Some("1"),Some(text),0x11,0,false).tfmt.status,ComparisonStatus::UnknownDeclaration);}
+}
+/// Requirements: L2-RDG-202, L3-RDG-202
+/// Interpretations: RDG-002
+#[test]
+fn format1_pairs_missing_required_defaults_and_absence_are_distinct() {
+    all_format1_pairs();
+    for defaults in [false,true] {for observed in [0,1] {
+        let ds=Declarations::present(vec![setup(0,None,channel(Some("1"),None))]).unwrap();let before=ds.snapshots().unwrap().to_vec();
+        let r=ds.compare(facts(0x11,Some(observed)),&DeclarationPolicy{use_tfmt_default:defaults,..Default::default()}).unwrap();
+        assert_eq!(r.tfmt.raw,None);assert_eq!(r.tfmt.published_default,Some("A"));assert_eq!(r.tfmt.default_derived,defaults);
+        assert_eq!(r.tfmt.effective,defaults.then(||"A".into()));assert_eq!(r.tfmt.expected,defaults.then_some(1));
+        assert_eq!(r.tfmt.status,if !defaults {ComparisonStatus::MissingDeclaration}else if observed==1 {ComparisonStatus::Match}else{ComparisonStatus::Mismatch});
+        assert!(r.findings.iter().any(|f|f.reason==DeclarationIssue::MissingRequired && f.field==DeclarationField::Tfmt));
+        assert_eq!(r.findings.iter().any(|f|f.reason==DeclarationIssue::Mismatch),defaults && observed!=1);
+        assert_eq!(ds.snapshots().unwrap(),before);assert_eq!(r.basis.channel.unwrap().tfmt,None);
+    }}
+    let r=compare(Some("1"),Some("A"),0x11,1,true);assert!(!r.tfmt.default_derived);assert_eq!(r.tfmt.effective,Some("A".into()));assert!(r.findings.is_empty());
+    let mut ch=channel(None,None);ch.cdt=None;let r=Declarations::present(vec![setup(0,None,ch)]).unwrap().compare(facts(0x11,Some(0)),&Default::default()).unwrap();assert_eq!(r.tfmt.status,ComparisonStatus::NotApplicable);assert!(r.findings.is_empty());
+}
+/// Requirements: L2-RDG-203, L3-RDG-203
+/// Interpretations: RDG-002, RDG-003
+#[test]
+fn all_seven_bidirectional_pairs_and_rcc124_chapter7_example_keep_inference() {
+    all_format1_pairs();
+    // RCC124-22 Ch7 printed7-3/PDF149: R-1\TTF-1:1; R-1\TFMT-1:I;
+    // R-1\TSRC-1:I; "Time format is internal" / "Time source is internal".
+    // Plain declaration values, not parsed here. CSDW0x30 -> FMT3/SRC0.
+    let mut ch=channel(Some("1"),Some("I"));ch.tsrc=Some("I".into());let ds=Declarations::present(vec![setup(0,None,ch)]).unwrap();
+    for (raw,status) in [(0x30u32,ComparisonStatus::Match),(0x00,ComparisonStatus::Mismatch),(0x31,ComparisonStatus::Match)] {
+        let r=ds.compare(PacketFields{format:Some(((raw>>4)&15) as u8),source:Some((raw&15) as u8),..facts(0x11,Some(3))},&Default::default()).unwrap();
+        assert_eq!(r.tfmt.status,status);assert!(r.tfmt.inferred);assert_eq!(r.tfmt.reading,Reading::Rdg003);assert_eq!(r.packet.source,Some((raw&15) as u8));
+        assert_eq!(r.basis.channel.unwrap().tsrc,Some("I".into()));
+    }
+}
+/// Requirements: L2-RDG-204, L3-RDG-204
+/// Interpretations: RDG-004
+#[test]
+fn numeric_format2_context_never_uses_letter_or_ntp_fallbacks() {
+    for n in 0..3 {for observed in 0..16 {
+        let r=compare(Some("2"),Some(&n.to_string()),0x12,observed,false);assert_eq!(r.tfmt.reading,Reading::Rdg004);assert!(!r.tfmt.inferred);
+        assert_eq!(r.tfmt.status,if n==observed {ComparisonStatus::Match}else{ComparisonStatus::Mismatch});
+        assert_eq!(r.findings.iter().any(|f|f.finding.code().number()==6),observed>=3);
+    }}
+    for text in ["I","B","A","3","00",""] {assert_eq!(compare(Some("2"),Some(text),0x12,0,false).tfmt.status,ComparisonStatus::UnknownDeclaration);}
+    assert_eq!(compare(Some("1"),Some("0"),0x12,0,false).tfmt.status,ComparisonStatus::ContextMismatch);
+    assert_eq!(compare(None,Some("0"),0x12,0,false).tfmt.status,ComparisonStatus::ContextMismatch);
+    let r=compare(Some("2"),None,0x12,0,true);assert!(r.tfmt.default_derived);assert_eq!(r.tfmt.effective,Some("A".into()));assert_eq!(r.tfmt.expected,None);assert_eq!(r.tfmt.status,ComparisonStatus::UnknownDeclaration);
+    assert!(r.findings.iter().any(|f|f.reason==DeclarationIssue::MissingRequired));
+}
+#[test]
+fn each_finding_keeps_governing_raw_comparison_and_severity_basis() {
+    let mut p=DeclarationPolicy::default();p.levels.insert(10,Severity::Information);
+    let ds=Declarations::present(vec![setup(0,None,channel(Some("1"),Some("I")))]).unwrap();
+    let r=ds.compare(facts(0x11,Some(0)),&p).unwrap();let f=&r.findings[0];assert_eq!(f.finding.severity(),Severity::Information);
+    assert_eq!(f.finding.evidence().validity(),ValueValidity::Undetermined);assert_eq!(f.finding.evidence().location().packet,Some(42));assert_eq!(f.finding.evidence().location().channel,Some(7));
+    assert_eq!(f.basis.governing.as_ref().unwrap().setup_packet,100);assert_eq!(f.comparison.raw.as_deref(),Some("I"));assert_eq!(f.comparison.expected,Some(3));assert_eq!(f.comparison.observed,Some(0));assert!(f.comparison.inferred);
+    assert_eq!(f.comparison.reading.id(),"RDG-003");assert_eq!(f.finding.evidence().related()[0].packet,Some(100));
+}
+fn time_packet()->PacketObservation {
+    let b=[1,0,0,0,0,0,0,0,1,0];PacketObservation{id:42,channel:7,rtc:Rtc::from_raw(5),kind:PacketKind::Time,declared_timein:true,declared_external:true,flags:0,
+        reference:Some(ReferenceInput::format1(&b,10,TimeF1Layout::SourceWithIts17,ScalePolicy::default()).unwrap())}
+}
+// Partial DECL-102: all legacy answer/report propagation belongs to S10b/S12.
+#[test]
+fn absent_empty_gap_and_undeclared_policy_work_in_both_engines_without_counter_reset() {
+    let absent=Declarations::absent();let empty=Declarations::present(vec![setup(0,None,ChannelDeclaration{id:8,..Default::default()})]).unwrap();
+    let mut empty_setup=setup(0,None,channel(None,None));empty_setup.channels.clear();let present_empty=Declarations::present(vec![empty_setup]).unwrap();
+    assert_eq!(absent.basis(key(5),7).unwrap().presence,DeclarationPresence::Absent);
+    assert_eq!(present_empty.basis(key(5),7).unwrap().presence,DeclarationPresence::Present);
+    assert!(present_empty.basis(key(5),7).unwrap().channel.is_none());
+    for declarations in [absent,empty,present_empty] {for include in [false,true] {
+        let prepared=declarations.prepare(time_packet(),key(5)).unwrap();assert!(!prepared.observation.declared_timein);assert!(!prepared.observation.declared_external);assert_eq!(prepared.observation.rtc,Rtc::from_raw(5));
+        let op=OfflinePolicy{include_undeclared:include,..Default::default()};let mut b=TimelineBuilder::new(op.clone()).unwrap();let k=b.observe(prepared.observation.clone(),false).unwrap();let t=b.finish().unwrap();let a=t.lookup(k).unwrap();assert_eq!(a.time.is_some(),include);if include {assert!(!a.basis.reference.unwrap().declared_timein);}
+        for mode in [StreamMode::Standard,StreamMode::Interpolate] {let mut p=StreamPolicy::new(1,BufferCaps{packets:2,bytes:200,references:2});p.mode=mode;p.offline=op.clone();p.offline.channel=Some(7);let mut s=StreamTimeline::new(p,None).unwrap();s.observe(prepared.observation.clone(),0,100,false).unwrap();let a=s.observe(PacketObservation{id:43,kind:PacketKind::Data,reference:None,..prepared.observation.clone()},0,100,false).unwrap().answers.remove(0);assert_eq!(a.time.is_some(),include);}
+    }}
+    let ds=Declarations::present(vec![setup(0,None,channel(Some("1"),Some("B")))]).unwrap();let before=time_packet();let after=ds.prepare(before.clone(),key(5)).unwrap();assert!(after.observation.declared_timein);assert!(after.observation.declared_external);assert_eq!(after.observation.reference.as_ref().unwrap().year_basis.context().recording,Some(2016));assert_eq!(after.observation.reference.as_ref().unwrap().value,before.reference.unwrap().value);
+}
