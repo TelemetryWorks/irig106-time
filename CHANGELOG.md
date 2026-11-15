@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comparison findings retain raw/effective/default/observed/range/RDG evidence.
   TSRC/SHTF and universal legacy answer/report propagation remain later slices.
 
+### Published shared types
+
+- Use crates.io `irig106-types = "0.1"`, locked to 0.1.0, instead of the git
+  revision. Preserve no_std feature settings. CLI and fuzz inherit the registry
+  dependency through the core path dependency; all three lockfiles are updated.
+- Remove the types git-source exception from cargo-deny. The published source
+  differs from the pinned revision only in rustdoc; no time/CLI behavior changes.
+
 ### ⚠️ S08 session year evidence and LY validation
 
 - Resolve yearless Format 1 references from same-session DMY, then caller, then
