@@ -1,5 +1,6 @@
-//! S09b hand-derived Table9-4 (9-72/PDF78), §11.2.3.2a (11-24/PDF32),
-//! §11.2.1.1g (11-8/PDF16), Fig11-4 (11-10/PDF18); RDG005/006.
+//! S09b Table9-4: TSRC9-72/PDF78, SHTF9-51/PDF57; SRC11-25/PDF33,
+//! lost lock11-26/PDF34; flags §11.2.1.1g11-9/PDF17;
+//! Fig11-4 (11-10/PDF18); RDG005/006 hand-derived fixtures.
 use irig106_time::{csdw::QualifiedCsdw, declarations::*, edition::*, findings::*, *};
 fn key(id: u64, ticks: i128) -> timeline::PacketKey {
     timeline::PacketKey {

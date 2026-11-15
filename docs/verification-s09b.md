@@ -9,16 +9,17 @@ TF008/009/010/011; no timeline/stream/CLI behavior change or TMATS dependency.
 Existing page/register evidence, not a fresh PDF rendering:
 
 - 106-24R1 Ch9 Table9-4 printed9-72/PDF78: TSRC "I Internal", "E External",
-  "R Internal from RMM", "X None". Ch11 §11.2.3.2a printed11-24/PDF32:
+  "R Internal from RMM", "X None". Ch11 §11.2.3.2a SRC list printed11-25/PDF33:
   "0x0 = Internal", "0x1 = External", "0x2 = Internal from RMM", "0xF = None".
-  RDG005 maps I/E/R/X to0/1/2/15. "If the time source is external (0x1) and
+  RDG005 maps I/E/R/X to0/1/2/15. Lost-lock sentence printed11-26/PDF34:
+  "If the time source is external (0x1) and
   lock on the external source is lost then the time source shall indicate
   Internal (0x0)." Source mismatch/change is TF011 INFORMATION by owner policy,
   not an invented error or a channel-selection instruction. SRC3..14 remains
   reserved (TF006 WARNING), never GPS. No default TSRC is inserted.
-- Same Table9-4: "If enabled, the secondary header time format.";
-  "0 Chapter 4 BCD", "1 IEEE-1588", "2 ERTC". Ch11 §11.2.1.1g printed11-8/
-  PDF16: "00 = Chapter 4 binary weighted 48-bit time format",
+- Ch9 Table9-4 SHTF row printed9-51/PDF57: "If enabled, the secondary header time format.";
+  "0 Chapter 4 BCD", "1 IEEE-1588", "2 ERTC". Ch11 §11.2.1.1g bits3-2 printed11-9/
+  PDF17: "00 = Chapter 4 binary weighted 48-bit time format",
   "01 = IEEE 1588 time format", "10 = 64-bit binary extended relative time
   counter (ERTC)". Ch4 §4.7 printed4-10/PDF14: "High and low order time words
   shall be binary or binary coded decimal (BCD) weighted". RDG006 pairs0/1/2
@@ -29,7 +30,8 @@ Existing page/register evidence, not a fresh PDF rendering:
   QualifiedCsdw/resolution/raw bits, never infer SRC from nibble3 or header0x01.
 - D8: only RDG001..006 comparisons. TF010 WARNING covers TTF/TFMT/SHTF;
   TF011 INFORMATION covers TSRC differences/changes. TF008 WARNING reports time
-  packet types11/12 on non-TIMEIN channels; TF009 INFORMATION reports a TIMEIN
+  packet types11/12 excluded by an actual governing setup (Presence::Present),
+  never merely by missing declarations; TF009 INFORMATION reports a TIMEIN
   declaration range with no such packets. These IDs/levels are product policy
   (architecture8/contract6.4), not standard-defined severities.
 
@@ -127,3 +129,57 @@ was being prepared. Ordinarily merge it into this branch, retaining both
 CHANGELOG entries and regenerating TRACE-MATRIX. PR28's branch is not edited;
 its year/leap fixes are inherited from main. All18 locked local checks reran and passed
 on the combined source before opening the PR.
+
+
+## PR31 review — governing scope, repeated sources and evidence
+
+First ordinarily merged current main `e068372` (Dependabot PR32), merge `93e1040`.
+Tests-only `9d898f6` then reproduces ONE runtime failing test, with all SIX false
+TF008 cases collected before the assertion: packet types0x11/0x12 under
+Declarations::absent(), present(vec![]) and a counter outside the supplied
+range. Nine other tests pass. These are six failing cases in one test, not
+six separate runtime failures. Positive controls require TF008 WARNING for
+both types when a real governing setup has no channel declaration or declares
+PCM. A setup with zero channels is Presence::Present; an empty setup LIST has
+no governing range. They are deliberately distinct.
+
+The production guard now requires Presence::Present before membership warning/
+seen-range handling. Declarations::basis constructs Present only for a matching
+governing snapshot/range. No setup is not a statement that a channel is excluded.
+No mapping, finding level, admission, channel selection or default policy changes.
+
+The repeated-source test observes1,1,0,0,1 in session2: exactly TWO SourceChanged
+findings at packets3/5, with immediate related packets2/4, related session2 and
+channel7. Static mismatch findings remain distinct. Channel8 is declared but
+unseen; its TF009 has exactly the related setup packet777, session2, channelNone,
+with no fake observed packet. Reserved SRC3..14 on a missing/non-TIMEIN channel
+never raises TF006. These guards already pass at the pre-fix head and are not
+claimed as failing-first defects.
+
+Six isolated mutations each compile and fail runtime assertions; sources restored:
+
+| Mutation | New failed assertion |
+|---|---|
+| remove governing-presence guard | six absent/empty/gap TF008 false positives |
+| use channel existence instead of governing presence | real empty-channel setup incorrectly suppresses TF008 |
+| S24 report identical sources as changes | repeated sequence gives four changes, not packets3/5 only |
+| S17 remove reserved-value applicability guard | non-applicable SRC3..14 produces TF006 |
+| S29 omit related source session | exact source-change location lacks session2 |
+| S30 omit related setup packet | TF009 related location loses setup777 |
+
+Citation corrections from the independent review (not new page rendering):
+SHTF Table9-4 printed9-51/PDF57; TSRC remains9-72/PDF78; SRC list printed11-25/
+PDF33; lost-lock sentence11-26/PDF34; flags bits3-2 in §11.2.1.1g11-9/PDF17.
+Corrected the reading analysis, source header and test header; quotation content
+is retained. Existing literal mapping/flag/Ch4 fixtures and their derivations
+remain unchanged. No Design/Review or requirement statement changes.
+
+Final focused suite10 tests (seven previous plus three review tests). New tests
+supply partial clause evidence only; no whole markers added or moved. Matrix
+176/288 unchanged (review delta0). S10a and broader answer/report adapters remain
+unstarted/deferred. Full local and hosted check results verified at reported head.
+
+Review final checks:18/18 locked local CI-equivalent checks pass (jobs/threads2):
+all feature suites, MSRV1.85, no_std WASM±serde, CLI build/clippy, benches,
+all-fuzz compile, fmt/docs/trace/cargo-deny. Actionlint/diff pass. Hosted checks
+are verified at the new reported head. No new owner question, merge or publish.

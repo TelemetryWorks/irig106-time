@@ -1,4 +1,6 @@
-//! RDG005/006: Table9-4 9-72; §11.2.3.2a 11-24; §11.2.1.1g 11-8.
+//! RDG005/006: Table9-4 TSRC 9-72/PDF78; SHTF 9-51/PDF57.
+//! SRC §11.2.3.2a 11-25/PDF33; lost lock 11-26/PDF34;
+//! flags bits3-2 §11.2.1.1g 11-9/PDF17.
 //! Analysis and clause boundaries: docs/verification-s09b.md.
 use super::*;
 use crate::csdw::{QualifiedCsdw, TimeF1Source};
@@ -268,6 +270,7 @@ impl<'a> DeclarationAudit<'a> {
     }
     /// Report comparisons and source transitions without discarding raw values.
     /// Only qualified defined SRC0/1/2/15 can enter source history.
+    /// TF008 needs an actual governing setup; absence/gaps are not exclusions.
     /// **Traces:** L3-FND-104 ← L2-FND-104 ← L1-FND-004
     pub fn observe(
         &mut self,
@@ -279,7 +282,11 @@ impl<'a> DeclarationAudit<'a> {
         let mut r = self
             .declarations
             .compare_qualified(packet, csdw, flags, policy)?;
-        if matches!(packet.data_type, 0x11 | 0x12) {
+        // Present is constructed only for a matching governing setup/range.
+        // Declaration-free mode and uncovered counters make no exclusion claim.
+        if matches!(packet.data_type, 0x11 | 0x12)
+            && r.basic.basis.presence == DeclarationPresence::Present
+        {
             if !r.basic.basis.timein() {
                 r.activity.push(activity_finding(
                     8,
