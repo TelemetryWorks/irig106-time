@@ -221,3 +221,23 @@ coverage only; no test here claims all contract6 degraded cases.
 Exact changed requirement blocks (including Source-note-only changes): L2-NTP-104, L2-TAI-107, L2-EDN-201, L2-COR-110, L2-FND-101, L2-FND-102, L2-RDG-212, L3-NTP-104, L3-TAI-107, L3-EDN-201, L3-COR-110, L3-FND-101, L3-FND-102, L3-RDG-212.
 A source-quote subset check retained every earlier quoted Source excerpt;
 architecture TF-001..031 rows compare byte-for-byte unchanged.
+
+
+## Subsequent owner decision — YEAR-PHASE and stable-first, 2026-11-15 (S08)
+
+Owner adopts symmetric d=-1/0/+1 nearest RTC explanation irrespective of day
+order, real crossed-year lengths (both when unknown), d=0 ties,182.5day inclusive
+residual bound, equal-counter guard and mirrored late references. TF-017 is
+strictly above the configured/coarser-resolution jump threshold; selection is
+independent of that threshold. No plausible phase means offline partial/TF-020
+with gap/context or atomic stream NeedsContext/boundary retry. This is reader
+policy; contract5.3/Ch11 Figures11-13/14 do not define jump selection.
+
+Stable-first is accepted with the condition that the first observed DMY anchors
+and ADVANCES with the year phase. A consistent next-year DMY is not a conflict;
+a contrary DMY retains evidence and TF-032. Offline future evidence versus stream
+release-time evidence/no revision remains. L3-COR-110 is refined with the full
+case table, verification-s08 records execution separately; code comments and
+CHANGELOG cease calling this proposal. L2-COR-110 parent and L1-COR-010 retain
+their statements and all quoted sources. No Review/Design fields or finding
+levels change; no new whole-requirement marker or deferral.

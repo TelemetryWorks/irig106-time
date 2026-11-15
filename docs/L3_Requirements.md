@@ -842,6 +842,64 @@ caller context with the unresolved wording reported.
 
 **Planned verification**: Each precedence branch, all sources absent, contradictory years, leap/common year, setup changes, and December 31->January 1 with known and unknown year. Retain conflicting year evidence and TF-032 identity; verify owner-accepted WARNING (2026-11-14), highest-priority year/time retained and contradictory candidates in the basis.
 
+
+**Owner-adopted YEAR-PHASE reader policy (2026-11-15):** For every strictly
+forward RTC reference, consider phase change d in {-1, 0, +1}, independently
+of ordinal-day order. The expected calendar span uses the real length of the
+year crossed: +1 crosses the current year, -1 crosses the previous year;
+unknown years consider both365/366day possibilities without inventing a year.
+Choose the smallest absolute (expected span minus RTC elapsed) residual; a tie
+keeps d=0. Equal counters keep the existing no-phase-change guard. Mirror the
+calculation for late references, solving their phase relative to the retained
+later point. Preserve explicit second60 in linear as well as crossing spans.
+A best residual greater than182.5days must not be guessed (the exact boundary
+is allowed): offline starts a new year-evidence segment, keeps partial values
+with TF-020 and signed gap/context evidence; stream returns NeedsContext before
+committing progress/identity, permitting explicit-boundary retry. Report TF-017
+when the chosen residual strictly exceeds the jump threshold; equality is not
+a finding. Threshold/level overrides never choose the phase.
+
+Stable-first is owner-accepted2026-11-15 with the crossover condition: first
+observed eligible DMY anchors the session phase and advances with this rule.
+DMY2023Dec31 followed by consistent DOYJan1 resolves2024; a DMY2024Jan1 is
+not contradictory to that advanced anchor. Only year evidence disagreeing with
+the phase-adjusted anchor raises TF-032; retain contrary candidates. The raw
+explicit year of a DMY remains in its own evidence/calendar. Offline may use
+later evidence; stream uses evidence available at release and never revises.
+
+Source distinction: contract5.3 says "A time that crosses midnight on 31 December
+advances the year." Figures11-13/14 (106-24R1 printed11-25/PDF33) define the
+calendar fields; "Bit 8: Indicates if this is a leap year" (§11.2.3.2a).
+IRIG106 supplies no clock-jump/year-phase selection algorithm. These choices
+and the182.5day bound are the owner's reader policy, not a standard mandate.
+
+
+All clocks below are nominal UTC calendar labels; RTC elapsed is independent.
+D=86400s; listed TF-017 residual is calendar minus RTC, at default10ms threshold.
+Rows with unknown years retain None; no host date or LY inference. Every row is
+exercised in offline and both stream modes, with explicit data bridging RTC wraps.
+
+| Probe | Inputs (initial year; calendar labels; forward RTC elapsed) | Expected (year, day), phase/finding |
+|---|---|---|
+| A |2023;365 23:59:59 ->2 00:00:00;86401s |(2024,2), +1, no TF-017 |
+| B1 / B3 |2024;366 23:59:59 ->1 /3 midnight;1s /172801s |(2025,1)/(2025,3), +1, no TF-017 |
+| C |2023;200 00:00:05 ->199 23:59:59;1s |(2023,199),0, TF-017 -7s |
+| D / E |2023;200 00:00:05 ->200 00:00:06;1s / equal RTC |(2023,200),0; no TF-017 / TF-017 +1s |
+| F |2023;365 23:59:59 ->1 00:00:05 ->1 00:00:06;1s each |(2024,1) then(2024,1), +1 then0; TF-017 +5s then none |
+| F' |same F, no year evidence |(None,1), phase+1 then0, TF-020 and TF-017 +5s; no absolute cross-phase delta/drift |
+| G |2023;365 23:59:59 ->365 23:59:55;1s, then1 midnight at+5s |(2023,365) TF-017 -5s, then(2024,1) no jump |
+| M |2024;1 00:00:02 ->365 23:59:59 ->1 midnight;1s each |(2023,365),-1 TF-017 -4s, then(2024,1),+1 no jump |
+| M3 |2023;365 23:59:58 ->1 00:00:02 ->365 23:59:59 ->1 midnight;1s each |(2024,1) TF-017 +3s; (2023,365) TF-017 -4s; (2024,1) no jump |
+| N |2023;10 midnight ->20 midnight;360D |(2024,20),+1; TF-017 +15D (inside bound) |
+| P |2023;10 midnight ->300 midnight;1s |(2022,300),-1; TF-017 -(75D+1s) |
+| tie |2023;10 midnight ->10 midnight;182.5D |(2023,10),0; TF-017 -182.5D, exact bound allowed |
+| K |2023;365 23:59:59 ->1 midnight;182.5D+1s |(2024,1),+1; TF-017 -182.5D, exact bound allowed |
+| L |same K, RTC another100ns later |offline(None,1), new segment TF-020 with gap/context; stream NeedsContext, retry boundary |
+| late |2024; first1 00:00:05 atRTC1s, then late365 23:59:59 atRTC0 |late(2023,365),-1; TF-017 +5s in earlier->later orientation |
+| unknown366 |no year;366 23:59:59 ->1 midnight;1s |(None,1),+1; TF-020, no TF-017; must consider366days |
+| invalid366 |2023;365 23:59:59 ->366 midnight;1s |malformed/unadmitted TF-004 and LY finding where applicable; no phase repair |
+| DMY crossover |DMY2023Dec31 ->DOYJan1 / DMY2024Jan1 / DMY2023Jan1, RTC1s |DOY2024; consistent2024 DMY no TF-032; same-year2023 DMY retains contrary evidence and TF-032 |
+
 **L3-COR-111** · Parent: L2-COR-111 · Verification: T
 
 **L1 ancestor**: L1-COR-011
