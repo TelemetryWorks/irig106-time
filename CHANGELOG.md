@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### PR28 review — known-year DOY leap labels
+
+- Owner decision 2026-11-15: revalidate DOY 23:59:60 after caller, anchor or
+  phase supplies the year. Only days 182/366 in leap years or 181/365 in common
+  years qualify. Forbidden labels produce TF-004 ERROR and are not used or
+  credited as leap seconds. Unknown years retain all four candidate dates.
+- Reject forbidden labels at equal RTC before replacing the stream year-clock
+  endpoint: no spurious leap credit or TF-017 at the following readable time.
+  J1 now agrees across offline, Standard and Interpolate; K8/K11 guard malformed
+  rejection reasons and stale replay findings. Correct the pre-fix test count
+  at `430ae08` to 10 runtime failures.
+- Offline later DMY evidence also removes a forbidden label's prior leap
+  contribution. Already emitted stream answers remain immutable. Observed leap
+  contributions never cross independent year-evidence segments (N2 regression).
+
 ### S09a governing declarations and TTF/TFMT comparisons
 
 - Add caller-supplied setup ranges, raw channel/version/RI4 provenance and an
@@ -79,10 +94,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `verification-s08.md` records clause limits and honest tests-first/mutation
   evidence. FND-102 is not promoted: this slice does not test every contract 6
   degraded case. Governing TMATS extraction remains S09; no CLI/dependency change.
-
 - A session starting with a DOY `23:59:60` label now carries the caller year
   across midnight (2016 day 366 -> 2017 day 1). The retained leap label supplies
   phase evidence while still needing context for absolute-time admission.
+- Offline now applies the observed session year origin before validating late
+  day 366, matching stream for ordinary and second-60 references (2017 day 1
+  followed by late 2016 day 366). Query indexes remain ordered by RTC.
+- Native UTC span/quality arithmetic retains the contribution of observed leap
+  labels: `23:59:59 -> 23:59:60 -> 00:00:00` spans two seconds, without a
+  spurious TF-017. `YearBasis::observed_leap_adjustment()` exposes the signed
+  evidence. Explicit TAI normalization already includes it and is not counted
+  twice; the leap label still needs context for absolute-time admission.
 
 ### ⚠️ S07 Chapter 4 explicit calendar context
 

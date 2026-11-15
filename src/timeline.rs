@@ -1194,12 +1194,18 @@ pub(crate) fn absolute_delta(a: &TimelineReference, b: &TimelineReference) -> Op
     }
     let same_calendar_year = a.key.session == b.key.session
         && a.input.year_basis.same_calendar_year(&b.input.year_basis);
+    let observed_leap_delta =
+        if a.key.session == b.key.session && a.input.scale.effective() == TimeScale::Utc {
+            a.input.year_basis.leap_delta(&b.input.year_basis)?
+        } else {
+            0
+        };
     let (ReferenceValue::Readable(a, _), ReferenceValue::Readable(b, _)) =
         (a.input.value, b.input.value)
     else {
         return None;
     };
-    match (a.year(), b.year()) {
+    let native_delta = match (a.year(), b.year()) {
         (Some(y0), Some(y1)) => {
             let days = |y: u16| -> i128 { (0..y).map(year_days).sum() };
             Some(
@@ -1211,7 +1217,10 @@ pub(crate) fn absolute_delta(a: &TimelineReference, b: &TimelineReference) -> Op
             Some(i128::from(b.as_total_ns()) - i128::from(a.as_total_ns()))
         }
         _ => None,
-    }
+    }?;
+    // TAI normalization above already contains leap seconds. Only native UTC
+    // spans need the contribution of explicit observed second60 endpoints.
+    native_delta.checked_add(observed_leap_delta)
 }
 pub(crate) fn shift(time: AbsoluteTime, delta: i128) -> Result<AbsoluteTime> {
     time.checked_shift(crate::SignedNanos::new(delta))
