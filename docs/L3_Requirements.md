@@ -901,6 +901,7 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 | late |2024; first1 00:00:05 atRTC1s, then late365 23:59:59 atRTC0 |late(2023,365),-1; TF-017 +5s in earlier->later orientation |
 | unknown366 |no year;366 23:59:59 ->1 midnight;1s |(None,1),+1; TF-020, no TF-017; must consider366days |
 | invalid366 |2023;365 23:59:59 ->366 midnight;1s |malformed/unadmitted TF-004 and LY finding where applicable; no phase repair |
+| DOY leap start |caller 2016; DOY 366 23:59:60 at RTC 0 -> DOY 1 midnight at RTC +1 s, no DMY |first label retains NeedsContext/TF-022 and year evidence 2016; next (2017,1), phase +1, no TF-017; raw and qualified offline/Standard/Interpolate |
 | DMY crossover |DMY2023Dec31 ->DOYJan1 / DMY2024Jan1 / DMY2023Jan1, RTC1s |DOY2024; consistent2024 DMY no TF-032; same-year2023 DMY retains contrary evidence and TF-032 |
 
 **L3-COR-111** · Parent: L2-COR-111 · Verification: T

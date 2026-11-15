@@ -199,3 +199,38 @@ fn unusable_leap_observations_do_not_supply_phase() {
         }
     }
 }
+// Post-fix control: tracking a leap label never invents an absolute year.
+#[test]
+fn unknown_year_remains_partial_while_phase_advances() {
+    for qualified in [false, true] {
+        let first = input(true, qualified, false)
+            .with_year_context(YearContext::default())
+            .unwrap();
+        let next = input(false, qualified, false)
+            .with_year_context(YearContext::default())
+            .unwrap();
+        let packets = [packet(1, 0, Some(first)), packet(2, 10_000_000, Some(next))];
+        let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+        for p in &packets {
+            b.observe(p.clone(), false).unwrap();
+        }
+        let t = b.finish().unwrap();
+        let r = &t.sessions()[0].references[1];
+        assert!(matches!(r.input.value,ReferenceValue::Readable(t,_) if t.year().is_none()));
+        assert_eq!(r.input.year_basis.rollovers(), 1);
+        assert!(!t.findings().iter().any(|f| f.code == 17));
+        for mode in [StreamMode::Standard, StreamMode::Interpolate] {
+            let mut s = StreamTimeline::new(policy(mode), None).unwrap();
+            for p in &packets {
+                s.observe(p.clone(), 0, 100, false).unwrap();
+            }
+            let a = s
+                .observe(packet(3, 10_000_000, None), 0, 100, false)
+                .unwrap()
+                .answers
+                .remove(0);
+            assert_eq!(a.time.unwrap().year(), None);
+            assert_eq!(a.basis.preceding.unwrap().input.year_basis.rollovers(), 1);
+        }
+    }
+}

@@ -156,15 +156,18 @@ fn year_evidence(r: &TimelineReference) -> bool {
     if r.input.network.is_some() || calendar(r).is_none() {
         return false;
     }
-    let body_year = r
+    // RDG-010: a retained second60 label supplies calendar/phase facts even
+    // when DOY has no body year. Caller/session year qualification happens in
+    // point/resolve; this does not make the leap label an absolute-time anchor.
+    let leap_label = r
         .input
         .wire
         .and_then(|(_, w)| w.time)
         .or_else(|| r.input.qualified.as_ref().and_then(|q| q.time))
-        .and_then(|t| t.year);
+        .is_some_and(|t| t.is_leap_second());
     r.admitted
         || (matches!(r.input.value, ReferenceValue::NeedsContext)
-            && body_year.is_some()
+            && leap_label
             && r.reasons
                 .iter()
                 .all(|reason| matches!(reason, Rejection::NeedsContext)))
