@@ -1,4 +1,4 @@
-//! Ch11 Fig11-5/6, 11-10/11 (PDF18/19); §11.2.1.2a; contract6.6.
+//! Ch11 Fig11-5/6, 11-10 (PDF18); §11.2.1.2a; contract6.6.
 //! Literal word order and independently added byte checksums. Partial clauses
 //! are recorded in verification-s10a2, without whole-requirement markers.
 use irig106_time::{

@@ -1,5 +1,5 @@
 //! Explicit own-time interpretation after S10a1 trust validation.
-//! Ch11 §11.2.1.1g/1.2a, Figs11-4..6 (11-9..11/PDF17..19), contract6.6.
+//! Ch11 §11.2.1.1g/1.2a, Figs11-4..6 (11-9/10, PDF17/18), contract6.6.
 //! Neither an IEEE-shaped word nor a relative ERTC establishes a Unix epoch.
 use crate::{
     ch4::{Ch4Value, Ch4Words},

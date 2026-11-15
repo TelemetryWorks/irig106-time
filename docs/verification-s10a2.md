@@ -10,7 +10,7 @@ Reused page-reviewed quotations, not fresh page rendering in this slice:
 106-24R1 §11.2.1.1g, printed11-9/PDF17: "The 32 bits indicating seconds shall
 be placed into the MSLW portion of the secondary header and the 32 bits
 indicating nanoseconds shall be placed into the LSLW portion"; Figs11-5/6,
-printed11-11/PDF19. Same section: "the 10-megahertz (MHz) RTC shall be
+printed11-10/PDF18. Same section: "the 10-megahertz (MHz) RTC shall be
 synchronized with the ERTC (RTC = ERTC/100)". Section11.2.1.2a: "The applicable
 data bit to which the 48-bit value of the packet secondary time value (if
 enabled) applies shall correspond to the first bit of the data in the packet
@@ -98,3 +98,6 @@ with/without serde, trace check, benches, all10 fuzz targets and cargo-deny.
 Post-PR37-main merge verification remains mandatory before opening this PR.
 Dependency-only main3bedbd4 was then ordinary-merged; all18 checks repeated and
 passed with its lockfiles. PR37's merge/final recheck gate still applies.
+
+Carried PR37 review head a56a6a2 by ordinary merge, including its four evidence
+assertions and corrected figure pages; matching S10a2 citations corrected.
