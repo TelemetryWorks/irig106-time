@@ -228,6 +228,13 @@ fn partial_context_checksum_failure_and_applicability_never_fake_zero() {
         assert!(a.issue().is_some());
         assert_eq!(a.delta_ns(), None);
     }
+    // Q-CH4: an IEEE epoch supplies no Chapter4 origin (even elapsed0).
+    ctx.ieee = Some(epoch(TimeScale::Utc));
+    let ch4 = own(&c, 0x80, &b, &ctx, &OwnPolicy::default());
+    assert!(ch4.header().time().is_some());
+    assert!(ch4.own().is_none());
+    assert!(ch4.issue().is_some());
+    assert_eq!(ch4.delta_ns(), None);
     ctx.ch4 = Some(epoch(TimeScale::Utc));
     ctx.ieee = Some(epoch(TimeScale::Utc));
     for flags in [0x80, 0x84, 0x88] {
@@ -368,6 +375,21 @@ fn tolerance_is_strict_and_level_override_changes_no_value() {
             );
         }
     }
+    // RTC1000000 *100ns =100ms. IEEE own89,999,999ns gives
+    // signed delta -10,000,001ns; both sides use the same10ms tolerance.
+    let later = offline(1_000_000);
+    for (ns, delta, above) in [
+        (90_000_001u32, -9_999_999, false),
+        (90_000_000, -10_000_000, false),
+        (89_999_999, -10_000_001, true),
+    ] {
+        let mut w = [0; 8];
+        w[..4].copy_from_slice(&ns.to_le_bytes());
+        let b = header(w);
+        let a = own(&later, 0x84, &b, &ctx, &policy);
+        assert_eq!(a.delta_ns().unwrap().get(), delta);
+        assert_eq!(ids(&a).contains(&14), above);
+    }
     policy.tolerance = Some(NanosDuration::new(0));
     let b = header([1, 0, 0, 0, 0, 0, 0, 0]);
     assert!(ids(&own(&c, 0x84, &b, &ctx, &policy)).contains(&14));
@@ -481,6 +503,17 @@ fn leap_endpoints_and_civil_ambiguity_use_explicit_counting_convention() {
     assert_eq!(a.delta_ns().unwrap().get(), 0);
     assert_eq!(a.own().unwrap().native().unwrap().day_of_year, 1);
     assert!(!ids(&a).contains(&22));
+    // Civil origin second60 is itself ambiguous; elapsed1s must not hide it.
+    ctx.ieee.as_mut().unwrap().counting = EpochCounting::Civil;
+    let a = own(&c, 0x84, &b, &ctx, &policy);
+    assert!(a.own().is_none());
+    assert_eq!(a.delta_ns(), None);
+    assert_eq!(
+        a.issue(),
+        Some(&TimeError::NeedsContext {
+            context: "civil epoch cannot select repeated leap coordinate"
+        })
+    );
     // Civil seconds cannot choose which occurrence of the insertion coordinate.
     ctx.ieee.as_mut().unwrap().origin.seconds = 59;
     ctx.ieee.as_mut().unwrap().counting = EpochCounting::Civil;
@@ -652,6 +685,27 @@ fn released_stream_modes_preserve_basis_and_ertc_interpolation_phase() {
         assert!(a.own().is_none());
         assert_eq!(a.counter().stream().unwrap().basis, c.basis);
     }
+    // Only following changes session: the preceding calibration is still valid,
+    // so this must fail specifically at the cross-session interpolation guard.
+    let mut crossed = stream_answer_at(StreamMode::Interpolate, 5_000_000);
+    crossed.basis.following.as_mut().unwrap().key.session += 1;
+    let b = header(500_000_099u64.to_le_bytes());
+    let a = answer_own(
+        CounterAnswer::Stream(&crossed),
+        packet(0x88, &b, crossed.basis.key),
+        &OwnContext::default(),
+        &OwnPolicy::default(),
+    )
+    .unwrap();
+    assert!(a.own().is_none());
+    assert_eq!(a.delta_ns(), None);
+    assert_eq!(
+        a.issue(),
+        Some(&TimeError::NeedsContext {
+            context: "ERTC bracket session"
+        })
+    );
+    assert!(core::ptr::eq(a.counter().stream().unwrap(), &crossed));
     // Difference of floors at a non-integral bracket phase: base100ns maps
     // to100ns; base+99999 maps100100ns, so the released-point delta is100000.
     let c = stream_answer_at(StreamMode::Interpolate, 1);

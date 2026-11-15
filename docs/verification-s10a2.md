@@ -104,3 +104,24 @@ assertions and corrected figure pages; matching S10a2 citations corrected.
 
 The initial reused-target no-default run reported missing module imports; a
 fresh target with incremental off passes all18 with no Rust code changes.
+
+## PR40 review — four surviving guards
+
+Ordinary-merged current main d9273d5 (including merged Criterion0.7). Test
+assertions only; production source is unchanged from64a6d66. Eleven focused
+tests remain; existing markers and matrix186/288 are unchanged.
+
+| Mutant | Isolated regression and observed failure |
+|---|---|
+| O26 | Only IEEE epoch, Chapter4 header with elapsed0: trusted raw retained, no own instant, issue and no delta. Falling back to the IEEE epoch fails the no-own assertion. |
+| O2 | Counter RTC1000000 ticks =100ms; own89999999ns gives−10000001ns, exceeding the10ms tolerance. Signed-only positive comparison misses TF014; negative below/at threshold controls stay clean. |
+| O12 | Only following stream bracket's session changes; preceding calibration stays valid. Removing the bracket guard produces own time instead of the asserted NeedsContext/absent delta; original counter remains borrowed. |
+| O17 | Civil epoch origin2016-12-31 23:59:60, elapsed1s (beyond the duplicate window). Removing the origin guard produces own time instead of the asserted specific NeedsContext. |
+
+Each mutant was applied separately to own_time.rs; its single corresponding
+test compiled and failed a runtime assertion. All production restored before
+normal verification. Four additional runtime kills,36 including the initial32;
+no compile-error count and no new whole-requirement claim.
+All18 locked local CI-equivalent checks pass after restoration on main d9273d5,
+including MSRV1.85, no_std/WASM, CLI, benches, fuzz compile and cargo-deny;
+actionlint/format/trace/diff checks pass. No production fix was needed.
