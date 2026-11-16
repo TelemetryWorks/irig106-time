@@ -303,6 +303,15 @@ fn timeout_eof_and_cap_release_reasons_survive_replay() {
         };
         assert_eq!(b.release, expected);
         assert_eq!(
+            b.progress_ns,
+            if expected == ReleaseReason::Timeout {
+                1_100_000_002
+            } else {
+                2
+            }
+        );
+        assert_eq!(b.deadline_ns, Some(1_100_000_001));
+        assert_eq!(
             r.answers()[0].view().value().calendar.unwrap().nanoseconds,
             200_000_000
         );
@@ -420,4 +429,141 @@ fn generic_scaled_shared_quantities_are_exact_too() {
     };
     let mut w = encode(&value);
     assert_eq!(w.field("value"), &Node::String(i128::MIN.to_string()));
+}
+
+#[test]
+fn explicit_stream_session_boundaries_are_retained() {
+    use irig106_time::{answer::*, stream::*};
+    let mut later = calendar(0, 0);
+    if let ReferenceSpec::Calendar { value, .. } = &mut later {
+        let mut c = value.value();
+        c.year = Some(2018);
+        *value = CalendarSnapshot::new(c).unwrap();
+    }
+    let mut boundary = packet(3, 0, later);
+    boundary.boundary = true;
+    let steps = vec![
+        StreamStep::Observe {
+            record: packet(1, 0, calendar(0, 0)),
+            progress: d(0),
+            bytes: d(10),
+        },
+        StreamStep::Observe {
+            record: packet(2, 10, ReferenceSpec::None),
+            progress: d(1),
+            bytes: d(10),
+        },
+        StreamStep::Observe {
+            record: boundary,
+            progress: d(2),
+            bytes: d(10),
+        },
+        StreamStep::Observe {
+            record: packet(4, 10, ReferenceSpec::None),
+            progress: d(3),
+            bytes: d(10),
+        },
+        StreamStep::Finish { progress: d(4) },
+    ];
+    let r = ReportSnapshot::new(ReplayPlan {
+        limits: limits(),
+        clock: ClockRecipe::Stream {
+            policy: PolicySnapshot::stream(StreamPolicy::new(
+                1,
+                BufferCaps {
+                    packets: 2,
+                    bytes: 100,
+                    references: 3,
+                },
+            ))
+            .unwrap(),
+            inventory: Some(vec![StreamChannel {
+                id: 7,
+                timein: true,
+                external: true,
+            }]),
+            steps,
+        },
+        requests: vec![],
+    })
+    .unwrap();
+    let AnswerBasis::Counter(c) = r.answers()[1].view().basis() else {
+        panic!()
+    };
+    let ClockBasis::Stream(b) = c.clock() else {
+        panic!()
+    };
+    assert_eq!(b.key.session, 2);
+    assert_eq!(
+        r.answers()[0].view().value().calendar.unwrap().year,
+        Some(2017)
+    );
+    assert_eq!(
+        r.answers()[1].view().value().calendar.unwrap().year,
+        Some(2018)
+    );
+    assert_eq!(
+        encode(&decode::<ReportSnapshot>(encode(&r)).unwrap()),
+        encode(&r)
+    );
+}
+
+#[test]
+fn qualified_edition_and_provided_year_evidence_survive_replay() {
+    use irig106_time::edition::*;
+    let mut p = plan();
+    if let ClockRecipe::Offline { packets, .. } = &mut p.clock {
+        packets[0].packet.body = ReferenceSpec::QualifiedFormat1 {
+            payload: vec![0x41, 2, 0, 0, 0, 0, 0, 0, 1, 1, 0x17, 0x20],
+            data_length: d(12),
+            evidence: EditionEvidence {
+                override_edition: Some(PacketEdition::V04),
+                tmats_edition: Some("24".into()),
+                use_tmats: true,
+                setup: SetupVersionEvidence::Unavailable,
+                data_type_version: Some(0x10),
+            },
+            scales: scale::ScalePolicy::default(),
+        };
+    }
+    let r = ReportSnapshot::new(p).unwrap();
+    assert!(r.findings().iter().any(|f| f.code == 31));
+    let refi = &r.sessions().unwrap()[0].references[0].input;
+    assert!(refi.qualified.is_some());
+    assert!(matches!(
+        refi.source,
+        Some(TimeF1Source::Ext04 { present: true, .. })
+    ));
+    assert_eq!(
+        encode(&decode::<ReportSnapshot>(encode(&r)).unwrap()),
+        encode(&r)
+    );
+    let mut p = plan();
+    if let ClockRecipe::Offline { packets, .. } = &mut p.clock {
+        let mut body = calendar(0, 0);
+        if let ReferenceSpec::Calendar {
+            value, normalize, ..
+        } = &mut body
+        {
+            let mut c = value.value();
+            c.year = None;
+            *value = CalendarSnapshot::new(c).unwrap();
+            *normalize = None;
+        }
+        packets[0].packet.body = body;
+        packets[0].packet.year_context = Some(years::YearContext {
+            caller: Some(2023),
+            recording: Some(2022),
+        });
+    }
+    let r = ReportSnapshot::new(p).unwrap();
+    assert_eq!(
+        r.answers()[0].view().value().calendar.unwrap().year,
+        Some(2023)
+    );
+    assert!(r.findings().iter().any(|f| f.code == 32));
+    assert_eq!(
+        encode(&decode::<ReportSnapshot>(encode(&r)).unwrap()),
+        encode(&r)
+    );
 }
