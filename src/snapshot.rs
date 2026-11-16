@@ -13,6 +13,38 @@
 //! fn load<T: for<'de> serde::Deserialize<'de>>() {}
 //! load::<StreamTimeline>();
 //! ```
+//! Legacy aggregates intentionally have no direct Serde surface (Q5); use the
+//! versioned report family rather than numeric wide fields or unchecked state.
+//! ```compile_fail
+//! #![allow(deprecated)]
+//! fn serialize<T: serde::Serialize>() {}
+//! serialize::<irig106_time::correlation::ReferencePoint>();
+//! ```
+//! ```compile_fail
+//! #![allow(deprecated)]
+//! fn serialize<T: serde::Serialize>() {}
+//! serialize::<irig106_time::correlation::TimeJump>();
+//! ```
+//! ```compile_fail
+//! #![allow(deprecated)]
+//! fn serialize<T: serde::Serialize>() {}
+//! serialize::<irig106_time::correlation::RtcReset>();
+//! ```
+//! ```compile_fail
+//! #![allow(deprecated)]
+//! fn serialize<T: serde::Serialize>() {}
+//! serialize::<irig106_time::quality::TimeQuality>();
+//! ```
+//! ```compile_fail
+//! #![allow(deprecated)]
+//! fn serialize<T: serde::Serialize>() {}
+//! serialize::<irig106_time::recording_event::RecordingEvent>();
+//! ```
+//! ```compile_fail
+//! #![allow(deprecated)]
+//! fn serialize<T: serde::Serialize>() {}
+//! serialize::<irig106_time::streaming::StreamingRef>();
+//! ```
 use crate::{format1::CalendarReading, *};
 use alloc::{
     collections::BTreeMap,
