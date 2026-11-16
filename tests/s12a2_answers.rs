@@ -89,6 +89,12 @@ fn negative_counter_only_duration_is_checked_signed_and_replayable() {
     let v = AnswerView::offline(&a, &[]).unwrap();
     assert_eq!(v.value().counter_duration, Some(SignedNanos::new(-100)));
     assert!(v.value().calendar.is_none());
+    assert_eq!(
+        v.value().issue,
+        Some(TimeError::NeedsContext {
+            context: "no admitted reference on selected channel"
+        })
+    );
     assert_eq!(v.basis().replay().unwrap().value(), v.value());
 }
 fn network(id: u64, ticks: u64, seconds: u32, nanos: u32) -> ReferenceInput {
@@ -244,6 +250,7 @@ fn own_envelope_retains_raw_location_independent_counter_and_comparison() {
         let v = AnswerView::own(&own).unwrap();
         assert_eq!(v.value().point.as_ref(), own.own());
         assert_eq!(v.value().own_minus_counter, own.delta_ns());
+        assert_eq!(v.value().tolerance, Some(NanosDuration::new(17)));
         assert_eq!(v.value().counter_duration, Some(SignedNanos::new(1000)));
         assert_eq!(
             v.value().counter.as_ref().unwrap().as_counter().key(),
@@ -806,4 +813,234 @@ fn replay_keeps_stated_gps_native_calendar() {
         ScaleEvidence::standard(TimeScale::Gps)
     );
     assert_eq!(v.basis().replay().unwrap().value(), v.value());
+}
+
+#[test]
+fn review_stamp_replay_keeps_explicit_backward_order() {
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    b.observe(packet(1, 0, Some(reference())), false).unwrap();
+    let timeline = b.finish().unwrap();
+    let bytes = 20u64.to_le_bytes();
+    let inspect = |order| {
+        inspect_stamp(
+            StampInput {
+                origin: origin(),
+                query_id: 3,
+                flags: 0,
+                bytes: &bytes,
+                order,
+            },
+            &SecondaryPolicy::default(),
+        )
+        .unwrap()
+    };
+    // OriginRTC10 -> raw stamp20. Nearest is+10ticks; caller-guaranteed
+    // backward within one wrap is10−2^48ticks, query20−2^48.
+    assert_eq!(
+        inspect(rtc::CounterOrder::Nearest).query().unwrap().ticks,
+        20
+    );
+    let order = rtc::CounterOrder::BackwardWithinOneWrap;
+    let expected = 20 - (1i128 << 48);
+    let inspection = inspect(order);
+    assert_eq!(inspection.query().unwrap().ticks, expected);
+    let stamp = inspection
+        .resolve(&context(), |k| {
+            Ok(ResolvedCounter::offline(timeline.lookup(k)?))
+        })
+        .unwrap();
+    let v = AnswerView::stamp(&stamp).unwrap();
+    assert_eq!(
+        v.value().counter.as_ref().unwrap().as_counter().key().ticks,
+        expected
+    );
+    assert_eq!(
+        v.value().counter_duration,
+        Some(SignedNanos::new(expected * 100))
+    );
+    let AnswerBasis::Stamp(b) = v.basis() else {
+        panic!()
+    };
+    assert_eq!(b.inspection().order(), order);
+    drop((stamp, timeline));
+    assert_eq!(v.basis().replay().unwrap().value(), v.value());
+}
+
+fn review_interpolated_control() -> StreamAnswer {
+    let mut policy = StreamPolicy::new(
+        1,
+        BufferCaps {
+            packets: 2,
+            bytes: 100,
+            references: 3,
+        },
+    );
+    policy.mode = StreamMode::Interpolate;
+    policy.offline.channel = Some(7);
+    let mut stream = StreamTimeline::new(policy, None).unwrap();
+    stream
+        .observe(
+            packet(1, 0, Some(network(1, 0, 1_483_228_837, 0))),
+            0,
+            12,
+            false,
+        )
+        .unwrap();
+    stream
+        .observe(packet(2, 5_000_000, None), 1, 12, false)
+        .unwrap();
+    stream
+        .observe(
+            packet(
+                3,
+                10_000_000,
+                Some(network(3, 10_000_000, 1_483_228_838, 0)),
+            ),
+            2,
+            12,
+            false,
+        )
+        .unwrap()
+        .answers
+        .remove(0)
+}
+fn review_endpoint(id: u64, ticks: u64, nanos: u32) -> TimelineReference {
+    let mut builder = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    builder
+        .observe(
+            packet(id, ticks, Some(network(id, ticks, 1_483_228_837, nanos))),
+            false,
+        )
+        .unwrap();
+    builder.finish().unwrap().sessions()[0].references[0].clone()
+}
+fn review_changed<T: Clone>(original: &T, change: impl FnOnce(&mut T)) -> T {
+    let mut copy = original.clone();
+    change(&mut copy);
+    copy
+}
+#[test]
+fn review_capture_consistency_rejects_single_field_tampering() {
+    let off = offline();
+    let interp = review_interpolated_control();
+    assert_eq!(interp.basis.release, ReleaseReason::Interpolated);
+    assert_eq!(interp.basis.drift_correction_ns, Some(0));
+    let mut b = TimelineBuilder::new(OfflinePolicy::default()).unwrap();
+    let key = b.observe(packet(1, 0, None), false).unwrap();
+    let empty_off = b.finish().unwrap().lookup(key).unwrap();
+    let mut policy = StreamPolicy::new(
+        1,
+        BufferCaps {
+            packets: 2,
+            bytes: 100,
+            references: 3,
+        },
+    );
+    policy.offline.channel = Some(7);
+    let empty_stream = StreamTimeline::new(policy, None)
+        .unwrap()
+        .observe(packet(1, 0, None), 0, 10, false)
+        .unwrap()
+        .answers
+        .remove(0);
+    // Controls are native answers; every one is accepted before tampering.
+    for a in [&off, &empty_off] {
+        assert!(AnswerView::offline(a, &[]).is_ok());
+    }
+    for a in [&interp, &empty_stream] {
+        assert!(AnswerView::stream(a, &[]).is_ok());
+    }
+    // Ch11 Fig11-17 hand arithmetic: this control is exactly100ns/tick.
+    // Replacing ONE whole endpoint with another native, internally coherent
+    // endpoint preserves midpoint time and zero correction. Only its position
+    // relative to the query becomes invalid, avoiding a masked guard test.
+    let after_query = review_endpoint(1, 5_000_001, 500_000_100);
+    let before_query = review_endpoint(3, 4_999_999, 499_999_900);
+    let cases = [
+        (
+            "A2 offline distance",
+            ResolvedCounter::offline(review_changed(&off, |a| a.basis.distance_ns = Some(1001))),
+        ),
+        (
+            "A9 deferred offline drift",
+            ResolvedCounter::offline(review_changed(&off, |a| a.basis.drift_corrected = true)),
+        ),
+        (
+            "A15 counter-only position",
+            ResolvedCounter::offline(review_changed(&empty_off, |a| {
+                a.basis.position = ReferencePosition::Exact
+            })),
+        ),
+        (
+            "A15 counter-only distance",
+            ResolvedCounter::offline(review_changed(&empty_off, |a| {
+                a.basis.distance_ns = Some(0)
+            })),
+        ),
+        (
+            "A18 offline reading with reason",
+            ResolvedCounter::offline(review_changed(&off, |a| {
+                a.basis.unresolved = Some("corrupt reason")
+            })),
+        ),
+        (
+            "A18 offline missing reason",
+            ResolvedCounter::offline(review_changed(&empty_off, |a| a.basis.unresolved = None)),
+        ),
+        (
+            "A19 invalid offline policy",
+            ResolvedCounter::offline(review_changed(&off, |a| a.basis.policy.version = 0)),
+        ),
+        (
+            "A26 invalid stream policy",
+            ResolvedCounter::stream(review_changed(&interp, |a| a.basis.policy.caps.packets = 0)),
+        ),
+        (
+            "A8 interpolated without endpoints",
+            ResolvedCounter::stream(review_changed(&empty_stream, |a| {
+                a.basis.release = ReleaseReason::Interpolated
+            })),
+        ),
+        (
+            "A8 following with standard release",
+            ResolvedCounter::stream(review_changed(&interp, |a| {
+                a.basis.release = ReleaseReason::Standard
+            })),
+        ),
+        (
+            "A16 preceding follows query",
+            ResolvedCounter::stream(review_changed(&interp, |a| {
+                a.basis.preceding = Some(after_query)
+            })),
+        ),
+        (
+            "A17 following precedes query",
+            ResolvedCounter::stream(review_changed(&interp, |a| {
+                a.basis.following = Some(before_query)
+            })),
+        ),
+        (
+            "A25 interpolation in Standard mode",
+            ResolvedCounter::stream(review_changed(&interp, |a| {
+                a.basis.policy.mode = StreamMode::Standard
+            })),
+        ),
+        (
+            "A18 stream reading with reason",
+            ResolvedCounter::stream(review_changed(&interp, |a| {
+                a.basis.unresolved = Some("corrupt reason")
+            })),
+        ),
+        (
+            "A18 stream missing reason",
+            ResolvedCounter::stream(review_changed(&empty_stream, |a| a.basis.unresolved = None)),
+        ),
+    ];
+    for (name, a) in cases {
+        let rejected = match &a {
+            ResolvedCounter::Offline(a) => AnswerView::offline(a, &[]).is_err(),
+            ResolvedCounter::Stream(a) => AnswerView::stream(a, &[]).is_err(),
+        };
+        assert!(rejected, "{name}");
+    }
 }

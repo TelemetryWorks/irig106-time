@@ -108,3 +108,54 @@ suites, three MSRV1.85 checks, all-target clippy, fmt, warning-free rustdoc,
 CLI build/clippy, no_std/WASM with/without serde, trace check, benches,
 all10 fuzz targets compiled and cargo-deny. Actionlint/diff checks passed.
 GitHub platform/security results are reported separately at the final PR head.
+
+## Review at49cc8da — projection and native-capture guards
+
+Tests-only follow-up: two added tests (15 integration tests total), plus explicit
+projection assertions in the existing counter-only and own-envelope tests.
+All pass on unchanged production code; no defect or new design choice found.
+No whole markers added; regenerated matrix stays192/288 (delta0).
+
+The stamp case preserves BackwardWithinOneWrap: originRTC10, raw stamp20
+means query20−2^48, not Nearest's query20. Captured query/duration/order are
+asserted; replay succeeds after dropping the timeline. The counter-only view
+must expose NeedsContext with its actual no-admitted-reference reason. Own
+projection must expose the selected17ns tolerance, including failed own decode.
+
+One table-driven test has15 independently corrupted cases, each starting from
+a native accepted control. Controls include valid offline/interpolated stream
+answers and native counter-only answers. Each case changes one basis field;
+A16/A17 replace one whole endpoint with another internally coherent native
+reference. The stream control has zero drift (1s absolute per1s RTC). Its query
+isRTC5000000, nativeTAI1483228837.5s. The alternative preceding endpoint is
+RTC5000001/TAI1483228837.500000100; the alternative following endpoint is
+RTC4999999/TAI1483228837.499999900. Thus arithmetic still produces the original
+midpoint and zero correction when a bounds guard is removed: the generic
+output-consistency check cannot mask the intended guard. No second output or
+correction field is changed. This is a capture-consistency fixture, not a new
+reference-selection rule or an untrusted serialized-load claim.
+
+All13 requested survivor IDs are killed in15 independent temporary mutation
+runs (A15/A18 have separately checked variants); every run fails at runtime,
+not compilation. Each mutation was restored before final validation:
+
+| ID | Mutant / assertion |
+|---|---|
+| A13 | Force replay order to Nearest; backward query/resolver identity test fails. |
+| A14 | Erase counter-only issue; explicit NeedsContext assertion fails. |
+| A20 | Erase projected tolerance; explicit17ns assertion fails. |
+| A2 | Skip distance check; table admits distance1001 instead of1000. |
+| A9 | Skip deferred offline-drift guard; table admits drift_corrected=true. |
+| A15 | Remove position check, then distance check separately; counter-only Exact or distanceSome(0) is incorrectly admitted. |
+| A18 | Remove offline reason guard, then stream reason guard separately; table admits contradictory reading/reason evidence. Both directions are in the table. |
+| A19 | Skip offline policy validation; version0 incorrectly admitted. |
+| A26 | Skip stream policy validation; packet-cap0 incorrectly admitted. |
+| A8 | Skip following/release equivalence; counter-only releaseInterpolated without endpoints is admitted. Table also rejects a following endpoint with Standard release. |
+| A16 | Skip negative-offset guard; coherent preceding endpoint lies after query. |
+| A17 | Skip upper bracket bound; coherent following endpoint lies before query. |
+| A25 | Skip mode guard; interpolated release accepted under Standard policy. |
+
+Restored-source review validation: all18 local CI-equivalent checks pass again,
+jobs2/threads2, --locked (four feature suites including all15 integration tests,
+MSRV1.85, clippy/fmt/rustdoc, CLI, no_std/WASM, matrix, benches, all10 fuzz
+targets and cargo-deny). Actionlint/diff checks pass. Production code unchanged.
