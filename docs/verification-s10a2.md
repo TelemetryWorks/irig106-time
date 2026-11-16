@@ -14,18 +14,18 @@ printed11-10/PDF18. Same section: "the 10-megahertz (MHz) RTC shall be
 synchronized with the ERTC (RTC = ERTC/100)". Section11.2.1.2a: "The applicable
 data bit to which the 48-bit value of the packet secondary time value (if
 enabled) applies shall correspond to the first bit of the data in the packet
-body". Chapter4 §4.7/Fig11-4 and T10's derived full32-bit count apply unchanged.
+body". Chapter 4 §4.7/Fig11-4 and T10's derived full32-bit count apply unchanged.
 
 Contract6.6/L3-ANS-102 requires compatible normalized scales, signed own minus
 counter and a strict above-tolerance finding, default reference resolution.
-D6 requires explicit Chapter4 origin; D7 keeps last-known-offset UTC with TF021
+D6 requires explicit Chapter 4 origin; D7 keeps last-known-offset UTC with TF021
 past table coverage, raw TAI retained. RDG010 preserves second60. Epoch/count
 interpretation for own IEEE is caller context, never inferred from Format2.
 
 The adapter retains the exact borrowed offline/stream answer and full header
 inspection, context/table and comparison policy snapshots. Caller supplies a
 dated epoch, scale, source citation and Continuous or Civil counting for IEEE
-or Chapter4. Continuous counts SI time; Civil counts nominal86400-second days.
+or Chapter 4. Continuous counts SI time; Civil counts nominal86400-second days.
 A civil insertion-window coordinate is unresolved (not NTP-specific TF030).
 All assigned own scales, including derived UTC, are labelled Policy. No nearby
 packet origin, implicit Unix epoch, host clock or changed counter answer.
@@ -95,33 +95,33 @@ Full verification and main-merge prerequisite are recorded below when executed.
 Pre-merge preparation:18/18 locked checks pass (jobs/threads2): four feature
 suites, three MSRV1.85 checks, clippy/fmt/docs, CLI build/clippy, no_std WASM
 with/without serde, trace check, benches, all10 fuzz targets and cargo-deny.
-Opening check: main8016942 ordinary-merged; all18 checks pass in a fresh target.
-Dependency-only main3bedbd4 was then ordinary-merged; all18 checks repeated and
+Opening check: main8016942 ordinary-merged; all 18 checks pass in a fresh target.
+Dependency-only main3bedbd4 was then ordinary-merged; all 18 checks repeated and
 passed with its lockfiles. PR37's merge/final check gate was pending then.
 
 Carried PR37 review head a56a6a2 by ordinary merge, including its four evidence
 assertions and corrected figure pages; matching S10a2 citations corrected.
 
 The initial reused-target no-default run reported missing module imports; a
-fresh target with incremental off passes all18 with no Rust code changes.
+fresh target with incremental off passes all 18 with no Rust code changes.
 
 ## PR40 review — four surviving guards
 
 Ordinary-merged current main d9273d5 (including merged Criterion0.7). Test
-assertions only; production source is unchanged from64a6d66. Eleven focused
+assertions only; production source is unchanged from 64a6d66. Eleven focused
 tests remain; existing markers and matrix186/288 are unchanged.
 
 | Mutant | Isolated regression and observed failure |
 |---|---|
-| O26 | Only IEEE epoch, Chapter4 header with elapsed0: trusted raw retained, no own instant, issue and no delta. Falling back to the IEEE epoch fails the no-own assertion. |
+| O26 | Only IEEE epoch, Chapter 4 header with elapsed0: trusted raw retained, no own instant, issue and no delta. Falling back to the IEEE epoch fails the no-own assertion. |
 | O2 | Counter RTC1000000 ticks =100ms; own89999999ns gives−10000001ns, exceeding the10ms tolerance. Signed-only positive comparison misses TF014; negative below/at threshold controls stay clean. |
 | O12 | Only following stream bracket's session changes; preceding calibration stays valid. Removing the bracket guard produces own time instead of the asserted NeedsContext/absent delta; original counter remains borrowed. |
 | O17 | Civil epoch origin2016-12-31 23:59:60, elapsed1s (beyond the duplicate window). Removing the origin guard produces own time instead of the asserted specific NeedsContext. |
 
 Each mutant was applied separately to own_time.rs; its single corresponding
 test compiled and failed a runtime assertion. All production restored before
-normal verification. Four additional runtime kills,36 including the initial32;
+normal verification. Four additional runtime kills, 36 including the initial32;
 no compile-error count and no new whole-requirement claim.
-All18 locked local CI-equivalent checks pass after restoration on main d9273d5,
+All 18 locked local CI-equivalent checks pass after restoration on main d9273d5,
 including MSRV1.85, no_std/WASM, CLI, benches, fuzz compile and cargo-deny;
 actionlint/format/trace/diff checks pass. No production fix was needed.

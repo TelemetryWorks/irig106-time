@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S10b stamp and caller-extracted word answers
+
+- Add bounded stamp inspection with simultaneous TF-015/006/028 findings,
+  separate reserved padding and RTC-sync evidence. Reserved warnings keep
+  usable RTC values; severity overrides cannot create undefined stamp time.
+- Resolve relative stamps at their named-session query clock, retaining actual
+  offline/stream basis and separate extraction/query identities. ERTC uses
+  1 ns units and the released interpolation slope for its sub-tick remainder.
+  Absolute stamps require caller epochs; missing context stays labelled partial.
+- Add binary/BCD and all six network word kinds with explicit component binding.
+  Reuse Q-CH4, RDG-012 and D7; native PTP remains TAI, stale UTC uses the last
+  known offset/TF-021, and missing components never become zero. Body extraction
+  and stream scheduling remain caller-controlled. Existing APIs are unchanged.
+- Clause record: verification-s10b.md; matrix186→192/288. Only ANS103/104 and
+  WORD102 gain whole links; common schemas, CLI and encoder work remain later.
+
 ### S10a2 own calendar/session conversion and comparison
 
 - Add explicit IEEE/Chapter4 epoch, scale/counting and citation context; missing
