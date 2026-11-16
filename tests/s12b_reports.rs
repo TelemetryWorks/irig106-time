@@ -165,6 +165,15 @@ fn mixed_network_zero_and_stale_context_reports_keep_findings_and_scales() {
     let r = ReportSnapshot::new(p).unwrap();
     assert!(r.findings().iter().any(|f| f.code == 29));
     assert!(r.findings().iter().any(|f| f.code == 21));
+    assert!(
+        r.sessions().unwrap()[0].references[1]
+            .input
+            .network
+            .as_ref()
+            .unwrap()
+            .raw_network_rate()
+    );
+    assert!(r.quality()[0].references_per_second.is_some());
     assert_eq!(
         decode::<ReportSnapshot>(encode(&r)).unwrap().findings(),
         r.findings()

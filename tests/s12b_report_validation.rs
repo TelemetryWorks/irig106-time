@@ -389,7 +389,11 @@ fn positive_resource_ceilings_and_explicit_finish_are_enforced() {
 #[test]
 fn policy_dependent_answer_headers_name_the_defaults_version() {
     let r = ReportSnapshot::new(plan()).unwrap();
-    let output = encode(&r.answers()[0]);
+    let mut output = encode(&r.answers()[0]);
+    assert_eq!(
+        output.field("units").json(),
+        r#"{"bytes":"byte","calendar":"year/day/h/min/s/ns","counter":"rtc_ticks","density":"reference/s","drift":"ppm","duration":"ns","identity":"count","ntp_fraction":"2^-32 s","tai":"tai_ns","unix":"unix_s"}"#
+    );
     let Node::Map(fields) = &output else { panic!() };
     assert!(
         fields
@@ -400,4 +404,20 @@ fn policy_dependent_answer_headers_name_the_defaults_version() {
     assert_eq!(answer.field("defaults_version"), &Node::Number("1".into()));
     *answer.field("defaults_version") = Node::Number("2".into());
     assert!(decode::<AnswerSnapshot>(answer).is_err());
+}
+
+#[test]
+fn generic_scaled_shared_quantities_are_exact_too() {
+    let value = scale::Scaled {
+        value: u64::MAX,
+        scale: scale::ScaleEvidence::unknown(),
+    };
+    let mut w = encode(&value);
+    assert_eq!(w.field("value"), &Node::String(u64::MAX.to_string()));
+    let value = scale::Scaled {
+        value: SignedNanos::new(i128::MIN),
+        scale: scale::ScaleEvidence::unknown(),
+    };
+    let mut w = encode(&value);
+    assert_eq!(w.field("value"), &Node::String(i128::MIN.to_string()));
 }
