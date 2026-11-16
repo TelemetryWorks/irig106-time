@@ -140,7 +140,7 @@ pub struct PreparedObservation {
     pub declarations: DeclarationBasis,
 }
 /// Validated non-overlapping configuration ranges; caller owns their extent.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Declarations {
     snapshots: Option<Vec<SetupDeclarations>>,
 }

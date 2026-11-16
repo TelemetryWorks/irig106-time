@@ -38,6 +38,26 @@ impl Normalization {
     pub fn table(&self) -> &LeapSecondTable {
         &self.table
     }
+    pub(crate) fn from_calendar(c: CalendarReading, table: LeapSecondTable) -> Result<Self> {
+        c.validate()?;
+        let t = AbsoluteTime::new(
+            c.day_of_year,
+            c.hours,
+            c.minutes,
+            c.seconds.min(59),
+            c.nanoseconds,
+        )?
+        .with_year(c.year)?;
+        let mut n = Self::new(t, c.scale, table)?;
+        if c.seconds == 60 {
+            n.tai_ns = crate::own_time::normalize(c, &n.table)?;
+            n.native_ns += 1_000_000_000;
+            n.possibly_out_of_date = !n.table.covers_unix(SignedUnixSeconds::new(
+                n.native_ns.div_euclid(1_000_000_000),
+            ));
+        }
+        Ok(n)
+    }
     pub(crate) fn new(
         time: AbsoluteTime,
         scale: ScaleEvidence,
@@ -164,6 +184,23 @@ impl NetworkReference {
     }
 }
 impl ReferenceInput {
+    pub(crate) fn requalify_network(
+        self,
+        p: &crate::policy::SharedPolicy,
+        key: PacketKey,
+        declared: bool,
+    ) -> Result<Self> {
+        let n = self.network.ok_or(TimeError::InvalidTimelineInput(
+            "network qualification absent",
+        ))?;
+        Self::format2(
+            n.reference.observation().clone().with_declaration(declared),
+            p.ntp_context(key.session)?,
+            p.settings().own.table.clone(),
+            n.raw_network_rate,
+        )
+    }
+
     /// Select TAI for arithmetic with an explicit table; native answer scale
     /// and policy/stated provenance remain unchanged. Unknown year/scale fails.
     /// **Traces:** L3-F2COR-102 ← L2-F2COR-102 ← L1-F2COR-002
@@ -234,6 +271,7 @@ impl ReferenceInput {
                 normalization_issue: None,
             })),
             normalization: None,
+            qualification: None,
         };
         let normalized = if ambiguous {
             Err(TimeError::NeedsContext {
@@ -500,4 +538,37 @@ pub(crate) fn normalization_warning(
                 expected: None,
             });
     Ok(Some(f))
+}
+
+#[cfg(test)]
+mod review_s12a {
+    use super::*;
+    // Partial ANS/POL normalization clause, no whole-requirement marker.
+    #[test]
+    fn leap_label_advances_native_coordinate_as_well_as_tai() {
+        // RDG-010; Fig11-14 (11-25/PDF33) retains second60. Last insertion
+        // before2017: Unix midnight1483228800, old TAI-UTC36s (S04 IERS table).
+        let c = CalendarReading {
+            year: Some(2016),
+            day_of_year: 366,
+            hours: 23,
+            minutes: 59,
+            seconds: 60,
+            nanoseconds: 0,
+            scale: ScaleEvidence::standard(TimeScale::Utc),
+        };
+        let n = Normalization::from_calendar(c, LeapSecondTable::builtin()).unwrap();
+        assert_eq!(n.native_ns, 1_483_228_800_000_000_000);
+        assert_eq!(n.tai_nanoseconds(), 1_483_228_836_000_000_000);
+        let before = Normalization::from_calendar(
+            CalendarReading { seconds: 59, ..c },
+            LeapSecondTable::builtin(),
+        )
+        .unwrap();
+        assert_eq!(n.native_ns - before.native_ns, 1_000_000_000);
+        assert_eq!(
+            n.tai_nanoseconds() - before.tai_nanoseconds(),
+            1_000_000_000
+        );
+    }
 }

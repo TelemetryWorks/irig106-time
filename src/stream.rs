@@ -42,6 +42,8 @@ pub struct StreamPolicy {
     pub offline: OfflinePolicy,
     /// Added to the 1 s interval; default 100 ms, independently of gap/late.
     pub hold_tolerance_ns: u64,
+    /// Look-ahead base interval, independent of reference gap/late; default1s.
+    pub hold_interval_ns: u64,
     /// Declare raw NTP/PTP frame-rate recording for network references observed
     /// under this snapshot (§11.2.3.3). Per-reference declarations also apply.
     /// Both endpoints must qualify; Format1 is never exempt. Changing this flag
@@ -60,6 +62,7 @@ impl StreamPolicy {
             mode: StreamMode::Standard,
             offline: OfflinePolicy::default(),
             hold_tolerance_ns: 100_000_000,
+            hold_interval_ns: 1_000_000_000,
             raw_network_rate: false,
             caps,
         }
@@ -71,7 +74,15 @@ impl StreamPolicy {
             || self.caps.packets == 0
             || self.caps.bytes == 0
             || self.caps.references < 2
-            || self.hold_tolerance_ns.checked_add(1_000_000_000).is_none()
+            || self
+                .hold_tolerance_ns
+                .checked_add(self.hold_interval_ns)
+                .is_none()
+            || self
+                .offline
+                .shared
+                .as_ref()
+                .is_some_and(|p| p.id() != self.id)
             || !self.offline.channel_preference.is_empty()
             || self.offline.back_extrapolate
             || self.offline.strategy != ReferenceStrategy::Nearest
@@ -291,7 +302,7 @@ impl StreamTimeline {
         if self.finished
             || progress < self.progress
             || progress
-                .checked_add(1_000_000_000)
+                .checked_add(self.policy.hold_interval_ns)
                 .and_then(|p| p.checked_add(self.policy.hold_tolerance_ns))
                 .is_none()
         {
@@ -419,7 +430,7 @@ impl StreamTimeline {
     /// **Traces:** L3-ANS-105 ← L2-ANS-105 ← L1-ANS-005
     pub fn observe(
         &mut self,
-        packet: PacketObservation,
+        mut packet: PacketObservation,
         progress: u64,
         bytes: usize,
         boundary: bool,
@@ -471,6 +482,14 @@ impl StreamTimeline {
         } else {
             self.session
         };
+        if let Some(policy) = &self.policy.offline.shared {
+            let key = PacketKey {
+                session,
+                ticks,
+                packet: packet.id,
+            };
+            packet = policy.prepare(packet, key)?;
+        }
         if let Some(n) = packet.reference.as_ref().and_then(|r| r.network.as_ref()) {
             if n.reference().observation().capture().session != session {
                 return Err(TimeError::InvalidTimelineInput(
@@ -638,7 +657,8 @@ impl StreamTimeline {
                 b.answers
                     .push(self.answer(p, ReleaseReason::UnusableReference, None));
             } else {
-                p.deadline = Some(progress + 1_000_000_000 + self.policy.hold_tolerance_ns);
+                p.deadline =
+                    Some(progress + self.policy.hold_interval_ns + self.policy.hold_tolerance_ns);
                 if self.pending.len() == self.policy.caps.packets {
                     self.flush(&mut b, ReleaseReason::PacketCap);
                 }
@@ -737,7 +757,10 @@ impl StreamTimeline {
             } else {
                 a.key.packet
             });
-            if elapsed > 1_000_000_000 + i128::from(self.policy.offline.gap_tolerance_ns) {
+            if elapsed
+                > i128::from(self.policy.offline.gap_interval_ns)
+                    + i128::from(self.policy.offline.gap_tolerance_ns)
+            {
                 self.emit(b, 16, key, Some(r.channel), related, Some(elapsed))?;
                 if let Some(f) = b.findings.last_mut() {
                     crate::reference::qualify_gap(f, a, z);
@@ -838,6 +861,15 @@ impl StreamTimeline {
         boundary: bool,
     ) -> Result<StreamBatch> {
         let id = packet.id;
+        let input = crate::format1::Format1Input {
+            scales: self
+                .policy
+                .offline
+                .shared
+                .as_ref()
+                .map_or(input.scales, |s| s.settings().scales),
+            ..input
+        };
         let (packet, error) = crate::timeline::decode_observation(packet, input)?;
         let mut batch = self.observe(packet, progress, bytes, boundary)?;
         if let Some(error) = error {
@@ -870,7 +902,7 @@ impl StreamTimeline {
         policy.validate()?;
         self.check_progress(progress)?;
         if progress
-            .checked_add(1_000_000_000)
+            .checked_add(policy.hold_interval_ns)
             .and_then(|p| p.checked_add(policy.hold_tolerance_ns))
             .is_none()
             || policy.id <= self.policy.id
@@ -884,7 +916,7 @@ impl StreamTimeline {
         }
         let mut b = self.advance(progress)?;
         self.flush(&mut b, ReleaseReason::ModeChange);
-        if self.policy.offline != policy.offline {
+        if !self.policy.offline.same_reference_rules(&policy.offline) {
             self.refs.clear();
         }
         if self.channel.is_none() {

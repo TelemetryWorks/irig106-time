@@ -117,6 +117,7 @@ fn reference(second: u8) -> ReferenceInput {
         year_basis: irig106_time::years::YearBasis::default(),
         network: None,
         normalization: None,
+        qualification: None,
     }
 }
 fn source_packet(id: u64, bytes: &[u8; 36]) -> PacketObservation {
