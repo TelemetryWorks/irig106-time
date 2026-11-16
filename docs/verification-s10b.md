@@ -97,3 +97,17 @@ Final local verification: all 18 locked CI-equivalent checks pass with jobs/
 threads 2 and incremental off: feature suites, MSRV 1.85, no_std/WASM, docs,
 CLI, benches, all 10 fuzz targets, clippy, format, trace and cargo-deny.
 No fuzz campaign or local recording check is claimed.
+
+## PR41 review — NTP era context belongs to its session
+
+Added a clause-only ANS104/RDG-012 regression: origin session1, context session2
+with declared era1, raw seconds63104/fraction0 (RFC5905 Figure4) must return no
+calendar and NeedsContext "NTP word session context". The unchanged-context
+zero-sentinel control reaches the converter, retains raw zero/eraNone, emits
+TF029 WARNING/Unusable, and produces no absolute value. No whole-requirement
+marker is added for this clause; only the RDG-012 test link is regenerated.
+X15 (remove session guard) compiled and failed the new no-calendar assertion;
+a second mutant rejecting zero on session mismatch failed the sentinel control.
+Both sources restored. Eight focused tests; no production change or new status.
+All 18 locked local CI-equivalent checks pass after restoration; actionlint,
+format, trace and diff clean. Matrix remains 192/288.

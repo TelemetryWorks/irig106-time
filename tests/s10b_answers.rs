@@ -762,3 +762,57 @@ fn degraded_conversions_keep_values_levels_and_context_without_epoch_guesses() {
         Some(TimeError::QuantityOverflow { .. })
     ));
 }
+// Clause-only: L1-ANS-004 -> L2-ANS-104 -> L3-ANS-104, per-session era context.
+// RFC5905 Figure4: era1 offset63104 maps2036-02-08 (day39), but session2's
+// declaration cannot date a word extracted from session1.
+/// Interpretations: RDG-012
+#[test]
+fn ntp_word_cannot_borrow_another_sessions_era_but_zero_remains_a_sentinel() {
+    use format2::NetworkConversion;
+    use ntp::{EraDeclaration, NtpConversionStatus};
+    let mut context = WordContext::new(2);
+    context.ntp.declared = Some(EraDeclaration {
+        era: 1,
+        id: "era declared for session2 only".into(),
+    });
+    let raw = NtpTime {
+        seconds: 63_104,
+        fraction: 0,
+    };
+    let a = net(NetworkWord::Ntp(raw), &context, &Default::default());
+    assert_eq!(a.origin().key.session, 1);
+    assert!(a.calendar().is_none());
+    assert_eq!(
+        a.issue(),
+        Some(&TimeError::NeedsContext {
+            context: "NTP word session context"
+        })
+    );
+    assert!(a.network().is_none());
+    assert_eq!(a.word(), TimeWord::Network(NetworkWord::Ntp(raw)));
+
+    // Both zero means unknown/unsynchronized before consulting era/session
+    // evidence (RFC5905 section6; RDG-012), never a fabricated era1 instant.
+    let raw = NtpTime {
+        seconds: 0,
+        fraction: 0,
+    };
+    let a = net(NetworkWord::Ntp(raw), &context, &Default::default());
+    assert!(a.calendar().is_none());
+    assert_eq!(
+        a.issue(),
+        Some(&TimeError::NeedsContext {
+            context: "NTP era/zero/calendar context"
+        })
+    );
+    let Some(NetworkConversion::Ntp(n)) = a.network() else {
+        panic!("sentinel must reach the NTP converter")
+    };
+    assert_eq!(n.raw(), raw);
+    assert_eq!(n.status(), NtpConversionStatus::UnknownUnsynchronized);
+    assert_eq!(n.basis().era, None);
+    assert_eq!(n.basis().context.session, 2);
+    let f = finding(a.findings(), 29);
+    assert_eq!(f.severity(), Severity::Warning);
+    assert_eq!(f.evidence().validity(), ValueValidity::Unusable);
+}
