@@ -146,7 +146,7 @@ impl TimeScaleTagged for CalendarReading {
 
 /// Format 1 raw data word and decoded calendar reading, without correlation.
 /// **Traces:** L3-TAI-105 ← L2-TAI-105
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Format1Reading {
     /// Raw CSDW; its reserved findings remain separately inspectable.
@@ -156,6 +156,10 @@ pub struct Format1Reading {
     /// Raw per-word reserved intersections, for TF-005 warnings. No fifth word.
     pub reserved_body_bits: [u16; 4],
     /// Bytes consumed, excluding filler/checksum.
+    #[cfg_attr(
+        feature = "serde",
+        serde(serialize_with = "crate::snapshot::adapters::count::serialize")
+    )]
     pub consumed: usize,
 }
 
@@ -443,3 +447,11 @@ impl TryFrom<CalendarWire> for CalendarReading {
         Ok(value)
     }
 }
+
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(QualifiedFormat1Reading {
+    csdw,
+    time,
+    reserved_body_bits,
+    consumed
+});

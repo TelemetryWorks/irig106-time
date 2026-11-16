@@ -45,6 +45,14 @@
 //! fn serialize<T: serde::Serialize>() {}
 //! serialize::<irig106_time::streaming::StreamingRef>();
 //! ```
+//! ```compile_fail
+//! fn load<T: for<'de> serde::Deserialize<'de>>() {}
+//! load::<irig106_time::format1::Format1Reading>();
+//! ```
+//! ```compile_fail
+//! fn load<T: for<'de> serde::Deserialize<'de>>() {}
+//! load::<irig106_time::network_time::Format2Reading>();
+//! ```
 use crate::{format1::CalendarReading, *};
 use alloc::{
     collections::BTreeMap,
@@ -409,3 +417,57 @@ pub(crate) fn required<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
 ) -> core::result::Result<T, D::Error> {
     T::deserialize(d)
 }
+
+pub(crate) mod adapters;
+pub(crate) mod wide;
+
+pub(crate) fn display<T: core::fmt::Display, S: Serializer>(
+    v: &T,
+    s: S,
+) -> core::result::Result<S::Ok, S::Error> {
+    s.collect_str(v)
+}
+
+/// Versioned complete answer output. Loading is through checked replay reports,
+/// not direct deserialization of the captured native basis (owner Q3/Q5).
+/// **Traces:** L3-API-110 ← L2-API-110 ← L1-API-010
+#[derive(Debug, Clone)]
+pub struct AnswerOutput(crate::answer::AnswerView);
+impl AnswerOutput {
+    /// Recompute the projection before accepting an existing owned view.
+    pub fn new(view: crate::answer::AnswerView) -> Result<Self> {
+        if view.basis().replay()?.value() != view.value() {
+            return Err(invalid());
+        }
+        Ok(Self(view))
+    }
+    /// Complete raw/qualified basis and common native value.
+    pub fn view(&self) -> &crate::answer::AnswerView {
+        &self.0
+    }
+}
+pub(crate) fn report_units() -> BTreeMap<String, String> {
+    units(&[
+        ("counter", "rtc_ticks"),
+        ("duration", "ns"),
+        ("unix", "unix_s"),
+        ("tai", "tai_ns"),
+        ("identity", "count"),
+        ("bytes", "byte"),
+        ("ntp_fraction", "2^-32 s"),
+        ("calendar", "year/day/h/min/s/ns"),
+    ])
+}
+impl Serialize for AnswerOutput {
+    fn serialize<S: Serializer>(&self, s: S) -> core::result::Result<S::Ok, S::Error> {
+        Envelope {
+            schema: "irig106-time/answer-output".into(),
+            version: 1,
+            units: report_units(),
+            value: &self.0,
+        }
+        .serialize(s)
+    }
+}
+
+pub(crate) mod data;

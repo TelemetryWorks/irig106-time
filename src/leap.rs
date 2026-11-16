@@ -428,6 +428,7 @@ pub(crate) fn calendar(
 }
 /// Currency is independent of presence/absence of an absolute value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum PtpConversionStatus {
     /// Within independently declared table coverage.
     Covered,
@@ -530,3 +531,20 @@ impl PtpConversion {
         Ok(out)
     }
 }
+
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(PtpConversionBasis {
+    table,
+    final_transition,
+    offset,
+    selected_transition,
+    leap_second
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(PtpConversion {
+    raw,
+    utc,
+    unix_seconds,
+    status,
+    basis
+});

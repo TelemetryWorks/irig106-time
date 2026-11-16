@@ -6,6 +6,7 @@ use alloc::string::String;
 /// Explicit supported release, independent of shared version-code list names.
 /// **Traces:** L3-EDN-103 ← L2-EDN-103 ← L1-EDN-003
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum PacketEdition {
     /// RCC 106-04.
     V04,
@@ -116,14 +117,27 @@ impl PacketEdition {
 /// Caller identifies whether the setup field exists; reserved legacy words are
 /// retained, never interpreted as RCCVER. Setup alone never selects EXT/SRC.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum SetupVersionEvidence {
     /// No applicable field supplied (106-04 has none).
     #[default]
     Unavailable,
     /// Legacy reserved word (106-05 Fig10-34b), not a version field.
-    Reserved(u32),
+    Reserved(
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        u32,
+    ),
     /// Known applicable 106-07+ CH10VER/RCCVER code, separate from header byte.
-    Rccver(u8),
+    Rccver(
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        u8,
+    ),
 }
 impl SetupVersionEvidence {
     /// Decode only an applicable setup field through the shared mapping.
@@ -152,6 +166,7 @@ pub struct EditionEvidence {
 }
 /// ADR-0028 vocabulary; no fallback assumption selects a packet layout.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum EditionBasis {
     /// Explicit caller declaration, including retained contrary evidence.
     Override,
@@ -227,3 +242,27 @@ pub fn resolve_edition(evidence: EditionEvidence) -> EditionResolution {
         contradiction,
     }
 }
+
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(EditionRules {
+    layout,
+    chapter,
+    max_data_type_version,
+    format2,
+    source
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(EditionEvidence {
+    override_edition,
+    tmats_edition,
+    use_tmats,
+    setup,
+    data_type_version
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(EditionResolution {
+    edition,
+    basis,
+    evidence,
+    contradiction
+});

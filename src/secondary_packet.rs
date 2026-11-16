@@ -533,3 +533,29 @@ fn format_number(format: SecHdrTimeFormat) -> u128 {
         SecHdrTimeFormat::Reserved(v) => v.into(),
     }
 }
+
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(SecondaryPolicy { levels });
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(RtcErtcCheck {
+    expected,
+    remainder,
+    delta,
+    distance
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(SecondaryInspection {
+    data_type,
+    byte_offset,
+    key,
+    channel,
+    flags,
+    applicability,
+    raw,
+    format,
+    checksum,
+    time,
+    consistency,
+    errors,
+    findings
+});

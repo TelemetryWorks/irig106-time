@@ -203,6 +203,7 @@ impl NtpContext {
 }
 /// Explicit unresolved era reason; no new permanent TF identifier is invented.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum EraIssue {
     /// A session was unnamed.
     InvalidSession,
@@ -219,16 +220,24 @@ pub enum EraIssue {
 }
 /// Mapping status is separate from leap ambiguity and calendar range.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum NtpConversionStatus {
     /// Signed Unix coordinate produced; calendar may separately exceed its range.
     Mapped,
     /// Both raw words zero: TF-029, no absolute time regardless of era evidence.
     UnknownUnsynchronized,
     /// Supplied evidence requires caller resolution; no policy fallback.
-    NeedsContext(EraIssue),
+    NeedsContext(
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        EraIssue,
+    ),
 }
 /// NTP has no leap indicator in IRIG Format2; certainty depends on table coverage.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum NtpLeapStatus {
     /// No mapped coordinate to assess.
     NoValue,
@@ -242,6 +251,7 @@ pub enum NtpLeapStatus {
 /// Accepted owner rounding2026-11-13; no carry into seconds.
 /// **Traces:** L3-NTP-103 ← L2-NTP-103 ← L1-NTP-003
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum NtpRounding {
     /// Floor to integer nanoseconds; error is less than1ns.
     FloorNanoseconds,
@@ -669,3 +679,37 @@ mod snapshot_pivot {
         }
     }
 }
+
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(EraDeclaration { era, id });
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(NtpContext {
+    session,
+    declared,
+    pivots
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(NtpConversionBasis {
+    context,
+    era,
+    era_basis,
+    rejected_pivot,
+    rounding,
+    quantization,
+    proleptic_utc,
+    leap,
+    table,
+    final_transition,
+    ambiguity_transition
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(NtpConversion {
+    raw,
+    status,
+    unix,
+    nanos,
+    utc,
+    possible_leap,
+    calendar_error,
+    basis
+});

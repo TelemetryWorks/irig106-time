@@ -322,3 +322,34 @@ impl QualificationBasis {
         self.provided_policy.as_ref()
     }
 }
+
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(SharedSettings {
+    caller_year,
+    year_order,
+    scales,
+    own,
+    own_tolerance,
+    declarations,
+    use_tfmt_default,
+    ntp
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(SharedPolicy { id, settings });
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(QualificationBasis {
+    policy,
+    declarations,
+    provided_scale,
+    provided_year,
+    provided_normalization,
+    provided_network,
+    provided_policy
+});
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for YearOrder {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> core::result::Result<S::Ok, S::Error> {
+        self.sources().serialize(s)
+    }
+}

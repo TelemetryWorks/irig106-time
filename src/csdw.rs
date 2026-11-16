@@ -206,9 +206,16 @@ mod csdw_tests;
 
 /// Applicability is separate from a numeric ITS value (RDG-007).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum ItsQualification {
     /// Applicable 106-17+ A/B/G, including Reserved(raw).
-    Reported(IrigTimeSource),
+    Reported(
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        IrigTimeSource,
+    ),
     /// Pre-106-17 field was reserved; zero is not freewheeling.
     NotReported,
     /// Resolved non-A/B/G format has no applicable ITS meaning.
@@ -216,7 +223,13 @@ pub enum ItsQualification {
     /// Unknown edition and zero cannot distinguish old reserved from freewheel.
     FreewheelingOrNotReported,
     /// Unknown applicability; raw ITS nibble retained.
-    Unresolved(u8),
+    Unresolved(
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        u8,
+    ),
 }
 /// Raw CSDW plus immutable edition basis; unknown layout keeps alternatives.
 /// **Traces:** L3-CSDW-101 ← L2-CSDW-101 ← L1-CSDW-001
@@ -310,3 +323,6 @@ impl QualifiedCsdw {
         }
     }
 }
+
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(QualifiedCsdw { raw, resolution });
