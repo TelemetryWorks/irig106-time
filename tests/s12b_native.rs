@@ -30,7 +30,18 @@ fn native_calendar_load_validates_invariants() {
         *w.field(key) = Node::Number(bad.to_string());
         assert!(decode::<CalendarReading>(w).is_err(), "{key}");
     }
+
+    let mut bad = wire.clone();
+    *bad.field("year") = Node::Number("2017".into());
+    assert!(decode::<CalendarReading>(bad).is_err());
+    let mut bad = wire.clone();
+    *bad.field("day_of_year") = Node::Number("365".into());
+    assert!(decode::<CalendarReading>(bad).is_err());
+    let mut bad = wire;
+    *bad.field("scale") = encode(&ScaleEvidence::standard(TimeScale::Gps));
+    assert!(decode::<CalendarReading>(bad).is_err());
 }
+
 #[test]
 fn native_scale_load_validates_provenance() {
     let scale = ScaleEvidence::assumed(TimeScale::Gps);
@@ -38,6 +49,25 @@ fn native_scale_load_validates_provenance() {
     let mut bad = encode(&scale);
     *bad.field("stated") = Node::String("Utc".into());
     assert!(decode::<ScaleEvidence>(bad).is_err());
+    let mut bad = encode(&ScaleEvidence::standard(TimeScale::Utc));
+    *bad.field("effective") = Node::String("Tai".into());
+    assert!(decode::<ScaleEvidence>(bad).is_err());
+    let mut bad = encode(&ScaleEvidence::unknown());
+    *bad.field("origin") = Node::String("Standard".into());
+    assert!(decode::<ScaleEvidence>(bad).is_err());
+    for scale in [
+        TimeScale::Utc,
+        TimeScale::Tai,
+        TimeScale::Gps,
+        TimeScale::Unknown,
+    ] {
+        for v in [
+            ScaleEvidence::standard(scale),
+            ScaleEvidence::assumed(scale),
+        ] {
+            assert_eq!(decode::<ScaleEvidence>(encode(&v)).unwrap(), v);
+        }
+    }
 }
 
 #[test]

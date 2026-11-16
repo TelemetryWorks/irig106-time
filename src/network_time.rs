@@ -268,6 +268,7 @@ impl NtpTime {
 /// **Traces:** L3-PTP-105, L3-PTP-102
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", serde(try_from = "PtpWire"))]
 pub struct PtpTime {
     /// Seconds since 1970-01-01 00:00:00 TAI (32 bits).
     pub seconds: u32,
@@ -520,3 +521,21 @@ fn is_leap_year(year: u16) -> bool {
 #[cfg(test)]
 #[path = "network_time_tests.rs"]
 mod network_time_tests;
+
+#[cfg(feature = "serde")]
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PtpWire {
+    seconds: u32,
+    nanoseconds: u32,
+}
+#[cfg(feature = "serde")]
+impl TryFrom<PtpWire> for PtpTime {
+    type Error = TimeError;
+    fn try_from(w: PtpWire) -> Result<Self> {
+        let mut bytes = [0; 8];
+        bytes[..4].copy_from_slice(&w.seconds.to_le_bytes());
+        bytes[4..].copy_from_slice(&w.nanoseconds.to_le_bytes());
+        Self::from_le_bytes(&bytes)
+    }
+}

@@ -11,6 +11,7 @@ use crate::scale::{ScaleEvidence, ScalePolicy, Scaled, TimeScale, TimeScaleTagge
 /// **Traces:** L3-TAI-107 ← L2-TAI-107
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", serde(try_from = "CalendarWire"))]
 pub struct CalendarReading {
     /// Explicit year if DATE=1 or caller supplied; never invented.
     pub year: Option<u16>,
@@ -411,4 +412,34 @@ pub fn decode_qualified_time_f1(
         reserved_body_bits,
         consumed,
     })
+}
+
+#[cfg(feature = "serde")]
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CalendarWire {
+    year: Option<u16>,
+    day_of_year: u16,
+    hours: u8,
+    minutes: u8,
+    seconds: u8,
+    nanoseconds: u32,
+    scale: ScaleEvidence,
+}
+#[cfg(feature = "serde")]
+impl TryFrom<CalendarWire> for CalendarReading {
+    type Error = TimeError;
+    fn try_from(w: CalendarWire) -> Result<Self> {
+        let value = Self {
+            year: w.year,
+            day_of_year: w.day_of_year,
+            hours: w.hours,
+            minutes: w.minutes,
+            seconds: w.seconds,
+            nanoseconds: w.nanoseconds,
+            scale: w.scale,
+        };
+        value.validate()?;
+        Ok(value)
+    }
 }

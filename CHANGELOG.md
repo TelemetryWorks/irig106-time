@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S12b1 exact value snapshots and validated leaf loading
+
+- Add candidate v1 scalar/calendar/leap-table snapshots under serde, with
+  explicit units/schema, checked loads and canonical decimal strings for wide
+  integers. Shared i128 values never use their default numeric JSON encoding.
+  Preserve stated/assumed scale, partial dates and full table identity/currency.
+- Fix Deserialize accepting invalid CalendarReading, ScaleEvidence,
+  CalendarTime and PtpTime. Breaking: malformed data now rejects; leap-table
+  UnixSeconds serialize/load as decimal strings, and unknown fields reject.
+  Update numeric leap-table JSON producers to string epochs. No time-conversion
+  or default-policy changes. Serde uses alloc+derive without its std feature.
+- First S12b review part: full policy/answer/report serialization and legacy
+  aggregate audit remain S12b2, not release-deferred. Complex engine-state
+  Deserialize remains absent under Q3. Schema review is pending before freeze.
+- Record: verification-s12b.md; schema candidate snapshot-schema-v1.md.
+  No new whole markers; matrix192/288 (delta0).
+
 ### S12a2 common replayable answer view
 
 - Add owned AnswerView/AnswerBasis for offline, released stream, own-time,

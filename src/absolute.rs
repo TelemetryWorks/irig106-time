@@ -473,6 +473,7 @@ impl core::fmt::Display for AbsoluteTime {
 /// **Traces:** L3-ABS-006 ← L2-ABS-001 ← L1-ABS-001
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", serde(try_from = "CalendarTimeWire"))]
 pub struct CalendarTime {
     /// The underlying DOY-based time. Year is always `Some`.
     time: AbsoluteTime,
@@ -648,3 +649,19 @@ impl Ch4BinaryTimeExt for Ch4BinaryTime {
 #[cfg(test)]
 #[path = "absolute_tests.rs"]
 mod absolute_tests;
+
+#[cfg(feature = "serde")]
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CalendarTimeWire {
+    time: AbsoluteTime,
+    month: u8,
+    day_of_month: u8,
+}
+#[cfg(feature = "serde")]
+impl TryFrom<CalendarTimeWire> for CalendarTime {
+    type Error = TimeError;
+    fn try_from(w: CalendarTimeWire) -> Result<Self> {
+        Self::new(w.time, w.month, w.day_of_month)
+    }
+}

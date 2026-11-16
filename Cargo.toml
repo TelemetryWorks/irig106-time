@@ -17,7 +17,7 @@ chrono = ["dep:chrono"]
 
 [dependencies]
 irig106-types = { version = "0.1", default-features = false }
-serde = { version = "1", features = ["derive"], optional = true }
+serde = { version = "1", default-features = false, features = ["derive", "alloc"], optional = true }
 chrono = { version = "0.4", default-features = false, optional = true }
 
 [dev-dependencies]
