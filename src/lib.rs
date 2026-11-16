@@ -26,7 +26,7 @@
 //! - **Recording events** — Data Type 0x02 event parsing with time context
 //! - **Encoding** — `to_le_bytes()` on all wire-format types for packet
 //!   construction (BCD, CSDW, NTP, PTP, RTC)
-//! - **serde** — Exact versioned value snapshots and validated supported leaf
+//! - **serde** — Exact versioned value/policy snapshots and validated supported leaf
 //!   loading; complex engine-state deserialization is intentionally omitted
 //! - **chrono** — Optional `From` conversions between `AbsoluteTime` and
 //!   `chrono::NaiveDateTime` via the `chrono` feature gate

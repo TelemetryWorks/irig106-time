@@ -35,7 +35,7 @@ IRIG 106 Chapter 10 separates *when data was recorded* (a free-running 10 MHz co
 - **Recording events** — Data Type 0x02 event parsing with time context
 - **Encoding** — `to_le_bytes()` on all wire-format types for packet construction
 - **`impl Display`** — ISO-like formatting for `AbsoluteTime`
-- **`serde`** — Optional `Serialize`/`Deserialize` on all public data types (except `TimeError`) via the `serde` feature gate
+- **`serde`** — Optional versioned value/policy snapshots and checked supported leaf loading; complex engine-state loading is omitted
 - **`chrono`** — Optional `From` conversions between `AbsoluteTime` and `chrono::NaiveDateTime`
 - **`#![no_std]`** — Works on embedded, WASM, and standard targets
 - **Zero required dependencies** — Only `core` and `alloc` (serde, chrono are optional)

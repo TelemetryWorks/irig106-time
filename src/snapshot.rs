@@ -1,5 +1,5 @@
-//! S12b1 schema candidate: exact scalar/calendar/leap values, owner Q5.
-//! The JSON schema is reviewed before freeze; policy/answer reports follow in S12b2.
+//! Schema candidate: exact scalar/calendar/leap/policy values, owner Q5.
+//! The JSON schema is reviewed before freeze; answer reports follow in S12b2b.
 //! No float coercion, implicit unit, default version or live table lookup.
 //!
 //! Complex engine-state loaders are intentionally absent (owner Q3):
@@ -398,4 +398,14 @@ pub mod unix {
     ) -> core::result::Result<UnixSeconds, D::Error> {
         Ok(UnixSeconds::new(Decimal::<u64>::deserialize(d)?.get()))
     }
+}
+
+mod policy;
+pub use policy::{PolicySnapshot, PolicyValue};
+
+/// Require an explicit optional field rather than accepting omission as None.
+pub(crate) fn required<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
+    d: D,
+) -> core::result::Result<T, D::Error> {
+    T::deserialize(d)
 }

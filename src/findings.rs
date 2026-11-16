@@ -5,6 +5,7 @@ extern crate alloc;
 use crate::{NtpTime, Result, Rtc, TimeError, UnixSeconds};
 use alloc::vec::Vec;
 /// Accepted finding level, independent of factual validity/admission.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Severity {
     /// Context or diagnostic evidence.

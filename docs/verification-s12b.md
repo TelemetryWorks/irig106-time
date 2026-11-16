@@ -142,3 +142,16 @@ jobs2/threads2 and --locked, including all12 dedicated tests across enabled
 feature suites, MSRV1.85, clippy/fmt/rustdoc, CLI, no_std/WASM, matrix, benches,
 all10 fuzz targets and cargo-deny. Actionlint/diff checks pass. Production
 code unchanged; no Q5-completion or schema-freeze claim added.
+
+## S12b2a outcome / remaining second part
+
+[verification-s12b2a.md](verification-s12b2a.md) covers complete checked policy
+snapshots and removal of both Serde traits on all six listed legacy aggregates.
+The number-emission paths enumerated above are closed; the preceding sections
+remain the dated S12b1/review evidence. No runtime correlation changes.
+
+S12b2b still owns the qualified AnswerView/report family and loaded replay/link
+validation, plus remaining direct adapter-wide fields (PtpTime.seconds,
+Format1/2Reading.consumed, RTC/ERTC enum variants). This is an implementation
+split, not an owner release deferral. Whole coverage remains192/288; Q5 and the
+schema's one owner review are not claimed complete by this first part.

@@ -39,7 +39,6 @@ use irig106_types::NanosDuration;
 /// A reference point pairing an RTC value with an absolute time on a channel.
 ///
 /// **Traces:** L3-COR-001 ← L2-COR-001
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ReferencePoint {
     /// Channel ID of the time source.
@@ -53,7 +52,6 @@ pub struct ReferencePoint {
 /// A detected discontinuity in absolute time progression.
 ///
 /// **Traces:** L3-COR-006 ← L2-COR-006
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TimeJump {
     /// Index of the later reference point in the correlator's list.
@@ -74,7 +72,6 @@ pub struct TimeJump {
 /// wrap amount while absolute time continues to advance normally.
 ///
 /// **Traces:** GAP-07
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RtcReset {
     /// Index of the reference point after the reset.

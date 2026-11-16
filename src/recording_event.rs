@@ -88,7 +88,6 @@ impl RecordingEventType {
 /// header absolute time.
 ///
 /// **Traces:** GAP-08
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[deprecated(
     note = "Recording event decoding belongs in irig106-decode; retain only time-tag decoding here (ADR-0009). Replacement availability is not claimed."

@@ -21,6 +21,7 @@ const HALF: i128 = 1i128 << 47;
 const DAY: i128 = 86_400_000_000_000;
 
 /// Offline selection; equal-distance nearest ties use preceding (explicit policy).
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReferenceStrategy {
     /// Contract 5.2: minimum absolute counter distance.

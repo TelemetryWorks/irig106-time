@@ -88,6 +88,7 @@ impl ScaleEvidence {
 /// **Traces:** L3-TAI-106 ← L2-TAI-106
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct ScalePolicy {
     /// IRIG-A/B/G assumption. Default UTC, labelled Policy (RCC 200-16 §1).
     pub irig: TimeScale,

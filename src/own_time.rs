@@ -24,6 +24,7 @@ fn overflow() -> TimeError {
     }
 }
 /// Caller-defined meaning of elapsed epoch seconds; no default interpretation.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EpochCounting {
     /// Continuous SI time, including UTC insertions when crossing them.
