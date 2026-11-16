@@ -36,3 +36,10 @@ adapter/shape tests and schema review boundaries retain their earlier scope.
 Restored46: all18 local CI-equivalent checks pass, jobs2/threads2, --locked,
 including feature suites, MSRV1.85, no_std/WASM, CLI, benches, all10 fuzz builds,
 clippy/fmt/rustdoc, cargo-deny and trace freshness. Actionlint/diff checks pass.
+
+Propagation:47 passes all18 local CI-equivalent checks after the ordinary merge.
+48 uses the same tests after an ordinary merge; its two literal outer-envelope
+key sets additionally include its already-implemented defaults_version field.
+This is an intentional schema difference from46/47, not a production change.
+Restored48 also passes all18 local CI-equivalent checks, including the four
+output tests. Only tests and this record differ from each reviewed stack head.

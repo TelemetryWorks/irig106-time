@@ -260,7 +260,10 @@ fn offline_and_word_outputs_pin_complete_emitted_field_sets() {
     let answer = builder.finish().unwrap().lookup(key).unwrap();
     let output = AnswerOutput::new(AnswerView::offline(&answer, &[]).unwrap()).unwrap();
     let wire = encode(&output);
-    fields(&wire, &["schema", "version", "units", "value"]);
+    fields(
+        &wire,
+        &["schema", "version", "defaults_version", "units", "value"],
+    );
     fields(at(&wire, &["value"]), &["basis", "value"]);
     fields(at(&wire, &["value", "basis"]), &["Counter"]);
     fields(
@@ -288,7 +291,10 @@ fn offline_and_word_outputs_pin_complete_emitted_field_sets() {
 
     let output = word_output();
     let wire = encode(&output);
-    fields(&wire, &["schema", "version", "units", "value"]);
+    fields(
+        &wire,
+        &["schema", "version", "defaults_version", "units", "value"],
+    );
     fields(at(&wire, &["value"]), &["basis", "value"]);
     fields(at(&wire, &["value", "basis"]), &["Word"]);
     let basis = at(&wire, &["value", "basis", "Word"]);
