@@ -91,9 +91,9 @@ end with Finish; live pending queues/indexes/anchors are neither loaded nor
 returned. This provides checked report replay, not Q3-deferred resumable engine
 rehydration. The returned offline sessions are plain validated records.
 
-Owner Q5's implementation is complete across b1+b2: requested numeric paths
+The core replay implementation is covered across b1+b2: requested numeric paths
 are fixed/removed; full versioned answer/timeline/report output and validated
-loads retain raw/stated/assumed evidence. Schema review/freeze approval is NOT
+loads retain raw/stated/assumed evidence. The full-inventory completion audit is b3. Schema review/freeze approval is NOT
 claimed: the third unit prepares the owner's single review packet and expands
 negative evidence. The implementation itself does not freeze the schema.
 
@@ -101,3 +101,74 @@ b2 restored source: all18 local CI-equivalent checks pass, jobs2/threads2,
 --locked, incl MSRV1.85, CLI, no_std/WASM±serde, benches, all10 fuzz builds,
 cargo-deny and matrix. Schema/corruption audit is the next stacked unit;
 GitHub workflows target main, so stacked-base CI awaits retargeting.
+
+## b3 — schema completion / negative audit
+
+The candidate now enumerates all7 roots, every emitted value/config shape,
+numeric widths, unit/epoch rules, enums/nulls/tuple order, validation boundaries
+and version/migration rules. It is prepared for ONE owner review, not frozen.
+Bare shared reexports retain types' Serde; all time-owned paths wrap them.
+
+Inventory/test review found and closed additional edges before freeze:
+explicit defaults_version on answer-output/answer headers; generic Scaled<T>
+wide serialization (and removal of its unchecked generic Deserialize); checked
+Ch4/IEEE decoded header/stamp subsecond loads; validated native year contexts;
+qualified-edition and provided-year input recipes. Only serde/protocol support
+changed, not native conversion/correlation/admission rules. Raw Ch4Words remain
+raw diagnostic inputs. No native engine Deserialize is added. This is completion
+of Q5, not a newly deferred value/load feature.
+
+Tests-first eca827d fails at runtime on missing answer defaults metadata;
+9de6666's scaled regression fails at runtime on bare u64 output. 02e60f9's new
+provenance recipe test cannot compile before the variant/field exists (and its
+initial legacy-source enum name required correction); no runtime-first claim.
+30ce92a's decoded subsecond regression fails on accepting Ch4 microseconds10000.
+The other negative/replay tests pass on their unchanged parent. Final b3 tests
+also cover raw era/fraction ambiguity, immutable outputs, all resource ceilings,
+selected/counter indexes, actual timeout/cap/EOF release progress and deadlines,
+explicit session boundaries, unsigned max IDs and signed negative duration.
+
+Override wins and produces no automatic TF031; opted-in G106 contradicted by
+known header0x0A (106-22+) withholds SRC and raises TF031. Provided caller2023
+versus recording2022 uses2023 with TF032. No new inference or finding level.
+Schema text keeps unknown/unresolved qualification distinct from modern None.
+
+Negative audit removes one guard/event at a time and runs the report suites;
+only runtime assertion failures count. Every temporary mutation is restored.
+One advance-event mutant initially survived because Finish also timed out the
+pending answer; the strengthened test pins **release progress**, proving the
+Advance event itself is executed. Exact totals/final checks follow below.
+
+The full-stack audit also preserves explicit WordContext NTP input (including
+mismatched session and zero-sentinel precedence). Its raw context is not silently
+replaced by the policy's matching-session entry. a20fc46's new selector test
+cannot compile before the field exists; its unchanged native behavior is tested
+after adding the recipe field. Decoded Ch4/IEEE load guards and native year
+context validation are separate from raw diagnostic word/context inputs.
+
+Executed negative checks: **24 distinct report/schema/load mutations** fail at
+runtime: cached-output check; report units/defaults; answer defaults/index;
+step/raw/output ceilings; prior qualification; explicit Advance progress;
+policy draining; dangling stamp index; nesting depth; raw network rate;
+generic-wide output; session boundary; defaults emission; unit spelling;
+Ch4/IEEE/year load guards; edition evidence; provided year; word NTP context.
+Together with b1's four adapter numeric-emission mutations: **28 distinct kills**.
+No compile errors or equivalent mutations are counted; all changes restored.
+The initial Advance survivor was killed after adding progress/deadline values.
+
+Final dedicated S12b2b suite:6 adapter +2 output +5 replay +13 audit tests (26).
+No whole Requirements marker is claimed; matrix remains192/288 (delta0).
+The schema inventory includes structural fields/variants plus all custom/shared
+value shapes and explicit units/widths. Candidate owner review is pending;
+there is no automatic freeze, Review status change, merge or publication.
+
+Final restored stack: all18 local CI-equivalent checks pass, jobs2/threads2,
+--locked/incremental disabled, including all feature suites, MSRV1.85, CLI,
+no_std/WASM±serde, benches, all10 fuzz harnesses, cargo-deny, clippy/fmt/rustdoc,
+trace freshness. Actionlint/diff checks pass. Python json.loads independently
+parses a complete emitted report and confirms u64-max IDs remain strings in
+source input, answer basis and session records, with explicit defaults versions.
+This supplements actual Serde token/load tests; no browser JS or independent
+machine-readable JSON-Schema validator execution is claimed. No dependencies
+added; Serde still uses alloc without std. Remaining work is owner's single
+schema review and separately authorized freeze, not another implementation slice.

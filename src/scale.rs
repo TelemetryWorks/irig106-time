@@ -125,10 +125,15 @@ pub const TAI_MINUS_GPS_SECONDS: i32 = 19;
 
 /// Value paired with scale provenance, without implicit normalization.
 /// **Traces:** L3-TAI-105 ← L2-TAI-105
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", serde(bound(serialize = "T: serde::Serialize")))]
 pub struct Scaled<T> {
     /// Unconverted decoded value.
+    #[cfg_attr(
+        feature = "serde",
+        serde(serialize_with = "crate::snapshot::wide::serialize")
+    )]
     pub value: T,
     /// Stated/effective scale and origin.
     pub scale: ScaleEvidence,

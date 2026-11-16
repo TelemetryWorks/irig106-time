@@ -6,6 +6,9 @@ use alloc::{collections::BTreeMap, vec::Vec};
 /// session's first observed calendar year; detected rollovers advance them.
 /// No TMATS defaults or configuration origination dates are consumed.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", serde(try_from = "YearContextWire"))]
 pub struct YearContext {
     /// Explicit caller year, after same-session DMY in priority.
     pub caller: Option<u16>,
@@ -949,3 +952,23 @@ crate::snapshot::wide::serialize_struct!(YearBasis {
     year_issue,
     phase_residual
 });
+
+#[cfg(feature = "serde")]
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct YearContextWire {
+    caller: Option<u16>,
+    recording: Option<u16>,
+}
+#[cfg(feature = "serde")]
+impl TryFrom<YearContextWire> for YearContext {
+    type Error = TimeError;
+    fn try_from(w: YearContextWire) -> Result<Self> {
+        let value = Self {
+            caller: w.caller,
+            recording: w.recording,
+        };
+        value.validate()?;
+        Ok(value)
+    }
+}

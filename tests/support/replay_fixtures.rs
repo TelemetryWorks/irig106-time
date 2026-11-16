@@ -18,6 +18,7 @@ pub fn packet(id: u64, ticks: u64, body: ReferenceSpec) -> RecordedPacket {
             declared_external: true,
             flags: 0,
             prepare: vec![],
+            year_context: None,
             body,
         },
         boundary: false,

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S12b2b3 complete schema candidate and replay audit
+
+- Prepare the complete snapshot/report schema for the owner's single review:
+  every root/type/field/unit/version rule, supported-load boundary and migration
+  is listed. It remains NOT FROZEN. Pin explicit defaults_version on individual
+  answers and answer-output. Q5 implementation/audit is complete across b1-b3.
+- **Breaking (serde):** Scaled<T> now quotes nested/shared wide integers and
+  removes unchecked generic Deserialize; load typed values/reports instead.
+  Decoded Ch4/IEEE header/stamp loads reject invalid subseconds, and native year
+  context loads validate year bounds. Raw input words remain representable for
+  diagnosis. Add explicit qualified-edition/provided-year replay recipes;
+  inference/conversion policy is unchanged.
+- Strengthen corruption, cap/timeout/EOF/progress, session, provenance and exact
+  integer tests. No additional release deferral or complex engine-state loader.
+  Matrix remains192/288, with clause-level evidence; schema owner review pending.
+
 ### S12b2b2 checked answer/report replay
 
 - Add report/individual-answer snapshots with complete typed source inputs,
@@ -18,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Caller-set work/output/raw-byte limits and128-level cached-value nesting
   bound replay; callers also bound JSON/policy graph size. Completed stream
   recipes explicitly Finish. Q3's live-state rehydration stays omitted.
-- Q5 implementation is complete with b1+b2. The next small schema/negative-test
+- Core replay is implemented with b1+b2. The final schema/negative-test
   unit prepares the owner's single review; the schema is NOT frozen. Metrics
   remain finite approximate numbers with units; wide integer facts stay strings.
   No native time/admission/correlation behavior changed; matrix192/288.

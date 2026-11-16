@@ -155,3 +155,12 @@ validation, plus remaining direct adapter-wide fields (PtpTime.seconds,
 Format1/2Reading.consumed, RTC/ERTC enum variants). This is an implementation
 split, not an owner release deferral. Whole coverage remains192/288; Q5 and the
 schema's one owner review are not claimed complete by this first part.
+
+## Completed S12b2b stack
+
+[verification-s12b2b.md](verification-s12b2b.md) completes policy/answer/report
+replay and the remaining adapter/generic-wide audit. Prior sections are dated
+carry-forward records, not current open blockers. Q5 implementation/audit is
+complete; the full candidate schema is prepared for the owner's one review,
+NOT frozen. Q3 still omits resumable live engine Deserialize only. No new
+whole-requirement marker or Review/Design status was assigned.

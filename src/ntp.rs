@@ -28,8 +28,14 @@ pub enum EraBasis {
 /// Caller era declaration, not an NTP wire field.
 /// **Traces:** L3-NTP-102 ← L2-NTP-102 ← L1-NTP-002
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct EraDeclaration {
     /// Signed era; negative eras describe dates before1900.
+    #[cfg_attr(
+        feature = "serde",
+        serde(deserialize_with = "crate::snapshot::adapters::era")
+    )]
     pub era: i64,
     /// Caller identity for this declaration; must be nonempty.
     pub id: String,
@@ -181,8 +187,14 @@ fn days_in_year(year: u16) -> i128 {
 /// Explicit per-call evidence; no hidden queue or automatic session discovery.
 /// **Traces:** L3-NTP-102 ← L2-NTP-102 ← L1-NTP-002
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct NtpContext {
     /// Named nonzero session; independent references must name this same session.
+    #[cfg_attr(
+        feature = "serde",
+        serde(deserialize_with = "crate::snapshot::adapters::count::deserialize")
+    )]
     pub session: usize,
     /// Highest precedence; unused contradictory pivots are still retained.
     pub declared: Option<EraDeclaration>,

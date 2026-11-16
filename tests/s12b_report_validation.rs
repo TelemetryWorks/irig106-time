@@ -332,6 +332,7 @@ fn whole_report_preserves_unsigned_extrema_and_signed_counter_duration() {
         key.packet = d(u64::MAX);
     }
     let r = ReportSnapshot::new(p).unwrap();
+    println!("REPORT_JSON_U64MAX {}", encode(&r).json());
     assert!(encode(&r).json().contains(r#""18446744073709551615""#));
     assert_eq!(
         encode(&decode::<ReportSnapshot>(encode(&r)).unwrap()),

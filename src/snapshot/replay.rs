@@ -58,6 +58,17 @@ pub enum ReferenceSpec {
         #[doc = "Caller-provided scale assumptions, prior to central qualification."]
         scales: ScalePolicy,
     },
+    /// Bounded edition-evidence qualification through the existing native adapter.
+    QualifiedFormat1 {
+        /// Original bounded payload, including any adjacent filler.
+        payload: Vec<u8>,
+        /// Data Length in decimal bytes.
+        data_length: Decimal<usize>,
+        /// Original override/TMATS/setup/header declarations, never inferred.
+        evidence: crate::edition::EditionEvidence,
+        /// Explicit scale assumptions before central qualification.
+        scales: ScalePolicy,
+    },
     /// Format2 replay operation or source variant.
     Format2 {
         #[doc = "Original bytes, including any bytes outside declared Data Length."]
@@ -121,6 +132,9 @@ pub struct ReplayPacket {
     pub flags: u8,
     /// Prior explicit qualifications, in order; retained as provided-policy evidence.
     pub prepare: Vec<Preparation>,
+    /// Explicit caller/recording year candidates supplied before central policy.
+    #[serde(deserialize_with = "super::required")]
+    pub year_context: Option<crate::years::YearContext>,
     #[doc = "Bounded raw input or explicit caller calendar."]
     pub body: ReferenceSpec,
 }
@@ -138,6 +152,14 @@ impl ReplayPacket {
         };
         p.reference = match &self.body {
             ReferenceSpec::None | ReferenceSpec::Format1 { .. } => None,
+            ReferenceSpec::QualifiedFormat1 {
+                payload,
+                data_length,
+                evidence,
+                scales,
+            } => Some(ReferenceInput::qualified_format1(
+                decode_qualified_time_f1(payload, data_length.get(), evidence.clone(), *scales)?,
+            )?),
             ReferenceSpec::Format2 {
                 payload,
                 data_length,
@@ -207,9 +229,27 @@ impl ReplayPacket {
                 Some(input)
             }
         };
-        if !self.prepare.is_empty() {
+        if let Some(context) = self.year_context {
             if let Some(input) = self.raw_f1() {
-                p = crate::timeline::decode_observation(p, input)?.0;
+                p.reference = Some(ReferenceInput::format1(
+                    input.payload,
+                    input.data_length,
+                    input.layout,
+                    input.scales,
+                )?);
+            }
+            p.reference = Some(
+                p.reference
+                    .take()
+                    .ok_or_else(invalid)?
+                    .with_year_context(context)?,
+            );
+        }
+        if !self.prepare.is_empty() {
+            if p.reference.is_none() {
+                if let Some(input) = self.raw_f1() {
+                    p = crate::timeline::decode_observation(p, input)?.0;
+                }
             }
             for step in &self.prepare {
                 let key = step.key.native()?;
@@ -222,7 +262,7 @@ impl ReplayPacket {
         Ok(p)
     }
     fn format1(&self) -> Option<Format1Input<'_>> {
-        if self.prepare.is_empty() {
+        if self.prepare.is_empty() && self.year_context.is_none() {
             self.raw_f1()
         } else {
             None
@@ -248,9 +288,9 @@ impl ReplayPacket {
     }
     fn raw_bytes(&self) -> usize {
         match &self.body {
-            ReferenceSpec::Format1 { payload, .. } | ReferenceSpec::Format2 { payload, .. } => {
-                payload.len()
-            }
+            ReferenceSpec::Format1 { payload, .. }
+            | ReferenceSpec::QualifiedFormat1 { payload, .. }
+            | ReferenceSpec::Format2 { payload, .. } => payload.len(),
             _ => 0,
         }
     }
@@ -428,6 +468,10 @@ pub enum ReportRequest {
         #[doc = "Optional explicit complementary-word binding."]
         #[serde(deserialize_with = "super::required")]
         matching: Option<ReplayBinding>,
+        /// Explicit word context, including a mismatched/raw session for diagnosis.
+        /// Null selects the context policy's entry for the extraction session.
+        #[serde(deserialize_with = "super::required")]
+        ntp_context: Option<crate::ntp::NtpContext>,
     },
 }
 /// Immutable snapshots validate this public construction data before execution.
@@ -727,6 +771,7 @@ impl ReplayPlan {
                     bcd,
                     bcd_scale,
                     matching,
+                    ntp_context,
                 } => {
                     let s = shared(context)?;
                     let o = origin.native()?;
@@ -734,7 +779,10 @@ impl ReplayPlan {
                         own: s.settings().own.clone(),
                         bcd: *bcd,
                         bcd_scale: *bcd_scale,
-                        ntp: s.ntp_context(o.key.session)?,
+                        ntp: match ntp_context {
+                            Some(ctx) => ctx.clone(),
+                            None => s.ntp_context(o.key.session)?,
+                        },
                         matching: matching
                             .as_ref()
                             .map(|b| {
@@ -881,9 +929,10 @@ struct Selected {
 }
 impl Serialize for AnswerSnapshot {
     fn serialize<S: Serializer>(&self, s: S) -> core::result::Result<S::Ok, S::Error> {
-        Envelope {
+        DefaultEnvelope {
             schema: "irig106-time/answer".into(),
             version: 1,
+            defaults_version: 1,
             units: report_units(),
             value: Selected {
                 report: self.report.clone(),
@@ -895,9 +944,9 @@ impl Serialize for AnswerSnapshot {
 }
 impl<'de> Deserialize<'de> for AnswerSnapshot {
     fn deserialize<D: Deserializer<'de>>(d: D) -> core::result::Result<Self, D::Error> {
-        let w: Envelope<Selected> = object(d)?;
+        let w: DefaultEnvelope<Selected> = object(d)?;
         header(&w.schema, w.version, "irig106-time/answer").map_err(de::Error::custom)?;
-        if w.units != report_units() {
+        if w.defaults_version != 1 || w.units != report_units() {
             return Err(de::Error::custom(invalid()));
         }
         Self::new(w.value.report, w.value.index.get()).map_err(de::Error::custom)

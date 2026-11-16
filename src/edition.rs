@@ -119,6 +119,7 @@ impl PacketEdition {
 /// retained, never interpreted as RCCVER. Setup alone never selects EXT/SRC.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 pub enum SetupVersionEvidence {
     /// No applicable field supplied (106-04 has none).
     #[default]
@@ -153,6 +154,8 @@ impl SetupVersionEvidence {
 /// Original evidence shown side by side; raw TMATS is retained even if malformed
 /// or not adopted. No TMATS runtime dependency, host clock or hidden fallback.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct EditionEvidence {
     /// Caller declaration/override wins over contradictory evidence.
     pub override_edition: Option<PacketEdition>,

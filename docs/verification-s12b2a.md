@@ -152,3 +152,11 @@ Restored review head: all18 local CI-equivalent checks passed again, jobs2 /
 threads2 / --locked, including feature suites, MSRV1.85, clippy/fmt/rustdoc,
 CLI, no_std/WASM, matrix, benches, all10 fuzz harnesses and cargo-deny.
 Actionlint/diff checks passed. Only the two tests and this record changed.
+
+## S12b2b completion
+
+The carry-forward report/adapter audit is closed by the S12b2b stack; see
+[verification-s12b2b.md](verification-s12b2b.md) and the complete schema candidate.
+These earlier lists are dated evidence. Implementation is complete; owner
+schema review remains required before an explicit freeze. No state rehydration
+or unsupported unchecked value loader is substituted for validated replay.

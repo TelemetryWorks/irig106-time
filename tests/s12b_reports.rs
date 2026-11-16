@@ -83,6 +83,7 @@ fn all_adapter_envelopes_roundtrip_raw_partial_and_absolute_context() {
         bcd: BcdContext::default(),
         bcd_scale: TimeScale::Unknown,
         matching: None,
+        ntp_context: None,
     });
     // RFC5905 Fig4:1970 coordinate and fraction0x80000000=0.5s.
     p.requests.push(ReportRequest::Word {
@@ -95,6 +96,7 @@ fn all_adapter_envelopes_roundtrip_raw_partial_and_absolute_context() {
         bcd: BcdContext::default(),
         bcd_scale: TimeScale::Unknown,
         matching: None,
+        ntp_context: None,
     });
     let r = ReportSnapshot::new(p).unwrap();
     assert_eq!(r.answers().len(), 5);

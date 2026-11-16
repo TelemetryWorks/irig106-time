@@ -53,6 +53,11 @@
 //! fn load<T: for<'de> serde::Deserialize<'de>>() {}
 //! load::<irig106_time::network_time::Format2Reading>();
 //! ```
+//! Generic Scaled values are output only; checked typed values/reports provide loads.
+//! ```compile_fail
+//! fn load<T: for<'de> serde::Deserialize<'de>>() {}
+//! load::<irig106_time::scale::Scaled<irig106_time::NtpTime>>();
+//! ```
 use crate::{format1::CalendarReading, *};
 use alloc::{
     collections::BTreeMap,
@@ -462,9 +467,10 @@ pub(crate) fn report_units() -> BTreeMap<String, String> {
 }
 impl Serialize for AnswerOutput {
     fn serialize<S: Serializer>(&self, s: S) -> core::result::Result<S::Ok, S::Error> {
-        Envelope {
+        DefaultEnvelope {
             schema: "irig106-time/answer-output".into(),
             version: 1,
+            defaults_version: 1,
             units: report_units(),
             value: &self.0,
         }
@@ -475,3 +481,14 @@ impl Serialize for AnswerOutput {
 pub(crate) mod data;
 mod replay;
 pub use replay::*;
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DefaultEnvelope<T> {
+    schema: String,
+    version: u16,
+    defaults_version: u16,
+    #[serde(deserialize_with = "unit_map")]
+    units: BTreeMap<String, String>,
+    value: T,
+}

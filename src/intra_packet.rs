@@ -69,9 +69,15 @@ pub enum IntraPacketTime {
     /// 48-bit Relative Time Counter value.
     Rtc(#[cfg_attr(feature = "serde", serde(with = "crate::snapshot::adapters::rtc"))] Rtc),
     /// Chapter 4 Binary Weighted Time.
-    Ch4(Ch4BinaryTime),
+    Ch4(
+        #[cfg_attr(feature = "serde", serde(with = "crate::snapshot::adapters::ch4"))]
+        Ch4BinaryTime,
+    ),
     /// IEEE-1588 time.
-    Ieee1588(Ieee1588Time),
+    Ieee1588(
+        #[cfg_attr(feature = "serde", serde(with = "crate::snapshot::adapters::ieee"))]
+        Ieee1588Time,
+    ),
     /// 64-bit Extended RTC.
     Ertc(#[cfg_attr(feature = "serde", serde(with = "crate::snapshot::adapters::ertc"))] Ertc),
 }
