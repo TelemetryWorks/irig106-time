@@ -215,3 +215,31 @@ again with jobs2/threads2 and --locked (four feature test suites, MSRV1.85,
 clippy/fmt/rustdoc, CLI, no_std/WASM, matrix, benches, all10 fuzz targets and
 cargo-deny). Actionlint and diff checks pass. There are no excluded or ignored
 probes for either of these defects; the four regressions run in the suite.
+
+## F3 review at9a4af58 — actual stream preparation session
+
+Add one session-boundary scenario with Standard/Interpolate test wrappers:
+review_stream_standard_qualifies_with_actual_second_session and
+review_stream_interpolate_qualifies_with_actual_second_session. Establish
+session1 with a data packet at RTC55, then observe a Format1 reference at RTC0
+with boundary=true (session2). Only session2 has a governing range: setup200,
+channel7 TIMEIN, RI4 year2024. No caller year or session1 setup can mask a
+wrong session lookup. A same-counter data query releases immediately in both
+modes and must retain session2 in the query/reference/range, actual setup200
+and its provenance, year2024 from RecordingDate, and the exact shared policy.
+The boundary reference must not be reported as undeclared (TF-008).
+
+Both tests pass on the unchanged production code. Temporarily replacing only
+session in StreamTimeline's shared-preparation key with session:1 (F3) causes
+**both tests to fail at runtime** on the no-TF-008 assertion; no session2 setup
+is found. Restoring the source makes both pass. Production changes: none.
+There are now21 policy integration tests plus the normalization unit test.
+This is partial POL/ANS session provenance evidence, not a new whole marker;
+regenerated matrix remains192/288 (delta0). No requirements or owner fields
+changed.
+
+Restored-source F3 validation: all18 local CI-equivalent checks pass with
+jobs2/threads2 and --locked, including the21 policy tests and normalization
+unit test across all four feature combinations; MSRV1.85, clippy/fmt/rustdoc,
+CLI, no_std/WASM, matrix, benches, all10 fuzz targets and cargo-deny are green.
+Actionlint and diff checks pass.

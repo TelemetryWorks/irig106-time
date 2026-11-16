@@ -801,3 +801,80 @@ fn review_stream_standard_keeps_actual_immediate_prior_policy() {
 fn review_stream_interpolate_keeps_actual_immediate_prior_policy() {
     review_stream_prior(StreamMode::Interpolate);
 }
+
+// Partial shared-policy/session provenance clause; no whole-requirement marker.
+fn review_stream_second_session(mode: StreamMode) {
+    let settings = SharedSettings {
+        declarations: Some(
+            Declarations::present(vec![SetupDeclarations {
+                range: GoverningRange::new(2, SignedRtcTicks::new(0), None).unwrap(),
+                setup_packet: 200,
+                provenance: "session2-only setup".into(),
+                declared_version: None,
+                ri4: Some("2024-01-01".into()),
+                recording_year: Some(2024),
+                channels: vec![ChannelDeclaration {
+                    id: 7,
+                    cdt: Some("TIMEIN".into()),
+                    ..Default::default()
+                }],
+            }])
+            .unwrap(),
+        ),
+        ..Default::default()
+    };
+    let shared = SharedPolicy::new(1, settings).unwrap();
+    let mut policy = shared
+        .stream(StreamPolicy::new(
+            1,
+            BufferCaps {
+                packets: 2,
+                bytes: 100,
+                references: 3,
+            },
+        ))
+        .unwrap();
+    policy.mode = mode;
+    policy.offline.channel = Some(7);
+    let mut stream = StreamTimeline::new(policy, None).unwrap();
+    // Establish session1, then explicitly reset RTC into session2. Only that
+    // session has declarations/year evidence; no caller-year fallback exists.
+    stream.observe(packet(1, 55, None), 0, 10, false).unwrap();
+    let reference = stream
+        .observe(packet(2, 0, Some(input())), 1, 10, true)
+        .unwrap();
+    assert!(
+        !reference.findings.iter().any(|f| f.code == 8),
+        "the session2-only setup must declare this reference TIMEIN"
+    );
+    let answer = stream
+        .observe(packet(3, 0, None), 2, 10, false)
+        .unwrap()
+        .answers
+        .remove(0);
+    assert_eq!(answer.basis.key.session, 2);
+    assert_eq!(answer.reading.unwrap().year, Some(2024));
+    let r = answer.basis.preceding.unwrap();
+    assert_eq!((r.key.session, r.key.packet, r.key.ticks), (2, 2, 0));
+    assert_eq!(
+        r.input.year_basis.selected().unwrap().origin,
+        YearOrigin::RecordingDate
+    );
+    assert_eq!(r.input.year_basis.context().recording, Some(2024));
+    let qualification = r.input.qualification.unwrap();
+    assert_eq!(qualification.policy(), &shared);
+    let declarations = qualification.declarations().unwrap();
+    assert_eq!(declarations.presence, DeclarationPresence::Present);
+    let setup = declarations.governing.as_ref().unwrap();
+    assert_eq!(setup.range.session(), 2);
+    assert_eq!(setup.setup_packet, 200);
+    assert_eq!(setup.provenance, "session2-only setup");
+}
+#[test]
+fn review_stream_standard_qualifies_with_actual_second_session() {
+    review_stream_second_session(StreamMode::Standard);
+}
+#[test]
+fn review_stream_interpolate_qualifies_with_actual_second_session() {
+    review_stream_second_session(StreamMode::Interpolate);
+}
