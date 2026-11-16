@@ -6,11 +6,12 @@ use alloc::{
 };
 use serde::de::value::Error;
 use serde::{Serialize, Serializer, ser};
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub(crate) enum Node {
     Null,
     Bool(bool),
     Number(i64),
+    Float(f64),
     String(String),
     Seq(Vec<Node>),
     Map(Vec<(String, Node)>),
@@ -39,11 +40,15 @@ impl Serializer for Tree {
     type SerializeStructVariant = Map;
     numeric!(serialize_i8:i8,serialize_i16:i16,serialize_i32:i32,serialize_u8:u8,serialize_u16:u16,serialize_u32:u32);
     decimal!(serialize_i64:i64,serialize_i128:i128,serialize_u64:u64,serialize_u128:u128);
-    fn serialize_f32(self, _: f32) -> Result<Node, Error> {
-        Err(ser::Error::custom("floating report field unsupported"))
+    fn serialize_f32(self, v: f32) -> Result<Node, Error> {
+        self.serialize_f64(f64::from(v))
     }
-    fn serialize_f64(self, _: f64) -> Result<Node, Error> {
-        Err(ser::Error::custom("floating report field unsupported"))
+    fn serialize_f64(self, v: f64) -> Result<Node, Error> {
+        if v.is_finite() {
+            Ok(Node::Float(v))
+        } else {
+            Err(ser::Error::custom("nonfinite report metric"))
+        }
     }
     fn serialize_bool(self, v: bool) -> Result<Node, Error> {
         Ok(Node::Bool(v))
@@ -204,7 +209,10 @@ impl ser::SerializeMap for Map {
         Ok(())
     }
     fn serialize_value<T: Serialize + ?Sized>(&mut self, v: &T) -> Result<(), Error> {
-        let k = self.key.take().unwrap();
+        let k = self
+            .key
+            .take()
+            .ok_or_else(|| ser::Error::custom("map value without key"))?;
         self.field(&k, v)
     }
     fn end(self) -> Result<Node, Error> {
@@ -234,6 +242,7 @@ map_impl!(SerializeStructVariant);
 impl Serialize for Node {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
+            Self::Float(v) => s.serialize_f64(*v),
             Self::Null => s.serialize_none(),
             Self::Bool(v) => s.serialize_bool(*v),
             Self::String(v) => s.serialize_str(v),
@@ -258,4 +267,98 @@ impl Serialize for Node {
 }
 pub(crate) fn capture<T: Serialize + ?Sized>(v: &T) -> Result<Node, Error> {
     v.serialize(Tree)
+}
+
+impl PartialEq for Node {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Null, Self::Null) => true,
+            (Self::Bool(a), Self::Bool(b)) => a == b,
+            (Self::String(a), Self::String(b)) => a == b,
+            (Self::Number(a), Self::Number(b)) => a == b,
+            (Self::Float(a), Self::Float(b)) => a == b,
+            (Self::Float(a), Self::Number(b)) | (Self::Number(b), Self::Float(a)) => {
+                *a == *b as f64
+            }
+            (Self::Seq(a), Self::Seq(b)) => a == b,
+            (Self::Map(a), Self::Map(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+impl<'de> serde::Deserialize<'de> for Node {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        use serde::de::{self, DeserializeSeed, MapAccess, SeqAccess, Visitor};
+        struct Seed(u8);
+        struct Value(u8);
+        impl<'de> DeserializeSeed<'de> for Seed {
+            type Value = Node;
+            fn deserialize<D: serde::Deserializer<'de>>(self, d: D) -> Result<Node, D::Error> {
+                if self.0 >= 128 {
+                    return Err(de::Error::custom("report value nesting depth"));
+                }
+                d.deserialize_any(Value(self.0))
+            }
+        }
+        impl<'de> Visitor<'de> for Value {
+            type Value = Node;
+            fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                f.write_str("canonical report JSON value")
+            }
+            fn visit_unit<E: de::Error>(self) -> Result<Node, E> {
+                Ok(Node::Null)
+            }
+            fn visit_none<E: de::Error>(self) -> Result<Node, E> {
+                Ok(Node::Null)
+            }
+            fn visit_some<D: serde::Deserializer<'de>>(self, d: D) -> Result<Node, D::Error> {
+                Seed(self.0 + 1).deserialize(d)
+            }
+            fn visit_bool<E: de::Error>(self, v: bool) -> Result<Node, E> {
+                Ok(Node::Bool(v))
+            }
+            fn visit_str<E: de::Error>(self, v: &str) -> Result<Node, E> {
+                Ok(Node::String(v.into()))
+            }
+            fn visit_i64<E: de::Error>(self, v: i64) -> Result<Node, E> {
+                i32::try_from(v).map_err(E::custom)?;
+                Ok(Node::Number(v))
+            }
+            fn visit_u64<E: de::Error>(self, v: u64) -> Result<Node, E> {
+                u32::try_from(v).map_err(E::custom)?;
+                Ok(Node::Number(v as i64))
+            }
+            fn visit_i128<E: de::Error>(self, v: i128) -> Result<Node, E> {
+                self.visit_i64(i64::try_from(v).map_err(E::custom)?)
+            }
+            fn visit_u128<E: de::Error>(self, v: u128) -> Result<Node, E> {
+                self.visit_u64(u64::try_from(v).map_err(E::custom)?)
+            }
+            fn visit_f64<E: de::Error>(self, v: f64) -> Result<Node, E> {
+                if v.is_finite() {
+                    Ok(Node::Float(v))
+                } else {
+                    Err(E::custom("nonfinite report metric"))
+                }
+            }
+            fn visit_seq<A: SeqAccess<'de>>(self, mut a: A) -> Result<Node, A::Error> {
+                let mut v = Vec::new();
+                while let Some(n) = a.next_element_seed(Seed(self.0 + 1))? {
+                    v.push(n);
+                }
+                Ok(Node::Seq(v))
+            }
+            fn visit_map<A: MapAccess<'de>>(self, mut a: A) -> Result<Node, A::Error> {
+                let mut v = alloc::collections::BTreeMap::new();
+                while let Some(k) = a.next_key::<String>()? {
+                    let n = a.next_value_seed(Seed(self.0 + 1))?;
+                    if v.insert(k, n).is_some() {
+                        return Err(de::Error::custom("duplicate report field"));
+                    }
+                }
+                Ok(Node::Map(v.into_iter().collect()))
+            }
+        }
+        Seed(0).deserialize(d)
+    }
 }

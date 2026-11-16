@@ -16,6 +16,8 @@ use crate::{
 /// reserved half-word separately with `secondary::validate_ch4_reserved` (TF-005).
 /// **Traces:** L3-WORD-101 ← L2-WORD-101 ← L1-WORD-001
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct Ch4Words {
     /// High order word, without masking the BCD day fragment.
     pub high: u16,
@@ -37,6 +39,7 @@ impl From<Ch4BinaryTime> for Ch4Words {
 /// Caller-selected interpretation, NOT a resolution of §4.7's wording conflict.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 pub enum BcdDayInterpretation {
     /// Compare the three wire bits to the low3 bits of the packed BCD ordinal day.
     /// Only its units digit contributes: day131 -> BCD0x131 -> fragment1;
@@ -46,6 +49,8 @@ pub enum BcdDayInterpretation {
 /// Independently optional context; incomplete context produces labelled partials.
 /// No default year, day, edition or interpretation is selected.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct BcdContext {
     /// Explicit Gregorian year0..9999, never inferred from the fragment.
     pub year: Option<u16>,

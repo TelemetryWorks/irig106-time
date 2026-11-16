@@ -456,6 +456,8 @@ pub(crate) fn report_units() -> BTreeMap<String, String> {
         ("bytes", "byte"),
         ("ntp_fraction", "2^-32 s"),
         ("calendar", "year/day/h/min/s/ns"),
+        ("drift", "ppm"),
+        ("density", "reference/s"),
     ])
 }
 impl Serialize for AnswerOutput {
@@ -471,3 +473,5 @@ impl Serialize for AnswerOutput {
 }
 
 pub(crate) mod data;
+mod replay;
+pub use replay::*;

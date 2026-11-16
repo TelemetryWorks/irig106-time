@@ -7,6 +7,7 @@ use alloc::string::String;
 /// **Traces:** L3-EDN-103 ← L2-EDN-103 ← L1-EDN-003
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 pub enum PacketEdition {
     /// RCC 106-04.
     V04,

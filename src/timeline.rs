@@ -238,6 +238,7 @@ impl TimelineFinding {
 }
 /// Caller labels; static setup packets may precede the first time packet.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum PacketKind {
     /// Static Computer-Generated Format 1.
     StaticSetup,
@@ -1547,4 +1548,39 @@ crate::snapshot::wide::serialize_struct!(OfflineAnswer {
     reading,
     counter_ns,
     basis
+});
+
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(TimelineFinding {
+    code,
+    severity,
+    session,
+    packet,
+    channel,
+    related,
+    raw_rtc,
+    delta_ns,
+    evidence
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(OfflineQuality {
+    valid,
+    rejected,
+    admitted,
+    interval_ns,
+    min_spacing_ns,
+    max_spacing_ns,
+    references_per_second,
+    drift_ppm,
+    unavailable
+});
+
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(OfflineSession {
+    id,
+    first_ticks,
+    high_ticks,
+    references,
+    first_time_packet,
+    first_packet
 });

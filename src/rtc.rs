@@ -57,6 +57,7 @@ pub fn signed_nanos_to_unsigned(nanos: SignedNanos) -> Result<NanosDuration> {
 /// **Traces:** L3-RTC-103 ← L2-RTC-103 ← L1-RTC-003
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 pub enum CounterOrder {
     /// Signed nearest modular displacement; the exact half range is ambiguous.
     Nearest,

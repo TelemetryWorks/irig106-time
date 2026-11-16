@@ -530,6 +530,7 @@ pub fn inspect_stamp(input: StampInput<'_>, policy: &SecondaryPolicy) -> Result<
 /// All six C-d\NTM kinds; components are not complete timestamps.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 pub enum NetworkWord {
     /// Full PTP seconds and nanoseconds, in TAI.
     Ptp(
@@ -583,6 +584,7 @@ pub enum NetworkWord {
 /// Caller-supplied words in significance order, not payload byte extraction.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 pub enum TimeWord {
     /// Chapter4 binary weighting, including low bit15 as count data.
     Binary(

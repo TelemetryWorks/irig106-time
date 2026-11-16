@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S12b2b2 checked answer/report replay
+
+- Add report/individual-answer snapshots with complete typed source inputs,
+  policies/tables and canonical cached outputs. Loading replays the original
+  library paths and rejects mismatches in any output field; it never installs
+  private engine state. Include offline session/reference records, all engine
+  findings, requested quality metrics and full Own/Stamp/Word envelopes.
+- Preserve explicit progress, caps, mode changes and prior qualification.
+  Caller-set work/output/raw-byte limits and128-level cached-value nesting
+  bound replay; callers also bound JSON/policy graph size. Completed stream
+  recipes explicitly Finish. Q3's live-state rehydration stays omitted.
+- Q5 implementation is complete with b1+b2. The next small schema/negative-test
+  unit prepares the owner's single review; the schema is NOT frozen. Metrics
+  remain finite approximate numbers with units; wide integer facts stay strings.
+  No native time/admission/correlation behavior changed; matrix192/288.
+
 ### S12b2b1 exact answer output and remaining adapter audit
 
 - Add candidate version1 answer-output carrying the complete replay basis and

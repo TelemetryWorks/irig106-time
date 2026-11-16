@@ -171,6 +171,7 @@ impl TimeF2Csdw {
 /// **Traces:** L3-NTP-101, L3-NTP-102
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct NtpTime {
     /// Raw 32-bit UTC-labelled seconds relative to 1900; era is unresolved.
     pub seconds: u32,

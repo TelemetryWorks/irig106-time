@@ -57,3 +57,47 @@ not an IRIG106 mandate. First part alone does NOT complete Q5 or freeze schema.
 b1 restored source: all18 local CI-equivalent checks pass, jobs2/threads2,
 --locked, MSRV1.85, CLI, no_std/WASM±serde, benches, all10 fuzz builds, deny,
 fmt/clippy/rustdoc and matrix. Source parsing/conversion/defaults unchanged.
+
+## b2 — checked replay implementation
+
+Tests-only44c9c17 precedes the API (two compile failures: types absent, not
+runtime failures). Five final replay tests cover both clock paths, all three
+adapter envelopes, full offline sessions, native findings/quality, TF021/029,
+interpolation500005000ns and accepted old-policy draining. Prior qualification
+is asserted by the supplied policy ID, not just its presence. The expanded
+corruption/resource/leap tests and consolidated schema follow in the third
+small review unit. No whole markers or release deferrals are added.
+
+ReportSnapshot contains a complete typed input recipe plus the exact emitted
+answers/findings/session records/measurements. Its loader validates schema,
+defaults version and units, runs the original library paths into temporary
+engines, and compares every regenerated output field to the cached report.
+Unknown, duplicate, changed, dangling or out-of-range output fields cannot be
+accepted as native state. JSON member order is immaterial; input array order
+is preserved. Exact integer strings and finite approximate metric numbers are
+separate token kinds. Additional fields on raw word/config leaves reject.
+
+AnswerSnapshot selects a checked answer index within that self-contained
+report. AnswerOutput alone is output-only: it does not claim a safe basis-only
+loader without the original inputs. Policy snapshots include full tables and
+contexts; no default table registry or host clock is consulted. An explicit
+preparation list retains immediate-prior policy/normalization/network evidence.
+All native conversion/selection/year/session behavior is delegated unchanged.
+
+Caller limits bound steps (including preparations/measurements), answer count
+and raw payload bytes. Callers must also bound total JSON bytes/policy graph
+size before loading. Cached output nesting is capped at128. Streams explicitly
+end with Finish; live pending queues/indexes/anchors are neither loaded nor
+returned. This provides checked report replay, not Q3-deferred resumable engine
+rehydration. The returned offline sessions are plain validated records.
+
+Owner Q5's implementation is complete across b1+b2: requested numeric paths
+are fixed/removed; full versioned answer/timeline/report output and validated
+loads retain raw/stated/assumed evidence. Schema review/freeze approval is NOT
+claimed: the third unit prepares the owner's single review packet and expands
+negative evidence. The implementation itself does not freeze the schema.
+
+b2 restored source: all18 local CI-equivalent checks pass, jobs2/threads2,
+--locked, incl MSRV1.85, CLI, no_std/WASM±serde, benches, all10 fuzz builds,
+cargo-deny and matrix. Schema/corruption audit is the next stacked unit;
+GitHub workflows target main, so stacked-base CI awaits retargeting.

@@ -83,8 +83,13 @@ impl Serializer for Tree {
     type SerializeStruct = Map;
     type SerializeStructVariant = Map;
     numeric!(serialize_i8:i8,serialize_i16:i16,serialize_i32:i32,serialize_i64:i64,serialize_i128:i128,
-        serialize_u8:u8,serialize_u16:u16,serialize_u32:u32,serialize_u64:u64,serialize_u128:u128,
-        serialize_f32:f32,serialize_f64:f64);
+        serialize_u8:u8,serialize_u16:u16,serialize_u32:u32,serialize_u64:u64,serialize_u128:u128);
+    fn serialize_f32(self, v: f32) -> Result<Node, Error> {
+        Ok(Node::Number(format!("{v:?}")))
+    }
+    fn serialize_f64(self, v: f64) -> Result<Node, Error> {
+        Ok(Node::Number(format!("{v:?}")))
+    }
     fn serialize_bool(self, v: bool) -> Result<Node, Error> {
         Ok(Node::Bool(v))
     }
@@ -287,8 +292,10 @@ impl<'de> Deserializer<'de> for Node {
                     v.visit_u64(i)
                 } else if let Ok(i) = n.parse::<i128>() {
                     v.visit_i128(i)
+                } else if let Ok(i) = n.parse::<u128>() {
+                    v.visit_u128(i)
                 } else {
-                    v.visit_u128(n.parse().map_err(de::Error::custom)?)
+                    v.visit_f64(n.parse().map_err(de::Error::custom)?)
                 }
             }
         }

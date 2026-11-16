@@ -96,6 +96,9 @@ impl StreamPolicy {
 /// Complete advance channel inventory supplied by the caller; never inferred
 /// from arrival counts. `None` inventory means selection is undecidable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct StreamChannel {
     /// Channel identifier.
     pub id: u16,
