@@ -21,6 +21,7 @@ pub type Result<T> = core::result::Result<T, TimeError>;
 /// **Traces:** L3-ERR-001 ← L2-ERR-001 ← L1-ERR-001..L1-ERR-004
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum TimeError {
     /// A caller leap table is structurally invalid or contradicts known history.
     /// **Traces:** L3-TAI-103 ← L2-TAI-103 ← L1-TAI-003
@@ -32,6 +33,10 @@ pub enum TimeError {
     /// **Traces:** L3-RTC-101 ← L2-RTC-101 ← L1-RTC-001
     CounterWidth {
         /// Unmasked caller input.
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
         value: u64,
     },
     /// Two raw counters are exactly half a wrap apart; ordering is required.
@@ -114,7 +119,13 @@ pub enum TimeError {
 
     /// Caller supplied an invalid offline timeline identity or policy.
     /// **Traces:** L3-POL-102 ← L2-POL-102 ← L1-POL-002
-    InvalidTimelineInput(&'static str),
+    InvalidTimelineInput(
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        &'static str,
+    ),
 
     /// Conversion cannot proceed without explicit, reviewed context.
     NeedsContext {
@@ -134,8 +145,16 @@ pub enum TimeError {
     /// Input buffer was shorter than required.
     BufferTooShort {
         /// Number of bytes required.
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
         expected: usize,
         /// Number of bytes actually available.
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
         actual: usize,
     },
 
@@ -143,7 +162,10 @@ pub enum TimeError {
     ///
     /// `BufferTooShort` and `OutOfRange` from `irig106-types` are mapped to
     /// the matching `TimeError` variants; this carries anything else.
-    Types(irig106_types::TypesError),
+    Types(
+        #[cfg_attr(feature = "serde", serde(serialize_with = "crate::snapshot::display"))]
+        irig106_types::TypesError,
+    ),
 }
 
 /// Lift errors from `irig106-types` constructors (e.g.,

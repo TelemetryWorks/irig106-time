@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S12b2b1 exact answer output and remaining adapter audit
+
+- Add candidate version1 answer-output carrying the complete replay basis and
+  native projection with explicit units and exact wide integer strings. Native
+  answer/evidence serializers also quote wide quantities, including shared
+  types and nested prior policies. No unchecked basis/engine load is added.
+- **Breaking (serde):** PtpTime.seconds, Format1/2Reading.consumed, RTC/ERTC
+  intra-packet variants and the secondary ERTC variant now use decimal strings.
+  PTP seconds retains its32-bit domain. Raw derived Format1/2Reading loses
+  Deserialize; regenerate from bounded raw input via checked reports (b2).
+  Wire parsing/conversion and CLI output behavior are unchanged.
+- Split S12b2b for review: b2 provides checked report/answer replay loads and the
+  complete schema inventory. Q5 requires both parts; no schema freeze. Matrix
+  remains192/288, partial clause evidence only.
+
 ### S12b2a complete policy snapshots and legacy aggregate audit
 
 - Add candidate v1 policy snapshots with required defaults version, units and

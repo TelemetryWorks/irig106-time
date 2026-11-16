@@ -129,11 +129,24 @@ pub struct StampInput<'a> {
 }
 /// Actual answer at the derived stamp query, including all original basis fields.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum ResolvedCounter {
     /// Offline lookup at the stamp counter, allowing its own reference selection.
-    Offline(Box<OfflineAnswer>),
+    Offline(
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        Box<OfflineAnswer>,
+    ),
     /// Already released stream query, retaining caps/mode/fallback and no revision.
-    Stream(Box<StreamAnswer>),
+    Stream(
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        Box<StreamAnswer>,
+    ),
 }
 impl ResolvedCounter {
     /// Own an offline lookup snapshot with bounded enum stack size.
@@ -516,29 +529,85 @@ pub fn inspect_stamp(input: StampInput<'_>, policy: &SecondaryPolicy) -> Result<
 }
 /// All six C-d\NTM kinds; components are not complete timestamps.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum NetworkWord {
     /// Full PTP seconds and nanoseconds, in TAI.
-    Ptp(PtpTime),
+    Ptp(
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        PtpTime,
+    ),
     /// PTP seconds component only.
-    PtpSeconds(u32),
+    PtpSeconds(
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        u32,
+    ),
     /// PTP nanoseconds component only, less than1e9.
-    PtpNanoseconds(u32),
+    PtpNanoseconds(
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        u32,
+    ),
     /// Full NTP seconds/fraction, RDG-012 UTC reckoning.
-    Ntp(NtpTime),
+    Ntp(
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        NtpTime,
+    ),
     /// NTP seconds component only.
-    NtpSeconds(u32),
+    NtpSeconds(
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        u32,
+    ),
     /// NTP fraction component only,2^-32s units.
-    NtpFraction(u32),
+    NtpFraction(
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        u32,
+    ),
 }
 /// Caller-supplied words in significance order, not payload byte extraction.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum TimeWord {
     /// Chapter4 binary weighting, including low bit15 as count data.
-    Binary(Ch4Words),
+    Binary(
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        Ch4Words,
+    ),
     /// Chapter4 BCD, with the unresolved historical wording retained.
-    Bcd(Ch4Words),
+    Bcd(
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        Ch4Words,
+    ),
     /// Table9-11 full or component network time.
-    Network(NetworkWord),
+    Network(
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        NetworkWord,
+    ),
 }
 /// Explicit binding of matching components; no proximity or zero-fill heuristic.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -818,3 +887,39 @@ pub fn answer_word(
     }
     Ok(a)
 }
+
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(ExtractionOrigin {
+    key,
+    channel,
+    byte_offset,
+    field
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(StampInspection {
+    origin,
+    flags,
+    query_id,
+    raw,
+    order,
+    time,
+    query,
+    remainder,
+    issue,
+    findings,
+    policy
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(ComponentBinding {
+    target,
+    other,
+    word
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(WordContext {
+    own,
+    bcd,
+    bcd_scale,
+    ntp,
+    matching
+});

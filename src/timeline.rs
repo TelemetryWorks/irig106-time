@@ -31,6 +31,7 @@ pub enum ReferenceStrategy {
 }
 /// Why a channel wins contract 5.2's ranking.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum ChannelChoice {
     /// Caller-fixed channel; never silently substitute another.
     Caller,
@@ -247,6 +248,7 @@ pub enum PacketKind {
 }
 /// Selected year provenance retained with all competing session evidence.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum YearOrigin {
     /// Calendar derived by the network converter; consult its era/table basis.
     NetworkEvidence,
@@ -261,9 +263,21 @@ pub enum YearOrigin {
 }
 /// Bounded decoder result, separate from reference admission.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum ReferenceValue {
     /// An ordinary calendar value and its payload-valid status.
-    Readable(AbsoluteTime, bool),
+    Readable(
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        AbsoluteTime,
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        bool,
+    ),
     /// Payload is explicitly invalid; no readable value.
     Invalid,
     /// Malformed data cannot be admitted under any policy.
@@ -462,6 +476,7 @@ impl PacketKey {
 }
 /// Reference admission reasons remain visible even when policy admits a value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum Rejection {
     /// No governing TIMEIN declaration.
     Undeclared,
@@ -929,6 +944,7 @@ impl TimelineBuilder {
 }
 /// Position relative to admitted same-channel references.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum ReferencePosition {
     /// No admitted/selected reference, with a separately recorded reason.
     CounterOnly,
@@ -1460,3 +1476,75 @@ pub(crate) fn stream_observation(
     }
     Ok((reference, b.findings))
 }
+
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(OfflinePolicy {
+    shared,
+    gap_interval_ns,
+    version,
+    late_ns,
+    infer_sessions,
+    channel,
+    channel_preference,
+    include_undeclared,
+    include_invalid,
+    strategy,
+    preceding_on_tie,
+    back_extrapolate,
+    stop_on_loss,
+    gap_tolerance_ns,
+    jump_threshold_ns,
+    finding_levels
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(ReferenceInput {
+    value,
+    scale,
+    source,
+    format,
+    its,
+    precision_ns,
+    wire,
+    qualified,
+    raw_csdw,
+    year_origin,
+    year_basis,
+    network,
+    normalization,
+    qualification
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(PacketKey {
+    session,
+    ticks,
+    packet
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(TimelineReference {
+    key,
+    channel,
+    declared_timein,
+    declared_external,
+    input,
+    admitted,
+    reasons
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(OfflineBasis {
+    session_origin,
+    key,
+    channel,
+    reference,
+    distance_ns,
+    position,
+    unresolved,
+    policy,
+    drift_corrected
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(OfflineAnswer {
+    time,
+    reading,
+    counter_ns,
+    basis
+});

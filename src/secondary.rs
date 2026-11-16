@@ -22,7 +22,7 @@ pub enum SecondaryHeaderTime {
     /// IEEE-1588 time.
     Ieee1588(Ieee1588Time),
     /// 64-bit Extended RTC.
-    Ertc(Ertc),
+    Ertc(#[cfg_attr(feature = "serde", serde(with = "crate::snapshot::adapters::ertc"))] Ertc),
 }
 
 /// Both checksum readings and the recorded checksum (RDG-008, suspect).

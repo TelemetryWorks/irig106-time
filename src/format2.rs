@@ -132,11 +132,24 @@ pub struct NetworkAdmission {
 /// Native-format conversion, preserving full S04/S05 basis and raw values.
 /// Missing UTC for PTP does not remove its readable TAI value.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum NetworkConversion {
     /// Stated UTC with era, floor rounding and leap-window/table evidence.
-    Ntp(NtpConversion),
+    Ntp(
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        NtpConversion,
+    ),
     /// Stated native TAI and a separate table-qualified UTC projection.
-    Ptp(PtpConversion),
+    Ptp(
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        PtpConversion,
+    ),
     /// Reserved NTF: raw body kept, no decoded time, never policy-admitted.
     UnsupportedFormat,
     /// Known NTF with a malformed body; never policy-admitted.
@@ -380,3 +393,43 @@ impl Format2Reference {
         &self.findings
     }
 }
+
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(ReferenceCapture {
+    session,
+    packet,
+    channel,
+    rtc,
+    byte_offset
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(Format2Observation {
+    capture,
+    declared_edition,
+    data_type_version,
+    declared_timein,
+    csdw,
+    raw_body,
+    reading,
+    decode_error
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(AdmissionPolicy {
+    include_invalid,
+    include_undeclared,
+    finding_levels
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(NetworkAdmission {
+    eligible,
+    invalid,
+    undeclared
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(Format2Reference {
+    observation,
+    conversion,
+    admission,
+    policy,
+    findings
+});

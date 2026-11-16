@@ -18,6 +18,7 @@ pub enum Severity {
 /// Permanent catalog identity. Unknown IDs cannot be constructed.
 /// **Traces:** L3-FND-101 ← L2-FND-101 ← L1-FND-001
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct FindingCode(u8, &'static str);
 impl FindingCode {
     /// Look up an approved permanent identity, all32 with owner-approved levels.
@@ -93,6 +94,7 @@ impl FindingCode {
 }
 /// Factual effect is never changed by a caller severity override.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum ValueValidity {
     /// Affected mapped value is retained, possibly labelled ambiguous.
     Kept,
@@ -115,11 +117,24 @@ pub struct FindingLocation {
 }
 /// Exact raw wire/derived integer quantity, independent of JSON representation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum RawValue {
     /// Unsigned bits or count.
-    Unsigned(u128),
+    Unsigned(
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        u128,
+    ),
     /// Signed difference/residual.
-    Signed(i128),
+    Signed(
+        #[cfg_attr(
+            feature = "serde",
+            serde(serialize_with = "crate::snapshot::wide::serialize")
+        )]
+        i128,
+    ),
 }
 /// Named observed/expected pair; the name specifies the field and units.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -332,3 +347,35 @@ impl Finding {
         Self::new(FindingCode::from_number(30)?, level, evidence)
     }
 }
+
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(FindingLocation {
+    session,
+    packet,
+    channel,
+    byte_offset
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(RawField {
+    name,
+    observed,
+    expected
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(NtpEvidence { raw, mapped_unix });
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(FindingEvidence {
+    location,
+    related,
+    raw_rtc,
+    raw_fields,
+    validity,
+    ntp,
+    decode_error
+});
+#[cfg(feature = "serde")]
+crate::snapshot::wide::serialize_struct!(Finding {
+    code,
+    severity,
+    evidence
+});

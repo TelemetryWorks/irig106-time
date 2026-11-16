@@ -271,6 +271,10 @@ impl NtpTime {
 #[cfg_attr(feature = "serde", serde(try_from = "PtpWire"))]
 pub struct PtpTime {
     /// Seconds since 1970-01-01 00:00:00 TAI (32 bits).
+    #[cfg_attr(
+        feature = "serde",
+        serde(with = "crate::snapshot::adapters::ptp_seconds")
+    )]
     pub seconds: u32,
     /// Nanoseconds within the current second (0–999,999,999).
     pub nanoseconds: u32,
@@ -381,7 +385,7 @@ pub enum NetworkTime {
 
 /// Raw Format 2 reading; invalid status remains recorded, never promoted.
 /// **Traces:** L3-F2CSDW-105 ← L2-F2CSDW-105
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Format2Reading {
     /// Raw data word and independent NTF/TS/reserved evidence.
@@ -389,6 +393,10 @@ pub struct Format2Reading {
     /// Decoded body and stated scale; None for reserved NTF.
     pub time: Option<Scaled<NetworkTime>>,
     /// Number of bytes consumed, excluding filler/checksum.
+    #[cfg_attr(
+        feature = "serde",
+        serde(serialize_with = "crate::snapshot::adapters::count::serialize")
+    )]
     pub consumed: usize,
 }
 impl Format2Reading {
@@ -526,6 +534,7 @@ mod network_time_tests;
 #[derive(serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 struct PtpWire {
+    #[serde(with = "crate::snapshot::adapters::ptp_seconds")]
     seconds: u32,
     nanoseconds: u32,
 }
