@@ -521,22 +521,38 @@ fn qualified_edition_and_provided_year_evidence_survive_replay() {
                 tmats_edition: Some("24".into()),
                 use_tmats: true,
                 setup: SetupVersionEvidence::Unavailable,
-                data_type_version: Some(0x10),
+                data_type_version: Some(0x0A),
             },
             scales: scale::ScalePolicy::default(),
         };
     }
-    let r = ReportSnapshot::new(p).unwrap();
-    assert!(r.findings().iter().any(|f| f.code == 31));
+    let r = ReportSnapshot::new(p.clone()).unwrap();
+    assert!(!r.findings().iter().any(|f| f.code == 31));
     let refi = &r.sessions().unwrap()[0].references[0].input;
     assert!(refi.qualified.is_some());
     assert!(matches!(
         refi.source,
-        Some(TimeF1Source::Ext04 { present: true, .. })
+        Some(TimeF1Source::ExternalTime { present: true, .. })
     ));
     assert_eq!(
         encode(&decode::<ReportSnapshot>(encode(&r)).unwrap()),
         encode(&r)
+    );
+    if let ClockRecipe::Offline { packets, .. } = &mut p.clock {
+        if let ReferenceSpec::QualifiedFormat1 { evidence, .. } = &mut packets[0].packet.body {
+            evidence.override_edition = None;
+            evidence.tmats_edition = Some("04".into());
+        }
+    }
+    let unresolved = ReportSnapshot::new(p).unwrap();
+    assert!(unresolved.findings().iter().any(|f| f.code == 31));
+    assert!(matches!(
+        unresolved.sessions().unwrap()[0].references[0].input.source,
+        Some(TimeF1Source::Unresolved(1))
+    ));
+    assert_eq!(
+        encode(&decode::<ReportSnapshot>(encode(&unresolved)).unwrap()),
+        encode(&unresolved)
     );
     let mut p = plan();
     if let ClockRecipe::Offline { packets, .. } = &mut p.clock {
@@ -566,4 +582,37 @@ fn qualified_edition_and_provided_year_evidence_survive_replay() {
         encode(&decode::<ReportSnapshot>(encode(&r)).unwrap()),
         encode(&r)
     );
+}
+
+#[test]
+fn decoded_header_and_stamp_subseconds_reject_invalid_loads() {
+    let c = Ch4BinaryTime {
+        high_order: 0,
+        low_order: 0,
+        microseconds: 0,
+    };
+    let mut w = encode(&IntraPacketTime::Ch4(c));
+    assert!(decode::<IntraPacketTime>(w.clone()).is_ok());
+    *w.field("Ch4").field("microseconds") = Node::Number("10000".into());
+    assert!(decode::<IntraPacketTime>(w).is_err());
+    let mut w = encode(&SecondaryHeaderTime::Ch4(c));
+    *w.field("Ch4").field("microseconds") = Node::Number("10000".into());
+    assert!(decode::<SecondaryHeaderTime>(w).is_err());
+    let ieee = Ieee1588Time {
+        seconds: 0,
+        nanoseconds: 0,
+    };
+    let mut w = encode(&IntraPacketTime::Ieee1588(ieee));
+    assert!(decode::<IntraPacketTime>(w.clone()).is_ok());
+    *w.field("Ieee1588").field("nanoseconds") = Node::Number("1000000000".into());
+    assert!(decode::<IntraPacketTime>(w).is_err());
+    let mut w = encode(&SecondaryHeaderTime::Ieee1588(ieee));
+    *w.field("Ieee1588").field("nanoseconds") = Node::Number("1000000000".into());
+    assert!(decode::<SecondaryHeaderTime>(w).is_err());
+    let mut w = encode(&years::YearContext {
+        caller: Some(2023),
+        recording: None,
+    });
+    *w.field("caller") = Node::Number("10000".into());
+    assert!(decode::<years::YearContext>(w).is_err());
 }
