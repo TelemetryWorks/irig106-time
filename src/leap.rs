@@ -45,8 +45,10 @@ const BUILTIN: &[(u64, i32)] = &[
 /// **Traces:** L3-TAI-101 ← L2-TAI-101 ← L1-TAI-001
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct LeapSecondEntry {
     /// Unix UTC instant at which the offset is effective.
+    #[cfg_attr(feature = "serde", serde(with = "crate::snapshot::unix"))]
     pub effective_unix: UnixSeconds,
     /// TAI-minus-UTC seconds, not an unsigned magnitude.
     pub tai_utc_offset: TaiUtcOffset,
@@ -55,15 +57,18 @@ pub struct LeapSecondEntry {
 /// **Traces:** L3-TAI-104 ← L2-TAI-104 ← L1-TAI-004
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct LeapTableMetadata {
     /// Caller versioned identity, or the pinned IERS snapshot identity.
     pub id: String,
     /// Source/authority supplied with the data; no trust inferred from a URL.
     pub source: String,
     /// First supported UTC second, inclusive; never before1972.
+    #[cfg_attr(feature = "serde", serde(with = "crate::snapshot::unix"))]
     pub supported_start: UnixSeconds,
     /// Last covered UTC second, including ALL its nanosecond fractions.
     /// Coverage ends at the following second. Independent of final transition.
+    #[cfg_attr(feature = "serde", serde(with = "crate::snapshot::unix"))]
     pub known_current_through: UnixSeconds,
 }
 /// Validated transitions and coverage, immutable except checked add/install.
@@ -78,6 +83,7 @@ pub struct LeapSecondTable {
 }
 #[cfg(feature = "serde")]
 #[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 struct TableWire {
     entries: Vec<LeapSecondEntry>,
     metadata: LeapTableMetadata,

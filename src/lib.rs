@@ -26,8 +26,8 @@
 //! - **Recording events** — Data Type 0x02 event parsing with time context
 //! - **Encoding** — `to_le_bytes()` on all wire-format types for packet
 //!   construction (BCD, CSDW, NTP, PTP, RTC)
-//! - **serde** — Optional `Serialize`/`Deserialize` on all public data types
-//!   (except `TimeError`) via the `serde` feature gate
+//! - **serde** — Exact versioned value snapshots and validated supported leaf
+//!   loading; complex engine-state deserialization is intentionally omitted
 //! - **chrono** — Optional `From` conversions between `AbsoluteTime` and
 //!   `chrono::NaiveDateTime` via the `chrono` feature gate
 //!
@@ -82,6 +82,9 @@ pub mod policy;
 pub mod reference;
 /// Explicit time-scale evidence and policy assumptions.
 pub mod scale;
+/// Exact, versioned Serde value snapshots (schema candidate, not frozen).
+#[cfg(feature = "serde")]
+pub mod snapshot;
 
 /// Absolute time representations: `AbsoluteTime`, `CalendarTime`, `Ch4BinaryTime`, `Ieee1588Time`, `Ertc`.
 pub mod absolute;

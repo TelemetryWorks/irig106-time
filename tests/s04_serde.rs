@@ -9,7 +9,6 @@ use serde::{
     },
 };
 enum Value {
-    U(u64),
     I(i32),
     S(&'static str),
     Seq(Vec<Value>),
@@ -24,7 +23,6 @@ impl<'de> Deserializer<'de> for Value {
     type Error = Error;
     fn deserialize_any<V: Visitor<'de>>(self, v: V) -> Result<V::Value, Error> {
         match self {
-            Self::U(x) => v.visit_u64(x),
             Self::I(x) => v.visit_i32(x),
             Self::S(x) => v.visit_borrowed_str(x),
             Self::Seq(x) => v.visit_seq(SeqDeserializer::new(x.into_iter())),
@@ -40,7 +38,7 @@ impl<'de> Deserializer<'de> for Value {
     serde::forward_to_deserialize_any! {bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string bytes byte_buf option unit unit_struct seq tuple tuple_struct map struct enum identifier ignored_any}
 }
 fn wire(duplicate: bool) -> Value {
-    let entry = || Value::Seq(vec![Value::U(63_072_000), Value::I(10)]);
+    let entry = || Value::Seq(vec![Value::S("63072000"), Value::I(10)]);
     Value::Seq(vec![
         Value::Seq(if duplicate {
             vec![entry(), entry()]
@@ -50,8 +48,8 @@ fn wire(duplicate: bool) -> Value {
         Value::Seq(vec![
             Value::S("serde-fixture"),
             Value::S("caller"),
-            Value::U(63_072_000),
-            Value::U(100_000_000),
+            Value::S("63072000"),
+            Value::S("100000000"),
         ]),
     ])
 }

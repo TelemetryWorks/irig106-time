@@ -34,6 +34,7 @@ pub enum ScaleOrigin {
 /// **Traces:** L3-TAI-106 ← L2-TAI-106
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", serde(try_from = "ScaleWire"))]
 pub struct ScaleEvidence {
     stated: TimeScale,
     effective: TimeScale,
@@ -162,3 +163,29 @@ unknown_scale!(
     crate::SecondaryHeaderTime,
     crate::IntraPacketTime
 );
+
+#[cfg(feature = "serde")]
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ScaleWire {
+    stated: TimeScale,
+    effective: TimeScale,
+    origin: ScaleOrigin,
+}
+#[cfg(feature = "serde")]
+impl TryFrom<ScaleWire> for ScaleEvidence {
+    type Error = crate::TimeError;
+    fn try_from(w: ScaleWire) -> crate::Result<Self> {
+        let value = match w.origin {
+            ScaleOrigin::Standard => Self::standard(w.stated),
+            ScaleOrigin::Policy => Self::assumed(w.effective),
+            ScaleOrigin::Unspecified => Self::unknown(),
+        };
+        if value.stated != w.stated || value.effective != w.effective || value.origin != w.origin {
+            return Err(crate::TimeError::InvalidTimelineInput(
+                "contradictory scale provenance",
+            ));
+        }
+        Ok(value)
+    }
+}
