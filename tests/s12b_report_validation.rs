@@ -526,6 +526,9 @@ fn qualified_edition_and_provided_year_evidence_survive_replay() {
             scales: scale::ScalePolicy::default(),
         };
     }
+    let mut capped = p.clone();
+    capped.limits.raw_bytes = d(1);
+    assert!(ReportSnapshot::new(capped).is_err());
     let r = ReportSnapshot::new(p.clone()).unwrap();
     assert!(!r.findings().iter().any(|f| f.code == 31));
     let refi = &r.sessions().unwrap()[0].references[0].input;
@@ -615,4 +618,49 @@ fn decoded_header_and_stamp_subseconds_reject_invalid_loads() {
     });
     *w.field("caller") = Node::Number("10000".into());
     assert!(decode::<years::YearContext>(w).is_err());
+}
+
+#[test]
+fn mismatched_word_era_context_is_retained_and_zero_still_wins() {
+    use irig106_time::{ch4::*, extracted::*, ntp::*, scale::*};
+    let mut ntp = NtpContext::new(2);
+    ntp.declared = Some(EraDeclaration {
+        era: 1,
+        id: "other session".into(),
+    });
+    let mut p = plan();
+    for seconds in [63104, 0] {
+        p.requests.push(ReportRequest::Word {
+            origin: origin(),
+            word: TimeWord::Network(NetworkWord::Ntp(NtpTime {
+                seconds,
+                fraction: 0,
+            })),
+            context: context(1),
+            bcd: BcdContext::default(),
+            bcd_scale: TimeScale::Unknown,
+            matching: None,
+            ntp_context: Some(ntp.clone()),
+        });
+    }
+    let r = ReportSnapshot::new(p).unwrap();
+    assert!(r.answers()[1].view().value().calendar.is_none());
+    assert!(matches!(
+        r.answers()[1].view().value().issue,
+        Some(TimeError::NeedsContext {
+            context: "NTP word session context"
+        })
+    ));
+    assert!(
+        r.answers()[2]
+            .view()
+            .value()
+            .findings
+            .iter()
+            .any(|f| f.code().number() == 29)
+    );
+    assert_eq!(
+        encode(&decode::<ReportSnapshot>(encode(&r)).unwrap()),
+        encode(&r)
+    );
 }
