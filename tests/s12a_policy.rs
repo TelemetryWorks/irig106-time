@@ -634,8 +634,7 @@ fn review_requalification_keeps_immediate_prior_policy_and_clears_stale_issue() 
     assert_eq!(a.qualification.unwrap().policy(), &first);
 }
 
-#[test]
-fn review_offline_shared_governing_range_uses_unwrapped_ticks() {
+fn review_wrap_policy() -> SharedPolicy {
     let wrap = 1u64 << 48;
     let settings = SharedSettings {
         declarations: Some(
@@ -656,28 +655,41 @@ fn review_offline_shared_governing_range_uses_unwrapped_ticks() {
         ),
         ..Default::default()
     };
-    let p = SharedPolicy::new(1, settings).unwrap();
-    let check = |r: &TimelineReference| {
-        assert_eq!(r.key.ticks, i128::from(wrap) + 1);
-        assert_eq!(r.input.year_basis.selected().unwrap().year, 2024);
-        assert_eq!(
-            r.input
-                .qualification
-                .as_ref()
-                .unwrap()
-                .declarations()
-                .unwrap()
-                .governing
-                .as_ref()
-                .unwrap()
-                .setup_packet,
-            99
-        );
-    };
+    SharedPolicy::new(1, settings).unwrap()
+}
+
+fn review_check_wrapped_reference(r: &TimelineReference) {
+    let wrap = 1u64 << 48;
+    assert_eq!(r.key.ticks, i128::from(wrap) + 1);
+    assert_eq!(r.input.year_basis.selected().unwrap().year, 2024);
+    assert_eq!(
+        r.input
+            .qualification
+            .as_ref()
+            .unwrap()
+            .declarations()
+            .unwrap()
+            .governing
+            .as_ref()
+            .unwrap()
+            .setup_packet,
+        99
+    );
+}
+
+#[test]
+fn review_offline_shared_governing_range_uses_unwrapped_ticks() {
+    let wrap = 1u64 << 48;
+    let p = review_wrap_policy();
     let mut b = TimelineBuilder::new(p.offline(OfflinePolicy::default()).unwrap()).unwrap();
     b.observe(packet(1, wrap - 2, None), false).unwrap();
-    b.observe(packet(2, 1, Some(input())), false).unwrap();
-    check(&b.finish().unwrap().sessions()[0].references[0]);
+    let key = b.observe(packet(2, 1, Some(input())), false).unwrap();
+    let timeline = b.finish().unwrap();
+    assert_eq!(
+        timeline.lookup(key).unwrap().reading.unwrap().year,
+        Some(2024)
+    );
+    review_check_wrapped_reference(&timeline.sessions()[0].references[0]);
 }
 
 #[test]
@@ -694,4 +706,98 @@ fn review_mode_change_checks_the_new_hold_interval_for_overflow() {
     let progress = u64::MAX - 1_100_000_000; // old deadline fits exactly; new one overflows.
     assert!(s.set_policy(next, progress).is_err());
     assert_eq!(s.policy().id, 1);
+}
+
+fn review_stream_wrap(mode: StreamMode) {
+    let p = review_wrap_policy();
+    let mut core = p
+        .stream(StreamPolicy::new(
+            1,
+            BufferCaps {
+                packets: 2,
+                bytes: 100,
+                references: 3,
+            },
+        ))
+        .unwrap();
+    core.mode = mode;
+    core.offline.channel = Some(7);
+    let mut s = StreamTimeline::new(core, None).unwrap();
+    s.observe(packet(1, (1u64 << 48) - 2, None), 0, 10, false)
+        .unwrap();
+    let observed = s
+        .observe(packet(2, 1, Some(input())), 1, 10, false)
+        .unwrap();
+    assert!(
+        !observed.findings.iter().any(|f| f.code == 8),
+        "post-wrap TIMEIN must remain declared"
+    );
+    let a = s
+        .observe(packet(3, 1, None), 2, 10, false)
+        .unwrap()
+        .answers
+        .remove(0);
+    assert_eq!(a.reading.unwrap().year, Some(2024));
+    review_check_wrapped_reference(a.basis.preceding.as_ref().unwrap());
+}
+#[test]
+fn review_stream_standard_preserves_post_wrap_setup() {
+    review_stream_wrap(StreamMode::Standard);
+}
+#[test]
+fn review_stream_interpolate_preserves_post_wrap_setup() {
+    review_stream_wrap(StreamMode::Interpolate);
+}
+
+fn review_stream_prior(mode: StreamMode) {
+    let first = shared(10);
+    let second = shared(11);
+    let qualify = |p: &SharedPolicy, r| {
+        let mut b = TimelineBuilder::new(p.offline(OfflinePolicy::default()).unwrap()).unwrap();
+        b.observe(packet(1, 0, Some(r)), false).unwrap();
+        b.finish().unwrap().sessions()[0].references[0]
+            .input
+            .clone()
+    };
+    let original = qualify(&first, input());
+    // Offline control proves the actual immediate prior snapshot is10.
+    let control = qualify(&second, original.clone());
+    assert_eq!(
+        control.qualification.unwrap().provided_policy(),
+        Some(&first)
+    );
+    let mut core = second
+        .stream(StreamPolicy::new(
+            11,
+            BufferCaps {
+                packets: 2,
+                bytes: 100,
+                references: 3,
+            },
+        ))
+        .unwrap();
+    core.mode = mode;
+    core.offline.channel = Some(7);
+    let mut s = StreamTimeline::new(core, None).unwrap();
+    s.observe(packet(1, 0, Some(original.clone())), 0, 10, false)
+        .unwrap();
+    let a = s
+        .observe(packet(2, 0, None), 1, 10, false)
+        .unwrap()
+        .answers
+        .remove(0);
+    assert_eq!(a.reading.unwrap().year, Some(2024));
+    let reference = a.basis.preceding.unwrap();
+    let q = reference.input.qualification.unwrap();
+    assert_eq!(q.policy(), &second);
+    assert_eq!(q.provided_policy(), Some(&first));
+    assert_eq!(original.qualification.unwrap().policy(), &first);
+}
+#[test]
+fn review_stream_standard_keeps_actual_immediate_prior_policy() {
+    review_stream_prior(StreamMode::Standard);
+}
+#[test]
+fn review_stream_interpolate_keeps_actual_immediate_prior_policy() {
+    review_stream_prior(StreamMode::Interpolate);
 }
