@@ -511,3 +511,34 @@ fn resolved_pivot_cannot_reload_zero_sentinel_as_independent_date() {
     *wire.field("fraction").field("NtpUnits") = Node::Number("0".into());
     assert!(decode::<NtpPivot>(wire).is_err());
 }
+
+#[test]
+fn resolved_ntp_pivot_rejects_non_utc_effective_scale_on_load() {
+    use irig106_time::{ntp::*, scale::*};
+    // RDG-012 / RFC5905 §6: NTP follows UTC. Keep the resolved coordinate and
+    // calendar unchanged; replace the scale with another internally valid
+    // ScaleEvidence, so rejection cannot come from contradictory scale fields.
+    let policy = full_policy();
+    let pivot = &policy.offline.shared.as_ref().unwrap().settings().ntp[&2].pivots[2];
+    assert!(matches!(pivot.origin(), PivotOrigin::ResolvedNtp { .. }));
+    let wire = encode(pivot);
+    assert_eq!(decode::<NtpPivot>(wire.clone()).unwrap(), *pivot);
+    for scale in [TimeScale::Tai, TimeScale::Gps, TimeScale::Unknown] {
+        let mut bad = wire.clone();
+        *bad.field("scale") = encode(&ScaleEvidence::standard(scale));
+        assert!(decode::<NtpPivot>(bad).is_err(), "{scale:?}");
+    }
+}
+
+#[test]
+fn caller_approximate_pivot_rejects_ntp_fraction_units_on_load() {
+    use irig106_time::{SignedUnixSeconds, ntp::*};
+    // Both numeric values are zero; only the unit discriminant changes.
+    // Approximate caller dates carry nanoseconds, not raw 2^-32-second units
+    // (RDG-012). All other provenance/coordinate fields remain valid.
+    let pivot = NtpPivot::approximate(1, "caller date", SignedUnixSeconds::new(0), 0).unwrap();
+    let mut wire = encode(&pivot);
+    assert_eq!(decode::<NtpPivot>(wire.clone()).unwrap(), pivot);
+    *wire.field("fraction") = encode(&PivotFraction::NtpUnits(0));
+    assert!(decode::<NtpPivot>(wire).is_err());
+}

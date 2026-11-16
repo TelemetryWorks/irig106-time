@@ -128,3 +128,27 @@ serde alloc+derive without serde/std. Python json.loads independently parsed
 full policy output, checked exact signed/wide strings, both distinct epochs
 and all28 pinned table entries. No browser JS or machine-JSON-Schema validator
 execution is claimed. Schema remains candidate; no merge/publish performed.
+
+## Review at a2d63b1 — N4/N9 pivot-load rejection tests
+
+Tests/record only; production source is unchanged. The policy suite now has
+**eight tests**. Both new tests pass on the reviewed head's unchanged loader,
+and each fails at runtime under its own temporary mutant:
+
+| Mutant | Independent fixture and observed failure |
+|---|---|
+| N4: remove the ResolvedNtp effective-UTC guard | A valid resolved pivot roundtrips first. Replace only its scale with internally valid Standard TAI, GPS or Unspecified Unknown; keep its UTC calendar and exact coordinate unchanged. The first TAI case is wrongly accepted without the guard, failing the rejection assertion. Using canonical ScaleEvidence avoids relying on a contradictory-scale leaf-load error. |
+| N9: accept NtpUnits as caller-approximate nanoseconds | A valid CallerApproximateDate pivot with Nanoseconds(0) roundtrips first. Change only the fraction discriminant to NtpUnits(0). The mutant matches both variants and passes the numeric value to the existing approximate constructor; the rejection assertion fails. Zero ensures that no range or rounded-coordinate difference can mask the wrong-unit acceptance. |
+
+Commands: cargo test --locked --features serde --test s12b_policies, then one
+filtered invocation for each mutant. No compile errors counted as kills;
+mutations restored and src/ntp.rs verified identical to a2d63b1. These are two
+additional distinct kills beyond the original24 (26 total across the record).
+RDG-012's UTC/precision provenance clauses are partial coverage only: no new
+whole Requirements markers. Matrix remains192/288, delta0; schema not frozen,
+answer/report scope still S12b2b.
+
+Restored review head: all18 local CI-equivalent checks passed again, jobs2 /
+threads2 / --locked, including feature suites, MSRV1.85, clippy/fmt/rustdoc,
+CLI, no_std/WASM, matrix, benches, all10 fuzz harnesses and cargo-deny.
+Actionlint/diff checks passed. Only the two tests and this record changed.
