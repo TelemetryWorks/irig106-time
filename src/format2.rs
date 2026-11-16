@@ -153,6 +153,11 @@ pub struct Format2Reference {
     findings: Vec<Finding>,
 }
 impl Format2Observation {
+    pub(crate) fn with_declaration(mut self, declared: bool) -> Self {
+        self.declared_timein = declared;
+        self
+    }
+
     /// Header capture point, independent of protocol epoch/scale.
     pub fn capture(&self) -> ReferenceCapture {
         self.capture

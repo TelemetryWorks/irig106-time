@@ -25,3 +25,97 @@ A shared instance is frozen/validated by ID. Reference inputs retain effective
 and provided qualification evidence; no policy-history registry or new queue.
 Mode-only identity changes keep eligible references with their old snapshots;
 semantic qualification changes clear references only after old-policy drain.
+
+## S12a1 clause ledger
+
+| Requirement pair (L2/L3) | This part covers | Still required in S12a2/later |
+|---|---|---|
+| ANS-101 | Effective shared ID/defaults version; exact governing setup; original scale/year/normalization/network conversion and immediate prior policy; selected session era/table alongside existing endpoint/rate/stream fallback basis. | Common replayable answer view across offline, stream, own/stamp/word; replay-only proof and full serialized evidence (S12b). |
+| ANS-105 | Existing counter-only reasons preserved while qualification changes, missing context and unsupported dates stay explicit. | Typed counter duration in the common answer view; no whole-completion claim here. |
+| POL-101 | Validated common year inference order/subset, scale assumptions, caller year, own epochs/table/tolerance, declarations/TFMT opt-in and per-session NTP context. Independently selectable gap and hold intervals beside existing late bound/caps/levels/channel settings. | Consolidated own/stamp/word answer view and complete public configuration/use examples; exhaustive setting-change inventory. |
+| POL-102 | Immutable effective/provided qualification; matching stream/shared IDs; invalid change leaves pending answers intact; mode-only new ID keeps eligible old references; semantic changes drain then clear. | Complete common answer/replay proof and all-setting transitions. |
+
+These pairs already have historical Implemented links in the matrix. This part
+adds **no whole Requirements markers** and does not claim those links express
+full clause coverage. Baseline and regenerated matrix remain **192/288** (delta0).
+New Traces tags point to actual POL/ANS clauses; the table above limits the claim.
+No requirement, Design/Review field, finding level or owner decision changed.
+
+The new opt-in shared path freezes settings before observation. None keeps the
+legacy explicit preparation path. Stream channel inventory is still supplied
+explicitly to StreamTimeline::new; a time-varying setup is not silently treated
+as a complete advance inventory. C4 mode-only replacement retains each old
+reference's qualifier while new answers name the new query policy. Changed
+qualification settings require fresh references after draining old answers.
+Policy IDs are caller-series identities, not globally interned/unique IDs;
+stream replacement enforces increasing IDs and matching shared/core IDs.
+Caller-sized setup/table/pivot data is copied into snapshots, not stored in a
+hidden global registry. Existing caller caps still bound stream queues.
+
+Year order controls inference for **yearless** Format1 values, not replacement
+of an explicit DMY date: packet/caller/RI4 is the accepted D9 default. A subset
+or reordered list is explicit reader policy under ADR-0010; an empty list keeps
+yearless values partial. Excluded/contradicting candidates remain evidence.
+Chapter4 full day/year/origin remains caller context; no nearest-packet option.
+Native/stated scales are preserved; a shared leap table normalizes qualified
+Format1 dates and reconverts network observations under their actual session.
+A legacy second60 input still is not admitted as an absolute anchor merely
+because a table is supplied; its wire label and normalization remain evidence.
+
+## Tests-first and fixtures
+
+Tests-only commit **52c4103** precedes the implementation: four API tests fail
+to compile on main38681fe (E0432 missing policy module / E0609 missing fields).
+This is compile-level API evidence, **not four runtime failures on main**.
+The remaining six tests and additional assertions were written against the
+prototype; they are not retrospectively claimed failing first on main. A new
+dated-DMY assertion failed on the prototype (2018 instead of stated2017) and
+caught an inference-scope bug before this implementation was committed.
+An initial stream fixture lacked a committed channel and correctly returned
+counter-only; specifying channel7 corrected the fixture, not engine behaviour.
+
+Ten integration tests use hand-written values: Fig11-13 (11-25/PDF33) supplies
+SRC1/LY1/day1 or day36623:59:60; Fig11-14 supplies DMY2017-01-01. RFC5905 Fig4
+supplies era1 offset63104 (little-endian80f60000), therefore2036-02-08/day39;
+the original era0 result remains separately visible. Tiny gap20/200ns and
+hold7+3ns with progress1 yield deadline11: no timeout at11, timeout at12.
+These are selectable reader settings, not recording timing requirements.
+
+## Targeted negative checks
+
+Each of these **17** temporary source mutations produced a runtime assertion
+failure in tests/s12a_policy.rs, and each source was restored afterward:
+
+| Mutation | Failing evidence |
+|---|---|
+| Skip shared preparation in offline | Central year/scale, setup/era, empty inference and leap-context tests |
+| Skip shared preparation in stream | Setup/era conversion assertion |
+| Do not apply caller year | Central year, custom order and leap-context assertions |
+| Do not apply scale | Native GPS/effective scale assertion |
+| Do not requalify network era | Era1/date assertion |
+| Erase provided network conversion | Original era0 assertion |
+| Compare IDs as semantic settings (clear old refs) | Mode-change next answer loses its reference |
+| Keep references on semantic setting change | Post-change answer incorrectly remains absolute |
+| Ignore hold interval | Expected timeout at12 missing |
+| Ignore gap interval | Expected TF-016 for20ns setting missing |
+| Drop normalization attachment | Central and leap-labelled reference evidence assertions |
+| Overwrite explicit packet year | Stated2017 date becomes2018 |
+| Ignore empty year subset | Unknown year incorrectly becomes2024 |
+| Drop own tolerance | Expected17ns tolerance absent |
+| Accept mismatched era/session mapping | Invalid policy is accepted |
+| Ignore stream shared scale before decode | Leap-label TF-022 missing / TF-004 emitted |
+| Ignore offline shared scale before decode | Leap-labelled reference evidence lost |
+
+No mutation changes finding levels or invents a new fallback. TF-016 factual
+classification is independent of severity, as in the existing COR-108 paths.
+Full CI results are recorded below after the final restored-source run.
+
+## Restored-source validation
+
+All **18/18** local CI-equivalent checks passed with CARGO_BUILD_JOBS=2 and
+RUST_TEST_THREADS=2: four feature test combinations; three MSRV1.85 checks;
+all-target/all-feature clippy; fmt; rustdoc with warnings denied; CLI build and
+clippy; no_std WASM with/without serde; matrix check; benches; all ten fuzz
+targets type-checked; cargo-deny. Cargo build/test/check/doc/clippy used --locked.
+Actionlint and git diff --check also passed. This is local Linux evidence;
+GitHub CI separately checks Linux, Windows and macOS at the reported PR head.

@@ -38,6 +38,26 @@ impl Normalization {
     pub fn table(&self) -> &LeapSecondTable {
         &self.table
     }
+    pub(crate) fn from_calendar(c: CalendarReading, table: LeapSecondTable) -> Result<Self> {
+        c.validate()?;
+        let t = AbsoluteTime::new(
+            c.day_of_year,
+            c.hours,
+            c.minutes,
+            c.seconds.min(59),
+            c.nanoseconds,
+        )?
+        .with_year(c.year)?;
+        let mut n = Self::new(t, c.scale, table)?;
+        if c.seconds == 60 {
+            n.tai_ns = crate::own_time::normalize(c, &n.table)?;
+            n.native_ns += 1_000_000_000;
+            n.possibly_out_of_date = !n.table.covers_unix(SignedUnixSeconds::new(
+                n.native_ns.div_euclid(1_000_000_000),
+            ));
+        }
+        Ok(n)
+    }
     pub(crate) fn new(
         time: AbsoluteTime,
         scale: ScaleEvidence,
@@ -164,6 +184,23 @@ impl NetworkReference {
     }
 }
 impl ReferenceInput {
+    pub(crate) fn requalify_network(
+        self,
+        p: &crate::policy::SharedPolicy,
+        key: PacketKey,
+        declared: bool,
+    ) -> Result<Self> {
+        let n = self.network.ok_or(TimeError::InvalidTimelineInput(
+            "network qualification absent",
+        ))?;
+        Self::format2(
+            n.reference.observation().clone().with_declaration(declared),
+            p.ntp_context(key.session)?,
+            p.settings().own.table.clone(),
+            n.raw_network_rate,
+        )
+    }
+
     /// Select TAI for arithmetic with an explicit table; native answer scale
     /// and policy/stated provenance remain unchanged. Unknown year/scale fails.
     /// **Traces:** L3-F2COR-102 ← L2-F2COR-102 ← L1-F2COR-002
@@ -234,6 +271,7 @@ impl ReferenceInput {
                 normalization_issue: None,
             })),
             normalization: None,
+            qualification: None,
         };
         let normalized = if ambiguous {
             Err(TimeError::NeedsContext {

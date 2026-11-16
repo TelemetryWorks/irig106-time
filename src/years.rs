@@ -42,6 +42,8 @@ pub struct YearCandidate {
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct YearBasis {
     context: YearContext,
+    order: crate::policy::YearOrder,
+    packet_year: Option<(u16, u64)>,
     candidates: Vec<YearCandidate>,
     original: Option<ReferenceValue>,
     original_origin: Option<YearOrigin>,
@@ -56,6 +58,14 @@ pub struct YearBasis {
     phase_residual: Option<(u64, i128, u64, bool)>,
 }
 impl YearBasis {
+    pub(crate) fn set_order(&mut self, order: crate::policy::YearOrder) {
+        self.order = order;
+    }
+    /// Explicit selected year sources; excluded candidates remain in candidates().
+    pub fn order(&self) -> &crate::policy::YearOrder {
+        &self.order
+    }
+
     // Relative calendar differences can be signed even without an absolute year,
     // but never across an unresolved year gap or a classified year transition.
     pub(crate) fn same_calendar_year(&self, other: &Self) -> bool {
@@ -70,7 +80,17 @@ impl YearBasis {
     }
     /// Highest priority candidate; None means partial/unknown year.
     pub fn selected(&self) -> Option<YearCandidate> {
-        self.candidates.first().copied()
+        self.candidates
+            .iter()
+            .find(|c| {
+                self.packet_year.map_or_else(
+                    || self.order.rank(c.origin).is_some(),
+                    |(year, packet)| {
+                        c.origin == YearOrigin::Packet && c.year == year && c.packet == Some(packet)
+                    },
+                )
+            })
+            .copied()
     }
     /// All applicable candidates in priority order, not silently overwritten.
     pub fn candidates(&self) -> &[YearCandidate] {
@@ -254,7 +274,7 @@ impl YearClock {
             .unwrap_or(r.input.year_origin);
         // The first DMY anchors phase, including when the next observation is
         // another DMY. Its raw explicit year is separately retained by resolve.
-        let year = self
+        let default_year = self
             .anchor
             .and_then(|a| {
                 phase
@@ -282,6 +302,41 @@ impl YearClock {
                         })
                 }
             });
+        let year = if r.input.year_basis.order == crate::policy::YearOrder::default()
+            || origin == YearOrigin::Packet && raw_year.is_some()
+        {
+            default_year
+        } else {
+            r.input
+                .year_basis
+                .order
+                .sources()
+                .iter()
+                .find_map(|source| match source {
+                    crate::policy::YearSource::Packet => self
+                        .anchor
+                        .and_then(|a| phase.checked_sub(a.phase).and_then(|d| adjust(a.year, d)))
+                        .or(raw_year.filter(|_| origin == YearOrigin::Packet)),
+                    crate::policy::YearSource::Caller => raw_year
+                        .filter(|_| {
+                            origin != YearOrigin::Packet && origin != YearOrigin::RecordingDate
+                        })
+                        .or_else(|| {
+                            (self.segment == 0)
+                                .then_some(r.input.year_basis.context.caller)
+                                .flatten()
+                                .and_then(|y| adjust(y, phase))
+                        }),
+                    crate::policy::YearSource::Recording => raw_year
+                        .filter(|_| origin == YearOrigin::RecordingDate)
+                        .or_else(|| {
+                            (self.segment == 0)
+                                .then_some(r.input.year_basis.context.recording)
+                                .flatten()
+                                .and_then(|y| adjust(y, phase))
+                        }),
+                })
+        };
         Some(Point {
             packet: r.key.packet,
             ticks: r.key.ticks,
@@ -543,11 +598,16 @@ impl YearClock {
         }
         // An already dated legacy input retains its source's priority; an RI4
         // projection must not outrank explicit caller context merely by insertion.
-        candidates.sort_by_key(|c| match c.origin {
-            YearOrigin::Packet => 0,
-            YearOrigin::RecordingDate => 2,
-            _ => 1,
+        candidates.sort_by_key(|c| {
+            r.input
+                .year_basis
+                .order
+                .rank(c.origin)
+                .unwrap_or(usize::MAX)
         });
+        r.input.year_basis.packet_year = (origin == YearOrigin::Packet)
+            .then_some(raw_year.map(|y| (y, r.key.packet)))
+            .flatten();
         r.input.year_basis.candidates = candidates;
         r.input.year_basis.resolved = true;
         let selected = r.input.year_basis.selected();
@@ -612,6 +672,35 @@ impl YearClock {
                     r.admitted = false;
                     if !r.reasons.contains(&Rejection::Malformed) {
                         r.reasons.push(Rejection::Malformed);
+                    }
+                }
+            }
+        }
+        if let Some(q) = &r.input.qualification {
+            let native = r
+                .input
+                .wire
+                .and_then(|(_, w)| w.time)
+                .or_else(|| r.input.qualified.as_ref().and_then(|q| q.time))
+                .map(|mut c| {
+                    c.year = selected_year;
+                    c.scale = r.input.scale;
+                    c
+                });
+            if !malformed && selected_year.is_some() {
+                if let Some(c) = native {
+                    match crate::reference::Normalization::from_calendar(
+                        c,
+                        q.policy().settings().own.table.clone(),
+                    ) {
+                        Ok(n) => {
+                            r.input.normalization = Some(n);
+                            r.input.year_basis.normalization_issue = None;
+                        }
+                        Err(e) => {
+                            r.input.normalization = None;
+                            r.input.year_basis.normalization_issue = Some(e);
+                        }
                     }
                 }
             }

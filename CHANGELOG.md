@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S12a1 shared qualification settings and reference basis
+
+- Add optional validated, immutable shared qualification settings: named IDs,
+  caller year/inference priority, scale assumptions, own epochs/table/tolerance,
+  governing declarations/TFMT opt-in and session-specific NTP era evidence.
+  Retain effective and replaced caller evidence separately in reference basis.
+  Explicit DMY dates keep their calendar; excluded year candidates remain visible.
+- Keep the Standard stream default and all C1-C4 / D5-D9 defaults. Gap and hold
+  intervals are independently selectable from late bounds and tolerances.
+  Mode changes drain under the old snapshot; identity-only changes retain old
+  references with their original qualifier. Semantic changes require new refs.
+- Breaking struct-literal additions: OfflinePolicy adds shared and
+  gap_interval_ns; StreamPolicy adds hold_interval_ns; ReferenceInput adds
+  qualification. Use constructor/default values, or None for the legacy shared
+  path and 1_000_000_000 ns for interval defaults. No CLI output change.
+- First review part of S12a: common replayable answer/typed counter and complete
+  adapter envelopes remain S12a2 (0.8 blockers). Clause record:
+  verification-s12a.md. No new whole markers; matrix stays192/288 (delta0).
+
 ### S10b stamp and caller-extracted word answers
 
 - Add bounded stamp inspection with simultaneous TF-015/006/028 findings,

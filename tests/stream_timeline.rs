@@ -37,6 +37,7 @@ fn reference(ns: u64) -> ReferenceInput {
         year_basis: irig106_time::years::YearBasis::default(),
         network: None,
         normalization: None,
+        qualification: None,
     }
 }
 fn packet(id: u64, ticks: u64, r: Option<ReferenceInput>) -> PacketObservation {

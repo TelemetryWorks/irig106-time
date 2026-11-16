@@ -48,6 +48,10 @@ pub enum ChannelChoice {
 /// **Traces:** L3-POL-102 ← L2-POL-102 ← L1-POL-002
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OfflinePolicy {
+    /// Optional consolidated qualifier; None preserves legacy caller preparation.
+    pub shared: Option<alloc::boxed::Box<crate::policy::SharedPolicy>>,
+    /// Reference-gap base interval, independent of tolerance/hold/late; default1s.
+    pub gap_interval_ns: u64,
     /// Snapshot schema version, currently 1.
     pub version: u16,
     /// Backward displacement allowed without an inferred reset, default 1100 ms.
@@ -84,6 +88,8 @@ impl Default for OfflinePolicy {
     fn default() -> Self {
         Self {
             version: 1,
+            shared: None,
+            gap_interval_ns: 1_000_000_000,
             late_ns: 1_100_000_000,
             infer_sessions: true,
             channel: None,
@@ -101,10 +107,37 @@ impl Default for OfflinePolicy {
     }
 }
 impl OfflinePolicy {
+    /// Own-time levels/tolerance derived from this exact clock snapshot.
+    pub fn own_policy(&self) -> crate::own_time::OwnPolicy {
+        crate::own_time::OwnPolicy {
+            tolerance: self
+                .shared
+                .as_ref()
+                .and_then(|s| s.settings().own_tolerance),
+            levels: self.finding_levels.clone(),
+        }
+    }
+    pub(crate) fn same_reference_rules(&self, other: &Self) -> bool {
+        let mut a = self.clone();
+        let mut b = other.clone();
+        a.shared = None;
+        b.shared = None;
+        a == b
+            && match (&self.shared, &other.shared) {
+                (Some(x), Some(y)) => x.same_rules(y),
+                (None, None) => true,
+                _ => false,
+            }
+    }
+
     /// Validate arithmetic bounds and the snapshot version before ingestion.
     /// **Traces:** L3-POL-102 ← L2-POL-102 ← L1-POL-002
     pub fn validate(&self) -> Result<()> {
         if self.version != 1
+            || self
+                .gap_interval_ns
+                .checked_add(self.gap_tolerance_ns)
+                .is_none()
             || i128::from(self.late_ns) >= HALF * 100
             || self.finding_levels.keys().any(|id| {
                 FindingCode::from_number(*id)
@@ -267,6 +300,8 @@ pub struct ReferenceInput {
     pub network: Option<alloc::boxed::Box<crate::reference::NetworkReference>>,
     /// Explicit caller-qualified TAI arithmetic; native scale stays recorded.
     pub normalization: Option<crate::reference::Normalization>,
+    /// Shared effective/provided qualifier; None is the explicit legacy path.
+    pub qualification: Option<alloc::boxed::Box<crate::policy::QualificationBasis>>,
 }
 impl ReferenceInput {
     /// Adapt an evidence-qualified reading without inventing SRC or ITS.
@@ -322,6 +357,7 @@ impl ReferenceInput {
             qualified: Some(reading),
             network: None,
             normalization: None,
+            qualification: None,
         })
     }
     /// Decode only within caller Data Length, with explicitly selected layout.
@@ -370,6 +406,7 @@ impl ReferenceInput {
             qualified: None,
             network: None,
             normalization: None,
+            qualification: None,
             raw_csdw: Some(reading.csdw.as_raw()),
             year_origin,
             year_basis: crate::years::YearBasis::default(),
@@ -499,7 +536,7 @@ impl TimelineBuilder {
     /// **Traces:** L3-COR-107 ← L2-COR-107 ← L1-COR-007
     /// **Traces:** L3-COR-109 ← L2-COR-109 ← L1-COR-009
     /// **Traces:** L3-COR-112 ← L2-COR-112 ← L1-COR-012
-    pub fn observe(&mut self, packet: PacketObservation, boundary: bool) -> Result<PacketKey> {
+    pub fn observe(&mut self, mut packet: PacketObservation, boundary: bool) -> Result<PacketKey> {
         crate::reference::check_capture(&packet)?;
         if self.seen.contains(&packet.id) {
             return Err(TimeError::InvalidTimelineInput("duplicate packet identity"));
@@ -536,6 +573,23 @@ impl TimelineBuilder {
                 late = Some(delta * 100);
                 reset = self.policy.infer_sessions;
             }
+        }
+        if let Some(policy) = &self.policy.shared {
+            let session = if self.sessions.is_empty() || boundary || reset {
+                self.sessions.len() + 1
+            } else {
+                self.sessions.len()
+            };
+            let key = PacketKey {
+                session,
+                ticks: if self.sessions.is_empty() || boundary || reset {
+                    raw
+                } else {
+                    ticks
+                },
+                packet: packet.id,
+            };
+            packet = policy.prepare(packet, key)?;
         }
         if let Some(n) = packet.reference.as_ref().and_then(|r| r.network.as_ref()) {
             let session = if self.sessions.is_empty() || boundary || reset {
@@ -770,6 +824,14 @@ impl TimelineBuilder {
         boundary: bool,
     ) -> Result<PacketKey> {
         let id = packet.id;
+        let input = crate::format1::Format1Input {
+            scales: self
+                .policy
+                .shared
+                .as_ref()
+                .map_or(input.scales, |s| s.settings().scales),
+            ..input
+        };
         let (packet, error) = decode_observation(packet, input)?;
         let key = self.observe(packet, boundary)?;
         if let Some(error) = error {
@@ -825,7 +887,10 @@ impl TimelineBuilder {
             for pair in valid.windows(2) {
                 let (a, b) = (pair[0], pair[1]);
                 let elapsed = (b.key.ticks - a.key.ticks) * 100;
-                if elapsed > 1_000_000_000 + i128::from(self.policy.gap_tolerance_ns) {
+                if elapsed
+                    > i128::from(self.policy.gap_interval_ns)
+                        + i128::from(self.policy.gap_tolerance_ns)
+                {
                     events.push((16, b.key, Some(channel), Some(a.key.packet), Some(elapsed)));
                 }
                 if let Some(delta) = absolute_delta(a, b) {

@@ -140,6 +140,7 @@ fn both_engines_keep_related_identity_and_signed_residual() {
                 year_basis: irig106_time::years::YearBasis::default(),
                 network: None,
                 normalization: None,
+                qualification: None,
             });
             p
         };
