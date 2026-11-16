@@ -65,7 +65,7 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L1-IPT-005 | L2-IPT-105 | `tests/rebuild_wire.rs::t1_all_flag_combinations_are_checked`<br>`tests/rebuild_wire.rs::t1_secondary_ch4_selected_by_bit_six` | Implemented |
 | L1-IPT-006 | L2-IPT-106 | `src/intra_packet_tests.rs::format_ch4_binary`<br>`src/intra_packet_tests.rs::format_no_secondary_is_rtc`<br>`src/intra_packet_tests.rs::intra_packet_time_is_enum`<br>`src/intra_packet_tests.rs::parse_buffer_too_short`<br>`src/intra_packet_tests.rs::parse_ertc64_known`<br>`src/intra_packet_tests.rs::parse_ieee1588_known`<br>`src/intra_packet_tests.rs::parse_rtc48_known`<br>`tests/rebuild_wire.rs::t1_all_flag_combinations_are_checked`<br>`tests/rebuild_wire.rs::t1_bit_two_alone_does_not_select_secondary` | Implemented |
-| L1-IPT-007 | L2-IPT-107 | `tests/rebuild_wire.rs::qflags_diagnostics_name_warning_and_preserve_raw_flags`<br>`tests/rebuild_wire.rs::qflags_literal_error_variants`<br>`tests/rebuild_wire.rs::qflags_literal_rtc_reserved_format_keeps_value`<br>`tests/rebuild_wire.rs::qflags_literal_secondary_errors_are_distinct`<br>`tests/rebuild_wire.rs::qflags_reserved_value_and_own_time_findings_are_independent`<br>`tests/rebuild_wire.rs::t1_all_flag_combinations_are_checked` | Implemented |
+| L1-IPT-007 | L2-IPT-107 | `tests/rebuild_wire.rs::qflags_diagnostics_name_warning_and_preserve_raw_flags`<br>`tests/rebuild_wire.rs::qflags_literal_error_variants`<br>`tests/rebuild_wire.rs::qflags_literal_rtc_reserved_format_keeps_value`<br>`tests/rebuild_wire.rs::qflags_literal_secondary_errors_are_distinct`<br>`tests/rebuild_wire.rs::qflags_reserved_value_and_own_time_findings_are_independent`<br>`tests/rebuild_wire.rs::t1_all_flag_combinations_are_checked`<br>`tests/s10b_answers.rs::all_flags_preserve_simultaneous_findings_and_value_validity` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
@@ -73,7 +73,7 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L2-IPT-105 | L3-IPT-105 | `tests/rebuild_wire.rs::t1_secondary_ch4_selected_by_bit_six` | Implemented |
 | L2-IPT-106 | L3-IPT-106 | `tests/rebuild_wire.rs::t1_bit_two_alone_does_not_select_secondary` | Implemented |
-| L2-IPT-107 | L3-IPT-107 | `tests/rebuild_wire.rs::qflags_diagnostics_name_warning_and_preserve_raw_flags`<br>`tests/rebuild_wire.rs::qflags_literal_error_variants`<br>`tests/rebuild_wire.rs::qflags_literal_rtc_reserved_format_keeps_value`<br>`tests/rebuild_wire.rs::qflags_literal_secondary_errors_are_distinct`<br>`tests/rebuild_wire.rs::qflags_reserved_value_and_own_time_findings_are_independent`<br>`tests/rebuild_wire.rs::t1_all_flag_combinations_are_checked` | Implemented |
+| L2-IPT-107 | L3-IPT-107 | `tests/rebuild_wire.rs::qflags_diagnostics_name_warning_and_preserve_raw_flags`<br>`tests/rebuild_wire.rs::qflags_literal_error_variants`<br>`tests/rebuild_wire.rs::qflags_literal_rtc_reserved_format_keeps_value`<br>`tests/rebuild_wire.rs::qflags_literal_secondary_errors_are_distinct`<br>`tests/rebuild_wire.rs::qflags_reserved_value_and_own_time_findings_are_independent`<br>`tests/rebuild_wire.rs::t1_all_flag_combinations_are_checked`<br>`tests/s10b_answers.rs::all_flags_preserve_simultaneous_findings_and_value_validity` | Implemented |
 
 ### L1-SEC: The secondary header
 
@@ -254,14 +254,14 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
 | L1-WORD-001 | L2-WORD-101 | _(none)_ | Draft |
-| L1-WORD-002 | L2-WORD-102 | _(none)_ | Draft |
+| L1-WORD-002 | L2-WORD-102 | `tests/s10b_answers.rs::all_six_network_kinds_use_matching_components_and_qualified_conversions` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
 | L2-WORD-101 | L3-WORD-101 | _(TBD)_ | Draft |
-| L2-WORD-102 | L3-WORD-102 | _(TBD)_ | Draft |
+| L2-WORD-102 | L3-WORD-102 | `tests/s10b_answers.rs::all_six_network_kinds_use_matching_components_and_qualified_conversions` | Implemented |
 
 ### L1-ENC: Encoding
 
@@ -362,8 +362,8 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L1-ANS-001 | L2-ANS-101 | `tests/offline_timeline.rs::both_literal_examples_carry_reproducible_basis`<br>`tests/offline_timeline.rs::contract_example_literal_wire_baseline`<br>`tests/offline_timeline.rs::first_time_presence_scale_boundaries_and_invalid_queries`<br>`tests/stream_timeline.rs::handbook_standard_and_contract_basis`<br>`tests/stream_timeline.rs::interpolation_drift_endpoints_and_floor_proposal`<br>`tests/stream_timeline.rs::review_noncommitted_references_cannot_supply_answers` | Implemented |
 | L1-ANS-002 | L2-ANS-102 | `tests/s10a2_own.rs::partial_context_checksum_failure_and_applicability_never_fake_zero` | Implemented |
-| L1-ANS-003 | L2-ANS-103 | _(none)_ | Draft |
-| L1-ANS-004 | L2-ANS-104 | _(none)_ | Draft |
+| L1-ANS-003 | L2-ANS-103 | `tests/s10b_answers.rs::stamp_forms_query_their_clock_and_keep_partial_and_failure_evidence` | Implemented |
+| L1-ANS-004 | L2-ANS-104 | `tests/s10b_answers.rs::word_context_is_explicit_and_network_components_never_default_to_zero` | Implemented |
 | L1-ANS-005 | L2-ANS-105 | `tests/offline_timeline.rs::nearest_preceding_ties_counter_only_and_policy_snapshots`<br>`tests/offline_timeline.rs::review_dynamic_before_time_has_tf002`<br>`tests/offline_timeline.rs::review_unknown_year_does_not_invent_day366`<br>`tests/stream_timeline.rs::early_data_none_and_no_time_findings` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
@@ -372,8 +372,8 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L2-ANS-101 | L3-ANS-101 | `tests/offline_timeline.rs::both_literal_examples_carry_reproducible_basis`<br>`tests/offline_timeline.rs::contract_example_literal_wire_baseline`<br>`tests/offline_timeline.rs::first_time_presence_scale_boundaries_and_invalid_queries`<br>`tests/stream_timeline.rs::handbook_standard_and_contract_basis`<br>`tests/stream_timeline.rs::interpolation_drift_endpoints_and_floor_proposal`<br>`tests/stream_timeline.rs::review_noncommitted_references_cannot_supply_answers` | Implemented |
 | L2-ANS-102 | L3-ANS-102 | `tests/s10a2_own.rs::partial_context_checksum_failure_and_applicability_never_fake_zero` | Implemented |
-| L2-ANS-103 | L3-ANS-103 | _(TBD)_ | Draft |
-| L2-ANS-104 | L3-ANS-104 | _(TBD)_ | Draft |
+| L2-ANS-103 | L3-ANS-103 | `tests/s10b_answers.rs::stamp_forms_query_their_clock_and_keep_partial_and_failure_evidence` | Implemented |
+| L2-ANS-104 | L3-ANS-104 | `tests/s10b_answers.rs::word_context_is_explicit_and_network_components_never_default_to_zero` | Implemented |
 | L2-ANS-105 | L3-ANS-105 | `tests/offline_timeline.rs::nearest_preceding_ties_counter_only_and_policy_snapshots`<br>`tests/offline_timeline.rs::review_dynamic_before_time_has_tf002`<br>`tests/offline_timeline.rs::review_unknown_year_does_not_invent_day366`<br>`tests/stream_timeline.rs::early_data_none_and_no_time_findings` | Implemented |
 
 ### L1-POL: The time policy
@@ -629,12 +629,12 @@ This matrix is the single source of truth for live status; the requirement docum
 | PTP | 4 | 4 | 4 | 4 | 4 | 4 | 4 |
 | F2COR | 2 | 2 | 2 | 2 | 2 | 2 | 2 |
 | TAI | 7 | 7 | 7 | 7 | 7 | 7 | 7 |
-| WORD | 2 | 2 | 2 | 0 | 0 | 0 | 0 |
+| WORD | 2 | 2 | 2 | 1 | 1 | 1 | 1 |
 | ENC | 3 | 3 | 3 | 0 | 0 | 0 | 0 |
 | EDN | 3 | 4 | 4 | 4 | 4 | 4 | 4 |
 | DECL | 2 | 2 | 2 | 1 | 1 | 1 | 1 |
 | COR | 13 | 13 | 13 | 11 | 11 | 11 | 11 |
-| ANS | 5 | 5 | 5 | 3 | 3 | 3 | 3 |
+| ANS | 5 | 5 | 5 | 5 | 5 | 5 | 5 |
 | POL | 3 | 4 | 4 | 3 | 3 | 3 | 3 |
 | FND | 5 | 5 | 5 | 3 | 3 | 3 | 3 |
 | RDG | 2 | 14 | 14 | 8 | 8 | 8 | 8 |
@@ -645,13 +645,13 @@ This matrix is the single source of truth for live status; the requirement docum
 | CLI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
 | REL | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
 | TST | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
-| **Total** | **124** | **144** | **144** | **93** | **93** | **93** | **93** |
+| **Total** | **124** | **144** | **144** | **96** | **96** | **96** | **96** |
 
 The countable requirement set is every L2 and L3 requirement plus the 0 L1 *leaf* requirement(s) (L1s with no L2 decomposition yet). Composite L1s are verified through their children.
 
-**Tested by at least one test marker**: 186 of 288 (64.6%).
+**Tested by at least one test marker**: 192 of 288 (66.7%).
 
-**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 186 of 288 (64.6%).
+**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 192 of 288 (66.7%).
 
 ### Orphan check
 
@@ -673,9 +673,9 @@ Every entry of `docs/INTERPRETATIONS.md` with its written analysis and the tests
 | RDG-007 | ITS (Format 1 bits 15–12) is read only for recordings declared 106-17 or later | accepted | [qualified edition fields](analysis/RDG-007-edition-fields.md) | `tests/rebuild_layout.rs::t7_its_requires_explicit_applicable_layout`<br>`tests/s03_edition.rs::independent_edition_rule_boundaries_and_its_evidence`<br>`tests/s03_edition.rs::reserved_its_is_a_value_warning_only_in_an_applicable_layout` |
 | RDG-008 | The secondary header checksum sums bytes, not 16-bit words | suspect | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-008); [S10a1 validation and remaining clauses](verification-s10a.md) | `tests/s10a_secondary.rs::both_checksum_readings_trust_and_aggregate_counts_are_independent`<br>`tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither`<br>`tests/slice2_wire.rs::rdg008_byte_only_checksum_is_valid`<br>`tests/slice2_wire.rs::rdg008_word_only_checksum_is_not_trusted` |
 | RDG-009 | The time scale of each time format; IRIG time is UTC by assumption | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-009) | `tests/s06a_format2.rs::native_scales_and_d7_conversion_basis_are_preserved`<br>`tests/s06b_offline.rs::gps_uses_inferred_nineteen_seconds_and_unknown_scale_blocks_normalization`<br>`tests/s06b_offline.rs::mixed_utc_ptp_and_f1_use_one_physical_scale_without_fake_fields`<br>`tests/s06b_stream.rs::normalized_gps_to_ptp_bracket_keeps_the_native_gps_scale`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/slice2_readings.rs::t17_all_fmt_scales_and_policy_provenance`<br>`tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` |
-| RDG-010 | Second 60 is a leap second on a day that can be 30 June or 31 December | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-010); [known-year DOY qualification and segment guard](verification-s08.md#pr28-review--known-year-doy-leap-validation) | `tests/s02_readings.rs::leap_label_is_distinct_and_arithmetic_refuses_missing_context`<br>`tests/s04_leaps.rs::empty_and_pre1972_have_missing_context_not_a_default_offset`<br>`tests/s04_leaps.rs::every_positive_transition_selects_on_tai_and_preserves_second60`<br>`tests/s05_ntp.rs::covered_duplicate_coordinate_is_ambiguous_value_kept_not_a_read_leap`<br>`tests/s06a_format2.rs::ptp_inserted_second_survives_the_boundary_with_its_own_finding`<br>`tests/s06a_format2.rs::review_each_converted_finding_uses_policy_level_without_changing_value`<br>`tests/s06b_offline.rs::physical_shift_across_insertion_retains_second_sixty_and_not_a_jump`<br>`tests/s06b_offline.rs::review_negative_step_shifts_skip_a_second_without_inventing_sixty`<br>`tests/s06b_stream.rs::normalized_stream_answers_keep_a_derived_utc_second_sixty`<br>`tests/s10a2_own.rs::leap_endpoints_and_civil_ambiguity_use_explicit_counting_convention`<br>`tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` |
+| RDG-010 | Second 60 is a leap second on a day that can be 30 June or 31 December | accepted | [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-010); [known-year DOY qualification and segment guard](verification-s08.md#pr28-review--known-year-doy-leap-validation) | `tests/s02_readings.rs::leap_label_is_distinct_and_arithmetic_refuses_missing_context`<br>`tests/s04_leaps.rs::empty_and_pre1972_have_missing_context_not_a_default_offset`<br>`tests/s04_leaps.rs::every_positive_transition_selects_on_tai_and_preserves_second60`<br>`tests/s05_ntp.rs::covered_duplicate_coordinate_is_ambiguous_value_kept_not_a_read_leap`<br>`tests/s06a_format2.rs::ptp_inserted_second_survives_the_boundary_with_its_own_finding`<br>`tests/s06a_format2.rs::review_each_converted_finding_uses_policy_level_without_changing_value`<br>`tests/s06b_offline.rs::physical_shift_across_insertion_retains_second_sixty_and_not_a_jump`<br>`tests/s06b_offline.rs::review_negative_step_shifts_skip_a_second_without_inventing_sixty`<br>`tests/s06b_stream.rs::normalized_stream_answers_keep_a_derived_utc_second_sixty`<br>`tests/s10a2_own.rs::leap_endpoints_and_civil_ambiguity_use_explicit_counting_convention`<br>`tests/s10b_answers.rs::degraded_conversions_keep_values_levels_and_context_without_epoch_guesses`<br>`tests/slice2_readings.rs::t16_calendar_known_year_and_wrong_time_boundaries`<br>`tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates`<br>`tests/stream_timeline.rs::reserved_leap_and_stop_on_loss_evidence` |
 | RDG-011 | "The first dynamic data packet" is checked per session | accepted | not yet written | `tests/stream_timeline.rs::early_data_none_and_no_time_findings` |
-| RDG-012 | NTP follows UTC reckoning; era evidence, zero sentinel and leap ambiguity are explicit | accepted | [written all-edition/RFC analysis and planned edge cases](analysis/RDG-012-ntp-utc-era.md) | `tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value`<br>`tests/s05_ntp.rs::covered_duplicate_coordinate_is_ambiguous_value_kept_not_a_read_leap`<br>`tests/s05_ntp.rs::missing_stale_and_partial_coverage_keep_utc_without_false_certainty`<br>`tests/s05_ntp.rs::sentinel_precedes_era_and_rounding_but_nonzero_fraction_is_time`<br>`tests/s05_ntp.rs::tf030_nonzero_era_keeps_exact_evidence_and_unix_mapping`<br>`tests/s06a_format2.rs::explicit_era_and_unresolved_context_reach_the_converter`<br>`tests/s06a_format2.rs::native_scales_and_d7_conversion_basis_are_preserved`<br>`tests/s06a_format2.rs::ntp_admission_keeps_sentinel_ambiguity_era_and_context`<br>`tests/s06a_format2.rs::ptp_inserted_second_survives_the_boundary_with_its_own_finding`<br>`tests/s06a_format2.rs::review_each_converted_finding_uses_policy_level_without_changing_value`<br>`tests/s06b_offline.rs::ambiguous_ntp_does_not_establish_an_exact_physical_bracket`<br>`tests/s06b_offline.rs::mixed_utc_ptp_and_f1_use_one_physical_scale_without_fake_fields`<br>`tests/s06b_offline.rs::stale_ptp_basis_and_epoch_identity_survive_offline_admission`<br>`tests/s06b_stream.rs::ambiguity_keeps_capture_value_but_blocks_displacement_and_interpolation` |
+| RDG-012 | NTP follows UTC reckoning; era evidence, zero sentinel and leap ambiguity are explicit | accepted | [written all-edition/RFC analysis and planned edge cases](analysis/RDG-012-ntp-utc-era.md) | `tests/s01_findings.rs::each_ntp_evidence_invariant_is_independent`<br>`tests/s01_findings.rs::ntp_zero_and_ambiguity_evidence_are_distinct`<br>`tests/s01_findings.rs::sentinel_evidence_cannot_keep_an_absolute_value`<br>`tests/s05_ntp.rs::covered_duplicate_coordinate_is_ambiguous_value_kept_not_a_read_leap`<br>`tests/s05_ntp.rs::missing_stale_and_partial_coverage_keep_utc_without_false_certainty`<br>`tests/s05_ntp.rs::sentinel_precedes_era_and_rounding_but_nonzero_fraction_is_time`<br>`tests/s05_ntp.rs::tf030_nonzero_era_keeps_exact_evidence_and_unix_mapping`<br>`tests/s06a_format2.rs::explicit_era_and_unresolved_context_reach_the_converter`<br>`tests/s06a_format2.rs::native_scales_and_d7_conversion_basis_are_preserved`<br>`tests/s06a_format2.rs::ntp_admission_keeps_sentinel_ambiguity_era_and_context`<br>`tests/s06a_format2.rs::ptp_inserted_second_survives_the_boundary_with_its_own_finding`<br>`tests/s06a_format2.rs::review_each_converted_finding_uses_policy_level_without_changing_value`<br>`tests/s06b_offline.rs::ambiguous_ntp_does_not_establish_an_exact_physical_bracket`<br>`tests/s06b_offline.rs::mixed_utc_ptp_and_f1_use_one_physical_scale_without_fake_fields`<br>`tests/s06b_offline.rs::stale_ptp_basis_and_epoch_identity_survive_offline_admission`<br>`tests/s06b_stream.rs::ambiguity_keeps_capture_value_but_blocks_displacement_and_interpolation`<br>`tests/s10b_answers.rs::all_six_network_kinds_use_matching_components_and_qualified_conversions`<br>`tests/s10b_answers.rs::ntp_word_cannot_borrow_another_sessions_era_but_zero_remains_a_sentinel` |
 
 * Entries without a written analysis: **1** of 12
 * Entries without a test: **0** of 12

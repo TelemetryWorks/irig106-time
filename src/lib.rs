@@ -93,6 +93,8 @@ pub mod csdw;
 pub mod edition;
 /// Error types and `Result` alias for time parsing operations.
 pub mod error;
+/// Bounded stamp inspection and caller-extracted time-word answers.
+pub mod extracted;
 /// Intra-packet timestamp format dispatch (RTC, Ch4, IEEE-1588, ERTC).
 pub mod intra_packet;
 /// Validated leap-table snapshots and qualified PTP conversions.

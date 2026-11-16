@@ -115,7 +115,7 @@ impl<'a> CounterAnswer<'a> {
             Self::Stream(a) => a.basis.preceding.as_ref(),
         }
     }
-    fn reading(self) -> Option<CalendarReading> {
+    pub(crate) fn reading(self) -> Option<CalendarReading> {
         match self {
             Self::Offline(a) => a.reading,
             Self::Stream(a) => a.reading,
@@ -127,7 +127,7 @@ impl<'a> CounterAnswer<'a> {
             Self::Stream(a) => a.basis.precision_ns,
         }
     }
-    fn normalized(self, table: &LeapSecondTable) -> Result<i128> {
+    pub(crate) fn normalized(self, table: &LeapSecondTable) -> Result<i128> {
         let r = self.reference().ok_or(missing("counter reference"))?;
         if r.key.session != self.key().session {
             return Err(missing("counter reference session"));
@@ -139,7 +139,7 @@ impl<'a> CounterAnswer<'a> {
         }
         normalize(self.reading().ok_or(missing("counter calendar"))?, table)
     }
-    fn ertc_shift(self, ns: i128) -> Result<i128> {
+    pub(crate) fn ertc_shift(self, ns: i128) -> Result<i128> {
         if let Self::Stream(a) = self {
             if let (Some(p), Some(f)) = (&a.basis.preceding, &a.basis.following) {
                 if p.key.session != f.key.session || p.key.session != self.key().session {
@@ -360,7 +360,7 @@ fn nominal(c: CalendarReading) -> Result<i128> {
         * SECOND)
         + i128::from(c.nanoseconds))
 }
-fn normalize(c: CalendarReading, table: &LeapSecondTable) -> Result<i128> {
+pub(crate) fn normalize(c: CalendarReading, table: &LeapSecondTable) -> Result<i128> {
     let ns = nominal(c)?;
     let offset = match c.scale.effective() {
         TimeScale::Tai => 0,
@@ -383,7 +383,7 @@ fn normalize(c: CalendarReading, table: &LeapSecondTable) -> Result<i128> {
     }
     Ok(tai)
 }
-fn point(tai: i128, scale: TimeScale, table: &LeapSecondTable) -> Result<OwnPoint> {
+pub(crate) fn point(tai: i128, scale: TimeScale, table: &LeapSecondTable) -> Result<OwnPoint> {
     let utc = utc_projection(tai, table)?;
     let mut native = match scale {
         TimeScale::Utc => utc.reading,
@@ -411,7 +411,7 @@ fn point(tai: i128, scale: TimeScale, table: &LeapSecondTable) -> Result<OwnPoin
         utc,
     })
 }
-fn from_epoch(
+pub(crate) fn from_epoch(
     elapsed: i128,
     epoch: Option<&EpochContext>,
     table: &LeapSecondTable,
