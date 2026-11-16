@@ -14,6 +14,7 @@ use crate::{
 };
 use alloc::{boxed::Box, collections::BTreeMap, vec::Vec};
 /// Named year evidence classes. Network dates retain their own era evidence.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum YearSource {
     /// Same-session DMY, including the phase-advanced stable-first anchor.

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S12b2a complete policy snapshots and legacy aggregate audit
+
+- Add candidate v1 policy snapshots with required defaults version, units and
+  decimal strings for every wide policy field. Preserve complete shared
+  settings, epoch/table/declaration evidence, NTP pivots, caps and overrides;
+  validate on load without host-clock/default lookup. Schema remains unfrozen.
+- **Breaking (serde):** remove Serialize/Deserialize from correlation
+  ReferencePoint, TimeJump and RtcReset, quality TimeQuality, recording_event
+  RecordingEvent and streaming StreamingRef. These legacy aggregates emitted
+  wide JSON numbers and lacked qualified report validation. Runtime algorithms
+  are unchanged. Migrate explicit quantities/policies to versioned snapshots;
+  qualified answer/report replacement follows in S12b2b, not a legacy wire alias.
+  Native ScalePolicy also rejects unknown fields when loaded.
+- Split before code to keep review bounded: this part closes the listed legacy
+  aggregate paths and complete policy configuration. Answer/report replay and
+  remaining direct adapter serializers stay0.8 blockers in S12b2b; Q5 is not
+  complete yet. Q3 only defers complex engine-state loading. Clause coverage
+  only, matrix192/288 (delta0); no new whole-requirement claims or schema freeze.
+
 ### S12b1 exact value snapshots and validated leaf loading
 
 - Add candidate v1 scalar/calendar/leap-table snapshots under serde, with

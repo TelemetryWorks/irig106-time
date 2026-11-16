@@ -7,6 +7,7 @@ use alloc::{collections::VecDeque, vec::Vec};
 const MASK: i128 = (1i128 << 48) - 1;
 /// Explicit stream strategy; Standard is the owner-accepted default.
 /// **Traces:** L3-POL-201 ← L2-POL-201 ← L1-POL-001
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StreamMode {
     /// RCC 123-20 §5.6 printed 5-44: preceding time plus RTC displacement.

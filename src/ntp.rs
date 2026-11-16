@@ -15,6 +15,7 @@ const EPOCH: i128 = 2_208_988_800;
 const NANO: i128 = 1_000_000_000;
 /// Why an era was selected; a policy assumption is never independent evidence.
 /// **Traces:** L3-NTP-102 ← L2-NTP-102 ← L1-NTP-002
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EraBasis {
     /// Caller declared the era and supplied its identity.
@@ -34,6 +35,7 @@ pub struct EraDeclaration {
     pub id: String,
 }
 /// Preserve the precision of pivot evidence instead of rounding before selection.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PivotFraction {
     /// Caller/calendar fraction in nanoseconds, below1e9.
@@ -547,5 +549,123 @@ impl NtpConversion {
             out.push(Finding::new(code, Some(severity), evidence)?);
         }
         Ok(out)
+    }
+}
+
+// Snapshot loading retains caller-asserted provenance, not independent proof of
+// a source's authenticity. Reconstruct each permitted pivot domain; never admit
+// AssumedZero as independent evidence (RDG-012).
+#[cfg(feature = "serde")]
+mod snapshot_pivot {
+    use super::*;
+    use crate::snapshot::Decimal;
+    use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
+    #[derive(Serialize, Deserialize)]
+    #[serde(deny_unknown_fields)]
+    enum Origin {
+        CallerApproximateDate,
+        DatedReference { packet: Decimal<u64> },
+        ResolvedNtp { era: Decimal<i64>, kind: EraBasis },
+    }
+    #[derive(Serialize, Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct Wire {
+        session: Decimal<usize>,
+        id: String,
+        seconds: Decimal<i128>,
+        fraction: PivotFraction,
+        scale: ScaleEvidence,
+        origin: Origin,
+        #[serde(deserialize_with = "crate::snapshot::required")]
+        calendar: Option<CalendarReading>,
+    }
+    impl Serialize for NtpPivot {
+        fn serialize<S: Serializer>(&self, s: S) -> core::result::Result<S::Ok, S::Error> {
+            Wire {
+                session: Decimal::new(self.session),
+                id: self.id.clone(),
+                seconds: Decimal::new(self.seconds.get()),
+                fraction: self.fraction,
+                scale: self.scale,
+                calendar: self.calendar,
+                origin: match self.origin {
+                    PivotOrigin::CallerApproximateDate => Origin::CallerApproximateDate,
+                    PivotOrigin::DatedReference { packet } => Origin::DatedReference {
+                        packet: Decimal::new(packet),
+                    },
+                    PivotOrigin::ResolvedNtp { era, kind } => Origin::ResolvedNtp {
+                        era: Decimal::new(era),
+                        kind,
+                    },
+                },
+            }
+            .serialize(s)
+        }
+    }
+    impl<'de> Deserialize<'de> for NtpPivot {
+        fn deserialize<D: Deserializer<'de>>(d: D) -> core::result::Result<Self, D::Error> {
+            let w: Wire = crate::snapshot::object(d)?;
+            let invalid = || D::Error::custom("invalid NTP pivot provenance/coordinate");
+            let mut p = Self::approximate(
+                w.session.get(),
+                &w.id,
+                SignedUnixSeconds::new(w.seconds.get()),
+                0,
+            )
+            .map_err(D::Error::custom)?;
+            match w.origin {
+                Origin::CallerApproximateDate => {
+                    let PivotFraction::Nanoseconds(n) = w.fraction else {
+                        return Err(invalid());
+                    };
+                    p = Self::approximate(w.session.get(), &w.id, p.seconds, n)
+                        .map_err(D::Error::custom)?;
+                    if w.calendar.is_some() || w.scale != p.scale {
+                        return Err(invalid());
+                    }
+                }
+                Origin::DatedReference { packet } => {
+                    p = Self::dated(
+                        w.session.get(),
+                        &w.id,
+                        packet.get(),
+                        w.calendar.ok_or_else(invalid)?,
+                    )
+                    .map_err(D::Error::custom)?;
+                    if p.seconds.get() != w.seconds.get()
+                        || p.fraction != w.fraction
+                        || p.scale != w.scale
+                    {
+                        return Err(invalid());
+                    }
+                }
+                Origin::ResolvedNtp { era, kind } => {
+                    let PivotFraction::NtpUnits(f) = w.fraction else {
+                        return Err(invalid());
+                    };
+                    let ntp_seconds = w.seconds.get().checked_add(EPOCH).ok_or_else(invalid)?;
+                    if kind == EraBasis::AssumedZero
+                        || ntp_seconds.div_euclid(ERA) != i128::from(era.get())
+                        || (ntp_seconds.rem_euclid(ERA) == 0 && f == 0)
+                        || w.scale.effective() != TimeScale::Utc
+                    {
+                        return Err(invalid());
+                    }
+                    let nanos = ((u64::from(f) * 1_000_000_000) >> 32) as u32;
+                    let expected = crate::leap::calendar(p.seconds, nanos, false).ok();
+                    if w.calendar != expected {
+                        return Err(invalid());
+                    }
+                    p.fraction = w.fraction;
+                    p.scale = w.scale;
+                    p.origin = PivotOrigin::ResolvedNtp {
+                        era: era.get(),
+                        kind,
+                    };
+                    p.calendar = w.calendar;
+                }
+            }
+            Ok(p)
+        }
     }
 }

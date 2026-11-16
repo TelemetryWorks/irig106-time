@@ -11,7 +11,9 @@ use crate::{
 };
 use alloc::{collections::BTreeMap, string::String, vec::Vec};
 /// What data instant the own time describes; exceptions are caller-cited facts.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub enum TimeApplicability {
     /// §11.2.1.2a default: first data bit of the packet body.
     FirstDataBit,

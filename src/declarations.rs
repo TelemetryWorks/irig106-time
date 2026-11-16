@@ -55,7 +55,9 @@ impl GoverningRange {
     }
 }
 /// Raw structured attribute values; original spelling/absence are preserved.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct ChannelDeclaration {
     /// Packet channel identifier, supplied by the caller's configuration join.
     pub id: u16,

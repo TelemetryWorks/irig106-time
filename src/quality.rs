@@ -21,7 +21,6 @@ use alloc::vec::Vec;
 /// correlation results are trustworthy.
 ///
 /// **Traces:** P5-04
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq)]
 pub struct TimeQuality {
     /// Total number of reference points.
