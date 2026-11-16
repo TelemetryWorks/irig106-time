@@ -119,3 +119,61 @@ clippy; no_std WASM with/without serde; matrix check; benches; all ten fuzz
 targets type-checked; cargo-deny. Cargo build/test/check/doc/clippy used --locked.
 Actionlint and git diff --check also passed. This is local Linux evidence;
 GitHub CI separately checks Linux, Windows and macOS at the reported PR head.
+
+## Review at3939a7e: tests-only follow-up
+
+Add five integration tests (15 total) and one private normalization unit test.
+All six pass without production changes. They are partial clause evidence;
+no whole Requirements markers are added and the matrix stays192/288.
+The unit test can inspect the native coordinate without exposing a new API.
+
+Each following temporary source mutation was applied independently, produced
+an assertion failure, and was restored before the final checks (**10/10**):
+
+| Reviewer mutant | Added assertion / failing test |
+|---|---|
+| P4: accept civil-counting epoch at second60 | review_civil_leap_epoch_and_cross_session_pivot_are_rejected: both IEEE and Chapter4 contexts reject a valid2016-36623:59:60 civil origin; continuous60 and civil59 controls accept. |
+| P6: skip pivot-session check | Same test: map key1/context1 with a valid pivot from session2 rejects; same-session control accepts. |
+| P15: omit native+1s for second60 | reference::review_s12a::leap_label_advances_native_coordinate_as_well_as_tai: native1483228800000000000ns, TAI1483228836000000000ns, both exactly1s after59. |
+| P16: erase provided_policy | review_requalification_keeps_immediate_prior_policy_and_clears_stale_issue: sequential offline qualification10→11→12 retains10 then11, and previously returned snapshots stay unchanged. |
+| P18: leave word context at default era | review_word_context_and_missing_era_entry_keep_the_named_session: exact session2 context including declared era1 retained in word context. |
+| P19: fallback names session1 | Same test: absent entry3 returns context.session3, no declaration/pivots, conversion labelled AssumedZero/era0. |
+| P19: fallback reuses context from another session | Same test, with populated session2/era1, fails instead of reusing its evidence. |
+| P21: retain stale shared normalization_issue | review_requalification_keeps_immediate_prior_policy_and_clears_stale_issue: unknown-scale qualification first produces an issue, successful UTC requalification attaches normalization and clears it. |
+| P24 offline: use raw rather than unwrapped preparation ticks | review_offline_shared_governing_range_uses_unwrapped_ticks: range starts at2^48, raw RTC1 follows2^48−2; reference key2^48+1 uses setup99/RI4 year2024. |
+| P25: mode-change guard uses fixed1s | review_mode_change_checks_the_new_hold_interval_for_overflow: progressMAX−1100000000 fits old1s+100ms exactly, but new2s+100ms overflows; reject and retain old policy. No production bug found on this path. |
+
+### Newly exposed stream defect — not fixed in this tests-only update
+
+The recommended P24 probe **fails on unmutated3939a7e** in both Standard and
+Interpolate. Reproduction using the helpers in tests/s12a_policy.rs:
+
+1. Shared declarations contain session1/setup99 with governing range
+   [281474976710656,unbounded), channel7 TIMEIN, RI4 year2024.
+2. Fix stream channel7; observe data packet1 at RTC281474976710654.
+3. Observe Format1 packet2 at RTC1, using input() (LY1/day1).
+4. Observe data packet3 at RTC1. Expected: absolute answer using setup99,
+   year2024 and reference key ticks281474976710657. Actual: counter-only,
+   no preceding reference, TF-008 and missing-year TF-020 on packet2.
+
+The stream's initial SharedPolicy.prepare receives correct unwrapped ticks.
+Its stream_observation adapter then creates a fresh one-packet TimelineBuilder
+with the same shared policy: a second preparation uses raw ticks1/session1,
+loses the governing range and rejects the reference. Offline P24 succeeds.
+Both stream-mode probes were run separately and failed their absolute-answer
+assertion; these are disclosed failing probes, not committed passing tests.
+
+The same double preparation also overwrites **immediate prior policy in the
+stream**: qualify input() offline under shared10, pass that input to stream11,
+then inspect the released answer's preceding qualification. Expected prior10;
+actual prior11. This independent probe failed at unmutated head too. P16's
+new committed offline assertions kill the erasure mutant but do not claim
+this stream defect is covered or fixed. No ignored regression hides either
+failure. Production repair and permanent stream regressions need follow-up
+authorization beyond this tests-only update; S12a2 claims remain unchanged.
+
+After restoring every mutant, all18 local CI-equivalent checks passed again
+(jobs2/threads2, --locked), including the15 integration tests and the new unit
+test in all four feature combinations. Actionlint/diff checks pass; regenerated
+trace matrix is unchanged192/288. These results exclude the explicitly failing
+stream probes above and do not claim their defects are resolved.

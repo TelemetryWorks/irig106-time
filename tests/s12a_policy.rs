@@ -523,3 +523,175 @@ fn shared_scale_applies_before_decode_and_normalizes_a_real_leap_label() {
     assert!(batch.findings.iter().any(|f| f.code == 22));
     assert!(!batch.findings.iter().any(|f| f.code == 4));
 }
+
+// Review clauses only: no whole-requirement completion markers.
+#[test]
+fn review_civil_leap_epoch_and_cross_session_pivot_are_rejected() {
+    use irig106_time::{format1::CalendarReading, ntp::*, own_time::*};
+    let origin = CalendarReading {
+        year: Some(2016),
+        day_of_year: 366,
+        hours: 23,
+        minutes: 59,
+        seconds: 60,
+        nanoseconds: 0,
+        scale: ScaleEvidence::standard(TimeScale::Utc),
+    };
+    origin.validate().unwrap(); // RDG-010: valid label, invalid CIVIL epoch.
+    for ieee in [true, false] {
+        for (counting, seconds, accepted) in [
+            (EpochCounting::Civil, 60, false),
+            (EpochCounting::Continuous, 60, true),
+            (EpochCounting::Civil, 59, true),
+        ] {
+            let mut s = SharedSettings::default();
+            let epoch = Some(EpochContext {
+                origin: CalendarReading { seconds, ..origin },
+                counting,
+                source: "caller epoch".into(),
+            });
+            if ieee {
+                s.own.ieee = epoch;
+            } else {
+                s.own.ch4 = epoch;
+            }
+            assert_eq!(SharedPolicy::new(1, s).is_ok(), accepted);
+        }
+    }
+    for (pivot_session, accepted) in [(1, true), (2, false)] {
+        let mut c = NtpContext::new(1);
+        c.pivots.push(
+            NtpPivot::approximate(
+                pivot_session,
+                "caller pivot",
+                SignedUnixSeconds::new(2_085_978_496),
+                0,
+            )
+            .unwrap(),
+        );
+        let mut s = SharedSettings::default();
+        s.ntp.insert(1, c); // map and context match; only pivot can disagree.
+        assert_eq!(SharedPolicy::new(1, s).is_ok(), accepted);
+    }
+}
+
+#[test]
+fn review_word_context_and_missing_era_entry_keep_the_named_session() {
+    use irig106_time::{leap::LeapSecondTable, network_time::NtpTime, ntp::*};
+    let mut s = SharedSettings::default();
+    let mut c = NtpContext::new(2);
+    c.declared = Some(EraDeclaration {
+        era: 1,
+        id: "session2 era".into(),
+    });
+    s.ntp.insert(2, c.clone());
+    let p = SharedPolicy::new(1, s).unwrap();
+    assert_eq!(p.word_context(2).unwrap().ntp, c);
+    let absent = p.ntp_context(3).unwrap();
+    assert_eq!(absent.session, 3);
+    assert!(absent.declared.is_none());
+    assert!(absent.pivots.is_empty());
+    // RFC5905 Fig4: nonzero era1 offset63104. Without evidence in session3,
+    // the SAME raw value uses labelled era0, never session2's declared era1.
+    let result = convert_ntp(
+        NtpTime {
+            seconds: 63_104,
+            fraction: 0,
+        },
+        &absent,
+        Some(&LeapSecondTable::builtin()),
+    );
+    assert_eq!(result.basis().era, Some(0));
+    assert_eq!(result.basis().era_basis, Some(EraBasis::AssumedZero));
+}
+
+#[test]
+fn review_requalification_keeps_immediate_prior_policy_and_clears_stale_issue() {
+    let mut s = shared(10).settings().clone();
+    s.scales.irig = TimeScale::Unknown;
+    let first = SharedPolicy::new(10, s).unwrap();
+    let qualify = |p: &SharedPolicy, r| {
+        let mut b = TimelineBuilder::new(p.offline(OfflinePolicy::default()).unwrap()).unwrap();
+        b.observe(packet(1, 0, Some(r)), false).unwrap();
+        b.finish().unwrap().sessions()[0].references[0]
+            .input
+            .clone()
+    };
+    let a = qualify(&first, input());
+    assert!(a.year_basis.normalization_issue().is_some());
+    assert!(a.normalization.is_none());
+    let second = shared(11);
+    let b = qualify(&second, a.clone());
+    assert!(b.normalization.is_some());
+    assert_eq!(b.year_basis.normalization_issue(), None);
+    let q = b.qualification.as_ref().unwrap();
+    assert_eq!(q.policy(), &second);
+    assert_eq!(q.provided_policy(), Some(&first));
+    let third = shared(12);
+    let c = qualify(&third, b.clone());
+    assert_eq!(c.qualification.unwrap().provided_policy(), Some(&second));
+    assert_eq!(b.qualification.unwrap().provided_policy(), Some(&first));
+    assert_eq!(a.qualification.unwrap().policy(), &first);
+}
+
+#[test]
+fn review_offline_shared_governing_range_uses_unwrapped_ticks() {
+    let wrap = 1u64 << 48;
+    let settings = SharedSettings {
+        declarations: Some(
+            Declarations::present(vec![SetupDeclarations {
+                range: GoverningRange::new(1, SignedRtcTicks::new(wrap.into()), None).unwrap(),
+                setup_packet: 99,
+                provenance: "post-wrap setup".into(),
+                declared_version: None,
+                ri4: Some("2024-01-01".into()),
+                recording_year: Some(2024),
+                channels: vec![ChannelDeclaration {
+                    id: 7,
+                    cdt: Some("TIMEIN".into()),
+                    ..Default::default()
+                }],
+            }])
+            .unwrap(),
+        ),
+        ..Default::default()
+    };
+    let p = SharedPolicy::new(1, settings).unwrap();
+    let check = |r: &TimelineReference| {
+        assert_eq!(r.key.ticks, i128::from(wrap) + 1);
+        assert_eq!(r.input.year_basis.selected().unwrap().year, 2024);
+        assert_eq!(
+            r.input
+                .qualification
+                .as_ref()
+                .unwrap()
+                .declarations()
+                .unwrap()
+                .governing
+                .as_ref()
+                .unwrap()
+                .setup_packet,
+            99
+        );
+    };
+    let mut b = TimelineBuilder::new(p.offline(OfflinePolicy::default()).unwrap()).unwrap();
+    b.observe(packet(1, wrap - 2, None), false).unwrap();
+    b.observe(packet(2, 1, Some(input())), false).unwrap();
+    check(&b.finish().unwrap().sessions()[0].references[0]);
+}
+
+#[test]
+fn review_mode_change_checks_the_new_hold_interval_for_overflow() {
+    let caps = BufferCaps {
+        packets: 2,
+        bytes: 100,
+        references: 3,
+    };
+    let mut s =
+        StreamTimeline::new(shared(1).stream(StreamPolicy::new(1, caps)).unwrap(), None).unwrap();
+    let mut next = shared(2).stream(StreamPolicy::new(2, caps)).unwrap();
+    next.hold_interval_ns = 2_000_000_000;
+    let progress = u64::MAX - 1_100_000_000; // old deadline fits exactly; new one overflows.
+    assert!(s.set_policy(next, progress).is_err());
+    assert_eq!(s.policy().id, 1);
+}

@@ -539,3 +539,36 @@ pub(crate) fn normalization_warning(
             });
     Ok(Some(f))
 }
+
+#[cfg(test)]
+mod review_s12a {
+    use super::*;
+    // Partial ANS/POL normalization clause, no whole-requirement marker.
+    #[test]
+    fn leap_label_advances_native_coordinate_as_well_as_tai() {
+        // RDG-010; Fig11-14 (11-25/PDF33) retains second60. Last insertion
+        // before2017: Unix midnight1483228800, old TAI-UTC36s (S04 IERS table).
+        let c = CalendarReading {
+            year: Some(2016),
+            day_of_year: 366,
+            hours: 23,
+            minutes: 59,
+            seconds: 60,
+            nanoseconds: 0,
+            scale: ScaleEvidence::standard(TimeScale::Utc),
+        };
+        let n = Normalization::from_calendar(c, LeapSecondTable::builtin()).unwrap();
+        assert_eq!(n.native_ns, 1_483_228_800_000_000_000);
+        assert_eq!(n.tai_nanoseconds(), 1_483_228_836_000_000_000);
+        let before = Normalization::from_calendar(
+            CalendarReading { seconds: 59, ..c },
+            LeapSecondTable::builtin(),
+        )
+        .unwrap();
+        assert_eq!(n.native_ns - before.native_ns, 1_000_000_000);
+        assert_eq!(
+            n.tai_nanoseconds() - before.tai_nanoseconds(),
+            1_000_000_000
+        );
+    }
+}
