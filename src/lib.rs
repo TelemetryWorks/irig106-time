@@ -66,6 +66,8 @@ extern crate std;
 
 extern crate alloc;
 
+/// Owned replayable answer envelopes, independent of a live recording engine.
+pub mod answer;
 /// Caller-supplied governing declarations and RDG-qualified comparisons.
 pub mod declarations;
 /// Stable finding catalog and structured factual evidence.

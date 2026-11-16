@@ -243,3 +243,7 @@ jobs2/threads2 and --locked, including the21 policy tests and normalization
 unit test across all four feature combinations; MSRV1.85, clippy/fmt/rustdoc,
 CLI, no_std/WASM, matrix, benches, all10 fuzz targets and cargo-deny are green.
 Actionlint and diff checks pass.
+
+Subsequent S12a2 implementation and clause-level replay/typed-counter/adapter
+closure are recorded in [verification-s12a2.md](verification-s12a2.md). The
+remaining serialization/schema proof belongs to the planned S12b slice.
