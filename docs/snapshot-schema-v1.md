@@ -84,3 +84,9 @@ Full policies, findings, reference/session links and answer reports remain the
 next S12b review part and0.8 blockers; raw legacy diagnostic serialization is
 not claimed to satisfy this versioned report contract yet. The complex-state
 deferral does not excuse those value/report validation and precision checks.
+
+S12b2 audit checklist (review atbb5de7c): legacy correlation Rtc/u64/i64 nanos
+and indexes, quality max/min/span nanoseconds and counts, recording_event Rtc,
+and streaming Rtc still serialize as numbers. These are Q5 release blockers;
+new snapshot wrappers alone do not complete the legacy serde audit. The Q3
+complex-state-load deferral does not cover those scalar/report serializers.

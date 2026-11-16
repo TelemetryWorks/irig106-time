@@ -75,27 +75,90 @@ fn scalar_snapshot_requires_version_units_width_and_exact_wide_shared_values() {
 
 #[test]
 fn every_scalar_kind_keeps_units_range_sign_and_shared_type() {
-    for value in [
-        ScalarValue::Rtc(Rtc::from_raw((1 << 48) - 1)),
-        ScalarValue::Ertc(Ertc::from_le_bytes(&u64::MAX.to_le_bytes()).unwrap()),
-        ScalarValue::Nanos(NanosDuration::new(u64::MAX)),
-        ScalarValue::SignedNanos(SignedNanos::new(i128::MIN)),
-        ScalarValue::SignedTicks(SignedRtcTicks::new(i128::MAX)),
-        ScalarValue::Unix(UnixSeconds::new(u64::MAX)),
-        ScalarValue::SignedUnix(SignedUnixSeconds::new(-1)),
-        ScalarValue::Tai(TaiSeconds::new(u64::MAX)),
-        ScalarValue::U64(u64::MAX),
-        ScalarValue::I64(i64::MIN),
-        ScalarValue::U128(u128::MAX),
-        ScalarValue::I128(i128::MAX),
+    // Independent golden schema spellings, not inferred from producer/loader units.
+    for (value, kind, unit, decimal) in [
+        (
+            ScalarValue::Rtc(Rtc::from_raw((1 << 48) - 1)),
+            "rtc",
+            "rtc_ticks",
+            "281474976710655",
+        ),
+        (
+            ScalarValue::Ertc(Ertc::from_le_bytes(&u64::MAX.to_le_bytes()).unwrap()),
+            "ertc",
+            "ns",
+            "18446744073709551615",
+        ),
+        (
+            ScalarValue::Nanos(NanosDuration::new(u64::MAX)),
+            "nanos",
+            "ns",
+            "18446744073709551615",
+        ),
+        (
+            ScalarValue::SignedNanos(SignedNanos::new(i128::MIN)),
+            "signed_nanos",
+            "ns",
+            "-170141183460469231731687303715884105728",
+        ),
+        (
+            ScalarValue::SignedTicks(SignedRtcTicks::new(i128::MAX)),
+            "signed_ticks",
+            "rtc_ticks",
+            "170141183460469231731687303715884105727",
+        ),
+        (
+            ScalarValue::Unix(UnixSeconds::new(u64::MAX)),
+            "unix",
+            "unix_s",
+            "18446744073709551615",
+        ),
+        (
+            ScalarValue::SignedUnix(SignedUnixSeconds::new(-1)),
+            "signed_unix",
+            "unix_s",
+            "-1",
+        ),
+        (
+            ScalarValue::Tai(TaiSeconds::new(u64::MAX)),
+            "tai",
+            "tai_s",
+            "18446744073709551615",
+        ),
+        (
+            ScalarValue::U64(u64::MAX),
+            "u64",
+            "count",
+            "18446744073709551615",
+        ),
+        (
+            ScalarValue::I64(i64::MIN),
+            "i64",
+            "count",
+            "-9223372036854775808",
+        ),
+        (
+            ScalarValue::U128(u128::MAX),
+            "u128",
+            "count",
+            "340282366920938463463374607431768211455",
+        ),
+        (
+            ScalarValue::I128(i128::MAX),
+            "i128",
+            "count",
+            "170141183460469231731687303715884105727",
+        ),
     ] {
         let s = ScalarSnapshot::new(value).unwrap();
         let wire = encode(&s);
-        let Node::Map(fields) = &wire else { panic!() };
-        assert!(matches!(
-            fields.iter().find(|(k, _)| k == "value").unwrap().1,
-            Node::String(_)
-        ));
+        assert_eq!(
+            wire.json(),
+            format!(
+                "{{\"schema\":\"irig106-time/scalar\",\"version\":1,\"kind\":\"{kind}\",\"unit\":\"{unit}\",\"value\":\"{decimal}\"}}"
+            ),
+            "{kind}"
+        );
         assert_eq!(decode::<ScalarSnapshot>(wire).unwrap().value(), value);
     }
     for n in [i64::MIN, i64::MAX] {
@@ -245,4 +308,53 @@ fn snapshot_maps_are_strict_and_old_shared_source_names_do_not_load() {
         decode::<IrigTimeSource>(Node::String("ExternalGps".into())).unwrap(),
         IrigTimeSource::ExternalGps
     );
+}
+
+#[test]
+fn review_calendar_envelope_rejects_unknown_fields() {
+    use irig106_time::{format1::CalendarReading, scale::*};
+    let cal = CalendarSnapshot::new(CalendarReading {
+        year: None,
+        day_of_year: 1,
+        hours: 0,
+        minutes: 0,
+        seconds: 0,
+        nanoseconds: 0,
+        scale: ScaleEvidence::unknown(),
+    })
+    .unwrap();
+    let mut calendar = encode(&cal);
+    assert_eq!(decode::<CalendarSnapshot>(calendar.clone()).unwrap(), cal);
+    let Node::Map(fields) = &mut calendar else {
+        panic!()
+    };
+    fields.push(("future".into(), Node::Bool(true)));
+    assert!(
+        decode::<CalendarSnapshot>(calendar).is_err(),
+        "S13 calendar Envelope"
+    );
+}
+
+#[test]
+fn review_leap_unknown_fields_reject_at_each_guarded_layer() {
+    let table = LeapTableSnapshot::new(LeapSecondTable::builtin());
+    let wire = encode(&table);
+    assert_eq!(decode::<LeapTableSnapshot>(wire.clone()).unwrap(), table);
+    for layer in ["envelope", "table", "entry"] {
+        let mut bad = wire.clone();
+        let target = match layer {
+            "envelope" => &mut bad,
+            "table" => bad.field("value"),
+            "entry" => {
+                let Node::Seq(entries) = bad.field("value").field("entries") else {
+                    panic!()
+                };
+                &mut entries[0]
+            }
+            _ => unreachable!(),
+        };
+        let Node::Map(fields) = target else { panic!() };
+        fields.push(("future".into(), Node::Bool(true)));
+        assert!(decode::<LeapTableSnapshot>(bad).is_err(), "{layer}");
+    }
 }

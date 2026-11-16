@@ -99,3 +99,46 @@ state compile-fail doctests pass. No machine-schema validation or browser JS
 execution is claimed; Serde token checks plus independent Python JSON parsing
 establish the emitted string representation. Policy/report-wide proof remains
 S12b2 and no schema was frozen by this implementation.
+
+## Review atbb5de7c — unknown fields and golden scalar units
+
+Tests-only update: three added tests (five native-load plus seven snapshot tests,
+12 dedicated tests total) and stronger exact-output assertions in the scalar
+kind table. All pass on unchanged production code; no new bug/design change.
+Valid controls load before adding exactly one unknown field at each layer.
+S13 is checked independently for calendar and leap-table envelopes; L1 poisons
+the table payload, L3 its first entry, W1/W2 the native leaf object.
+
+Each of the five guard-removal mutations fails at runtime: S13 (both envelope
+tests fail), L1 TableWire, L3 LeapSecondEntry, W1 CalendarTimeWire and W2 PtpWire.
+S14 is extended to **every scalar kind**: an independent table pins full emitted
+JSON (schema/version/kind/unit/quoted decimal), not units inferred from the
+producer or loader. Twelve independent wrong-unit mutations all fail, including
+ERTC ns→ertc_ticks. In total17 distinct mutations were killed; S13 was repeated
+after splitting its two test wrappers to prove both fail independently. No
+compile-failure counting, no source mutation retained, no new whole markers;
+regenerated matrix remains192/288 (delta0). Schema is still not frozen.
+
+### Explicit S12b2 carry-forward — Q5 release blockers
+
+Inspection confirms legacy derives still emit wide integer JSON numbers:
+
+- correlation: ReferencePoint.rtc; TimeJump.index, expected_nanos/actual_nanos
+  (u64), delta_nanos (i64); RtcReset.index and rtc_before/rtc_after.
+- quality: TimeQuality.max_rtc_gap_ns (and min_rtc_gap_ns/rtc_span_ns plus
+  usize counts in total_refs/channel_count/refs_per_channel).
+- recording_event: RecordingEvent.rtc (deprecated does not excuse Q5 if emitted).
+- streaming: StreamingRef.rtc.
+
+These remain in the already scoped S12b2 legacy aggregate/wide-field audit.
+The new versioned wrappers do not make these direct derives exact. Q5 is NOT
+complete until retained serializers/loads are audited and corrected, or removed
+through an authorized API transition. Q3's complex timeline-state rehydration
+deferral does not exempt these scalar/report fields. No serializer fix is
+included in this tests-only revision.
+
+Restored-source review checks: all18 local CI-equivalent checks pass again,
+jobs2/threads2 and --locked, including all12 dedicated tests across enabled
+feature suites, MSRV1.85, clippy/fmt/rustdoc, CLI, no_std/WASM, matrix, benches,
+all10 fuzz targets and cargo-deny. Actionlint/diff checks pass. Production
+code unchanged; no Q5-completion or schema-freeze claim added.

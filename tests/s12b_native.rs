@@ -94,3 +94,34 @@ fn native_ptp_load_checks_fraction_range() {
     *w.field("nanoseconds") = Node::Number("1000000000".into());
     assert!(decode::<PtpTime>(w).is_err());
 }
+
+#[test]
+fn review_native_calendar_time_and_ptp_reject_unknown_fields() {
+    let calendar = CalendarTime::new(
+        AbsoluteTime::new(1, 0, 0, 0, 0)
+            .unwrap()
+            .with_year(Some(2017))
+            .unwrap(),
+        1,
+        1,
+    )
+    .unwrap();
+    let mut wire = encode(&calendar);
+    assert_eq!(decode::<CalendarTime>(wire.clone()).unwrap(), calendar);
+    let Node::Map(fields) = &mut wire else {
+        panic!()
+    };
+    fields.push(("future".into(), Node::Bool(true)));
+    assert!(decode::<CalendarTime>(wire).is_err(), "W1 CalendarTimeWire");
+    let ptp = PtpTime {
+        seconds: 1,
+        nanoseconds: 0,
+    };
+    let mut wire = encode(&ptp);
+    assert_eq!(decode::<PtpTime>(wire.clone()).unwrap(), ptp);
+    let Node::Map(fields) = &mut wire else {
+        panic!()
+    };
+    fields.push(("future".into(), Node::Bool(true)));
+    assert!(decode::<PtpTime>(wire).is_err(), "W2 PtpWire");
+}
