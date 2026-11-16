@@ -5,6 +5,11 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # Owner Dependabot policy 2026-11-16: majors are planned in the
+    # coordinator's planned-major-upgrades list.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "chore(deps)"
     groups:
@@ -20,6 +25,11 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # Owner Dependabot policy 2026-11-16: majors are planned in the
+    # coordinator's planned-major-upgrades list.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "chore(deps)"
     groups:
