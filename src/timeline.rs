@@ -1425,7 +1425,13 @@ pub(crate) fn stream_observation(
         }
         return Ok((Some(reference), findings));
     }
-    let mut b = TimelineBuilder::new(policy.clone())?;
+    // StreamTimeline already qualified this observation at its actual session
+    // and unwrapped key. This one-packet builder supplies admission only:
+    // repeating qualification would select setup at raw RTC/session1 and replace
+    // immediate-prior policy evidence with the current policy (ADR-0010/0011).
+    let mut admission_policy = policy.clone();
+    admission_policy.shared = None;
+    let mut b = TimelineBuilder::new(admission_policy)?;
     b.observe(packet, false)?;
     let mut reference = b.sessions.pop().and_then(|mut s| s.references.pop());
     if let Some(r) = &mut reference {

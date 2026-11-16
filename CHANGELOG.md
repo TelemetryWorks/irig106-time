@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   intervals are independently selectable from late bounds and tolerances.
   Mode changes drain under the old snapshot; identity-only changes retain old
   references with their original qualifier. Semantic changes require new refs.
+- Fix duplicate stream qualification in its admission adapter: post-wrap setup
+  selection and the actual immediate prior policy survive in both stream modes.
 - Breaking struct-literal additions: OfflinePolicy adds shared and
   gap_interval_ns; StreamPolicy adds hold_interval_ns; ReferenceInput adds
   qualification. Use constructor/default values, or None for the legacy shared

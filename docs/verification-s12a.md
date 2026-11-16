@@ -143,7 +143,7 @@ an assertion failure, and was restored before the final checks (**10/10**):
 | P24 offline: use raw rather than unwrapped preparation ticks | review_offline_shared_governing_range_uses_unwrapped_ticks: range starts at2^48, raw RTC1 follows2^48−2; reference key2^48+1 uses setup99/RI4 year2024. |
 | P25: mode-change guard uses fixed1s | review_mode_change_checks_the_new_hold_interval_for_overflow: progressMAX−1100000000 fits old1s+100ms exactly, but new2s+100ms overflows; reject and retain old policy. No production bug found on this path. |
 
-### Newly exposed stream defect — not fixed in this tests-only update
+### Historical stream defect atb0f8831 — fixed in the follow-up below
 
 The recommended P24 probe **fails on unmutated3939a7e** in both Standard and
 Interpolate. Reproduction using the helpers in tests/s12a_policy.rs:
@@ -177,3 +177,41 @@ After restoring every mutant, all18 local CI-equivalent checks passed again
 test in all four feature combinations. Actionlint/diff checks pass; regenerated
 trace matrix is unchanged192/288. These results exclude the explicitly failing
 stream probes above and do not claim their defects are resolved.
+
+
+## Authorized stream repair afterb0f8831
+
+Tests-first commit **e1340a8** adds the permanent documented reproductions:
+review_stream_standard_preserves_post_wrap_setup,
+review_stream_interpolate_preserves_post_wrap_setup,
+review_stream_standard_keeps_actual_immediate_prior_policy and
+review_stream_interpolate_keeps_actual_immediate_prior_policy. All four fail
+at runtime before the fix; the other15 policy tests pass. The strengthened
+offline wrap control returns absolute2024 with setup99 at2^48+1. Each stream
+prior-policy test also runs an offline10→11 control that retains prior10.
+These are failing-before-fix reproductions of S12a1 defects, not failing-on-main
+claims or evidence of S12a2 completion. No whole markers were added.
+
+Minimal fix: the stream's private one-packet Format1 admission adapter clones
+the clock settings and disables shared **requalification only in that local
+adapter**. StreamTimeline still performs the single authoritative preparation
+before admission with the actual session/unwrapped key. The original stream
+policy and reference qualification remain untouched; the network admission
+fast path is unchanged. This implements the existing ADR-0010/0011 snapshot
+and provenance contract; no new design/owner decision is needed.
+
+After the fix, all19 policy integration tests pass, including both mode pairs:
+post-wrap references remain TIMEIN with setup99/RI4 year2024 and the exact
+unwrapped reference key, and stream11 retains supplied prior10 rather than
+inventing prior11. The caller's original snapshot is unchanged. The two
+previously documented failing probes are now permanent passing regressions.
+All10 review mutations were rerun against the fix and still cause runtime
+assertion failures. Removing the local requalification suppression additionally
+reproduces all four new failures. Sources were restored after every mutation.
+No finding/severity/default changed; matrix remains192/288 (delta0).
+
+Restored-source validation after repair: all18 local CI-equivalent checks pass
+again with jobs2/threads2 and --locked (four feature test suites, MSRV1.85,
+clippy/fmt/rustdoc, CLI, no_std/WASM, matrix, benches, all10 fuzz targets and
+cargo-deny). Actionlint and diff checks pass. There are no excluded or ignored
+probes for either of these defects; the four regressions run in the suite.
