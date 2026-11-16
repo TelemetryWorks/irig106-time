@@ -128,7 +128,7 @@ pub struct StampInput<'a> {
     pub order: CounterOrder,
 }
 /// Actual answer at the derived stamp query, including all original basis fields.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResolvedCounter {
     /// Offline lookup at the stamp counter, allowing its own reference selection.
     Offline(Box<OfflineAnswer>),
@@ -551,7 +551,7 @@ pub struct ComponentBinding {
     pub word: NetworkWord,
 }
 /// Immutable caller word context; no unrelated packet answer is accepted here.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WordContext {
     /// Explicit binary epoch and shared table; IEEE epoch is never a binary fallback.
     pub own: OwnContext,

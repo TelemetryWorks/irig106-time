@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S12a2 common replayable answer view
+
+- Add owned AnswerView/AnswerBasis for offline, released stream, own-time,
+  stamps and caller-extracted words. Replay uses frozen selected evidence and
+  raw adapter inputs without a live engine, new channel search or host clock.
+  Preserve native/partial time, independent counter, actual adapter contexts,
+  findings, table/era provenance and old-policy fallback reasons.
+- Add typed SignedNanos counter_duration() accessors/common duration. Existing
+  raw counter_ns fields remain compatibility API. Breaking struct-literal
+  additions: OfflineBasis and StreamBasis now require session_origin (actual
+  first observation key). Secondary inspections retain packet type/byte offset.
+- Counter findings are caller-selected; adapter findings remain separate from
+  that nested evidence. No CLI output or default-policy change. Serde/load
+  schema is S12b; inverse queries stay owner-deferred.
+- Clause record: verification-s12a2.md. No new whole markers;192/288 (delta0).
+
 ### S12a1 shared qualification settings and reference basis
 
 - Add optional validated, immutable shared qualification settings: named IDs,

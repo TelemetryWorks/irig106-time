@@ -150,6 +150,8 @@ pub enum ReleaseReason {
 /// **Traces:** L3-ANS-101 ← L2-ANS-101 ← L1-ANS-001
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StreamBasis {
+    /// Actual session origin, including across drains/boundaries.
+    pub session_origin: PacketKey,
     /// Query identity in unwrapped session coordinates.
     pub key: PacketKey,
     /// Immutable channel commitment and selection rule.
@@ -190,6 +192,13 @@ pub struct StreamAnswer {
     /// Reference, mode, policy, progress and fallback evidence.
     pub basis: StreamBasis,
 }
+impl StreamAnswer {
+    /// Signed session counter duration in shared nanosecond units.
+    /// **Traces:** L3-ANS-105 ← L2-ANS-105 ← L1-ANS-005
+    pub fn counter_duration(&self) -> crate::SignedNanos {
+        crate::SignedNanos::new(self.counter_ns)
+    }
+}
 /// Incremental return value; outputs/findings are caller-owned, not queued.
 #[derive(Debug, Default)]
 pub struct StreamBatch {
@@ -209,6 +218,7 @@ pub struct BufferUsage {
     pub references: usize,
 }
 struct Pending {
+    session_origin: PacketKey,
     key: PacketKey,
     counter_ns: i128,
     bytes: usize,
@@ -370,6 +380,7 @@ impl StreamTimeline {
             reading,
             counter_ns: p.counter_ns,
             basis: StreamBasis {
+                session_origin: p.session_origin,
                 key: p.key,
                 channel: self.channel,
                 preceding: p.preceding,
@@ -635,6 +646,7 @@ impl StreamTimeline {
                 .first
                 .ok_or(TimeError::InvalidTimelineInput("session origin"))?;
             let mut p = Pending {
+                session_origin: first,
                 key,
                 counter_ns: (ticks - first.ticks) * 100,
                 bytes,

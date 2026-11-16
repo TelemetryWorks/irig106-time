@@ -944,6 +944,8 @@ pub enum ReferencePosition {
 /// **Traces:** L3-ANS-101 ← L2-ANS-101 ← L1-ANS-001
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OfflineBasis {
+    /// Actual first observation, retained independently of query/reference choice.
+    pub session_origin: PacketKey,
     /// Session/counter/packet query identity.
     pub key: PacketKey,
     /// Chosen time channel and ranking rule.
@@ -972,6 +974,13 @@ pub struct OfflineAnswer {
     pub counter_ns: i128,
     /// Source/format/ITS/scale/year/precision/reference and policy evidence.
     pub basis: OfflineBasis,
+}
+impl OfflineAnswer {
+    /// Signed session counter duration; compatibility counter_ns remains in ns.
+    /// **Traces:** L3-ANS-105 ← L2-ANS-105 ← L1-ANS-005
+    pub fn counter_duration(&self) -> crate::SignedNanos {
+        crate::SignedNanos::new(self.counter_ns)
+    }
 }
 /// Immutable offline timeline. Query keys always name a session explicitly.
 pub struct OfflineTimeline {
@@ -1038,6 +1047,11 @@ impl OfflineTimeline {
             reading: None,
             counter_ns: distance_ns(key.ticks, s.first_ticks)?,
             basis: OfflineBasis {
+                session_origin: PacketKey {
+                    session: s.id,
+                    ticks: s.first_ticks,
+                    packet: s.first_packet,
+                },
                 key,
                 channel: self.selected(s),
                 reference: None,

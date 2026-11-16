@@ -88,7 +88,7 @@ impl SecondaryPacket<'_> {
     }
 }
 /// Default finding levels are the owner-approved catalog; overrides change no facts.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct SecondaryPolicy {
     /// Stable TF-number severity overrides.
     pub levels: BTreeMap<u8, Severity>,
@@ -135,6 +135,8 @@ impl RtcErtcCheck {
 /// Immutable raw/trust/evidence result. No absolute calendar or scale is guessed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SecondaryInspection {
+    data_type: u8,
+    byte_offset: Option<u64>,
     key: PacketKey,
     channel: u16,
     flags: u8,
@@ -148,6 +150,14 @@ pub struct SecondaryInspection {
     findings: Vec<Finding>,
 }
 impl SecondaryInspection {
+    /// Original packet data type, including for explicit applicability citations.
+    pub fn data_type(&self) -> u8 {
+        self.data_type
+    }
+    /// Original secondary-header byte offset, even when no finding was raised.
+    pub fn byte_offset(&self) -> Option<u64> {
+        self.byte_offset
+    }
     /// Original packet identity/session/counter coordinate.
     pub fn key(&self) -> PacketKey {
         self.key
@@ -212,6 +222,8 @@ pub fn inspect_secondary(
 ) -> Result<SecondaryInspection> {
     packet.validate()?;
     let mut out = SecondaryInspection {
+        data_type: packet.data_type,
+        byte_offset: packet.byte_offset,
         key: packet.key,
         channel: packet.channel,
         flags: packet.flags,
