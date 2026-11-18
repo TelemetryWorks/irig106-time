@@ -5,7 +5,6 @@ extern crate alloc;
 use crate::{NtpTime, Result, Rtc, TimeError, UnixSeconds};
 use alloc::vec::Vec;
 /// Accepted finding level, independent of factual validity/admission.
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Severity {
     /// Context or diagnostic evidence.
@@ -18,7 +17,6 @@ pub enum Severity {
 /// Permanent catalog identity. Unknown IDs cannot be constructed.
 /// **Traces:** L3-FND-101 ← L2-FND-101 ← L1-FND-001
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct FindingCode(u8, &'static str);
 impl FindingCode {
     /// Look up an approved permanent identity, all32 with owner-approved levels.
@@ -94,7 +92,6 @@ impl FindingCode {
 }
 /// Factual effect is never changed by a caller severity override.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum ValueValidity {
     /// Affected mapped value is retained, possibly labelled ambiguous.
     Kept,
@@ -117,24 +114,11 @@ pub struct FindingLocation {
 }
 /// Exact raw wire/derived integer quantity, independent of JSON representation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum RawValue {
     /// Unsigned bits or count.
-    Unsigned(
-        #[cfg_attr(
-            feature = "serde",
-            serde(serialize_with = "crate::snapshot::wide::serialize")
-        )]
-        u128,
-    ),
+    Unsigned(u128),
     /// Signed difference/residual.
-    Signed(
-        #[cfg_attr(
-            feature = "serde",
-            serde(serialize_with = "crate::snapshot::wide::serialize")
-        )]
-        i128,
-    ),
+    Signed(i128),
 }
 /// Named observed/expected pair; the name specifies the field and units.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -154,7 +138,7 @@ pub struct NtpEvidence {
     /// Mapped Unix whole seconds only when supplied by a reviewed converter.
     pub mapped_unix: Option<UnixSeconds>,
 }
-/// Reusable evidence container; no serialization schema is frozen here.
+/// Reusable Rust evidence container; JSON rendering belongs to the CLI.
 /// ```compile_fail
 /// use irig106_time::findings::{FindingEvidence, ValueValidity};
 /// fn repair(e: &mut FindingEvidence) { e.validity = ValueValidity::Kept; }
@@ -347,35 +331,3 @@ impl Finding {
         Self::new(FindingCode::from_number(30)?, level, evidence)
     }
 }
-
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(FindingLocation {
-    session,
-    packet,
-    channel,
-    byte_offset
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(RawField {
-    name,
-    observed,
-    expected
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(NtpEvidence { raw, mapped_unix });
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(FindingEvidence {
-    location,
-    related,
-    raw_rtc,
-    raw_fields,
-    validity,
-    ntp,
-    decode_error
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(Finding {
-    code,
-    severity,
-    evidence
-});

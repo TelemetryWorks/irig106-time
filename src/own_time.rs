@@ -24,7 +24,6 @@ fn overflow() -> TimeError {
     }
 }
 /// Caller-defined meaning of elapsed epoch seconds; no default interpretation.
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EpochCounting {
     /// Continuous SI time, including UTC insertions when crossing them.
@@ -625,27 +624,3 @@ pub fn answer_own<'a>(
     }
     Ok(out)
 }
-
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(EpochContext {
-    origin,
-    counting,
-    source
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(OwnContext {
-    ieee,
-    ch4,
-    table,
-    counter_applicability
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(OwnPolicy { tolerance, levels });
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(OwnPoint { tai, native, utc });
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(OwnUtc {
-    reading,
-    status,
-    basis
-});

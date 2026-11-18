@@ -13,7 +13,6 @@ pub use irig106_types::{DateFormat, IrigTimeSource, TimeFormat, TimeSource};
 ///
 /// 106-04 Figure 10-15; 106-05 Figure 10-16a; 106-24R1 Figure 11-12.
 /// Use qualify with resolved caller evidence; TMATS comparisons remain separate.
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TimeF1Layout {
     /// 106-04: EXT bit 0, bits 3–1 reserved; FMT 6–15 reserved.
@@ -25,7 +24,6 @@ pub enum TimeF1Layout {
 }
 
 /// Edition-qualified source evidence; EXT is not a modern SRC enum.
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TimeF1Source {
     /// No packet layout established; retain raw nibble without a SRC/EXT label.
@@ -45,7 +43,6 @@ pub enum TimeF1Source {
 ///
 /// **Traces:** L3-CSDW-101 ← L2-CSDW-101 ← L1-CSDW-001
 /// **Traces:** L3-CSDW-102 ← L2-CSDW-102 ← L1-CSDW-002
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TimeF1Csdw(u32);
 
@@ -206,16 +203,9 @@ mod csdw_tests;
 
 /// Applicability is separate from a numeric ITS value (RDG-007).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum ItsQualification {
     /// Applicable 106-17+ A/B/G, including Reserved(raw).
-    Reported(
-        #[cfg_attr(
-            feature = "serde",
-            serde(serialize_with = "crate::snapshot::wide::serialize")
-        )]
-        IrigTimeSource,
-    ),
+    Reported(IrigTimeSource),
     /// Pre-106-17 field was reserved; zero is not freewheeling.
     NotReported,
     /// Resolved non-A/B/G format has no applicable ITS meaning.
@@ -223,13 +213,7 @@ pub enum ItsQualification {
     /// Unknown edition and zero cannot distinguish old reserved from freewheel.
     FreewheelingOrNotReported,
     /// Unknown applicability; raw ITS nibble retained.
-    Unresolved(
-        #[cfg_attr(
-            feature = "serde",
-            serde(serialize_with = "crate::snapshot::wide::serialize")
-        )]
-        u8,
-    ),
+    Unresolved(u8),
 }
 /// Raw CSDW plus immutable edition basis; unknown layout keeps alternatives.
 /// **Traces:** L3-CSDW-101 ← L2-CSDW-101 ← L1-CSDW-001
@@ -323,6 +307,3 @@ impl QualifiedCsdw {
         }
     }
 }
-
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(QualifiedCsdw { raw, resolution });

@@ -7,18 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### 0.8.0 library JSON boundary (owner2026-11-17, ADR-0019)
+### Breaking: library serde and JSON APIs removed in 0.8.0
 
-- **Breaking:** the library's optional serde feature from0.1–0.7 is removed
-  in0.8.0. JSON report output belongs to `irig106-time-cli` / `irigtime`;
-  migrate library-serde consumers to the CLI's JSON output. Library Rust data,
-  typed policy/basis and non-JSON AnswerView/replay remain. No untrusted library
-  JSON loading; irig106-types' own serde feature is untouched.
-- Owner Q5 now governs the CLI report format and schema review. Q3's complex
-  library timeline deserialization deferral is moot. S12b JSON entries below
-  describe historical work superseded by this decision, not0.8.0 library APIs.
-  Docs/requirements land first; implementation and CI removal is a separate PR
-  after this decision merges. No code removal is claimed by this entry.
+- Remove the optional `serde` feature from 0.1–0.7, its dependency and
+  `irig106-types/serde` forwarding; remove all library serde implementations,
+  derives, custom wire loaders, `snapshot`/`AnswerOutput` JSON APIs and their
+  serde-only tests/doctests. Cargo rejects `--features serde`.
+- Keep typed Rust data, policy/basis/provenance, validated Rust construction,
+  native `AnswerView`/`AnswerBasis::replay` and binary wire encoders unchanged.
+  `irig106-types`' own serde feature is untouched. Dev dependencies may still
+  use serde transitively; the library no longer depends on or exposes it.
+- Migration: use the `irig106-time-cli` / `irigtime` JSON report output for
+  0.8.0 rather than serializing/loading library values. CLI rendering/schema
+  work remains a release obligation, not implemented by this removal. Q5's
+  versioned units, exact decimal-string 64/128-bit quantities and provenance
+  now belong to CLI-006; no library JSON loading or rehydration deferral.
+- This entry supersedes the unreleased S12b serde-format migration notes;
+  their verification records remain historical evidence, not a frozen schema
+  or shipped 0.8.0 library interface (owner 2026-11-17, ADR-0019).
 
 ### Jiff civil interoperability replaces chrono in0.8.0
 
@@ -39,57 +45,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   errors remain distinct. Explicit table conversion (including stale-offset
   status/basis) remains the caller's separate step when UTC is needed.
 
-### S12b2b1 exact answer output and remaining adapter audit
-
-- Add candidate version1 answer-output carrying the complete replay basis and
-  native projection with explicit units and exact wide integer strings. Native
-  answer/evidence serializers also quote wide quantities, including shared
-  types and nested prior policies. No unchecked basis/engine load is added.
-- **Breaking (serde):** PtpTime.seconds, Format1/2Reading.consumed, RTC/ERTC
-  intra-packet variants and the secondary ERTC variant now use decimal strings.
-  PTP seconds retains its32-bit domain. Raw derived Format1/2Reading loses
-  Deserialize; regenerate from bounded raw input via checked reports (b2).
-  Wire parsing/conversion and CLI output behavior are unchanged.
-- Split S12b2b for review: b2 provides checked report/answer replay loads and the
-  complete schema inventory. Q5 requires both parts; no schema freeze. Matrix
-  remains192/288, partial clause evidence only.
-
-### S12b2a complete policy snapshots and legacy aggregate audit
-
-- Add candidate v1 policy snapshots with required defaults version, units and
-  decimal strings for every wide policy field. Preserve complete shared
-  settings, epoch/table/declaration evidence, NTP pivots, caps and overrides;
-  validate on load without host-clock/default lookup. Schema remains unfrozen.
-- **Breaking (serde):** remove Serialize/Deserialize from correlation
-  ReferencePoint, TimeJump and RtcReset, quality TimeQuality, recording_event
-  RecordingEvent and streaming StreamingRef. These legacy aggregates emitted
-  wide JSON numbers and lacked qualified report validation. Runtime algorithms
-  are unchanged. Migrate explicit quantities/policies to versioned snapshots;
-  qualified answer/report replacement follows in S12b2b, not a legacy wire alias.
-  Native ScalePolicy also rejects unknown fields when loaded.
-- Split before code to keep review bounded: this part closes the listed legacy
-  aggregate paths and complete policy configuration. Answer/report replay and
-  remaining direct adapter serializers stay0.8 blockers in S12b2b; Q5 is not
-  complete yet. Q3 only defers complex engine-state loading. Clause coverage
-  only, matrix192/288 (delta0); no new whole-requirement claims or schema freeze.
-
-### S12b1 exact value snapshots and validated leaf loading
-
-- Add candidate v1 scalar/calendar/leap-table snapshots under serde, with
-  explicit units/schema, checked loads and canonical decimal strings for wide
-  integers. Shared i128 values never use their default numeric JSON encoding.
-  Preserve stated/assumed scale, partial dates and full table identity/currency.
-- Fix Deserialize accepting invalid CalendarReading, ScaleEvidence,
-  CalendarTime and PtpTime. Breaking: malformed data now rejects; leap-table
-  UnixSeconds serialize/load as decimal strings, and unknown fields reject.
-  Update numeric leap-table JSON producers to string epochs. No time-conversion
-  or default-policy changes. Serde uses alloc+derive without its std feature.
-- First S12b review part: full policy/answer/report serialization and legacy
-  aggregate audit remain S12b2, not release-deferred. Complex engine-state
-  Deserialize remains absent under Q3. Schema review is pending before freeze.
-- Record: verification-s12b.md; schema candidate snapshot-schema-v1.md.
-  No new whole markers; matrix192/288 (delta0).
-
 ### S12a2 common replayable answer view
 
 - Add owned AnswerView/AnswerBasis for offline, released stream, own-time,
@@ -102,8 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   additions: OfflineBasis and StreamBasis now require session_origin (actual
   first observation key). Secondary inspections retain packet type/byte offset.
 - Counter findings are caller-selected; adapter findings remain separate from
-  that nested evidence. No CLI output or default-policy change. Serde/load
-  schema is S12b; inverse queries stay owner-deferred.
+  that nested evidence. No CLI output or default-policy change. JSON report
+  schema belongs to the CLI (ADR-0019); inverse queries stay owner-deferred.
 - Clause record: verification-s12a2.md. No new whole markers;192/288 (delta0).
 
 ### S12a1 shared qualification settings and reference basis
@@ -309,7 +264,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   bit15 is TF-005 evidence with value kept; invalid digits/ranges remain errors.
 - `verification-s07.md` records clause coverage and tests-first limitations;
   no whole-requirement marker is added for a partial check. Secondary/stamp
-  answer integration and finding aggregation remain S10; schema remains S12.
+  answer integration and finding aggregation remain S10; JSON schema belongs to the CLI (ADR-0019).
 
 ### ⚠️ S06b2 mixed-format stream integration
 
@@ -362,7 +317,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - verification-s06a records fourteen focused tests, missing-API tests-first evidence
   and24 initial +8 review assertion-killed mutations. Matrix152→156/288 counts links, not complete
   clauses. Engine integration and COR-108 raw-network exception remain S06b;
-  schema remains S12. No new release deferral or finding-level change.
+  JSON schema belongs to the CLI (ADR-0019). No new release deferral or finding-level change.
 
 ### S05 qualified NTP era/UTC conversion
 
@@ -379,7 +334,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Contextless compatibility methods still require context; their diagnostic text
   now directs to the qualified API instead of calling Q-NTP pending. Existing
   CLI may display that revised error text; no CLI source/output-format change.
-  New output/context types have no frozen serialization schema (planned S12).
+  New output/context types are Rust data; CLI report schema is separate (ADR-0019).
 - Verification-s05 records13 focused tests, honest no-main-runtime-failure /
   missing-API evidence and37 initial +1 review caught mutations; links are not full compliance.
 
@@ -389,7 +344,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   offset_at_unix/offset_at_tai/offset_for_f1 return Result; propagate failures.
   Empty/pre-start no longer guess37/first offset. InvalidLeapTable reports
   rejected data; add is atomic and does not silently extend coverage.
-- Table serialization gains metadata; deserialization validates through try_new.
   Use try_new/extended/replaced with explicit identity/source/start/currency.
   Conflicting history, duplicate/reordered entries and non-unit steps fail.
 - convert_ptp preserves raw TAI, second60, UTC/basis and coverage labels.
@@ -534,8 +488,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   supported validated loads and complete versioned outputs remain blockers;
   all other requirements remain blockers. Offline drift-corrected query mode
   is after 0.8.0. Trace links cannot express partially covered clauses.
-- Accepted versioned snapshot/report JSON with units, decimal-string 64/128-bit
-  quantities, validated loads and raw/stated/assumed provenance; schema review
+- Owner Q5's versioned JSON report format has units, decimal-string 64/128-bit
+  quantities and raw/stated/assumed provenance; ADR-0019 scopes it to the CLI,
+  with no library load requirement. Schema review
   before freeze. Accepted CLI failure precedence: usage before input, first
   fatal operational failure determines 3/4, later failures diagnostic. These
   are future implementation obligations, not runtime changes in this PR.

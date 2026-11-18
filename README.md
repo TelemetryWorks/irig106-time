@@ -4,9 +4,9 @@
 > (`irigtime`). The library's optional serde feature from0.1–0.7 is removed
 > in0.8.0 (breaking); use CLI JSON output. Rust data and native AnswerView/replay
 > remain. irig106-types' own serde feature is unchanged. See
-> [ADR-0019](docs/adr/0019-json-belongs-to-the-cli.md). This docs-first change
-> precedes the separate code/CI removal; historical serde notes below describe
-> the implementation awaiting that removal.
+> [ADR-0019](docs/adr/0019-json-belongs-to-the-cli.md). Library serde/JSON code
+> and feature-specific CI commands are now removed; the version bump and CLI
+> report/schema completion remain release work.
 
 
 > **Status: prototype — do not rely on its answers for compliance or
@@ -44,10 +44,9 @@ IRIG 106 Chapter 10 separates *when data was recorded* (a free-running 10 MHz co
 - **Recording events** — Data Type 0x02 event parsing with time context
 - **Encoding** — `to_le_bytes()` on all wire-format types for packet construction
 - **`impl Display`** — ISO-like formatting for `AbsoluteTime`
-- **`serde`** — Optional versioned value/policy snapshots and checked supported leaf loading; complex engine-state loading is omitted
 - **`jiff`** — Optional checked civil conversions with explicit year/scale and nanosecond precision; unknown context/leap labels refuse
 - **`#![no_std]`** — Works on embedded, WASM, and standard targets
-- **Zero required dependencies** — Only `core` and `alloc` (serde, jiff are optional)
+- **Shared values** — `irig106-types` is required; `jiff` is optional
 - **Edition 2024, MSRV 1.85** — the same across the IRIG 106 ecosystem (docs/adr/0003). Dev tooling (benchmarks, fuzz, proptest) requires latest stable. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 - **Zero `unsafe`** — Safe Rust throughout
 

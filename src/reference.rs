@@ -572,22 +572,3 @@ mod review_s12a {
         );
     }
 }
-
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(Normalization {
-    tai_ns,
-    native_ns,
-    scale,
-    applied_seconds,
-    possibly_out_of_date,
-    table
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(NetworkReference {
-    reference,
-    context,
-    table,
-    raw_network_rate,
-    stream_rate_policy,
-    normalization_issue
-});

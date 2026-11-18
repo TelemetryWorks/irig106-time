@@ -40,7 +40,6 @@ use crate::rtc::Rtc;
 /// Recording event types from Data Type 0x02 packets.
 ///
 /// **Traces:** GAP-08
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[deprecated(
     note = "Prototype fixed event meanings are unsupported; migrate to irig106-decode with irig106-tmats setup definitions (ADR-0009). Replacement availability is not claimed."

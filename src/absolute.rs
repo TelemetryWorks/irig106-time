@@ -97,57 +97,6 @@ pub struct AbsoluteTime {
     year: Option<u16>,
 }
 
-// ── Custom serde: serialize/deserialize as expanded fields ──────────
-
-#[cfg(feature = "serde")]
-mod serde_impl {
-    use super::*;
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-    #[derive(Serialize, Deserialize)]
-    struct AbsoluteTimeFields {
-        day_of_year: u16,
-        hours: u8,
-        minutes: u8,
-        seconds: u8,
-        nanoseconds: u32,
-        year: Option<u16>,
-    }
-
-    impl Serialize for AbsoluteTime {
-        fn serialize<S: Serializer>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error> {
-            let fields = AbsoluteTimeFields {
-                day_of_year: self.day_of_year(),
-                hours: self.hours(),
-                minutes: self.minutes(),
-                seconds: self.seconds(),
-                nanoseconds: self.nanoseconds(),
-                year: self.year,
-            };
-            fields.serialize(serializer)
-        }
-    }
-
-    impl<'de> Deserialize<'de> for AbsoluteTime {
-        fn deserialize<D: Deserializer<'de>>(
-            deserializer: D,
-        ) -> core::result::Result<Self, D::Error> {
-            let fields = AbsoluteTimeFields::deserialize(deserializer)?;
-            let t = AbsoluteTime::new(
-                fields.day_of_year,
-                fields.hours,
-                fields.minutes,
-                fields.seconds,
-                fields.nanoseconds,
-            )
-            .map_err(serde::de::Error::custom)?
-            .with_year(fields.year)
-            .map_err(serde::de::Error::custom)?;
-            Ok(t)
-        }
-    }
-}
-
 impl AbsoluteTime {
     /// Create a new `AbsoluteTime` with day-of-year format, validating ranges.
     ///
@@ -376,7 +325,7 @@ impl AbsoluteTime {
     /// Total internal nanosecond count (nanoseconds since start of day 1).
     ///
     /// This is the raw internal representation. Useful for efficient
-    /// comparison and serialization.
+    /// comparison and explicit caller exports.
     #[inline]
     pub fn as_total_ns(&self) -> u64 {
         self.total_ns
@@ -471,9 +420,7 @@ impl core::fmt::Display for AbsoluteTime {
 /// ```
 ///
 /// **Traces:** L3-ABS-006 ← L2-ABS-001 ← L1-ABS-001
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", serde(try_from = "CalendarTimeWire"))]
 pub struct CalendarTime {
     /// The underlying DOY-based time. Year is always `Some`.
     time: AbsoluteTime,
@@ -649,19 +596,3 @@ impl Ch4BinaryTimeExt for Ch4BinaryTime {
 #[cfg(test)]
 #[path = "absolute_tests.rs"]
 mod absolute_tests;
-
-#[cfg(feature = "serde")]
-#[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-struct CalendarTimeWire {
-    time: AbsoluteTime,
-    month: u8,
-    day_of_month: u8,
-}
-#[cfg(feature = "serde")]
-impl TryFrom<CalendarTimeWire> for CalendarTime {
-    type Error = TimeError;
-    fn try_from(w: CalendarTimeWire) -> Result<Self> {
-        Self::new(w.time, w.month, w.day_of_month)
-    }
-}

@@ -14,7 +14,6 @@ use crate::{
 };
 use alloc::{boxed::Box, collections::BTreeMap, vec::Vec};
 /// Named year evidence classes. Network dates retain their own era evidence.
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum YearSource {
     /// Same-session DMY, including the phase-advanced stable-first anchor.
@@ -320,36 +319,5 @@ impl QualificationBasis {
     /// Immediate provided snapshot only; no unbounded policy-history chain.
     pub fn provided_policy(&self) -> Option<&SharedPolicy> {
         self.provided_policy.as_ref()
-    }
-}
-
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(SharedSettings {
-    caller_year,
-    year_order,
-    scales,
-    own,
-    own_tolerance,
-    declarations,
-    use_tfmt_default,
-    ntp
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(SharedPolicy { id, settings });
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(QualificationBasis {
-    policy,
-    declarations,
-    provided_scale,
-    provided_year,
-    provided_normalization,
-    provided_network,
-    provided_policy
-});
-
-#[cfg(feature = "serde")]
-impl serde::Serialize for YearOrder {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> core::result::Result<S::Ok, S::Error> {
-        self.sources().serialize(s)
     }
 }

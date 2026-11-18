@@ -11,9 +11,7 @@ use crate::{
 };
 use alloc::{collections::BTreeMap, string::String, vec::Vec};
 /// What data instant the own time describes; exceptions are caller-cited facts.
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub enum TimeApplicability {
     /// §11.2.1.2a default: first data bit of the packet body.
     FirstDataBit,
@@ -533,29 +531,3 @@ fn format_number(format: SecHdrTimeFormat) -> u128 {
         SecHdrTimeFormat::Reserved(v) => v.into(),
     }
 }
-
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(SecondaryPolicy { levels });
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(RtcErtcCheck {
-    expected,
-    remainder,
-    delta,
-    distance
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(SecondaryInspection {
-    data_type,
-    byte_offset,
-    key,
-    channel,
-    flags,
-    applicability,
-    raw,
-    format,
-    checksum,
-    time,
-    consistency,
-    errors,
-    findings
-});

@@ -43,57 +43,34 @@ const BUILTIN: &[(u64, i32)] = &[
 ];
 /// One typed offset effective at a UTC boundary; first entry is a baseline.
 /// **Traces:** L3-TAI-101 ← L2-TAI-101 ← L1-TAI-001
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct LeapSecondEntry {
     /// Unix UTC instant at which the offset is effective.
-    #[cfg_attr(feature = "serde", serde(with = "crate::snapshot::unix"))]
     pub effective_unix: UnixSeconds,
     /// TAI-minus-UTC seconds, not an unsigned magnitude.
     pub tai_utc_offset: TaiUtcOffset,
 }
 /// Identity/version and independently declared UTC coverage, not final transition.
 /// **Traces:** L3-TAI-104 ← L2-TAI-104 ← L1-TAI-004
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct LeapTableMetadata {
     /// Caller versioned identity, or the pinned IERS snapshot identity.
     pub id: String,
     /// Source/authority supplied with the data; no trust inferred from a URL.
     pub source: String,
     /// First supported UTC second, inclusive; never before1972.
-    #[cfg_attr(feature = "serde", serde(with = "crate::snapshot::unix"))]
     pub supported_start: UnixSeconds,
     /// Last covered UTC second, including ALL its nanosecond fractions.
     /// Coverage ends at the following second. Independent of final transition.
-    #[cfg_attr(feature = "serde", serde(with = "crate::snapshot::unix"))]
     pub known_current_through: UnixSeconds,
 }
 /// Validated transitions and coverage, immutable except checked add/install.
 /// **Traces:** L3-TAI-101 ← L2-TAI-101 ← L1-TAI-001
 /// **Traces:** L3-TAI-103 ← L2-TAI-103 ← L1-TAI-003
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(try_from = "TableWire"))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LeapSecondTable {
     entries: Vec<LeapSecondEntry>,
     metadata: LeapTableMetadata,
-}
-#[cfg(feature = "serde")]
-#[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-struct TableWire {
-    entries: Vec<LeapSecondEntry>,
-    metadata: LeapTableMetadata,
-}
-#[cfg(feature = "serde")]
-impl TryFrom<TableWire> for LeapSecondTable {
-    type Error = TimeError;
-    fn try_from(w: TableWire) -> Result<Self> {
-        Self::try_new(w.entries, w.metadata)
-    }
 }
 fn invalid(reason: &'static str) -> TimeError {
     TimeError::InvalidLeapTable { reason }
@@ -428,7 +405,6 @@ pub(crate) fn calendar(
 }
 /// Currency is independent of presence/absence of an absolute value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum PtpConversionStatus {
     /// Within independently declared table coverage.
     Covered,
@@ -531,20 +507,3 @@ impl PtpConversion {
         Ok(out)
     }
 }
-
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(PtpConversionBasis {
-    table,
-    final_transition,
-    offset,
-    selected_transition,
-    leap_second
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(PtpConversion {
-    raw,
-    utc,
-    unix_seconds,
-    status,
-    basis
-});

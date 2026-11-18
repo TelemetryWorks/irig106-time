@@ -19,7 +19,6 @@ use crate::rtc::Rtc;
 /// Discriminant for intra-packet time stamp format.
 ///
 /// **Traces:** L3-IPT-105
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IntraPacketTimeFormat {
     /// 48-bit RTC (6 bytes used, 2 bytes reserved).
@@ -63,17 +62,16 @@ impl IntraPacketTimeFormat {
 /// Parsed intra-packet time stamp.
 ///
 /// **Traces:** L3-IPT-106 ← L2-IPT-106
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IntraPacketTime {
     /// 48-bit Relative Time Counter value.
-    Rtc(#[cfg_attr(feature = "serde", serde(with = "crate::snapshot::adapters::rtc"))] Rtc),
+    Rtc(Rtc),
     /// Chapter 4 Binary Weighted Time.
     Ch4(Ch4BinaryTime),
     /// IEEE-1588 time.
     Ieee1588(Ieee1588Time),
     /// 64-bit Extended RTC.
-    Ertc(#[cfg_attr(feature = "serde", serde(with = "crate::snapshot::adapters::ertc"))] Ertc),
+    Ertc(Ertc),
 }
 
 /// Parse an 8-byte intra-packet time stamp buffer.
