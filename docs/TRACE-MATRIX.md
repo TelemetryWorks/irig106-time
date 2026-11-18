@@ -498,7 +498,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1-API-004 | L2-API-104 | `tests/s01_existing.rs::shared_values_keep_width_and_unit_contracts`<br>`tests/s01b_adoption.rs::legacy_calendar_rejects_pre1970_instead_of_clamping`<br>`tests/s01b_adoption.rs::ptp_retains_signed_unix_and_unsigned_failure_is_explicit`<br>`tests/s01b_adoption.rs::signed_quantities_are_shared_and_checked_errors_remain_typed`<br>`tests/s01b_adoption.rs::upstream_unit_and_epoch_conversions_do_not_saturate` | Implemented |
 | L1-API-005 | L2-API-105 | _(none)_ | Draft |
 | L1-API-006 | L2-API-106 | _(none)_ | Draft |
-| L1-API-007 | L2-API-107 | _(none)_ | Implemented (I) |
+| L1-API-007 | L2-API-107 | _(none)_ | Draft |
 | L1-API-008 | L2-API-108 | _(none)_ | Implemented (I) |
 | L1-API-009 | L2-API-109 | _(none)_ | Draft |
 | L1-API-010 | L2-API-110 | _(none)_ | Draft |

@@ -986,13 +986,13 @@ Handbook, cited as support, never as the rule.
 
 ### L1-API-007
 
-**Statement**: The library SHALL build for `wasm32-unknown-unknown`, with and without `serde`.
+**Statement**: The library SHALL build for `wasm32-unknown-unknown` without a serde feature; supported Rust data APIs SHALL remain usable without JSON or host I/O.
 
-**Source**: `irig106-tmats` L1-REL-003; contract 4.8; ADR-0014.
+**Source**: `irig106-tmats` L1-REL-003; contract 4.8; ADR-0014. Owner decision 2026-11-17; [ADR-0019](adr/0019-json-belongs-to-the-cli.md): the library provides Rust data only; JSON belongs to the CLI under L1-CLI-006. This supersedes the library JSON/serde scope of owner Q5; IRIG 106 prescribes no JSON format.
 
 **Verification Method**: Inspection (I)
 
-**Evidence**: `.github/workflows/ci.yml` job `wasm` (`cargo build --target wasm32-unknown-unknown --no-default-features`, and with `--features serde`)
+**Planned evidence**: WASM no-default build and supported native feature checks; inspect Cargo features to confirm the removed serde feature/forwarding are absent in 0.8.0.
 
 ### L1-API-008
 
@@ -1016,11 +1016,11 @@ Handbook, cited as support, never as the rule.
 
 ### L1-API-010
 
-**Statement**: With the `serde` feature, the library SHALL serialize and deserialize every public value type, answer, finding, policy, and time timeline.
+**Statement**: The library SHALL provide public values, answers, findings, policies and timelines as Rust data, retaining their basis and non-JSON replay APIs. It SHALL NOT provide a serde feature, JSON serialization or untrusted JSON loading. The CLI owns JSON report output under L1-CLI-006; irig106-types' own serde feature is unchanged.
 
-**Source**: Architecture section 9; tools store and exchange answers (contract 4.7 to 4.9).
+**Source**: Architecture section 9; tools store and exchange answers (contract 4.7 to 4.9). Owner decision 2026-11-17; [ADR-0019](adr/0019-json-belongs-to-the-cli.md): the library provides Rust data only; JSON belongs to the CLI under L1-CLI-006. This supersedes the library JSON/serde scope of owner Q5; IRIG 106 prescribes no JSON format.
 
-**Verification Method**: Test (T)
+**Verification Method**: Inspection (I)
 
 ### L1-API-011
 

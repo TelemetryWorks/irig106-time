@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 0.8.0 library JSON boundary (owner2026-11-17, ADR-0019)
+
+- **Breaking:** the library's optional serde feature from0.1–0.7 is removed
+  in0.8.0. JSON report output belongs to `irig106-time-cli` / `irigtime`;
+  migrate library-serde consumers to the CLI's JSON output. Library Rust data,
+  typed policy/basis and non-JSON AnswerView/replay remain. No untrusted library
+  JSON loading; irig106-types' own serde feature is untouched.
+- Owner Q5 now governs the CLI report format and schema review. Q3's complex
+  library timeline deserialization deferral is moot. S12b JSON entries below
+  describe historical work superseded by this decision, not0.8.0 library APIs.
+  Docs/requirements land first; implementation and CI removal is a separate PR
+  after this decision merges. No code removal is claimed by this entry.
+
 ### Jiff civil interoperability replaces chrono in0.8.0
 
 - **Breaking:** remove the `chrono` feature/dependency, `chrono_interop` and its

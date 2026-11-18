@@ -127,19 +127,22 @@ Q1–Q6 and C1–C4. TF-029/030 are WARNING with distinct sentinel/ambiguity
 value effects; TF-031 is owner-accepted WARNING (2026-11-14, time body kept,
 EXT/SRC qualification withheld). TF-031/032 IDs/titles are approved; **all32 levels are approved**, TF-032 WARNING accepted2026-11-14: highest-priority
 year used, contradictory candidates retained and time kept. Inverse queries have decided half-open semantics for later.
-JSON is versioned with units, decimal-string 64/128-bit quantities, validated
-loads and raw/stated/assumed provenance; schema review precedes freeze.
+Owner 2026-11-17, [ADR-0019](adr/0019-json-belongs-to-the-cli.md), scopes Q5
+to CLI JSON report output: versioned schema, units, decimal-string 64/128-bit
+quantities, raw/stated/assumed provenance and one review before freeze.
+The library provides Rust data only, keeps native AnswerView/replay and has
+no untrusted JSON loading. Remove library serde in 0.8.0 (breaking from0.1–0.7);
+irig106-types' own serde is untouched.
 CLI usage precedes input, first fatal operational failure wins 3/4, later
 failures are diagnostics. C1 floor, C2 preceding tie, C3 coarser mixed-resolution
 jump threshold and C4 old-policy drain are accepted selectable defaults.
 
-Exactly four release-scoped requirement deferrals (not deletion or coverage):
+Current release-scoped requirement deferrals (not deletion or coverage):
 
 | Deferred portion past 0.8.0 | Retained requirement | Boundary |
 |---|---|---|
 | Inverse queries | L2/L3-COR-111 | Half-open absolute ranges and all matching half-open RTC intervals, explicit quantization/basis, separate point query; never bridge gaps/jumps. |
 | New complete secondary/stamp encoder API | L2/L3-ENC-103 | Existing exposed/used encoders and byte-sum behaviour remain 0.8.0 blockers. |
-| Complex timeline-state rehydration | L2/L3-API-110 (deserialization subset only) | Omit/disable unsupported complex Deserialize; supported public-value loads validate; versioned complete output/schema remains a blocker. |
 | Prebuilt binary distribution | conditional L2/L3-REL-106 | No binaries in 0.8.0; future binary SBOM/provenance requirement retained. |
 
 Every other requirement remains a 0.8.0 blocker. Offline drift-corrected
@@ -621,6 +624,21 @@ No breaking changes without major version bump after this release.
 
 **Accepted Q-FLAGS-ERROR, owner 2026-11-13:** TF-028 "Secondary-derived time has an undefined format" is ERROR and maps from UndefinedSecondaryTimeFormat. It reports selected or present secondary time with format 11; RTC stamps remain usable. TF-006 remains the separate reserved-VALUE warning, TF-005 reserved-BITS warning, and TF-015 missing-required-header error. With 0x4C, TF-015/TF-028/TF-006 evidence can coexist. TF-001..TF-027 are unchanged; the former numeric finding-assignment open item is resolved.
 
+
+## Owner decision 2026-11-17 — JSON moves to the CLI
+
+ADR-0019 supersedes S12b library JSON/snapshot/load scope and Q3's now-moot
+library rehydration deferral. Q5 remains a CLI-006 report-format obligation;
+there is no new CLI JSON input/loader requirement. Closed PRs47/48 are historical
+work; their branches stay intact. Next sequence: docs-first governing decision,
+then a separate code PR only after that merges. Remove src/snapshot, library
+serde derives/implementations/feature/dependency/forwarding, JSON-only tests
+and compile-fail serde doctests; update CI feature/WASM jobs, check CLI/fuzz.
+Keep S12a2's non-JSON AnswerView/replay, typed policy and complete basis.
+Migration for0.8.0: use the CLI's JSON output instead of library serde.
+S12b verification records describe historical implementation, not the new
+library contract. The closed schema/load proposals do not establish a frozen
+CLI schema. All other0.8.0 work and release safeguards remain.
 
 ## Owner2026-11-17 — Jiff replaces chrono
 

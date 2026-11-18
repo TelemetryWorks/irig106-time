@@ -1,5 +1,14 @@
 # irig106-time
 
+> **0.8.0 decision (owner2026-11-17):** JSON belongs to `irig106-time-cli`
+> (`irigtime`). The library's optional serde feature from0.1–0.7 is removed
+> in0.8.0 (breaking); use CLI JSON output. Rust data and native AnswerView/replay
+> remain. irig106-types' own serde feature is unchanged. See
+> [ADR-0019](docs/adr/0019-json-belongs-to-the-cli.md). This docs-first change
+> precedes the separate code/CI removal; historical serde notes below describe
+> the implementation awaiting that removal.
+
+
 > **Status: prototype — do not rely on its answers for compliance or
 > analysis.** The code in this repository (published as 0.1.0 to 0.7.0) is
 > the prototype, kept at the git tag `prototype-0`. A check against IRIG

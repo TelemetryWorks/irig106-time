@@ -1,5 +1,12 @@
 # S12b2b — exact answers and checked report replay
 
+> **Historical library JSON work — superseded owner2026-11-17.**
+> [ADR-0019](adr/0019-json-belongs-to-the-cli.md) moves JSON to the CLI.
+> Keep native AnswerView/replay; remove library serde in0.8.0. Evidence below
+> records its original scope and does not establish current library JSON
+> obligations or a frozen CLI schema. PRs47/48 are closed; branches retained.
+
+
 Base main5dfbdf1. Pre-code split into stacked review units: b1 exact answer
 output + remaining adapter audit; b2 checked replay inputs/report/answer loads
 and consolidated schema. This is not a release deferral: Q5 is complete only

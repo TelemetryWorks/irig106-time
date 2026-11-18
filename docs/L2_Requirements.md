@@ -54,17 +54,19 @@ TF-029/030 are WARNING. TF-031 is owner-accepted WARNING (2026-11-14):
 the time body is kept, EXT/SRC qualification withheld. TF-032 is also owner-accepted WARNING (2026-11-14): highest-priority year
 used, contradictory candidates kept, time value produced. All32 levels are approved. IDs/titles are permanent. C1–C4 are accepted.
 
-Release-scoped deferrals only: COR-111 inverse queries; the new complete
-ENC-103 secondary/stamp encoder API; API-110 complex timeline-state
-rehydration only; REL-106 prebuilt binary distribution. Requirements remain,
-not marked covered. Existing encoders/byte-sum behaviour, validated existing
-public value loads, complete versioned outputs and every other requirement
+Current release-scoped deferrals: COR-111 inverse queries; the new complete
+ENC-103 secondary/stamp encoder API; REL-106 prebuilt binary distribution.
+Owner 2026-11-17, ADR-0019 supersedes Q3's library rehydration deferral: all
+library JSON loading/serde is removed, not deferred. Requirements remain, not
+marked covered. Existing encoders/byte-sum behaviour, library Rust data and
+native replay, CLI versioned JSON reports and every other current requirement
 remain 0.8.0 blockers. Offline drift-corrected query mode is after 0.8.0.
 
 0.8.0 is crates.io-only, both crates in lockstep, via Trusted Publishing/OIDC
 from GitHub Actions: no stored publishing token, no local publish, no prebuilt
-binaries. JSON uses a versioned reviewed schema, units and decimal strings
-for 64/128-bit quantities; supported loads validate and retain provenance.
+binaries. Owner Q5 now governs the CLI JSON report format: versioned reviewed
+schema, units, decimal strings for 64/128-bit quantities and retained provenance.
+The library provides Rust data only; no serde/JSON loading (ADR-0019).
 CLI keeps classes 0–4; usage precedes input, first fatal operational failure
 wins (3 input/4 output), later failures are diagnostics. These are owner/product
 policies; IRIG 106 does not prescribe release authentication, JSON or exit codes.
@@ -720,11 +722,11 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL require a caller-supplied scale assumption to convert unknown-scale values.
 
-**Source**: FMT "0x3 = Real-Time Clock" (§11.2.3.2 a) states no scale; contract 6.8; RDG-009.
+**Source**: FMT "0x3 = Real-Time Clock" (§11.2.3.2 a) states no scale; contract 6.8; RDG-009. Owner 2026-11-17, ADR-0019 scopes JSON to the CLI; planned library verification uses native replay and the remaining features.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: FMT 3 with no override, UTC/TAI/GPS overrides, external/internal SRC independent of scale, and serde round trips of assumption provenance.
+**Planned verification**: FMT 3 with no override, UTC/TAI/GPS overrides, external/internal SRC independent of scale, and native AnswerView/replay preservation of assumption provenance (owner 2026-11-17, ADR-0019).
 
 #### L2-TAI-107
 
@@ -1132,13 +1134,13 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-POL-003
 
-**Statement**: The library SHALL record enough policy information to reproduce each answer and timeline, including explicit non-default assumptions. Snapshot/report JSON SHALL use a reviewed versioned schema with units, decimal strings for 64/128-bit quantities, validation on load and retained raw/stated/assumed provenance. Review the schema once before freeze.
+**Statement**: The library SHALL retain enough typed policy information to reproduce each answer and timeline, including explicit non-default assumptions and raw/stated/assumed provenance. JSON rendering is owned by the CLI under L2-CLI-106; no library JSON serialization or JSON loading is required or provided.
 
-**Source**: ADR-0010. Owner 2026-11-13, plan Q5: reviewed versioned snapshot/report JSON schema with units, 64/128-bit quantities as decimal strings, validation on load and raw/stated/assumed provenance. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). IRIG 106 does not prescribe JSON representation.
+**Source**: ADR-0010. Owner 2026-11-13, plan Q5: reviewed versioned snapshot/report JSON schema with units, 64/128-bit quantities as decimal strings, validation on load and raw/stated/assumed provenance. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). IRIG 106 does not prescribe JSON representation. Owner decision 2026-11-17; [ADR-0019](adr/0019-json-belongs-to-the-cli.md): the library provides Rust data only; JSON belongs to the CLI under L1-CLI-006. This supersedes the library JSON/serde scope of owner Q5; IRIG 106 prescribes no JSON format. Earlier snapshot/serde/load wording in the cited 2026-11-13 decision is historical and superseded for the library.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Same bytes+same policy deterministic result; different policies distinguishable; serialized delta cannot silently adopt changed future defaults. Check 64/128-bit extrema as decimal strings, units/schema version, validation and full provenance. Complex timeline rehydration alone has the API-110 release deferral.
+**Planned verification**: Same bytes and typed policy give a deterministic native replay result; distinct policies and defaults versions remain distinguishable. Verify immutable prior/effective policy and full provenance without serde. CLI-106 separately checks exact JSON integers, units and schema; no library JSON roundtrip or rehydration test is required.
 
 #### L2-POL-201
 
@@ -1576,9 +1578,9 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-API-005
 
-**Statement**: The library SHALL keep irig106-types as the library's only ecosystem dependency and accept all packet/TMATS context through plain values.
+**Statement**: The library SHALL depend on no ecosystem crate other than irig106-types; optional jiff remains a feature dependency. No library serde dependency or irig106-types/serde forwarding is permitted; irig106-types' own feature remains unchanged.
 
-**Source**: ADR-0005. Replaces L1-API-003 ("zero required runtime dependencies"). Owner2026-11-17, ADR-0020 replaces optional chrono with optional Jiff; serde scope remains the independent ADR-0019 decision.
+**Source**: ADR-0005. Replaces L1-API-003 ("zero required runtime dependencies"). Owner decision 2026-11-17; [ADR-0019](adr/0019-json-belongs-to-the-cli.md): the library provides Rust data only; JSON belongs to the CLI under L1-CLI-006. This supersedes the library JSON/serde scope of owner Q5; IRIG 106 prescribes no JSON format. Earlier snapshot/serde/load wording in the cited 2026-11-13 decision is historical and superseded for the library. Owner 2026-11-17, ADR-0020 replaces optional chrono with optional Jiff.
 
 **Verification Method**: Inspection (I)
 
@@ -1600,13 +1602,13 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-API-007
 
-**Statement**: The library SHALL keep the public value and recording APIs buildable for wasm 32-unknown-unknown with serde disabled and enabled. In snapshot/report JSON, 64/128-bit quantities SHALL be decimal strings with units under the reviewed versioned schema; preserve exact signed values and raw/stated/assumed provenance.
+**Statement**: The library SHALL keep public value and recording APIs buildable for wasm32-unknown-unknown without JSON or a serde feature. Preserve typed exact integer quantities and raw/stated/assumed provenance in Rust data; CLI JSON representation is governed by L2/L3-CLI-106.
 
-**Source**: `irig106-tmats` L1-REL-003; contract 4.8; ADR-0014. Owner 2026-11-13, plan Q5: reviewed versioned snapshot/report JSON schema with units, 64/128-bit quantities as decimal strings, validation on load and raw/stated/assumed provenance. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). IRIG 106 does not prescribe JSON representation.
+**Source**: `irig106-tmats` L1-REL-003; contract 4.8; ADR-0014. Owner 2026-11-13, plan Q5: reviewed versioned snapshot/report JSON schema with units, 64/128-bit quantities as decimal strings, validation on load and raw/stated/assumed provenance. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). IRIG 106 does not prescribe JSON representation. Owner decision 2026-11-17; [ADR-0019](adr/0019-json-belongs-to-the-cli.md): the library provides Rust data only; JSON belongs to the CLI under L1-CLI-006. This supersedes the library JSON/serde scope of owner Q5; IRIG 106 prescribes no JSON format. Earlier snapshot/serde/load wording in the cited 2026-11-13 decision is historical and superseded for the library.
 
 **Verification Method**: Inspection (I)
 
-**Planned verification**: Planned inspection: two WASM builds plus boundary serialization fixtures for values above 2^53, alongside native feature checks. Exercise exact signed/unsigned 64/128-bit extrema and units in JSON; never pass them through floating-point.
+**Planned verification**: Inspect a no-default WASM build and supported native feature checks; verify the time crate has no serde feature or forwarding. CLI exact integer JSON golden cases belong to CLI-106, not this WASM requirement.
 
 #### L2-API-108
 
@@ -1636,15 +1638,15 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-API-010
 
-**Statement**: The library SHALL provide version-aware serde representations for public values and provenance without allowing deserialization to bypass invariants. Snapshot/report JSON SHALL be versioned with units; 64/128-bit quantities SHALL be decimal strings. Validate supported loads and retain raw/stated/assumed provenance; review the schema once before freeze.
+**Statement**: The library SHALL expose values, policies, answers, findings and timelines as Rust data with provenance and non-JSON AnswerView/replay support. It SHALL NOT expose JSON serialization, snapshot/report JSON loading or a serde feature. The CLI consumes data for L1-CLI-006 JSON reports; irig106-types' own serde feature is unchanged.
 
-**Source**: Architecture section 9; tools store and exchange answers (contract 4.7 to 4.9). Owner 2026-11-13, plan Q5: reviewed versioned snapshot/report JSON schema with units, 64/128-bit quantities as decimal strings, validation on load and raw/stated/assumed provenance. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). IRIG 106 does not prescribe JSON representation.
+**Source**: Architecture section 9; tools store and exchange answers (contract 4.7 to 4.9). Owner 2026-11-13, plan Q5: reviewed versioned snapshot/report JSON schema with units, 64/128-bit quantities as decimal strings, validation on load and raw/stated/assumed provenance. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). IRIG 106 does not prescribe JSON representation. Owner decision 2026-11-17; [ADR-0019](adr/0019-json-belongs-to-the-cli.md): the library provides Rust data only; JSON belongs to the CLI under L1-CLI-006. This supersedes the library JSON/serde scope of owner Q5; IRIG 106 prescribes no JSON format. Earlier snapshot/serde/load wording in the cited 2026-11-13 decision is historical and superseded for the library.
 
 **Verification Method**: Test (T)
 
-**Release scope**: Only deserialization that rehydrates complex timeline state is deferred past 0.8.0 (owner 2026-11-13, plan Q3). Disable/omit unsupported complex Deserialize. Validating existing public value deserialization, versioned policy/answer/timeline output and JSON schema remain 0.8.0 blockers; this is not a blanket serde deferral. See [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md).
+**Release scope**: Owner 2026-11-17, ADR-0019: JSON leaves the library in 0.8.0. The 0.1–0.7 optional serde feature is removed (breaking); migrate JSON consumers to CLI JSON output. The former Q3 complex timeline-state deserialization deferral is moot for the library, not a retained post-0.8.0 library load obligation. Native AnswerView/replay remains in scope.
 
-**Planned verification**: Roundtrip every public type, malformed/out-of-range serialized fields, dangling IDs, unknown schema version, and values above 2^53; no bare absolute time substituted for an answer. Unsupported complex timeline Deserialize is disabled/omitted for 0.8.0; supported value loads remain validated and complete versioned output stays in scope.
+**Planned verification**: Inspect Cargo metadata/dependency edges and public library source for absence of serde feature/dependency/forwarding, snapshot JSON APIs and loaders; build no_std/WASM and check native AnswerView/replay regressions still pass. Check CLI and fuzz builds. CLI report schema/output checks belong to CLI-106, not library load/roundtrip tests.
 
 #### L2-API-111
 
@@ -1750,13 +1752,13 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-CLI-006
 
-**Statement**: The CLI SHALL publish a versioned JSON report schema and consistent text/CSV views of the same report. JSON SHALL use a reviewed versioned snapshot/report schema with units, decimal strings for 64/128-bit quantities, supported-load validation and raw/stated/assumed provenance; review the schema once before freeze.
+**Statement**: The CLI SHALL publish a versioned JSON report schema and consistent text/CSV views of the same Rust report data. Owner Q5 applies to this CLI JSON format: units, decimal strings for all 64/128-bit quantities and retained raw/stated/assumed provenance; review the schema once before freeze. JSON is rendered by the CLI, not the library.
 
-**Source**: As `irig106-tmats` L1-CLI-006; `irig106-cli` and scripts rely on the output (contract 4.10); architecture section 4.4. Owner 2026-11-13, plan Q5: reviewed versioned snapshot/report JSON schema with units, 64/128-bit quantities as decimal strings, validation on load and raw/stated/assumed provenance. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). IRIG 106 does not prescribe JSON representation.
+**Source**: As `irig106-tmats` L1-CLI-006; `irig106-cli` and scripts rely on the output (contract 4.10); architecture section 4.4. Owner 2026-11-13, plan Q5: reviewed versioned snapshot/report JSON schema with units, 64/128-bit quantities as decimal strings, validation on load and raw/stated/assumed provenance. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). IRIG 106 does not prescribe JSON representation. Owner decision 2026-11-17; [ADR-0019](adr/0019-json-belongs-to-the-cli.md): Q5 applies to the CLI JSON report format, not library snapshots or untrusted library loads. IRIG 106 prescribes no JSON format. Earlier snapshot/serde/load wording in the cited 2026-11-13 decision is historical and superseded for the library.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Golden outputs with quotes/commas/newlines, unknown year/scale, counter-only and values above 2^53; schema validation and report round trips. Check schema/version/units, exact decimal strings and provenance in golden reports; align with library snapshots.
+**Planned verification**: CLI golden text/CSV/JSON reports with quotes/commas/newlines, unknown year/scale, counter-only results and signed/unsigned 64/128-bit extrema (including values above 2^53). Validate emitted JSON schema/version/units, exact decimal strings and full raw/stated/assumed provenance. No library snapshot alignment or untrusted JSON load/roundtrip API is required.
 
 #### L2-CLI-107
 
@@ -1790,11 +1792,11 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The project SHALL check Rust 1.85 and edition 2024 separately from current stable development checks.
 
-**Source**: ADR-0003. Owner2026-11-17, ADR-0020 replaces optional chrono with optional Jiff; serde scope remains the independent ADR-0019 decision.
+**Source**: ADR-0003. Owner 2026-11-17, ADR-0019 scopes JSON to the CLI; planned library verification uses native replay and the remaining features. Owner 2026-11-17, ADR-0020 replaces optional chrono with optional Jiff.
 
 **Verification Method**: Inspection (I)
 
-**Planned verification**: Planned inspection: metadata and supported MSRV feature matrix, including serde/jiff; failures cannot be hidden by running only a newer compiler.
+**Planned verification**: Planned inspection: metadata and supported MSRV feature matrix, including std/no_std and optional jiff; the removed serde feature is checked absent (ADR-0019); failures cannot be hidden by running only a newer compiler.
 
 #### L2-REL-103
 
