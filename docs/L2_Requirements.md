@@ -1578,9 +1578,9 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-API-005
 
-**Statement**: The library SHALL depend on no ecosystem crate other than irig106-types; optional chrono remains a feature dependency. No library serde dependency or irig106-types/serde forwarding is permitted; irig106-types' own feature remains unchanged.
+**Statement**: The library SHALL depend on no ecosystem crate other than irig106-types; optional jiff remains a feature dependency. No library serde dependency or irig106-types/serde forwarding is permitted; irig106-types' own feature remains unchanged.
 
-**Source**: ADR-0005. Replaces L1-API-003 ("zero required runtime dependencies"). Owner decision 2026-11-17; [ADR-0019](adr/0019-json-belongs-to-the-cli.md): the library provides Rust data only; JSON belongs to the CLI under L1-CLI-006. This supersedes the library JSON/serde scope of owner Q5; IRIG 106 prescribes no JSON format. Earlier snapshot/serde/load wording in the cited 2026-11-13 decision is historical and superseded for the library.
+**Source**: ADR-0005. Replaces L1-API-003 ("zero required runtime dependencies"). Owner decision 2026-11-17; [ADR-0019](adr/0019-json-belongs-to-the-cli.md): the library provides Rust data only; JSON belongs to the CLI under L1-CLI-006. This supersedes the library JSON/serde scope of owner Q5; IRIG 106 prescribes no JSON format. Earlier snapshot/serde/load wording in the cited 2026-11-13 decision is historical and superseded for the library. Owner 2026-11-17, ADR-0020 replaces optional chrono with optional Jiff.
 
 **Verification Method**: Inspection (I)
 
@@ -1652,13 +1652,13 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-API-011
 
-**Statement**: The library SHALL limit chrono conversion to calendar/scale combinations whose meaning is explicit and whose target representation can preserve it.
+**Statement**: The library SHALL provide checked naive conversions to/from `Scaled<jiff::civil::DateTime>`, requiring known year and scale. Preserve date/time fields, nanoseconds and scale provenance; never invent1970, silently normalize a leap label or infer UTC. Jiff remains optional/off by default and usable without std on WASM.
 
-**Source**: Architecture section 9; L1-TAI-006.
+**Source**: Architecture section 9; L1-TAI-006. Owner2026-11-17; [ADR-0020](adr/0020-jiff-replaces-chrono.md); RUSTSEC-2026-0543 (all chrono versions unmaintained, no patched release). This interoperability API is product policy, not an IRIG wire rule.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Known UTC and explicitly converted TAI/GPS, unknown year/scale refusals, leap second, stale table and chrono range extremes, plus reverse conversions with declared scale.
+**Planned verification**: Port every legacy conversion fixture, changing unknown-year default to refusal. Test ordinary fields/roundtrips, UTC/TAI/GPS/assumed provenance, unknown year/scale, explicit UTC conversion with covered/stale tables, leap-label refusal, Gregorian DOY boundaries, Jiff negative/minimum/maximum years and malformed public readings. Check1.85, default dependency exclusion, no_std/alloc/WASM and mutate each conversion guard/field/provenance path.
 
 #### L2-API-112
 
@@ -1792,11 +1792,11 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The project SHALL check Rust 1.85 and edition 2024 separately from current stable development checks.
 
-**Source**: ADR-0003. Owner 2026-11-17, ADR-0019 scopes JSON to the CLI; planned library verification uses native replay and the remaining features.
+**Source**: ADR-0003. Owner 2026-11-17, ADR-0019 scopes JSON to the CLI; planned library verification uses native replay and the remaining features. Owner 2026-11-17, ADR-0020 replaces optional chrono with optional Jiff.
 
 **Verification Method**: Inspection (I)
 
-**Planned verification**: Planned inspection: metadata and supported MSRV feature matrix, including std/no_std and optional chrono; the removed serde feature is checked absent (ADR-0019); failures cannot be hidden by running only a newer compiler.
+**Planned verification**: Planned inspection: metadata and supported MSRV feature matrix, including std/no_std and optional jiff; the removed serde feature is checked absent (ADR-0019); failures cannot be hidden by running only a newer compiler.
 
 #### L2-REL-103
 

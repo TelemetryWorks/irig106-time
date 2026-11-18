@@ -639,3 +639,14 @@ Migration for0.8.0: use the CLI's JSON output instead of library serde.
 S12b verification records describe historical implementation, not the new
 library contract. The closed schema/load proposals do not establish a frozen
 CLI schema. All other0.8.0 work and release safeguards remain.
+
+## Owner2026-11-17 — Jiff replaces chrono
+
+[ADR-0020](adr/0020-jiff-replaces-chrono.md) replaces unmaintained chrono with
+optional/off-by-default Jiff civil interoperability for0.8.0; no advisory ignore.
+Historical GAP-06/v0.6 notes above remain release history. API-011/111 now
+requires checked, scale-qualified civil conversions: no1970/UTC fallback or
+leap-label clamping. Keep MSRV1.85/no_std/WASM; default builds exclude Jiff.
+This standalone PR is independent of ADR-0019/PR50's JSON boundary; whichever
+merges second merges current main, preserving both decisions. JSON removal
+itself remains the separately gated follow-up after PR50, not this PR.

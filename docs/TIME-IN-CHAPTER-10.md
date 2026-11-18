@@ -162,7 +162,7 @@ From its own documents and code:
    (L1-ERR-001).
 2. **Nanosecond precision**: "at least nanosecond precision to support all
    Chapter 10 time formats" (L1-ABS-001).
-3. **`no_std`**, with `std` and `chrono` as options; every public item
+3. **`no_std`**, with `std` and `jiff` as options; every public item
    documented (`#![deny(missing_docs)]`). Owner 2026-11-17 removes the historical
    0.1–0.7 serde feature in 0.8.0; code/CI removal follows the docs-first decision.
 4. **WebAssembly**: build the library for `wasm32` without default features;
@@ -1115,7 +1115,7 @@ capabilities, and finally the workspace and the CLI sub-crate.
 | `version` | move the mapping to `irig106-types`, two lists; `0x0F` unknown | T-9 |
 | `packet_standard` | keep: the Chapter 10 to Chapter 11 move at 106-17 is confirmed ("References to RCC 106-04 through RCC 106-15 refer to Chapter 10, while RCC 106-17 onward refer to Chapter 11", Chapter 11 §11.2.1.1 e) | — |
 | `recording_event` | move out (8.1) | T-8 |
-| `error`, `util`, `chrono_interop` | keep | — |
+| `error`, `util`, `jiff_interop` | keep | — |
 | `irig106-time-cli` | restructure into library and binary; report network time as itself, not as GPS | P6-10 |
 | ERTC (in `irig106-types`) | fix: 1 ns a tick | T-5 |
 

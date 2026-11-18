@@ -1024,9 +1024,9 @@ Handbook, cited as support, never as the rule.
 
 ### L1-API-011
 
-**Statement**: With the `chrono` feature, the library SHALL convert between its absolute times and `chrono`'s date-time types when the year and the time scale are known, and SHALL refuse otherwise.
+**Statement**: With the optional, off-by-default `jiff` feature, the library SHALL convert between its calendar/absolute values and jiff civil date-time values when year and scale are known, and SHALL refuse otherwise. Retain explicit scale evidence and reject unrepresentable values; remove chrono interoperability in0.8.0.
 
-**Source**: Architecture section 9; L1-TAI-006.
+**Source**: Architecture section 9; L1-TAI-006. Owner2026-11-17; [ADR-0020](adr/0020-jiff-replaces-chrono.md); RUSTSEC-2026-0543 (all chrono versions unmaintained, no patched release). This interoperability API is product policy, not an IRIG wire rule.
 
 **Verification Method**: Test (T)
 

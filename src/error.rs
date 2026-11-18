@@ -23,6 +23,12 @@ pub type Result<T> = core::result::Result<T, TimeError>;
 #[non_exhaustive]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum TimeError {
+    /// A Jiff civil year is outside the native calendar's 0..=9999 domain.
+    /// **Traces:** L3-API-111 ← L2-API-111 ← L1-API-011
+    CivilYearOutOfRange {
+        /// Original signed year, retained without wrapping or clamping.
+        year: i16,
+    },
     /// A caller leap table is structurally invalid or contradicts known history.
     /// **Traces:** L3-TAI-103 ← L2-TAI-103 ← L1-TAI-003
     InvalidLeapTable {
@@ -189,6 +195,9 @@ impl From<irig106_types::TypesError> for TimeError {
 impl fmt::Display for TimeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::CivilYearOutOfRange { year } => {
+                write!(f, "civil year {year} is outside 0..=9999")
+            }
             Self::InvalidLeapTable { reason } => write!(f, "invalid leap table: {reason}"),
             TimeError::CounterWidth { value } => write!(f, "RTC value {value} exceeds 48 bits"),
             TimeError::AmbiguousCounterDelta => {

@@ -28,8 +28,8 @@
 //!   construction (BCD, CSDW, NTP, PTP, RTC)
 //! - **serde** — Exact versioned value/policy snapshots and validated supported leaf
 //!   loading; complex engine-state deserialization is intentionally omitted
-//! - **chrono** — Optional `From` conversions between `AbsoluteTime` and
-//!   `chrono::NaiveDateTime` via the `chrono` feature gate
+//! - **jiff** — Optional checked civil conversions with explicit scale/year
+//!   and nanosecond precision; no timezone/clock or implicit UTC
 //!
 //! ## `no_std` Support
 //!
@@ -138,9 +138,9 @@ pub mod years;
 /// Crate-internal utilities (leap year helper, MSRV documentation).
 pub(crate) mod util;
 
-/// Optional interop with the `chrono` crate.
-#[cfg(feature = "chrono")]
-pub mod chrono_interop;
+/// Optional checked interop with Jiff civil date/time values.
+#[cfg(feature = "jiff")]
+pub mod jiff_interop;
 
 // Re-export key types at crate root for convenience.
 pub use absolute::{

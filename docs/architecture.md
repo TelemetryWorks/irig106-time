@@ -439,12 +439,12 @@ it.
 
 | | |
 |---|---|
-| **Dependencies** | `irig106-types` (required); `chrono` (optional feature); no library serde dependency (ADR-0019) |
-| **Features** | `std` (default: `std::error::Error`); `alloc` implied by the recording layer; `chrono` (conversions to and from `chrono` types) |
+| **Dependencies** | `irig106-types` (required); `jiff` (optional feature); no library serde dependency (ADR-0019) |
+| **Features** | `std` (default: `std::error::Error`); `alloc` implied by the recording layer; `jiff` (checked scale-qualified civil conversions) |
 | **Targets** | any Rust target; CI builds `wasm32-unknown-unknown` without default features and checks supported native features; no library serde feature (ADR-0014/0019) |
 | **Edition and MSRV** | edition 2024, Rust 1.85 (ADR-0003) |
 | **JSON boundary** | Library values, policies, findings, answers and timelines are Rust data; retain non-JSON AnswerView/replay and complete basis (ADR-0010/0011). The CLI owns JSON report output (L1-CLI-006) under owner Q5: versioned reviewed schema, units, decimal-string 64/128-bit quantities and raw/stated/assumed provenance. No library JSON loading. Remove 0.1–0.7 optional serde in 0.8.0 (breaking); irig106-types' own serde feature untouched. Q3 library rehydration deferral is moot (owner 2026-11-17, ADR-0019). |
-| **`chrono`** | conversions between the crate's absolute times and `chrono`'s date-time types, for times whose year and scale are known |
+| **`jiff`** | Optional/off by default; Jiff1.0.1 MSRV1.85 with default features disabled. Checked `Scaled<jiff::civil::DateTime>` conversions require year/scale, preserve naive fields/provenance, reject second60/negative years; no Timestamp, clock or timezone I/O. Replaces chrono due to RUSTSEC-2026-0543 (ADR-0020). |
 | **Unsafe code** | none (`#![forbid(unsafe_code)]`) |
 | **Lints** | Clippy's `unwrap_used`, `expect_used`, `panic`, `todo`, `unimplemented`, `unreachable`, `dbg_macro`, `print_stdout`, `print_stderr` denied in library code (L1-API-012) |
 | **Dependencies** | `deny.toml`, checked by `cargo deny` in CI (L1-REL-005) |
@@ -487,7 +487,7 @@ carried over through tests written from the standard (ADR-0016).
 | `version` | the mappings move to `irig106-types`; `0x0F` unknown; `edition` keeps what changes for time | T-9 |
 | `packet_standard` | `edition` | — |
 | `recording_event` | leaves the crate, for `irig106-decode` (ADR-0009) | T-8 |
-| `error`, `util`, `chrono_interop` | `error`; `util` as needed; `chrono` feature | — |
+| `error`, `util`, `jiff_interop` | `error`; `util` as needed; `jiff` feature | — |
 | `irig106-time-cli/src/main.rs` | `irig106-time-cli` library and `irigtime` binary | P6-10 |
 
 ---

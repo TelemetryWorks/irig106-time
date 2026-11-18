@@ -9,7 +9,7 @@ decision-makers: Joey
 ## Decision
 
 The library provides Rust data only. JSON report output belongs to the
-`irig106-time-cli` crate and its `irigtime` binary under L1-CLI-006. There is
+`irig106-time-cli` crate and its `irigtime` (planned rename from ch10time) binary under L1-CLI-006. There is
 no untrusted JSON loading in the library. Keep non-JSON AnswerView/replay.
 The library's optional serde feature, available in 0.1–0.7, is removed in
 0.8.0 (breaking); consumers use the CLI's JSON output instead.

@@ -13,12 +13,13 @@ keywords = ["irig106", "telemetry", "time", "chapter10", "flight-test"]
 default = ["std"]
 std = ["irig106-types/std"]
 serde = ["dep:serde", "irig106-types/serde"]
-chrono = ["dep:chrono"]
+jiff = ["dep:jiff"]
 
 [dependencies]
 irig106-types = { version = "0.1", default-features = false }
 serde = { version = "1", default-features = false, features = ["derive", "alloc"], optional = true }
-chrono = { version = "0.4", default-features = false, optional = true }
+
+jiff = { version = "1", default-features = false, optional = true }
 
 [dev-dependencies]
 proptest = "1"

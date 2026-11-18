@@ -25,7 +25,8 @@ cargo test --all-features
 # Individual feature combos
 cargo test --no-default-features
 cargo test --features serde
-cargo test --features chrono
+cargo test --features jiff
+cargo test --no-default-features --features jiff
 
 # Lint
 cargo clippy --all-targets --all-features -- -D warnings

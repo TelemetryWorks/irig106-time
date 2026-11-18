@@ -20,6 +20,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Docs/requirements land first; implementation and CI removal is a separate PR
   after this decision merges. No code removal is claimed by this entry.
 
+### Jiff civil interoperability replaces chrono in0.8.0
+
+- **Breaking:** remove the `chrono` feature/dependency, `chrono_interop` and its
+  infallible From/Into conversions (RUSTSEC-2026-0543: unmaintained, no patch).
+  Enable optional `jiff` instead; Jiff1.0.1 with default features disabled is
+  MSRV1.85/no_std compatible. Default library/CLI/fuzz builds do not enable Jiff.
+- Migration: wrap legacy AbsoluteTime/CalendarTime in `Scaled` with explicit
+  ScaleEvidence, then call `jiff_interop::absolute_to_civil` or
+  `calendar_to_civil`; use `reading_to_civil` for leap-preserving CalendarReading,
+  and `civil_to_calendar` for the reverse conversion. All return Result and
+  preserve scale/provenance with `Scaled<jiff::civil::DateTime>`.
+  There is no Timestamp/timezone/host-clock operation or implicit UTC conversion.
+- Missing year now refuses rather than assuming1970; unknown scale refuses.
+  Leap labels explicitly refuse rather than defaulting to midnight/clamping.
+  Negative Jiff years return CivilYearOutOfRange with the signed value; ordinary
+  year0..9999 and nanoseconds roundtrip exactly. Native calendar validation
+  errors remain distinct. Explicit table conversion (including stale-offset
+  status/basis) remains the caller's separate step when UTC is needed.
+
 ### S12b2b1 exact answer output and remaining adapter audit
 
 - Add candidate version1 answer-output carrying the complete replay basis and

@@ -1395,9 +1395,9 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 
 **L1 ancestor**: L1-API-005
 
-**Obligation**: The implementation SHALL inspect normal and feature-enabled dependency edges: no core/tmats/decode/write/index/CLI edge, no serde dependency or forwarding from irig106-time. Optional chrono remains permitted; do not change irig106-types' own serde feature or introduce cross-repo runtime paths.
+**Obligation**: The implementation SHALL inspect normal and feature-enabled dependency edges: no core/tmats/decode/write/index/CLI edge, no serde dependency or forwarding from irig106-time. Optional jiff remains permitted; do not change irig106-types' own serde feature or introduce cross-repo runtime paths.
 
-**Source**: ADR-0005. Replaces L1-API-003 ("zero required runtime dependencies"). Owner decision 2026-11-17; [ADR-0019](adr/0019-json-belongs-to-the-cli.md): the library provides Rust data only; JSON belongs to the CLI under L1-CLI-006. This supersedes the library JSON/serde scope of owner Q5; IRIG 106 prescribes no JSON format. Earlier snapshot/serde/load wording in the cited 2026-11-13 decision is historical and superseded for the library.
+**Source**: ADR-0005. Replaces L1-API-003 ("zero required runtime dependencies"). Owner decision 2026-11-17; [ADR-0019](adr/0019-json-belongs-to-the-cli.md): the library provides Rust data only; JSON belongs to the CLI under L1-CLI-006. This supersedes the library JSON/serde scope of owner Q5; IRIG 106 prescribes no JSON format. Earlier snapshot/serde/load wording in the cited 2026-11-13 decision is historical and superseded for the library. Owner 2026-11-17, ADR-0020 replaces optional chrono with optional Jiff.
 
 **Planned verification**: Planned inspection: cargo-tree review for every feature combination, manifest edge inventory, and standalone library-use example using plain declarations.
 
@@ -1457,11 +1457,11 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 
 **L1 ancestor**: L1-API-011
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Require known year and known scale; normalize non-UTC scale explicitly with table provenance before producing a UTC-like chrono result. Unknown context returns a typed refusal. A leap second must be preserved through supported chrono representation or explicitly rejected, never normalized silently.
+**Obligation**: The implementation SHALL convert AbsoluteTime/CalendarTime with explicit ScaleEvidence and CalendarReading to a scale-wrapped jiff::civil::DateTime; reverse civil conversion requires the same explicit scale wrapper and returns Scaled<CalendarTime>. Reject missing year/unknown scale, negative Jiff years and second60; retain year0..9999 and nanosecond precision. DateTime is naive, not a UTC instant: retain TAI/GPS fields and labels unchanged unless the caller first converts them with an explicit leap table. No Timestamp/timezone/clock API or implicit leap-table lookup is needed. Remove chrono and use optional Jiff with default features disabled; preserve MSRV1.85/no_std/WASM.
 
-**Source**: Architecture section 9; L1-TAI-006.
+**Source**: Architecture section 9; L1-TAI-006. Owner2026-11-17; [ADR-0020](adr/0020-jiff-replaces-chrono.md); RUSTSEC-2026-0543 (all chrono versions unmaintained, no patched release). This interoperability API is product policy, not an IRIG wire rule.
 
-**Planned verification**: Known UTC and explicitly converted TAI/GPS, unknown year/scale refusals, leap second, stale table and chrono range extremes, plus reverse conversions with declared scale.
+**Planned verification**: Port every legacy conversion fixture, changing unknown-year default to refusal. Test ordinary fields/roundtrips, UTC/TAI/GPS/assumed provenance, unknown year/scale, explicit UTC conversion with covered/stale tables, leap-label refusal, Gregorian DOY boundaries, Jiff negative/minimum/maximum years and malformed public readings. Check1.85, default dependency exclusion, no_std/alloc/WASM and mutate each conversion guard/field/provenance path.
 
 **L3-API-112** · Parent: L2-API-112 · Verification: I
 
@@ -1575,9 +1575,9 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Both manifests declare the agreed edition/MSRV. CI checks library normal features on 1.85 without relying on newer dev dependencies; stable runs tests, lints and docs. Later APIs require compatible alternatives or a reviewed floor change.
 
-**Source**: ADR-0003. Owner 2026-11-17, ADR-0019 scopes JSON to the CLI; planned library verification uses native replay and the remaining features.
+**Source**: ADR-0003. Owner 2026-11-17, ADR-0019 scopes JSON to the CLI; planned library verification uses native replay and the remaining features. Owner 2026-11-17, ADR-0020 replaces optional chrono with optional Jiff.
 
-**Planned verification**: Planned inspection: metadata and supported MSRV feature matrix, including std/no_std and optional chrono; the removed serde feature is checked absent (ADR-0019); failures cannot be hidden by running only a newer compiler.
+**Planned verification**: Planned inspection: metadata and supported MSRV feature matrix, including std/no_std and optional jiff; the removed serde feature is checked absent (ADR-0019); failures cannot be hidden by running only a newer compiler.
 
 **L3-REL-103** · Parent: L2-REL-103 · Verification: I
 

@@ -45,9 +45,9 @@ IRIG 106 Chapter 10 separates *when data was recorded* (a free-running 10 MHz co
 - **Encoding** — `to_le_bytes()` on all wire-format types for packet construction
 - **`impl Display`** — ISO-like formatting for `AbsoluteTime`
 - **`serde`** — Optional versioned value/policy snapshots and checked supported leaf loading; complex engine-state loading is omitted
-- **`chrono`** — Optional `From` conversions between `AbsoluteTime` and `chrono::NaiveDateTime`
+- **`jiff`** — Optional checked civil conversions with explicit year/scale and nanosecond precision; unknown context/leap labels refuse
 - **`#![no_std]`** — Works on embedded, WASM, and standard targets
-- **Zero required dependencies** — Only `core` and `alloc` (serde, chrono are optional)
+- **Zero required dependencies** — Only `core` and `alloc` (serde, jiff are optional)
 - **Edition 2024, MSRV 1.85** — the same across the IRIG 106 ecosystem (docs/adr/0003). Dev tooling (benchmarks, fuzz, proptest) requires latest stable. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 - **Zero `unsafe`** — Safe Rust throughout
 
@@ -95,7 +95,7 @@ let resolved = correlator.correlate(data_rtc, None).unwrap();
 | `streaming` | Sliding-window correlator for live telemetry streams |
 | `quality` | Correlator health and reference-density metrics |
 | `recording_event` | Data Type 0x02 recording event parsing |
-| `chrono_interop` | Feature-gated `chrono` conversions |
+| `jiff_interop` | Feature-gated checked Jiff civil conversions |
 | `error` | TimeError enum, Result alias |
 
 ## Performance
@@ -120,7 +120,7 @@ At 10 Gbps with 512-byte average packets (2.4M pkt/sec), the hot path provides 1
 
 ```sh
 cargo test              # 269 tests (184 unit + 68 integration + 17 property)
-cargo test --all-features  # includes chrono doc tests
+cargo test --all-features  # includes Jiff civil doc tests
 cargo bench             # 28 zero-dep benchmarks + criterion correlation suite
 cargo +nightly fuzz run fuzz_bcd_day   # 10 fuzz targets available
 ```
