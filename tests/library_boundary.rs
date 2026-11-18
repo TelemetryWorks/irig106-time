@@ -6,11 +6,24 @@ use std::process::Command;
 fn serde_feature_is_rejected_before_compilation() {
     // Cargo metadata performs feature resolution without building anything.
     let output = Command::new(env!("CARGO"))
-        .args(["metadata", "--offline", "--no-deps", "--format-version", "1", "--features", "serde"])
+        .args([
+            "metadata",
+            "--offline",
+            "--format-version",
+            "1",
+            "--features",
+            "serde",
+        ])
         .current_dir(env!("CARGO_MANIFEST_DIR"))
         .output()
         .expect("run cargo metadata");
-    assert!(!output.status.success(), "the removed serde feature was accepted");
+    assert!(
+        !output.status.success(),
+        "the removed serde feature was accepted"
+    );
     let error = String::from_utf8_lossy(&output.stderr);
-    assert!(error.contains("does not have") && error.contains("serde"), "unexpected rejection: {error}");
+    assert!(
+        error.contains("does not") && error.contains("feature") && error.contains("serde"),
+        "unexpected rejection: {error}"
+    );
 }
