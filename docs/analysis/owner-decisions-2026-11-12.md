@@ -264,3 +264,17 @@ with its L2/L1 parent chain intact and every prior source quote retained.
 S08 records I5/I6 and segment N2 evidence, including future-DMY qualification.
 No Design/Review field, finding row or severity changes. No whole-requirement
 marker is added for these partial clauses; coverage remains160/288.
+
+
+## Subsequent owner decision — snapshot load authority, 2026-11-17 (PR47)
+
+Owner Option A: "the CALLER sets load limits, never the document."
+Q5's JSON format is our own, not IRIG106. Report/answer loaders accept independent
+ReplayLimits and reject declared or actual excess before native replay; plain
+serde uses documented default ceilings. A checked packet/query product bounds
+quality scan work. The original verification claim of caller-owned limits was
+incorrect (the document supplied them); corrected in verification-s12b2b.md.
+API-110/POL-103 validation clauses are refined by this implementation evidence;
+no requirement or Review/Design field is deleted or marked fully covered.
+Schema review remains pending; this does not freeze it or implement Q3 state
+rehydration. Transport/parser JSON-byte bounds remain the caller's obligation.

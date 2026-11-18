@@ -31,8 +31,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   private engine state. Include offline session/reference records, all engine
   findings, requested quality metrics and full Own/Stamp/Word envelopes.
 - Preserve explicit progress, caps, mode changes and prior qualification.
-  Caller-set work/output/raw-byte limits and128-level cached-value nesting
-  bound replay; callers also bound JSON/policy graph size. Completed stream
+  Independent caller load limits (owner Option A,2026-11-17) bound declared
+  ceilings and actual packets, steps, answers, raw bytes, quality queries and
+  checked packet/query work before replay. ReportSnapshot::load and
+  AnswerSnapshot::load accept ReplayLimits; plain serde uses documented defaults
+  (1024 packets,4096 steps,1024 answers,4MiB raw,32 queries,32768 pairs).
+  Document limits cannot raise the caller budget. This corrects the original
+  document-controlled limit claim; new resource fields are required in our
+  candidate JSON schema. Callers separately cap JSON/policy graph bytes;
+  cached-value nesting remains128. Completed stream
   recipes explicitly Finish. Q3's live-state rehydration stays omitted.
 - Core replay is implemented with b1+b2. The final schema/negative-test
   unit prepares the owner's single review; the schema is NOT frozen. Metrics

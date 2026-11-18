@@ -84,9 +84,11 @@ contexts; no default table registry or host clock is consulted. An explicit
 preparation list retains immediate-prior policy/normalization/network evidence.
 All native conversion/selection/year/session behavior is delegated unchanged.
 
-Caller limits bound steps (including preparations/measurements), answer count
-and raw payload bytes. Callers must also bound total JSON bytes/policy graph
-size before loading. Cached output nesting is capped at128. Streams explicitly
+Correction (owner Option A, 2026-11-17): the original b2 loader bounded steps,
+answers and raw bytes using **document-declared** limits, not independent caller
+limits. That earlier "Caller limits" claim was incorrect. The revision below
+adds independent caller ceilings before replay. Callers must also bound total
+JSON bytes/policy graph size before parsing. Cached output nesting is capped at128. Streams explicitly
 end with Finish; live pending queues/indexes/anchors are neither loaded nor
 returned. This provides checked report replay, not Q3-deferred resumable engine
 rehydration. The returned offline sessions are plain validated records.
@@ -172,3 +174,62 @@ This supplements actual Serde token/load tests; no browser JS or independent
 machine-readable JSON-Schema validator execution is claimed. No dependencies
 added; Serde still uses alloc without std. Remaining work is owner's single
 schema review and separately authorized freeze, not another implementation slice.
+
+
+## PR47 revision — independent caller load budgets (owner 2026-11-17)
+
+Source: owner Option A: "the CALLER sets load limits, never the document."
+This is our Q5 JSON protocol/resource policy, not an IRIG106 wire format or
+standard requirement. No Review/Design/finding field changes. No new whole
+Requirements markers; API-110/POL-103 remain clause-level; matrix192/288.
+
+`ReportSnapshot::load(deserializer, &ReplayLimits)` and the corresponding
+`AnswerSnapshot::load` preflight the raw report before any native replay.
+Nested answer reports use the same caller budget, not an independently loaded
+report or a document-controlled budget. Plain serde Deserialize routes through
+`ReplayLimits::default()`. Every declared ceiling must be <= the caller's;
+every actual input count must fit both. Cached answers/quality counts are
+also checked before replay, then all cached content is still compared against
+native regenerated results. Parsing/allocating the wire representation happens
+before this preflight; callers MUST bound incoming JSON bytes separately,
+including policy/table graphs and cached output. This is not a streaming JSON
+allocation limit and does not deserialize/restore live engine state.
+
+Defaults (explicit reader choices, not time-policy defaults):1024 packets,
+4096 steps (including preparations, requests and quality measurements),1024
+answers,4194304 raw payload/header bytes,32 quality queries,32768 packet/query
+pairs. Offline answer count is requests; stream count includes every Data
+observation plus requests, before execution. All packet observations count,
+even unusable ones. Raw counts include Format1/2 bodies and Own/Stamp buffers.
+A checked `packets * quality_queries` bound conservatively limits repeated
+reference/session scans, even where actual references are fewer than packets.
+Queries with no packets cost zero pairs but still count against query/step caps.
+The caller may explicitly grant larger ceilings or lower them; document claims
+can only lower them. Overflow rejects. Construction via `new(plan)` is trusted
+caller construction and checks the plan's declared ceilings; it is not a loader.
+
+Tests-first commit8c1d281: isolating the existing-API regression produced one
+runtime failure at the unmodified loader: a report declaring usize::MAX steps
+was accepted. The full new load/default API suite failed compilation because
+those APIs did not exist (not claimed as runtime failures). Later expanded
+coverage has six tests: all six declared budgets independently excessive,
+small/large caller budgets on report and nested answer, actual packets/steps/
+answers/raw/query/work excess with a poisoned RTC to prove preflight order,
+cached counts, and valid offline/stream roundtrips. New-API tests are not
+claimed as having run on the old API.
+
+Four targeted mutations were individually run and killed by runtime assertions:
+remove independent declared-budget comparison; remove quality-work bound;
+replace the nested caller budget with default limits; skip cached-count bounds.
+Production source was restored after each run. The quality mutation is killed
+by the actual-size fixture, not a replay failure. The nested-default mutation
+is killed by an explicitly authorized9000-step declaration with tiny content.
+
+Validation: six targeted resource tests and the five original report tests
+pass.17/18 full local CI-equivalent checks pass, including MSRV1.85,
+no_std/WASM±serde, CLI, benches, all ten fuzz harness builds and trace matrix.
+Cargo-deny fails on newly reported RUSTSEC-2026-0543: chrono0.4.45 unmaintained,
+all versions affected, no safe upgrade. Cargo.lock/deny.toml are unchanged from
+main121c412; no exception or dependency-policy change was made. This is an
+external prerequisite, not claimed green. The ordinary main merge supplies a
+pull_request synchronize event when pushed (retargeting alone did not run CI).
