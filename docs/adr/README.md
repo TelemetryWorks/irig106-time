@@ -33,5 +33,7 @@ The original seventeen records were accepted by 2026-09-27 (0011 to 0014, 0016, 
 | [0017](0017-releases-after-the-rebuild.md) | The rebuilt crate is released as 0.8.0; users of 0.1.0 to 0.7.0 are told what was wrong | accepted |
 | [0018](0018-0-8-release-scope-and-policy-decisions.md) | 0.8.0 release scope, finding identities and accepted policy defaults | accepted 2026-11-13 |
 
+| [0020](0020-jiff-replaces-chrono.md) | Replace unmaintained chrono with optional Jiff civil interoperability in0.8.0 | accepted2026-11-17 |
+
 New records take the next number and use the same front matter
 (`status`, `date`, `decision-makers`).
