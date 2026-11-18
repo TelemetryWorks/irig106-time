@@ -1395,7 +1395,7 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Dependency review checks normal and feature-enabled edges from irig106-time: no core/tmats/decode/write/index/CLI edge. Optional serde/jiff are allowed under their features; tests must not turn a temporary cross-repo path into a runtime dependency.
 
-**Source**: ADR-0005. Replaces L1-API-003 ("zero required runtime dependencies").
+**Source**: ADR-0005. Replaces L1-API-003 ("zero required runtime dependencies"). Owner2026-11-17, ADR-0020 replaces optional chrono with optional Jiff; serde scope remains the independent ADR-0019 decision.
 
 **Planned verification**: Planned inspection: cargo-tree review for every feature combination, manifest edge inventory, and standalone library-use example using plain declarations.
 
@@ -1573,7 +1573,7 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Both manifests declare the agreed edition/MSRV. CI checks library normal features on 1.85 without relying on newer dev dependencies; stable runs tests, lints and docs. Later APIs require compatible alternatives or a reviewed floor change.
 
-**Source**: ADR-0003.
+**Source**: ADR-0003. Owner2026-11-17, ADR-0020 replaces optional chrono with optional Jiff; serde scope remains the independent ADR-0019 decision.
 
 **Planned verification**: Planned inspection: metadata and supported MSRV feature matrix, including serde/jiff; failures cannot be hidden by running only a newer compiler.
 

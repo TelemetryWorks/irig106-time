@@ -1578,7 +1578,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The library SHALL keep irig106-types as the library's only ecosystem dependency and accept all packet/TMATS context through plain values.
 
-**Source**: ADR-0005. Replaces L1-API-003 ("zero required runtime dependencies").
+**Source**: ADR-0005. Replaces L1-API-003 ("zero required runtime dependencies"). Owner2026-11-17, ADR-0020 replaces optional chrono with optional Jiff; serde scope remains the independent ADR-0019 decision.
 
 **Verification Method**: Inspection (I)
 
@@ -1790,7 +1790,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The project SHALL check Rust 1.85 and edition 2024 separately from current stable development checks.
 
-**Source**: ADR-0003.
+**Source**: ADR-0003. Owner2026-11-17, ADR-0020 replaces optional chrono with optional Jiff; serde scope remains the independent ADR-0019 decision.
 
 **Verification Method**: Inspection (I)
 

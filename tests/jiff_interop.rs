@@ -25,7 +25,6 @@ fn reading(year: Option<u16>, day: u16) -> CalendarReading {
         scale: ScaleEvidence::standard(TimeScale::Utc),
     }
 }
-/// Interpretations: RDG-009, RDG-010
 /// Clause-level API-011/111 coverage is recorded in verification-jiff.md.
 #[test]
 fn absolute_to_jiff_ports_absolute_to_chrono() {
@@ -170,6 +169,7 @@ fn unknown_scale_refused_in_every_entry_point() {
         );
     }
 }
+/// Interpretations: RDG-009
 #[test]
 fn scales_and_assumption_provenance_are_not_relabelled() {
     for scale in [
@@ -195,6 +195,7 @@ fn scales_and_assumption_provenance_are_not_relabelled() {
         assert_eq!(calendar_to_civil(back).unwrap(), c);
     }
 }
+/// Interpretations: RDG-010
 #[test]
 fn explicit_second60_rejected_never_clamped_or_defaulted() {
     let mut r = reading(Some(2016), 366);
@@ -265,4 +266,50 @@ fn explicit_table_conversion_keeps_stale_basis_outside_naive_projection() {
         );
         assert_eq!(result.status(), status); // Civil adapter does not replace table/basis.
     }
+}
+
+#[test]
+fn clock_and_subsecond_extrema_are_exact() {
+    for (h, m, s, ns) in [(0, 0, 0, 0), (23, 59, 59, 999_999_999)] {
+        let r = CalendarReading {
+            hours: h,
+            minutes: m,
+            seconds: s,
+            nanoseconds: ns,
+            ..reading(Some(2000), 60)
+        };
+        let c = reading_to_civil(r).unwrap();
+        assert_eq!(
+            c.value,
+            DateTime::new(2000, 2, 29, h as i8, m as i8, s as i8, ns as i32).unwrap()
+        );
+        let back = civil_to_calendar(c).unwrap();
+        assert_eq!(
+            (
+                back.value.hours(),
+                back.value.minutes(),
+                back.value.seconds(),
+                back.value.nanoseconds()
+            ),
+            (h, m, s, ns)
+        );
+    }
+    for (year, day) in [(2016, 182), (2016, 366), (2017, 181), (2017, 365)] {
+        let r = CalendarReading {
+            hours: 23,
+            minutes: 59,
+            seconds: 60,
+            ..reading(Some(year), day)
+        };
+        assert_eq!(
+            reading_to_civil(r),
+            Err(TimeError::NeedsContext {
+                context: "jiff civil cannot represent second 60"
+            })
+        );
+    }
+    assert_eq!(
+        TimeError::CivilYearOutOfRange { year: -1 }.to_string(),
+        "civil year -1 is outside 0..=9999"
+    );
 }

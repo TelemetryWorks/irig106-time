@@ -445,7 +445,7 @@ impl core::fmt::Display for AbsoluteTime {
 /// guaranteed to be present and validated. It is produced by:
 /// - BCD Day-Month-Year format parsing (`DmyFormatTime::to_calendar_time`)
 /// - Promotion from `AbsoluteTime` via [`CalendarTime::new`]
-/// - Conversion from `chrono::NaiveDateTime` (with the `chrono` feature)
+/// - Checked conversion from scale-qualified Jiff civil time (`jiff` feature)
 ///
 /// # Type Safety
 ///
