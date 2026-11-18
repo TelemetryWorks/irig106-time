@@ -7,16 +7,49 @@ use crate::{
 };
 use alloc::{string::String, vec::Vec};
 
-/// Caller-set replay resource ceilings; input readers must also bound JSON bytes.
+/// Replay resource ceilings for our Q5 JSON protocol, not an IRIG 106 format.
+/// Document declarations can only lower a loader's independent caller ceilings.
+/// Readers must also bound JSON bytes before parsing (including policy graphs).
+/// Defaults: 1024 packets, 4096 steps, 1024 answers, 4 MiB raw bytes,
+/// 32 quality queries and 32768 packet/query pairs.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ReplayLimits {
+    /// Maximum observed packets, including references and data.
+    pub packets: Decimal<usize>,
+    /// Maximum requested offline quality measurements.
+    pub quality_queries: Decimal<usize>,
+    /// Maximum packets times quality queries (checked before replay).
+    /// Conservative bound on the current per-query reference/session scans.
+    pub quality_work: Decimal<usize>,
     #[doc = "Maximum count of observations, progress events, queries and measurements."]
     pub steps: Decimal<usize>,
     #[doc = "Maximum count of emitted answer views."]
     pub answers: Decimal<usize>,
     #[doc = "Maximum total retained raw payload/header bytes; bound JSON bytes separately."]
     pub raw_bytes: Decimal<usize>,
+}
+impl Default for ReplayLimits {
+    fn default() -> Self {
+        Self {
+            packets: Decimal::new(1024),
+            steps: Decimal::new(4096),
+            answers: Decimal::new(1024),
+            raw_bytes: Decimal::new(4 * 1024 * 1024),
+            quality_queries: Decimal::new(32),
+            quality_work: Decimal::new(32768),
+        }
+    }
+}
+impl ReplayLimits {
+    fn within(&self, ceiling: &Self) -> bool {
+        self.packets.get() <= ceiling.packets.get()
+            && self.steps.get() <= ceiling.steps.get()
+            && self.answers.get() <= ceiling.answers.get()
+            && self.raw_bytes.get() <= ceiling.raw_bytes.get()
+            && self.quality_queries.get() <= ceiling.quality_queries.get()
+            && self.quality_work.get() <= ceiling.quality_work.get()
+    }
 }
 /// An explicit unwrapped query/extraction coordinate; never inferred on load.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -434,7 +467,7 @@ pub enum ReportRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ReplayPlan {
-    #[doc = "Caller-set resource ceilings retained in the report."]
+    #[doc = "Declared resource ceilings; never authority to raise caller load limits."]
     pub limits: ReplayLimits,
     #[doc = "Complete clock replay recipe."]
     pub clock: ClockRecipe,
@@ -482,6 +515,31 @@ super::wide::serialize_struct!(Results {
 });
 impl ReplayPlan {
     fn validate_size(&self) -> Result<()> {
+        self.check_size(&self.limits)
+    }
+    fn check_size(&self, ceiling: &ReplayLimits) -> Result<()> {
+        let (packets, queries, stream_answers) = match &self.clock {
+            ClockRecipe::Offline {
+                packets, quality, ..
+            } => (packets.len(), quality.len(), 0),
+            ClockRecipe::Stream { steps, .. } => {
+                let mut packets = 0usize;
+                let mut answers = 0usize;
+                for step in steps {
+                    if let StreamStep::Observe { record, .. } = step {
+                        packets = packets.checked_add(1).ok_or_else(invalid)?;
+                        if record.packet.kind == PacketKind::Data {
+                            answers = answers.checked_add(1).ok_or_else(invalid)?;
+                        }
+                    }
+                }
+                (packets, 0, answers)
+            }
+        };
+        let answers = stream_answers
+            .checked_add(self.requests.len())
+            .ok_or_else(invalid)?;
+        let work = packets.checked_mul(queries).ok_or_else(invalid)?;
         let (steps, raw) = match &self.clock {
             ClockRecipe::Offline {
                 packets, quality, ..
@@ -539,8 +597,12 @@ impl ReplayPlan {
         if self.limits.steps.get() == 0
             || self.limits.answers.get() == 0
             || self.limits.raw_bytes.get() == 0
-            || steps > self.limits.steps.get()
-            || raw > self.limits.raw_bytes.get()
+            || packets > ceiling.packets.get()
+            || queries > ceiling.quality_queries.get()
+            || work > ceiling.quality_work.get()
+            || answers > ceiling.answers.get()
+            || steps > ceiling.steps.get()
+            || raw > ceiling.raw_bytes.get()
         {
             return Err(invalid());
         }
@@ -779,6 +841,36 @@ pub struct ReportSnapshot {
     results: Results,
 }
 impl ReportSnapshot {
+    /// Load with independent caller ceilings, preflighting declarations and
+    /// actual inputs/cached answer counts before any replay work. Bound JSON
+    /// bytes before invoking the deserializer. Plain Deserialize uses defaults.
+    pub fn load<'de, D: Deserializer<'de>>(
+        d: D,
+        limits: &ReplayLimits,
+    ) -> core::result::Result<Self, D::Error> {
+        Self::from_wire(object(d)?, limits)
+    }
+    fn from_wire<E: de::Error>(
+        w: ReportWire,
+        limits: &ReplayLimits,
+    ) -> core::result::Result<Self, E> {
+        header(&w.schema, w.version, "irig106-time/report").map_err(E::custom)?;
+        if w.defaults_version != 1 || w.units != report_units() {
+            return Err(E::custom(invalid()));
+        }
+        if !w.plan.limits.within(limits)
+            || w.plan.check_size(limits).is_err()
+            || w.plan.validate_size().is_err()
+            || !w.cached_sizes_within(limits)
+        {
+            return Err(E::custom("replay resource limits exceeded"));
+        }
+        let report = Self::new(w.plan).map_err(E::custom)?;
+        if super::data::capture(&report.results).map_err(E::custom)? != w.outputs {
+            return Err(E::custom("report outputs do not match replay"));
+        }
+        Ok(report)
+    }
     /// Execute bounded inputs using the real library paths; no live state escapes.
     pub fn new(plan: ReplayPlan) -> Result<Self> {
         let results = plan.execute()?;
@@ -821,6 +913,24 @@ struct ReportWire {
     plan: ReplayPlan,
     outputs: super::data::Node,
 }
+impl ReportWire {
+    fn cached_sizes_within(&self, limits: &ReplayLimits) -> bool {
+        let super::data::Node::Map(fields) = &self.outputs else {
+            return false;
+        };
+        [
+            ("answers", limits.answers.get()),
+            ("quality", limits.quality_queries.get()),
+        ]
+        .iter()
+        .all(|(name, cap)| {
+            matches!(
+                fields.iter().find(|(key, _)| key == name),
+                Some((_, super::data::Node::Seq(v))) if v.len() <= *cap
+            )
+        })
+    }
+}
 impl Serialize for ReportSnapshot {
     fn serialize<S: Serializer>(&self, s: S) -> core::result::Result<S::Ok, S::Error> {
         ReportWire {
@@ -836,16 +946,7 @@ impl Serialize for ReportSnapshot {
 }
 impl<'de> Deserialize<'de> for ReportSnapshot {
     fn deserialize<D: Deserializer<'de>>(d: D) -> core::result::Result<Self, D::Error> {
-        let w: ReportWire = object(d)?;
-        header(&w.schema, w.version, "irig106-time/report").map_err(de::Error::custom)?;
-        if w.defaults_version != 1 || w.units != report_units() {
-            return Err(de::Error::custom(invalid()));
-        }
-        let report = Self::new(w.plan).map_err(de::Error::custom)?;
-        if super::data::capture(&report.results).map_err(de::Error::custom)? != w.outputs {
-            return Err(de::Error::custom("report outputs do not match replay"));
-        }
-        Ok(report)
+        Self::load(d, &ReplayLimits::default())
     }
 }
 /// Self-contained individual answer snapshot, with complete replay evidence.
@@ -857,6 +958,23 @@ pub struct AnswerSnapshot {
     index: usize,
 }
 impl AnswerSnapshot {
+    /// Load the nested report with the caller's ceilings, before replay.
+    /// Bound JSON bytes before parsing. Plain Deserialize uses defaults.
+    pub fn load<'de, D: Deserializer<'de>>(
+        d: D,
+        limits: &ReplayLimits,
+    ) -> core::result::Result<Self, D::Error> {
+        let w: Envelope<SelectedWire> = object(d)?;
+        header(&w.schema, w.version, "irig106-time/answer").map_err(de::Error::custom)?;
+        if w.units != report_units() {
+            return Err(de::Error::custom(invalid()));
+        }
+        Self::new(
+            ReportSnapshot::from_wire(w.value.report, limits)?,
+            w.value.index.get(),
+        )
+        .map_err(de::Error::custom)
+    }
     /// Validate the selected answer, retaining the full bounded input report.
     pub fn new(report: ReportSnapshot, index: usize) -> Result<Self> {
         if index >= report.answers().len() {
@@ -875,6 +993,11 @@ impl AnswerSnapshot {
 }
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+struct SelectedWire {
+    report: ReportWire,
+    index: Decimal<usize>,
+}
+#[derive(Serialize)]
 struct Selected {
     report: ReportSnapshot,
     index: Decimal<usize>,
@@ -895,12 +1018,7 @@ impl Serialize for AnswerSnapshot {
 }
 impl<'de> Deserialize<'de> for AnswerSnapshot {
     fn deserialize<D: Deserializer<'de>>(d: D) -> core::result::Result<Self, D::Error> {
-        let w: Envelope<Selected> = object(d)?;
-        header(&w.schema, w.version, "irig106-time/answer").map_err(de::Error::custom)?;
-        if w.units != report_units() {
-            return Err(de::Error::custom(invalid()));
-        }
-        Self::new(w.value.report, w.value.index.get()).map_err(de::Error::custom)
+        Self::load(d, &ReplayLimits::default())
     }
 }
 

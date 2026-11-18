@@ -28,6 +28,7 @@ pub fn limits() -> ReplayLimits {
         steps: d(100),
         answers: d(100),
         raw_bytes: d(10000),
+        ..ReplayLimits::default()
     }
 }
 pub fn plan() -> ReplayPlan {
