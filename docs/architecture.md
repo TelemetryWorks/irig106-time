@@ -439,11 +439,11 @@ it.
 
 | | |
 |---|---|
-| **Dependencies** | `irig106-types` (required); `serde` and `chrono` (optional features) |
-| **Features** | `std` (default: `std::error::Error`); `alloc` implied by the recording layer; `serde`; `chrono` (conversions to and from `chrono` types) |
-| **Targets** | any Rust target; CI builds `wasm32-unknown-unknown` with and without `serde`, and a `no_std` target without `std` (ADR-0014) |
+| **Dependencies** | `irig106-types` (required); `chrono` (optional feature); no library serde dependency (ADR-0019) |
+| **Features** | `std` (default: `std::error::Error`); `alloc` implied by the recording layer; `chrono` (conversions to and from `chrono` types) |
+| **Targets** | any Rust target; CI builds `wasm32-unknown-unknown` without default features and checks supported native features; no library serde feature (ADR-0014/0019) |
 | **Edition and MSRV** | edition 2024, Rust 1.85 (ADR-0003) |
-| **`serde`** | Versioned snapshot/report JSON with units; 64/128-bit quantities as decimal strings; validation on supported loads; raw/stated/assumed provenance. Review schema once before freeze. For 0.8.0 only complex timeline-state rehydration is deferred: omit/disable unsupported complex `Deserialize`; existing value validation and complete versioned outputs remain required (API-110, POL-103; owner 2026-11-13 Q3/Q5). |
+| **JSON boundary** | Library values, policies, findings, answers and timelines are Rust data; retain non-JSON AnswerView/replay and complete basis (ADR-0010/0011). The CLI owns JSON report output (L1-CLI-006) under owner Q5: versioned reviewed schema, units, decimal-string 64/128-bit quantities and raw/stated/assumed provenance. No library JSON loading. Remove 0.1–0.7 optional serde in 0.8.0 (breaking); irig106-types' own serde feature untouched. Q3 library rehydration deferral is moot (owner 2026-11-17, ADR-0019). |
 | **`chrono`** | conversions between the crate's absolute times and `chrono`'s date-time types, for times whose year and scale are known |
 | **Unsafe code** | none (`#![forbid(unsafe_code)]`) |
 | **Lints** | Clippy's `unwrap_used`, `expect_used`, `panic`, `todo`, `unimplemented`, `unreachable`, `dbg_macro`, `print_stdout`, `print_stderr` denied in library code (L1-API-012) |

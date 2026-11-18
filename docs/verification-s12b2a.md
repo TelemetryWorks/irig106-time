@@ -1,5 +1,12 @@
 # S12b2a — complete policy snapshots and legacy aggregate audit
 
+> **Historical library JSON work — superseded owner2026-11-17.**
+> [ADR-0019](adr/0019-json-belongs-to-the-cli.md) moves JSON to the CLI.
+> Keep native AnswerView/replay; remove library serde in0.8.0. Evidence below
+> records its original scope and does not establish current library JSON
+> obligations or a frozen CLI schema. PRs47/48 are closed; branches retained.
+
+
 Base main5fb323a (S12b1 merged). Pre-code split: S12b2a implements full policy
 snapshots and closes the six named legacy aggregate serializers; S12b2b owns
 qualified answer/report snapshots, loaded replay/link checks and remaining

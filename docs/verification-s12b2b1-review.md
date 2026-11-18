@@ -1,5 +1,12 @@
 # PR46 review at1639e9c — i64 era and emitted-field completeness
 
+> **Historical library JSON work — superseded owner2026-11-17.**
+> [ADR-0019](adr/0019-json-belongs-to-the-cli.md) moves JSON to the CLI.
+> Keep native AnswerView/replay; remove library serde in0.8.0. Evidence below
+> records its original scope and does not establish current library JSON
+> obligations or a frozen CLI schema. PRs47/48 are closed; branches retained.
+
+
 Tests/record only. No production change or requirement/status change; no new
 whole Requirements markers. Matrix remains192/288. Main858492f does not need
 to be merged into46 for this revision; the reviewer's CLEAN-base instruction

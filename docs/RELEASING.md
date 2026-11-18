@@ -4,7 +4,7 @@ Owner 2026-11-13, plan Q3/Q4; [ADR-0017](adr/0017-releases-after-the-rebuild.md)
 and [ADR-0018](adr/0018-0-8-release-scope-and-policy-decisions.md).
 This is a preparation checklist, not authorization to publish or configure CI.
 
-- Complete every remaining requirement except the four precisely scoped
+- Complete every remaining requirement except the current precisely scoped
   [release deferrals](analysis/plan-decisions-2026-11-13.md#release-scope).
   Do not treat a trace-matrix link as complete clause coverage. Offline
   drift-corrected query mode is after 0.8.0.
@@ -18,9 +18,14 @@ This is a preparation checklist, not authorization to publish or configure CI.
   CHANGELOG 0.8.0 with T-1..T-17 and their effects on old answers, API migrations,
   MSRV, policy decisions, unresolved readings and these release deferrals.
   Do not yank 0.1.0..0.7.0 (ADR-0017).
-- Review the versioned JSON schema once before freeze. Verify units,
-  decimal-string 64/128-bit values, supported-load validation and provenance.
-  Unsupported complex timeline Deserialize must be disabled/omitted.
+- Apply owner2026-11-17 [ADR-0019](adr/0019-json-belongs-to-the-cli.md):
+  remove library serde/JSON code, feature/dependency/forwarding in0.8.0 and
+  document the breaking migration from0.1–0.7 to CLI JSON output. Keep native
+  AnswerView/replay; irig106-types' own serde feature remains unchanged.
+  The Q3 library rehydration deferral is moot, not a remaining load obligation.
+- Review the CLI's versioned JSON report schema once before freeze (Q5).
+  Verify units, decimal-string64/128-bit values and raw/stated/assumed provenance
+  in emitted output. There is no library JSON loading or CLI input requirement.
 - Run the full CI equivalent with bounded resources (`CARGO_BUILD_JOBS=2`),
   requirements/matrix checks, final package-content inspection and
   `cargo publish --dry-run` for **both** packages, using their manifests.

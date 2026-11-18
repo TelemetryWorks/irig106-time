@@ -264,3 +264,16 @@ with its L2/L1 parent chain intact and every prior source quote retained.
 S08 records I5/I6 and segment N2 evidence, including future-DMY qualification.
 No Design/Review field, finding row or severity changes. No whole-requirement
 marker is added for these partial clauses; coverage remains160/288.
+
+## Subsequent owner decision — JSON leaves the library, 2026-11-17
+
+[ADR-0019](../adr/0019-json-belongs-to-the-cli.md) records: library Rust data
+only; no untrusted library JSON loading; CLI JSON report output per L1-CLI-006.
+Keep non-JSON AnswerView/replay. Remove library serde in0.8.0 (breaking from
+0.1–0.7); migrate to CLI JSON output. irig106-types' own serde is untouched.
+Q5 is now the CLI report schema policy; Q3 library rehydration is moot.
+The full changed-ID/parent audit and current plan amendment are in
+[the plan record](plan-decisions-2026-11-13.md#changed-requirement-audit-2026-11-17).
+No Review/Design fields, finding levels or ADR-0018 historical decision text
+change. PRs47/48 are closed, their branches retained. Docs land first; code
+removal is separately reviewed only after this decision PR merges.

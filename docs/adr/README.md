@@ -32,6 +32,7 @@ The original seventeen records were accepted by 2026-09-27 (0011 to 0014, 0016, 
 | [0016](0016-tests-from-the-standard.md) | Tests from the standard: a failing test per finding; fixtures from its figures; real data local only | accepted |
 | [0017](0017-releases-after-the-rebuild.md) | The rebuilt crate is released as 0.8.0; users of 0.1.0 to 0.7.0 are told what was wrong | accepted |
 | [0018](0018-0-8-release-scope-and-policy-decisions.md) | 0.8.0 release scope, finding identities and accepted policy defaults | accepted 2026-11-13 |
+| [0019](0019-json-belongs-to-the-cli.md) | Library Rust data only; CLI owns JSON; remove library serde in 0.8.0 | accepted |
 
 New records take the next number and use the same front matter
 (`status`, `date`, `decision-makers`).

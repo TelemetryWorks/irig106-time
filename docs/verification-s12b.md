@@ -1,5 +1,12 @@
 # S12b1 — exact value snapshots and checked leaf loading
 
+> **Historical library JSON work — superseded owner2026-11-17.**
+> [ADR-0019](adr/0019-json-belongs-to-the-cli.md) moves JSON to the CLI.
+> Keep native AnswerView/replay; remove library serde in0.8.0. Evidence below
+> records its original scope and does not establish current library JSON
+> obligations or a frozen CLI schema. PRs47/48 are closed; branches retained.
+
+
 Base main34990ef. Pre-code split: S12b1 value/units/version primitives and
 leaf-load guards; S12b2 complete policy/answer/report snapshots and remaining
 legacy aggregate audit. These are review parts, not new release deferrals.

@@ -9,6 +9,50 @@ reinterpret the older roadmap Q1–Q9. Baseline main: `4a5e752` (S00 merged).
 [ADR-0018](../adr/0018-0-8-release-scope-and-policy-decisions.md) records the
 accepted policy; earlier ADRs and historical verification remain intact.
 
+## Superseding scope decision — owner 2026-11-17
+
+[ADR-0019](../adr/0019-json-belongs-to-the-cli.md) supersedes the library
+JSON/load scope below; the dated Q3/Q5 table and requirement-source audit
+remain historical. The library provides Rust data only and keeps S12a2's
+non-JSON AnswerView/replay. JSON report output belongs to the CLI under
+L1-CLI-006. Remove library serde in0.8.0 (breaking from0.1–0.7); no untrusted
+JSON loading. irig106-types' own serde is untouched.
+
+Current Q5 scope: CLI versioned report schema, units, decimal strings for
+64/128-bit quantities, raw/stated/assumed provenance, one review before freeze.
+No new CLI JSON input/loader requirement is introduced. Q3's library timeline
+rehydration deferral is moot, not a postponed library JSON load feature.
+The remaining release-scoped deferrals are COR-111, new complete ENC-103 and
+prebuilt REL-106; offline drift-corrected queries remain post0.8.0 as before.
+
+Remaining-work plan delta: S12b library JSON is withdrawn; closed47/48 branches
+stay intact and their candidate loaders/schema are not adopted. Docs-first
+PR records this decision; after it merges a separate code PR removes library
+serde/snapshot code and updates feature/WASM CI while checking CLI/fuzz.
+Native policy/answer/replay work from S12a2 remains; CLI report/schema work is
+still a0.8.0 blocker. The coordinator's saved plan remains outside this repo;
+this is the in-repository governing plan amendment, not an edit of that file.
+
+### Changed requirement audit (2026-11-17)
+
+| Requirement IDs | Parent / reason |
+|---|---|
+| L1-API-007; L2/L3-API-107 | Same API-007 lineage; WASM without the removed serde feature. |
+| L1-API-010; L2/L3-API-110 | Same API-010 lineage; Rust data/native replay, no library JSON/serde/loaders. |
+| L2/L3-API-105 | L1-API-005; no library serde dependency or forwarding; shared types' own serde unchanged. |
+| L2/L3-POL-103 | L1-POL-003; typed policy/provenance reproduction, JSON encoding delegated to CLI-106. |
+| L2/L3-TAI-106 | L1-TAI-006; provenance verification uses native replay, not serde roundtrips. |
+| L2/L3-CLI-106 | L1-CLI-006; Q5 exact/versioned/unit-labelled JSON and schema verification owned by CLI. |
+| L2/L3-REL-102 | L1-REL-002; planned feature/MSRV checks omit serde and check removal. |
+
+All sources for this scope change are owner2026-11-17 and ADR-0019; standard
+sources for time semantics are retained. IRIG106 does not prescribe JSON.
+No Review/Design field or finding row/level changes; no new whole-requirement
+marker is added. Regeneration withdraws L1-API-007's old with/without-serde CI
+Evidence (now planned until code/CI removal), so its I status becomes Draft.
+L2/L3 coverage remains192/288. Source-audit rows below retain the superseded
+2026-11-13 wording. Baseline main121c412; this PR changes Markdown only.
+
 ## Q1 — permanent finding identities
 
 TF-001..028 rows remain byte-for-byte unchanged. The new catalog entries are:
@@ -193,3 +237,12 @@ merges and is not started here.
 > Subsequent owner decision2026-11-14 (S08): TF-032 WARNING, highest-priority
 > year used, contradictory candidates retained, time kept. All32 levels are now
 > approved; any pending TF-032 text above describes the historical slice only.
+
+### Docs-first validation (2026-11-18)
+
+Executed: regenerate TRACE-MATRIX and run its --check; git diff --check;
+inspect all changed local Markdown links; confirm requirement IDs/parents are
+retained, quoted Source text survives, and Review/Design fields are unchanged.
+Only Markdown is changed. No builds/full tests or code/CI removals are claimed
+for this decision PR. The follow-up code PR runs the revised full CI equivalent,
+including CLI, benches, fuzz, WASM/no_std and retained native replay tests.

@@ -1,5 +1,12 @@
 # Snapshot JSON v1 — value/policy-schema review candidate
 
+> **Historical library JSON work — superseded owner2026-11-17.**
+> [ADR-0019](adr/0019-json-belongs-to-the-cli.md) moves JSON to the CLI.
+> Keep native AnswerView/replay; remove library serde in0.8.0. Evidence below
+> records its original scope and does not establish current library JSON
+> obligations or a frozen CLI schema. PRs47/48 are closed; branches retained.
+
+
 Status: candidate, **not frozen**. Owner Q5 (2026-11-13) requires a versioned
 schema, units, exact decimal strings for64/128-bit quantities, validation and
 raw/stated/assumed provenance. Review the complete value/policy/report family

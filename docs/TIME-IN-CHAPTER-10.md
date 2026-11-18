@@ -39,13 +39,17 @@ after 0.8.0, distinct from the already accepted stream interpolate mode.
 Inverse range queries use half-open absolute [start, end), return every
 matching half-open RTC tick interval with explicit quantization/basis, and
 never bridge gaps/jumps; point queries are separate. COR-111 is deferred past
-0.8.0. The other three release-scoped deferrals are the new complete ENC-103
-secondary/stamp encoder API, complex timeline Deserialize rehydration only
-(API-110), and prebuilt distribution (conditional REL-106). Requirements remain
-and are not marked covered. Existing encoders/byte sum, validated supported
-value loads, complete versioned JSON outputs and all other obligations stay
-0.8.0 blockers. JSON includes units and decimal-string 64/128-bit quantities,
-validated loads and raw/stated/assumed provenance; schema review precedes freeze.
+0.8.0. The other current release-scoped deferrals are the new complete ENC-103
+secondary/stamp encoder API and prebuilt distribution (conditional REL-106).
+Owner 2026-11-17, [ADR-0019](adr/0019-json-belongs-to-the-cli.md), supersedes
+the Q3 library rehydration deferral: library JSON loading is removed, not
+deferred. Requirements remain and are not marked covered. Existing encoders/
+byte sum, native Rust data and AnswerView/replay, CLI JSON report output and
+other current obligations remain 0.8.0 blockers. Q5 now applies to the CLI JSON
+report schema: units, decimal-string 64/128-bit quantities, raw/stated/assumed
+provenance and one review before freeze. No untrusted JSON load in the library.
+The library's 0.1–0.7 optional serde feature is removed in 0.8.0 (breaking);
+use CLI JSON output instead. irig106-types' own serde feature is untouched.
 
 Finding identities extend through TF-032 (architecture §8): TF-029 WARNING
 keeps raw zero NTP but no absolute answer; TF-030 WARNING keeps the mapped
@@ -158,10 +162,11 @@ From its own documents and code:
    (L1-ERR-001).
 2. **Nanosecond precision**: "at least nanosecond precision to support all
    Chapter 10 time formats" (L1-ABS-001).
-3. **`no_std`**, with `std`, `serde`, and `chrono` as options; every public
-   item documented (`#![deny(missing_docs)]`).
-4. **WebAssembly**: CI builds the crate for `wasm32` with and without
-   `serde`.
+3. **`no_std`**, with `std` and `chrono` as options; every public item
+   documented (`#![deny(missing_docs)]`). Owner 2026-11-17 removes the historical
+   0.1–0.7 serde feature in 0.8.0; code/CI removal follows the docs-first decision.
+4. **WebAssembly**: build the library for `wasm32` without default features;
+   keep supported Rust data APIs usable without JSON (ADR-0019).
 5. **One dependency**: `irig106-types`, for the shared types.
 
 Section 8 proposes what the ecosystem's other crates promise and this one
