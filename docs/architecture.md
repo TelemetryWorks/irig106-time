@@ -439,12 +439,12 @@ it.
 
 | | |
 |---|---|
-| **Dependencies** | `irig106-types` (required); `serde` and `chrono` (optional features) |
-| **Features** | `std` (default: `std::error::Error`); `alloc` implied by the recording layer; `serde`; `chrono` (conversions to and from `chrono` types) |
+| **Dependencies** | `irig106-types` (required); `serde` and `jiff` (optional features) |
+| **Features** | `std` (default: `std::error::Error`); `alloc` implied by the recording layer; `serde`; `jiff` (checked scale-qualified civil conversions) |
 | **Targets** | any Rust target; CI builds `wasm32-unknown-unknown` with and without `serde`, and a `no_std` target without `std` (ADR-0014) |
 | **Edition and MSRV** | edition 2024, Rust 1.85 (ADR-0003) |
 | **`serde`** | Versioned snapshot/report JSON with units; 64/128-bit quantities as decimal strings; validation on supported loads; raw/stated/assumed provenance. Review schema once before freeze. For 0.8.0 only complex timeline-state rehydration is deferred: omit/disable unsupported complex `Deserialize`; existing value validation and complete versioned outputs remain required (API-110, POL-103; owner 2026-11-13 Q3/Q5). |
-| **`chrono`** | conversions between the crate's absolute times and `chrono`'s date-time types, for times whose year and scale are known |
+| **`jiff`** | Optional/off by default; Jiff1.0.1 MSRV1.85 with default features disabled. Checked `Scaled<jiff::civil::DateTime>` conversions require year/scale, preserve naive fields/provenance, reject second60/negative years; no Timestamp, clock or timezone I/O. Replaces chrono due to RUSTSEC-2026-0543 (ADR-0020). |
 | **Unsafe code** | none (`#![forbid(unsafe_code)]`) |
 | **Lints** | Clippy's `unwrap_used`, `expect_used`, `panic`, `todo`, `unimplemented`, `unreachable`, `dbg_macro`, `print_stdout`, `print_stderr` denied in library code (L1-API-012) |
 | **Dependencies** | `deny.toml`, checked by `cargo deny` in CI (L1-REL-005) |
@@ -487,7 +487,7 @@ carried over through tests written from the standard (ADR-0016).
 | `version` | the mappings move to `irig106-types`; `0x0F` unknown; `edition` keeps what changes for time | T-9 |
 | `packet_standard` | `edition` | — |
 | `recording_event` | leaves the crate, for `irig106-decode` (ADR-0009) | T-8 |
-| `error`, `util`, `chrono_interop` | `error`; `util` as needed; `chrono` feature | — |
+| `error`, `util`, `jiff_interop` | `error`; `util` as needed; `jiff` feature | — |
 | `irig106-time-cli/src/main.rs` | `irig106-time-cli` library and `irigtime` binary | P6-10 |
 
 ---

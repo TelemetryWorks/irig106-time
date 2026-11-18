@@ -620,3 +620,15 @@ No breaking changes without major version bump after this release.
 | **1.0.0** | Phase 8 | Stable API: complete rustdoc with architecture diagrams, VCRM with zero gaps, IRIG 106 primer, semver freeze | Planned |
 
 **Accepted Q-FLAGS-ERROR, owner 2026-11-13:** TF-028 "Secondary-derived time has an undefined format" is ERROR and maps from UndefinedSecondaryTimeFormat. It reports selected or present secondary time with format 11; RTC stamps remain usable. TF-006 remains the separate reserved-VALUE warning, TF-005 reserved-BITS warning, and TF-015 missing-required-header error. With 0x4C, TF-015/TF-028/TF-006 evidence can coexist. TF-001..TF-027 are unchanged; the former numeric finding-assignment open item is resolved.
+
+
+## Owner2026-11-17 — Jiff replaces chrono
+
+[ADR-0020](adr/0020-jiff-replaces-chrono.md) replaces unmaintained chrono with
+optional/off-by-default Jiff civil interoperability for0.8.0; no advisory ignore.
+Historical GAP-06/v0.6 notes above remain release history. API-011/111 now
+requires checked, scale-qualified civil conversions: no1970/UTC fallback or
+leap-label clamping. Keep MSRV1.85/no_std/WASM; default builds exclude Jiff.
+This standalone PR is independent of ADR-0019/PR50's JSON boundary; whichever
+merges second merges current main, preserving both decisions. JSON removal
+itself remains the separately gated follow-up after PR50, not this PR.

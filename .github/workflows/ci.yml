@@ -30,7 +30,8 @@ jobs:
       - run: cargo test --all-features
       - run: cargo test --no-default-features
       - run: cargo test --features serde
-      - run: cargo test --features chrono
+      - run: cargo test --features jiff
+      - run: cargo test --no-default-features --features jiff
 
   msrv:
     name: MSRV Check (1.85.0)
@@ -49,6 +50,7 @@ jobs:
       - run: cargo check --no-default-features
       - run: cargo check
       - run: cargo check --features serde
+      - run: cargo check --no-default-features --features jiff
 
   clippy:
     name: Clippy
@@ -131,6 +133,7 @@ jobs:
           toolchain: stable
           targets: wasm32-unknown-unknown
       - run: cargo build --target wasm32-unknown-unknown --no-default-features
+      - run: cargo build --target wasm32-unknown-unknown --no-default-features --features jiff
       - run: cargo build --target wasm32-unknown-unknown --no-default-features --features serde
 
   trace-matrix:
