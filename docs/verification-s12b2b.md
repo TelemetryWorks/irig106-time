@@ -233,3 +233,24 @@ all versions affected, no safe upgrade. Cargo.lock/deny.toml are unchanged from
 main121c412; no exception or dependency-policy change was made. This is an
 external prerequisite, not claimed green. The ordinary main merge supplies a
 pull_request synchronize event when pushed (retargeting alone did not run CI).
+
+
+## PR48 carry-forward — owner Option A
+
+Ordinary merge from revised PR47 carries the independent caller budgets and
+six resource tests. Merge resolution preserves PR48's defaults_version1 answer
+envelope validation while routing its nested raw ReportWire through the SAME
+caller budget. QualifiedFormat1 payloads remain included in raw byte totals;
+provided-year/network evidence paths and all prior negative tests remain.
+The candidate schema now inventories all six required ReplayLimits fields,
+units/defaults, preflight order, nested/default loader authority and the reader's
+separate pre-parse JSON-byte obligation. This is a protocol revision while the
+schema remains unfrozen, not an IRIG106 standard rule or new deferral.
+
+The earlier b3 local all-green result above is historical. Revised stack runs
+all18 checks again; cargo-deny encounters the same external chrono advisory
+RUSTSEC-2026-0543 as PR47 with unchanged main lockfile/policy. No exception is
+added. The current dedicated b2b test files total34 tests (6 adapters,4 output,
+5 report,13 schema/load audit,6 caller-limit tests); earlier26 was historical,
+before the two output-review tests and this revision. Matrix stays192/288 with
+no additional whole-requirement marker.

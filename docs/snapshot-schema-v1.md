@@ -20,8 +20,8 @@ reject on supported loads. These are JSON objects, not positional root tuples.
 | LeapTableSnapshot / `leap-table` | units, value={entries,metadata} | Original validated table constructor; no defaults_version. |
 | PolicySnapshot / `policy` | defaults_version, units, value={Offline or Stream} | All native policy/config/table/range/pivot validators. |
 | AnswerOutput / `answer-output` | defaults_version, units, value={basis,value} | Output only. A bare serialized basis is not trusted as a loadable answer. |
-| ReportSnapshot / `report` | defaults_version, units, plan, outputs={answers,findings,quality,sessions} | Replay typed plan; reject any cached-output mismatch. |
-| AnswerSnapshot / `answer` | defaults_version, units, value={report,index} | Checked report plus an in-range decimal answer index. |
+| ReportSnapshot / `report` | defaults_version, units, plan, outputs={answers,findings,quality,sessions} | Caller-limit preflight, then replay typed plan; reject any cached-output mismatch. |
+| AnswerSnapshot / `answer` | defaults_version, units, value={report,index} | Same caller-limit preflight for nested report plus an in-range decimal answer index. |
 
 Fields in the inventory below are exhaustive for the library value/config
 shapes emitted by these roots. `Option` emits null when absent, vectors emit
@@ -127,13 +127,41 @@ era/calendar and reject zero sentinel or AssumedZero as independent evidence.
 
 ## Checked replay, supported load boundaries and resource rules
 
-ReplayPlan contains caller limits, clock recipe and ordered requests. Offline
-replays recorded packets then queries/adapters; stream replays observations,
-explicit progress, policy changes and final Finish. No host clock, hidden era,
-year, epoch, channel, TFMT default, table registry or new interpolation policy.
-Limits count packets/preparations/progress/queries/measurements, emitted answers
-and raw payload/header bytes. Also bound total JSON/policy graph size externally.
+This is our Q5 JSON protocol, not an IRIG106 format. Owner Option A
+(2026-11-17): the CALLER sets load limits, never the document. ReplayPlan
+contains declared ceilings, a clock recipe and ordered requests. On load,
+`ReportSnapshot::load(deserializer, &ReplayLimits)` and
+`AnswerSnapshot::load(deserializer, &ReplayLimits)` require every declared
+ceiling and every actual input count to fit independent caller ceilings,
+BEFORE replay. Nested answer reports use the same caller limits. Plain serde
+Deserialize uses `ReplayLimits::default()`. Trusted in-process `new(plan)`
+checks plan ceilings but is not an external-input loader.
+
+All six ReplayLimits fields are required canonical decimal usize strings:
+
+| Field | Unit/count rule | Default caller ceiling |
+|---|---|---:|
+| packets | Observed packets, including unusable/data/reference observations |1024|
+| steps | Observations + preparations + progress/policy/Finish events + requests + quality queries |4096|
+| answers | Offline requests; stream Data observations + requests; cached answers also capped |1024|
+| raw_bytes | Format1/QualifiedFormat1/Format2 payloads + Own/Stamp raw buffers, bytes |4194304 (4MiB)|
+| quality_queries | Requested offline measurements; cached quality entries also capped |32|
+| quality_work | Checked packets × quality_queries; conservative scan-work budget, pair count |32768|
+
+The packet ceiling also bounds per-query native work; the pair budget bounds
+repeated reference/session scans. Arithmetic overflow rejects. A document may
+lower any ceiling but cannot grant resources. A caller may explicitly authorize
+larger ceilings; no document-supplied default or higher value is authoritative.
+Invalid/excessive cached counts reject before replay, then full outputs must
+still match regenerated results. JSON/policy-graph bytes MUST be bounded by the
+reader before parsing: the wire representation is allocated before preflight,
+so these APIs do not claim to prevent arbitrary input allocation themselves.
 Cached values permit at most128 nested containers. No OOM-recovery claim.
+
+Offline replays recorded packets then queries/adapters; stream replays
+observations, explicit progress, policy changes and final Finish. No host clock,
+hidden era, year, epoch, channel, TFMT default, table registry or new
+interpolation policy.
 
 Format1 uses its bounded decoder; QualifiedFormat1 additionally retains full
 original edition evidence through the native resolver/adapter. Format2 retains
@@ -294,7 +322,7 @@ retain the original wire layout. YearOrder emits its active ordered source list.
 | `ReleaseReason` | `Standard, Interpolated, NoReference, Timeout, Eof, PacketCap, ByteCap, ReferenceCap, ModeChange, SessionBoundary, Discontinuity, IncompatibleScale, UnusableReference,` |
 | `ReplayBinding` | `target: ReplayOrigin; other: ReplayOrigin; word: NetworkWord` |
 | `ReplayKey` | `session: Decimal<usize>; ticks: Decimal<i128>; packet: Decimal<u64>` |
-| `ReplayLimits` | `steps: Decimal<usize>; answers: Decimal<usize>; raw_bytes: Decimal<usize>` |
+| `ReplayLimits` | `packets: Decimal<usize>; quality_queries: Decimal<usize>; quality_work: Decimal<usize>; steps: Decimal<usize>; answers: Decimal<usize>; raw_bytes: Decimal<usize>` |
 | `ReplayOrigin` | `key: ReplayKey; channel: u16; byte_offset: Option<Decimal<u64>>; field: String` |
 | `ReplayPacket` | `id: Decimal<u64>; rtc: Decimal<u64>; channel: u16; kind: PacketKind; declared_timein: bool; declared_external: bool; flags: u8; prepare: Vec<Preparation>; year_context: Option<crate::years::YearContext>; body: ReferenceSpec` |
 | `ReplayPlan` | `limits: ReplayLimits; clock: ClockRecipe; requests: Vec<ReportRequest>` |
