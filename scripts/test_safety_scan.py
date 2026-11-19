@@ -18,6 +18,54 @@ class ScopeGuards(unittest.TestCase):
                 path.write_text(text)
             return scan_project(root)
 
+    def test_renamed_aliases_and_diagnostic_suppressors_are_listed(self):
+        names = ['renamed_and_removed_lints', 'unknown_lints'] + [
+            f'clippy::{kind}_{operation}_used'
+            for kind in ['option', 'result'] for operation in ['unwrap', 'expect']]
+        for directive in ['allow', 'expect']:
+            for name in names:
+                with self.subTest(directive=directive, name=name):
+                    report = self.scan(f'#[{directive}({name})] fn f(){{}}')
+                    self.assertEqual(len(report.allowances), 1)
+                    self.assertEqual(report.allowances[0].lints, {name})
+                    self.assertFalse(report.allowances[0].allowed)
+        report = self.scan('#[allow(renamed_and_removed_lints, clippy::option_unwrap_used)] fn f(){}')
+        self.assertEqual(report.allowances[0].lints,
+                         {'renamed_and_removed_lints', 'clippy::option_unwrap_used'})
+        self.assertFalse(report.allowances[0].allowed)
+
+    def test_include_cannot_hide_allowance_in_non_rs_file(self):
+        for cli in [False, True]:
+            with self.subTest(cli=cli):
+                source = 'include!("evil.inc");'
+                prefix = 'irig106-time-cli/src' if cli else 'src'
+                report = self.scan('' if cli else source,
+                    {f'{prefix}/evil.inc': '#[allow(clippy::unwrap_used)] fn f(){}'},
+                    cli=source if cli else None)
+                self.assertTrue(any('include!' in e for e in report.source_errors))
+
+    def test_include_cannot_hide_std_in_non_rs_file(self):
+        report = self.scan('include!("evil.inc");', {
+            'src/evil.inc': 'extern crate std; fn f(){std::env::var("x");}'})
+        self.assertTrue(any('include!' in e for e in report.source_errors))
+
+    def test_metavariable_attribute_is_rejected_in_production_macros(self):
+        source = 'macro_rules! m { ($l:ident) => { #[$l(clippy::unwrap_used)] fn f(){} }; }'
+        for cli in [False, True]:
+            with self.subTest(cli=cli):
+                report = self.scan('' if cli else source, cli=source if cli else None)
+                self.assertTrue(any('metavariable attribute' in e for e in report.source_errors))
+
+    def test_test_scopes_and_literals_do_not_trigger_source_guards(self):
+        report = self.scan('''#[cfg(test)] mod tests {
+include!("evil.inc");
+macro_rules! m { ($l:ident) => { #[$l(clippy::unwrap_used)] fn f(){} }; }
+}
+const TEXT:&str = r"include!(not_code); #[$l(clippy::unwrap_used)]";
+// include!(not_code); #[$l(clippy::unwrap_used)]
+''', {'src/tests/evil.inc': ''})
+        self.assertEqual(report.source_errors, [])
+
     def test_root_allow_and_production_unwrap_are_rejected(self):
         report = self.scan('#![allow(clippy::unwrap_used)]\nfn f(x:Option<u8>){x.unwrap();}')
         self.assertEqual(len(report.allowances), 1)
