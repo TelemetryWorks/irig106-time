@@ -134,7 +134,7 @@ absolute time, and says how good that time is. It is a `no_std` library
 
 | Not done here | Done by | Why |
 |---------------|---------|-----|
-| Open files; walk packets | the caller — `irig106-core` when it exists; this repository's own `ch10time` CLI has a reader | The library works on bytes it is given |
+| Open files; walk packets | the caller — `irig106-core` when it exists; this repository's own `irigtime` CLI has a reader | The library works on bytes it is given |
 | Read TMATS | `irig106-tmats`, which hands over the time attributes as plain data | One place understands the setup record (`irig106-tmats` ADR-0030) |
 | Extract time words from PCM or bus data | `irig106-decode`, which finds the words; turning a Chapter 4 time word into absolute time is this crate's (section 3) | Data decoding belongs to the decoder |
 | Write packets | `irig106-write`; this crate encodes time packet bodies | The library does not assemble packets |
@@ -220,7 +220,7 @@ absolute time for the decoder and the tools. Producing a recording
 1. **The packet reader walks the file** (A): each header, with its relative
    time counter and packet flags, the secondary header when flags bit 7 is
    set (its checksum verified), and the body (Chapter 11 §11.2.1). Today this
-   repository's `ch10time` CLI has its own reader; `irig106-core` takes that
+   repository's `irigtime` CLI has its own reader; `irig106-core` takes that
    over when it exists.
 2. **The setup record says where time is** (B, C). `irig106-tmats` reads it
    and hands this crate, as plain data, the time channels (`R-x\CDT-n` =
