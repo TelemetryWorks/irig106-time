@@ -1550,6 +1550,8 @@ does not settle it or replace its real-recording evidence.
 
 **Verification Method**: Inspection (I)
 
+**Evidence**: [S15d inspection](verification-s15d.md#trait-contract)
+
 **Planned verification**: Planned inspection: public-type inventory with derive assertions, including feature-gated types and corrected shared types; absence of Copy on owning collections justified.
 
 #### L2-API-102
@@ -1561,6 +1563,8 @@ does not settle it or replace its real-recording evidence.
 **Source**: ADR-0014. Prototype identifier kept.
 
 **Verification Method**: Inspection (I)
+
+**Evidence**: [S15d inspection](verification-s15d.md#allocation-boundary)
 
 **Planned verification**: Planned inspection: no-default host and no_std/WASM builds; review allocation paths in each value reader, and default/no-default API signature comparison.
 
@@ -1597,6 +1601,8 @@ does not settle it or replace its real-recording evidence.
 **Source**: ADR-0006.
 
 **Verification Method**: Inspection (I)
+
+**Evidence**: [S15d inspection](verification-s15d.md#library-io)
 
 **Planned verification**: Planned inspection: forbidden I/O API audit and deterministic replay with different host time/environment; no_std alone is not proof of no I/O through foreign imports.
 

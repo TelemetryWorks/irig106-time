@@ -21,7 +21,7 @@ const HALF: i128 = 1i128 << 47;
 const DAY: i128 = 86_400_000_000_000;
 
 /// Offline selection; equal-distance nearest ties use preceding (explicit policy).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ReferenceStrategy {
     /// Contract 5.2: minimum absolute counter distance.
     Nearest,
@@ -29,7 +29,7 @@ pub enum ReferenceStrategy {
     Preceding,
 }
 /// Why a channel wins contract 5.2's ranking.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ChannelChoice {
     /// Caller-fixed channel; never silently substitute another.
     Caller,
@@ -235,7 +235,7 @@ impl TimelineFinding {
     }
 }
 /// Caller labels; static setup packets may precede the first time packet.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PacketKind {
     /// Static Computer-Generated Format 1.
     StaticSetup,
@@ -245,7 +245,7 @@ pub enum PacketKind {
     Data,
 }
 /// Selected year provenance retained with all competing session evidence.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum YearOrigin {
     /// Calendar derived by the network converter; consult its era/table basis.
     NetworkEvidence,
@@ -259,7 +259,7 @@ pub enum YearOrigin {
     Unknown,
 }
 /// Bounded decoder result, separate from reference admission.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ReferenceValue {
     /// An ordinary calendar value and its payload-valid status.
     Readable(AbsoluteTime, bool),
@@ -434,7 +434,7 @@ pub struct PacketObservation {
     pub reference: Option<ReferenceInput>,
 }
 /// Explicit query identity, disambiguating overlapping raw RTC sessions/wraps.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PacketKey {
     /// Session, one based.
     pub session: usize,
@@ -460,7 +460,7 @@ impl PacketKey {
     }
 }
 /// Reference admission reasons remain visible even when policy admits a value.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Rejection {
     /// No governing TIMEIN declaration.
     Undeclared,
@@ -927,7 +927,7 @@ impl TimelineBuilder {
     }
 }
 /// Position relative to admitted same-channel references.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ReferencePosition {
     /// No admitted/selected reference, with a separately recorded reason.
     CounterOnly,

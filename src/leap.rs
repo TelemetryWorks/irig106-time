@@ -404,7 +404,7 @@ pub(crate) fn calendar(
     Ok(result)
 }
 /// Currency is independent of presence/absence of an absolute value.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PtpConversionStatus {
     /// Within independently declared table coverage.
     Covered,

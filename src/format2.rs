@@ -13,7 +13,7 @@ use alloc::{collections::BTreeMap, vec::Vec};
 
 /// Recording identity and header capture counter, independent of time format.
 /// **Traces:** L3-F2CSDW-101 ← L2-F2CSDW-101 ← L1-F2CSDW-001
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ReferenceCapture {
     /// Nonzero caller session identity; never inferred here.
     pub session: usize,
@@ -37,7 +37,7 @@ impl ReferenceCapture {
     }
 }
 /// Caller inputs for one Data-Length-bounded observation.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Format2Input<'a> {
     /// CSDW and body; may include adjacent filler outside Data Length.
     pub payload: &'a [u8],
@@ -120,7 +120,7 @@ pub struct AdmissionPolicy {
     pub finding_levels: BTreeMap<u8, Severity>,
 }
 /// Admission result, separate from the recorded status and conversion basis.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct NetworkAdmission {
     /// Eligible as native time under this policy, not yet inserted in an engine.
     pub eligible: bool,

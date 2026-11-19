@@ -5,7 +5,7 @@ use alloc::{collections::BTreeMap, vec::Vec};
 /// Caller-extracted governing context for this reference. Years refer to the
 /// session's first observed calendar year; detected rollovers advance them.
 /// No TMATS defaults or configuration origination dates are consumed.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct YearContext {
     /// Explicit caller year, after same-session DMY in priority.
     pub caller: Option<u16>,
@@ -26,7 +26,7 @@ impl YearContext {
     }
 }
 /// One candidate at this reference's rollover position; original year retained.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct YearCandidate {
     /// Original year from packet/caller/RI4, before rollover adjustment.
     pub supplied: u16,
