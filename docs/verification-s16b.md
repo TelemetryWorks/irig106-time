@@ -60,3 +60,33 @@ only, excluding Cargo/compiler/generator. Limit: 64 MiB; counts/offsets must
 match the file. RSS and scope are logged and added to the job summary. This is
 transport-only; no claim about the old CLI's RSS or report-state growth.
 Locally: fmt, focused reader tests/mutants and touched-crate Clippy only.
+
+## Review follow-up: standard framing, intentional fixes
+
+Coordinator decision (2026-11-19): follow 106-24R1 Ch11 §11.2.1.1.
+Every packet header requires a valid primary checksum, including at the
+expected offset. A bad checksum is sync loss: resync and report a finding
+with the recovered byte count. No valid header anywhere means not Chapter 10
+input (exit 3). Bit 7 means a secondary header follows. Ignoring checksums and
+using bit 2 for presence were bugs in the old scanner; these are intentional
+behaviour fixes, not compatibility options. This slice exposes recovered_bytes
+as the finding evidence; S16b2 still owns command grading/report integration
+and file-level classification (including a file with no complete valid header).
+The established-stream cut-final/tail exception remains as documented above.
+
+S16b2 MUST regenerate s16_packet_bounds.rs::packet and other legacy packet
+fixtures with correct primary checksums and bit 7 for secondary presence.
+Keep bits 3-2 as the independent time-format field. Recompute checksums after
+mutating structural fields when testing those fields, so checksum rejection
+cannot hide the intended assertion. Preserve content-finding vs structural
+intent; do not turn short time bodies or established-stream EOF tails into
+fatal input simply because their old fixture checksum/presence flag was wrong.
+
+Two new tests pass without production changes: a bad-checksum frame at the
+expected offset between valid frames is skipped, with exactly 28 recovered
+bytes and the following frame's data; the isolated bad frame is InvalidData.
+The second fixture declares length 26, Data Length 0, and a correct checksum
+(EB25 + 001A + 0900 = F43F): alignment alone yields InvalidData.
+One-at-a-time runtime mutants ignoring checksum / alignment respectively
+fail those exact tests. Sources restored; focused suite: 5 pass, 1 CI worker
+ignored locally. No new whole-requirement marker or coverage increase.

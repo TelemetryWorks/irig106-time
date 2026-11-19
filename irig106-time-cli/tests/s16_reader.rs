@@ -157,6 +157,44 @@ fn framing_recovery_and_final_tails_remain_distinct() {
         io::ErrorKind::InvalidData
     );
 }
+// §11.2.1.1: checksum is mandatory even at the expected packet offset.
+// recovered_bytes is the finding evidence consumed by the joining loop.
+#[test]
+fn bad_checksum_at_expected_offset_resyncs_with_exact_finding_count() {
+    let good = packet(0, &[1; 4]);
+    let mut bad = packet(0, &[9; 4]);
+    bad[22] ^= 1; // Sync and all lengths remain valid; only checksum differs.
+    let next = packet(0, &[2; 4]);
+    let bytes = [good, bad.clone(), next].concat();
+    let mut r = reader(&bytes);
+    let Some(Event::Packet(first)) = r.next_packet(|_| 4).unwrap() else {
+        panic!("first packet")
+    };
+    assert_eq!((first.offset, first.recovered_bytes), (0, 0));
+    let Some(Event::Packet(recovered)) = r.next_packet(|_| 4).unwrap() else {
+        panic!("recovered packet")
+    };
+    assert_eq!((recovered.offset, recovered.recovered_bytes), (56, 28));
+    assert_eq!(recovered.body_prefix, [2; 4]);
+    assert!(r.next_packet(|_| 0).unwrap().is_none());
+    assert_eq!(
+        reader(&bad).next_packet(|_| 0).unwrap_err().kind(),
+        io::ErrorKind::InvalidData
+    );
+}
+// §11.2.1.1 Packet Length: isolate divisibility, with no Data Length violation.
+#[test]
+fn unaligned_length_alone_is_invalid_even_with_valid_checksum() {
+    let mut bytes = packet(0, &[]);
+    bytes[4..8].copy_from_slice(&26u32.to_le_bytes());
+    // 0xEB25 sync + 0x001A length + 0x0900 type = 0xF43F; Data Length=0.
+    bytes[22..24].copy_from_slice(&[0x3F, 0xF4]);
+    bytes.extend_from_slice(&[0xAA; 2]);
+    assert_eq!(
+        reader(&bytes).next_packet(|_| 0).unwrap_err().kind(),
+        io::ErrorKind::InvalidData
+    );
+}
 #[test]
 #[ignore = "CI-only generated 384 MiB input; invoked by check-reader-rss.py"]
 fn rss_reader_worker() {
