@@ -41,6 +41,8 @@ use irig106_time::network_time::{LeapSecondTable, NetworkTimeProtocol, parse_tim
 use irig106_time::*;
 /// Strict, filesystem-free argument parsing.
 pub mod args;
+/// Bounded raw packet transport; command integration follows in S16b.
+pub mod input;
 
 // ────────────────────────────────────────────────────────────────────
 // Constants
