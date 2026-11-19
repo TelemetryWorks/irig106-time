@@ -64,7 +64,7 @@ fn literal_bcd_slots_do_not_depend_on_a_decoder() {
 fn complete_format1_encoder_contract() {
     dmy_always_zero_year_bits_are_not_emitted();
     literal_bcd_slots_do_not_depend_on_a_decoder();
-    // §11.2.3.2a/Fig11-12: DATE1/FMT4/SRC1; b/Fig11-14 body.
+    // §11.2.3.2a/Fig11-12: DATE0/FMT0/SRC1/ITS3.
     // Contract7 numeric example, transcribed through Fig11-13 digit slots.
     let example = CalendarReading {
         year: None,
@@ -81,6 +81,7 @@ fn complete_format1_encoder_contract() {
             .as_bytes(),
         [1, 0x30, 0, 0, 0x35, 0x27, 0x45, 0x13, 0x87, 1]
     );
+    // §11.2.3.2a/Fig11-12: DATE1/FMT4/SRC1; b/Fig11-14 body.
     let t = time(Some(2025), 100);
     let out = encode_format1(TimeF1Csdw::from_raw(0x241), SourceWithIts17, Some(t)).unwrap();
     assert_eq!(
@@ -315,5 +316,56 @@ fn existing_ieee_word_does_not_repair_invalid_packet_flags() {
             nanoseconds: 1_000_000_000
         })
         .is_err()
+    );
+}
+
+// Partial ENC-101 regression clauses; whole marker remains on the aggregate.
+#[test]
+fn combined_rejects_second61() {
+    // §11.2.3.2b/Fig11-13 seconds slots; RDG-010 permits at most60.
+    let t = CalendarReading {
+        seconds: 61,
+        ..time(Some(2016), 366)
+    };
+    assert!(encode_format1(TimeF1Csdw::from_raw(0x141), SourceWithIts17, Some(t)).is_err());
+}
+#[test]
+fn combined_rejects_second60_outside_2359() {
+    // Fig11-13 plus RDG-010: eligible date alone cannot authorize12:30:60.
+    let t = CalendarReading {
+        seconds: 60,
+        ..time(Some(2016), 366)
+    };
+    assert!(encode_format1(TimeF1Csdw::from_raw(0x141), SourceWithIts17, Some(t)).is_err());
+}
+#[test]
+fn combined_rejects_gps_second60() {
+    // Fig11-12 FMT5 native GPS has no second60 (RDG-010).
+    let t = CalendarReading {
+        hours: 23,
+        minutes: 59,
+        seconds: 60,
+        scale: ScaleEvidence::standard(TimeScale::Gps),
+        ..time(Some(2016), 366)
+    };
+    assert!(encode_format1(TimeF1Csdw::from_raw(0x151), SourceWithIts17, Some(t)).is_err());
+}
+#[test]
+fn combined_uses_canonical_csdw() {
+    // §11.2.3.2a/Fig11-12: LY1/FMT4/SRC1, reserved/inapplicable bits zero.
+    let t = time(Some(2016), 100);
+    let out = encode_format1(TimeF1Csdw::from_raw(0xffff_0d41), SourceWithIts17, Some(t)).unwrap();
+    assert_eq!(&out.as_bytes()[..4], [0x41, 1, 0, 0]);
+    // FMT6 is reserved, not a body format the combined writer can emit.
+    assert!(encode_format1(TimeF1Csdw::from_raw(0x161), SourceWithIts17, Some(t)).is_err());
+}
+#[test]
+fn its_ends_before_fmt3() {
+    // §11.2.3.2a/Fig11-12: ITS only for FMT0..2; FMT3 clears it.
+    assert_eq!(
+        TimeF1Csdw::from_raw(0x3031)
+            .to_le_bytes(SourceWithIts17)
+            .unwrap(),
+        [0x31, 0, 0, 0]
     );
 }
