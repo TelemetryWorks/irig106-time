@@ -52,6 +52,12 @@ change command parsing, findings, operational exit handling or input allocation.
   CLI locations and permitted cfg(test) templates/dollar text in literals.
   Standalone metadata-only negative probes demonstrate both forms compiling
   under Clippy -D warnings but being rejected by the scanner. No probe runs.
+- Initial CI 44493501079 exposed the serde-removal probe's single-package
+  diagnostic assumption. The feature remains rejected before compilation;
+  Cargo now names both selected workspace packages. The focused test reproduces
+  the assertion failure, then passes when it accepts Cargo's explicit workspace
+  missing-feature diagnostic as well as the old package diagnostic. This is a
+  test adaptation, not restoration of serde or a weakened rejection condition.
 - Local checks are limited to fmt, these focused tests/probes, the existing
   policy/I/O probes and the trace check. Remaining platform/feature/MSRV/WASM/
   Clippy/deny/fuzz/CLI checks are delegated to PR CI under the compute rule.
