@@ -136,6 +136,20 @@ fn exit_two_usage_precedes_input_and_output() {
 fn exit_three_first_input_failure_survives_later_output_failure() {
     let invalid = Input::new(&[0; 24]);
     assert_eq!(on(&invalid, &["--fail-on", "never"]), 3);
+    let mut diagnostic = Vec::new();
+    assert_eq!(
+        run(
+            &["summary", invalid.path()],
+            &mut Vec::new(),
+            &mut diagnostic
+        ) as u8,
+        3
+    );
+    assert!(
+        String::from_utf8(diagnostic)
+            .unwrap()
+            .contains("invalid packet sync")
+    );
     let (mut out, mut err) = (FailedOutput::default(), FailedOutput::default());
     assert_eq!(
         run(&["summary", invalid.path()], &mut out, &mut err) as u8,
@@ -239,11 +253,18 @@ fn recovered_sync_cut_packet_context_and_jumps_remain_warning() {
     ntp[24..].fill(0);
     ntp[24] = 1; // Figs11-15/16: NTF0 TS1.
     ntp[28..32].copy_from_slice(&2_208_988_800u32.to_le_bytes()); // RFC5905 Fig4.
-    for bytes in [
+    let mut cases = vec![
         [vec![0xaa, 0xbb, 0xcc], reference()].concat(),
         reference()[..30].to_vec(),
-        [reference(), ntp].concat(),
-    ] {
+        [reference(), ntp.clone()].concat(),
+    ];
+    for word in [0, 2, 0x31] {
+        // Invalid TS, reserved TS and reserved NTF: TF-003/006 warning.
+        let mut invalid = ntp.clone();
+        invalid[24] = word;
+        cases.push([reference(), invalid].concat());
+    }
+    for bytes in cases {
         let input = Input::new(&bytes);
         assert_eq!(on(&input, &[]), 0);
         assert_eq!(on(&input, &["--fail-on", "warning"]), 1);

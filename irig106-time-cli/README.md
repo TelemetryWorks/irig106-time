@@ -9,8 +9,8 @@ and invocations. The package name stays `irig106-time-cli`. The ecosystem host
 can mount the same implementation as `irig106 time` by calling
 `irig106_time_cli::run(&["--help"], &mut stdout, &mut stderr)`. Arguments exclude
 the executable/host subcommand; the runner returns `ExitClass` without exiting.
-Arguments are now validated before input is opened; findings-threshold wiring
-follows in S16a3b. No CLI publication or
+Arguments are validated before input is opened; the shared --fail-on threshold
+is now applied after output completes. No CLI publication or
 release tag before S16b.
 
 ## From the root of irig106-time, build it with:
@@ -150,5 +150,50 @@ with an optional0x prefix. Help: `irigtime --help` or `irigtime COMMAND --help`.
 Use `irigtime summary -- '-capture file.ch10'` for a dash-leading filename;
 place options before `--`. Native OS paths are preserved. The library's source
 is now the conventional src/lib.rs, with the thin binary in src/bin/irigtime.rs.
-No failure-threshold option is accepted yet; S16a3b adds it with the complete
-five-class/precedence tests. The S16b memory/publication gate still applies.
+The S16b memory/publication gate still applies.
+
+## Shared irig106 exit convention
+
+Established here by coordinator decision for later adoption by irig106-tmats.
+This CLI policy is not an IRIG106 wire requirement. Codes: 0 success, 1 selected
+findings, 2 usage, 3 fatal input, 4 output.
+
+`--fail-on <level>` uses case-sensitive lowercase `error`, `warning`, `info`,
+or `never`, as a separate argument. Default: `error`. Exit1 occurs if any
+finding is at or above the selected level (`error > warning > info`); `never`
+disables only exit1. Accept the option on every command, including help/version,
+where a valid option has no effect. Unknown values and duplicates are usage2.
+
+Precedence is usage2 first, then the first fatal input3/output4, then findings1,
+then success0. Validate all usage before opening input; finish output and both
+flushes before selecting a finding-only result. Diagnostics after fatal errors
+are attempted where possible and cannot replace that first fatal class. Here
+input/analysis completes before rendering, so a later input failure after an
+output failure cannot occur; S16b's reader must preserve the same precedence.
+
+### Current scanner levels
+
+| Current CLI finding | Level | Basis |
+| --- | --- | --- |
+| Recovered sync loss | warning | Coordinator reader policy |
+| Truncated final packet or header | warning | Coordinator EOF policy |
+| Trailing unsynced bytes after a stream | info | Coordinator EOF-padding policy |
+| Malformed/short time data, invalid BCD digits, date/field ranges | error | TF-004 class |
+| Reserved BCD bits | warning | Owner-approved TF-005; exception to the proposed generic decode-error grade |
+| Invalid TS / reserved TS or NTF value | warning | Owner-approved TF-003 / TF-006 |
+| Correlation needs context (NTP era or no known applicable leap offset) | warning | Coordinator context policy |
+| No usable correlation reference | warning | CLI context finding |
+| Reported time jump | warning | Owner-approved TF-017 |
+| Other unusable correlation/query result | error | Affected answer cannot be produced |
+
+**Flagged proposal conflict:** the proposed error level for a reserved BCD bit
+conflicts with owner-approved TF-005 WARNING. We retain warning, recommending
+that the existing TF level govern. Other malformed decode errors remain error.
+No TF IDs or owner-approved levels change. These are current legacy scanner
+messages; complete qualified findings/report integration remains S16b. In
+particular the old BCD parser still skips a reserved-bit body; this slice grades
+its diagnostic and does not claim the qualified value-retention rebuild.
+
+Examples: `irigtime summary flight.ch10 --fail-on warning` fails on warnings;
+`--fail-on never` retains diagnostics while disabling only the finding exit.
+Help/version also accept the option, e.g. `irigtime --version --fail-on info`.

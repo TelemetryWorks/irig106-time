@@ -36,9 +36,10 @@ use std::result::Result;
 
 use irig106_time::bcd::{DayFormatTime, DmyFormatTime};
 use irig106_time::csdw::{DateFormat, TimeF1Csdw};
+use irig106_time::findings::Severity;
 use irig106_time::network_time::{LeapSecondTable, NetworkTimeProtocol, parse_time_f2_payload};
 use irig106_time::*;
-/// Strict, filesystem-free OS-native argument parsing (ADR-0008).
+/// Strict, filesystem-free argument parsing.
 pub mod args;
 
 // ────────────────────────────────────────────────────────────────────
@@ -170,6 +171,7 @@ struct Ch10TimeScanner {
     last_rtc: Option<Rtc>,
     resolved: Vec<ResolvedPacket>,
     errors: Vec<String>,
+    highest: Option<Severity>,
 }
 
 impl Ch10TimeScanner {
@@ -185,6 +187,7 @@ impl Ch10TimeScanner {
             last_rtc: None,
             resolved: Vec::new(),
             errors: Vec::new(),
+            highest: None,
         }
     }
 
@@ -208,10 +211,13 @@ impl Ch10TimeScanner {
                 .get(offset..)
                 .ok_or_else(|| Failure::new(ExitClass::Input, "invalid packet offset"))?;
             if remaining.len() < HEADER_SIZE {
-                self.errors.push(format!(
-                    "truncated final header at {offset:#X} ({} bytes)",
-                    remaining.len()
-                ));
+                self.note(
+                    Severity::Warning,
+                    format!(
+                        "truncated final header at {offset:#X} ({} bytes)",
+                        remaining.len()
+                    ),
+                );
                 break;
             }
             let hdr = match PktHeader::parse(remaining) {
@@ -219,19 +225,25 @@ impl Ch10TimeScanner {
                 None => {
                     // Try to find next sync
                     if let Some(next) = find_next_sync(mmap, offset + 1) {
-                        self.errors.push(format!(
-                            "Sync lost at {:#X}, recovered at {:#X} ({} bytes skipped)",
-                            offset,
-                            next,
-                            next - offset
-                        ));
+                        self.note(
+                            Severity::Warning,
+                            format!(
+                                "Sync lost at {:#X}, recovered at {:#X} ({} bytes skipped)",
+                                offset,
+                                next,
+                                next - offset
+                            ),
+                        );
                         offset = next;
                         continue;
                     } else if self.total_packets > 0 {
-                        self.errors.push(format!(
-                            "{} trailing bytes without sync at offset {offset:#X}",
-                            remaining.len()
-                        ));
+                        self.note(
+                            Severity::Information,
+                            format!(
+                                "{} trailing bytes without sync at offset {offset:#X}",
+                                remaining.len()
+                            ),
+                        );
                         break;
                     } else {
                         return Err(Failure::new(ExitClass::Input, "invalid packet sync"));
@@ -251,7 +263,7 @@ impl Ch10TimeScanner {
                 ));
             }
             let Some(packet) = remaining.get(..pkt_len) else {
-                self.errors.push(format!(
+                self.note(Severity::Warning, format!(
                     "truncated final packet at {offset:#X}: declared {pkt_len}, available {} bytes",
                     remaining.len()
                 ));
@@ -300,6 +312,17 @@ impl Ch10TimeScanner {
         Ok(())
     }
 
+    fn note(&mut self, level: Severity, message: impl Into<String>) {
+        self.observe(level);
+        self.errors.push(format!("{level:?}: {}", message.into()));
+    }
+
+    fn observe(&mut self, level: Severity) {
+        if self.highest.is_none_or(|old| rank(level) > rank(old)) {
+            self.highest = Some(level);
+        }
+    }
+
     fn report_findings(&self, stderr: &mut dyn Write) -> Result<(), Failure> {
         for error in &self.errors {
             writeln!(stderr, "Finding: {error}")?;
@@ -309,14 +332,14 @@ impl Ch10TimeScanner {
 
     fn process_time_packet(&mut self, pkt_buf: &[u8], hdr: &PktHeader) {
         let Some(payload) = hdr.payload(pkt_buf) else {
-            self.errors.push("invalid Format 1 body bounds".into());
+            self.note(Severity::Error, "invalid Format 1 body bounds");
             return;
         };
         let Some(csdw_bytes) = payload.get(..4) else {
-            self.errors.push(format!(
-                "Time packet at ch={} too short for CSDW",
-                hdr.channel_id
-            ));
+            self.note(
+                Severity::Error,
+                format!("Time packet at ch={} too short for CSDW", hdr.channel_id),
+            );
             return;
         };
         let csdw =
@@ -326,47 +349,56 @@ impl Ch10TimeScanner {
         let abs_time = match csdw.date_format() {
             DateFormat::DayOfYear => {
                 if bcd_start + 6 > payload.len() {
-                    self.errors.push(format!(
-                        "Time packet ch={}: buffer too short for DOY BCD",
-                        hdr.channel_id
-                    ));
+                    self.note(
+                        Severity::Error,
+                        format!(
+                            "Time packet ch={}: buffer too short for DOY BCD",
+                            hdr.channel_id
+                        ),
+                    );
                     return;
                 }
                 match DayFormatTime::from_le_bytes(&payload[bcd_start..]) {
                     Ok(t) => t.to_absolute(),
                     Err(e) => {
-                        self.errors.push(format!(
-                            "Time packet ch={}: DOY BCD error: {}",
-                            hdr.channel_id, e
-                        ));
+                        self.note(
+                            decode_level(&e),
+                            format!("Time packet ch={}: DOY BCD error: {}", hdr.channel_id, e),
+                        );
                         return;
                     }
                 }
             }
             DateFormat::DayMonthYear => {
                 if bcd_start + 8 > payload.len() {
-                    self.errors.push(format!(
-                        "Time packet ch={}: buffer too short for DMY BCD",
-                        hdr.channel_id
-                    ));
+                    self.note(
+                        Severity::Error,
+                        format!(
+                            "Time packet ch={}: buffer too short for DMY BCD",
+                            hdr.channel_id
+                        ),
+                    );
                     return;
                 }
                 match DmyFormatTime::from_le_bytes(&payload[bcd_start..]) {
                     Ok(t) => match t.to_calendar_time() {
                         Ok(ct) => ct.into_absolute_time(),
                         Err(e) => {
-                            self.errors.push(format!(
-                                "Time packet ch={}: DMY date invalid: {}",
-                                hdr.channel_id, e
-                            ));
+                            self.note(
+                                decode_level(&e),
+                                format!(
+                                    "Time packet ch={}: DMY date invalid: {}",
+                                    hdr.channel_id, e
+                                ),
+                            );
                             return;
                         }
                     },
                     Err(e) => {
-                        self.errors.push(format!(
-                            "Time packet ch={}: DMY BCD error: {}",
-                            hdr.channel_id, e
-                        ));
+                        self.note(
+                            decode_level(&e),
+                            format!("Time packet ch={}: DMY BCD error: {}", hdr.channel_id, e),
+                        );
                         return;
                     }
                 }
@@ -397,17 +429,17 @@ impl Ch10TimeScanner {
 
     fn process_time_f2_packet(&mut self, pkt_buf: &[u8], hdr: &PktHeader) {
         let Some(payload) = hdr.payload(pkt_buf) else {
-            self.errors.push("invalid Format 2 body bounds".into());
+            self.note(Severity::Error, "invalid Format 2 body bounds");
             return;
         };
 
         let (csdw, network_time) = match parse_time_f2_payload(payload) {
             Ok(result) => result,
             Err(e) => {
-                self.errors.push(format!(
-                    "Time F2 packet ch={}: parse error: {}",
-                    hdr.channel_id, e
-                ));
+                self.note(
+                    decode_level(&e),
+                    format!("Time F2 packet ch={}: parse error: {}", hdr.channel_id, e),
+                );
                 return;
             }
         };
@@ -420,10 +452,13 @@ impl Ch10TimeScanner {
             &network_time,
             &self.leap_table,
         ) {
-            self.errors.push(format!(
-                "Time F2 packet ch={}: correlation error: {}",
-                hdr.channel_id, e
-            ));
+            self.note(
+                decode_level(&e),
+                format!(
+                    "Time F2 packet ch={}: correlation error: {}",
+                    hdr.channel_id, e
+                ),
+            );
             return;
         }
 
@@ -575,7 +610,11 @@ fn fmt_comma(n: usize) -> String {
 // Command implementations
 // ────────────────────────────────────────────────────────────────────
 
-fn cmd_summary(mmap: &[u8], filename: &Path, stdout: &mut dyn Write) -> Result<(), Failure> {
+fn cmd_summary(
+    mmap: &[u8],
+    filename: &Path,
+    stdout: &mut dyn Write,
+) -> Result<Option<Severity>, Failure> {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, false, None)?;
 
@@ -701,6 +740,9 @@ fn cmd_summary(mmap: &[u8], filename: &Path, stdout: &mut dyn Write) -> Result<(
             }
         }
     }
+    if any_jumps {
+        scanner.observe(Severity::Warning);
+    }
     if !any_jumps && !all_channels.is_empty() {
         writeln!(
             stdout,
@@ -733,14 +775,14 @@ fn cmd_summary(mmap: &[u8], filename: &Path, stdout: &mut dyn Write) -> Result<(
             writeln!(stdout, "  ... and {} more", scanner.errors.len() - 20)?;
         }
     }
-    Ok(())
+    Ok(scanner.highest)
 }
 
 fn cmd_channels(
     mmap: &[u8],
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
-) -> Result<(), Failure> {
+) -> Result<Option<Severity>, Failure> {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, false, None)?;
     scanner.report_findings(stderr)?;
@@ -795,7 +837,7 @@ fn cmd_channels(
                 .unwrap_or_default(),
         )?;
     }
-    Ok(())
+    Ok(scanner.highest)
 }
 
 fn cmd_jumps(
@@ -803,7 +845,7 @@ fn cmd_jumps(
     threshold_ms: u64,
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
-) -> Result<(), Failure> {
+) -> Result<Option<Severity>, Failure> {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, false, None)?;
     scanner.report_findings(stderr)?;
@@ -843,6 +885,9 @@ fn cmd_jumps(
         }
     }
 
+    if total_jumps > 0 {
+        scanner.observe(Severity::Warning);
+    }
     if total_jumps == 0 {
         writeln!(stdout)?;
         writeln!(
@@ -859,7 +904,7 @@ fn cmd_jumps(
             channels.len()
         )?;
     }
-    Ok(())
+    Ok(scanner.highest)
 }
 
 fn cmd_timeline(
@@ -867,7 +912,7 @@ fn cmd_timeline(
     limit: usize,
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
-) -> Result<(), Failure> {
+) -> Result<Option<Severity>, Failure> {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, true, Some(limit))?;
     scanner.report_findings(stderr)?;
@@ -902,7 +947,7 @@ fn cmd_timeline(
             limit, scanner.total_packets
         )?;
     }
-    Ok(())
+    Ok(scanner.highest)
 }
 
 fn cmd_csv(
@@ -910,7 +955,7 @@ fn cmd_csv(
     output_path: Option<&Path>,
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
-) -> Result<(), Failure> {
+) -> Result<Option<Severity>, Failure> {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, true, None)?;
     scanner.report_findings(stderr)?;
@@ -974,7 +1019,7 @@ fn cmd_csv(
             path.display()
         )?;
     }
-    Ok(())
+    Ok(scanner.highest)
 }
 
 fn cmd_correlate(
@@ -982,7 +1027,7 @@ fn cmd_correlate(
     target: Rtc,
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
-) -> Result<(), Failure> {
+) -> Result<Option<Severity>, Failure> {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, false, None)?;
     scanner.report_findings(stderr)?;
@@ -997,16 +1042,19 @@ fn cmd_correlate(
     writeln!(stdout)?;
 
     if scanner.correlator.is_empty() {
-        return Err(Failure::new(
-            ExitClass::Findings,
-            "No time reference points found in file.",
-        ));
+        writeln!(stderr, "Warning: No time reference points found in file.")?;
+        scanner.observe(Severity::Warning);
+        return Ok(scanner.highest);
     }
 
     // Correlate with all channels
     match scanner.correlator.correlate(target, None) {
         Ok(t) => writeln!(stdout, "  Any channel  → {}", fmt_abs_time(&t))?,
-        Err(e) => writeln!(stdout, "  Any channel  → Error: {}", e)?,
+        Err(e) => {
+            let level = decode_level(&e);
+            writeln!(stdout, "  Any channel  → {level:?}: {e}")?;
+            scanner.observe(level);
+        }
     }
 
     // Per-channel
@@ -1015,7 +1063,7 @@ fn cmd_correlate(
             writeln!(stdout, "  Channel {:>3}  → {}", ch, fmt_abs_time(&t))?;
         }
     }
-    Ok(())
+    Ok(scanner.highest)
 }
 
 fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
@@ -1058,6 +1106,30 @@ fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
     writeln!(
         stdout,
         "--limit: positive decimal; --threshold-ms: unsigned decimal, checked in ns."
+    )?;
+    writeln!(
+        stdout,
+        "Shared irig106 exits: usage2, first fatal input3/output4, findings1, success0."
+    )?;
+    writeln!(
+        stdout,
+        "--fail-on <level>: error (default), warning, info, never. Inclusive; lowercase, separate value, no duplicates."
+    )?;
+    writeln!(
+        stdout,
+        "Accepted on all commands, including help/version with no effect there."
+    )?;
+    writeln!(
+        stdout,
+        "Finding levels: recovered sync / cut final packet or header / missing context / no usable reference: warning;"
+    )?;
+    writeln!(
+        stdout,
+        "trailing unsynced bytes after a stream: info; malformed/short/range decode and unusable correlation: error;"
+    )?;
+    writeln!(
+        stdout,
+        "reserved BCD bits: warning (TF-005, owner-approved); invalid TS/reserved NTF: warning (TF-003/006); jumps: warning (TF-017)."
     )?;
     writeln!(stdout, "Examples:")?;
     writeln!(stdout, "  irigtime summary flight_042.ch10")?;
@@ -1111,51 +1183,82 @@ impl From<io::Error> for Failure {
 /// Arguments may be OsString/OsStr or strings. Paths retain native encoding;
 /// non-UTF-8 command/option syntax returns usage2.
 /// All output uses these writers; no global stdout/stderr or process exit.
-/// Strict syntax (including numeric bounds) is validated before input opens.
+/// All syntax is validated before input opens; input/output failures precede
+/// finding thresholds. The default failure threshold is error (shared irig106 CLI convention).
 /// Input still uses the S15b whole-file snapshot until S16b bounded streaming.
 /// Traces: L3-CLI-101 <- L2-CLI-101 <- L1-CLI-001;
 /// L3-CLI-102 <- L2-CLI-102 <- L1-CLI-002 (host/writer clauses only).
+/// Traces: L3-CLI-107 <- L2-CLI-107 <- L1-CLI-007.
 pub fn run<S: AsRef<OsStr>>(
-    args: &[S],
-    stdout: &mut dyn Write,
-    stderr: &mut dyn Write,
-) -> ExitClass {
-    let result = dispatch(args, stdout, stderr).and_then(|()| {
-        stdout.flush()?;
-        stderr.flush()?;
-        Ok(())
-    });
-    match result {
-        Ok(()) => ExitClass::Success,
-        Err(error) => {
-            // Preserve the first input/output failure if its diagnostic also fails.
-            if writeln!(stderr, "Error: {}", error.message)
-                .and_then(|()| stderr.flush())
-                .is_err()
-                && error.class == ExitClass::Findings
-            {
-                ExitClass::Output
-            } else {
-                error.class
-            }
-        }
-    }
-}
-fn dispatch<S: AsRef<OsStr>>(
     raw: &[S],
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
-) -> Result<(), Failure> {
-    let request = args::parse(raw).map_err(|e| Failure::new(ExitClass::Usage, e))?;
+) -> ExitClass {
+    let result = args::parse(raw)
+        .map_err(|e| Failure::new(ExitClass::Usage, e))
+        .and_then(|request| {
+            let fail_on = match &request {
+                args::Request::File(a) => a.fail_on,
+                _ => None,
+            };
+            let highest = dispatch(request, stdout, stderr)?;
+            stdout.flush()?;
+            stderr.flush()?;
+            Ok(
+                if highest
+                    .zip(fail_on)
+                    .is_some_and(|(level, threshold)| rank(level) >= rank(threshold))
+                {
+                    ExitClass::Findings
+                } else {
+                    ExitClass::Success
+                },
+            )
+        });
+    match result {
+        Ok(class) => class,
+        Err(error) => {
+            // Usage wins preflight; otherwise preserve the first fatal operational failure.
+            let _ = writeln!(stderr, "Error: {}", error.message).and_then(|()| stderr.flush());
+            error.class
+        }
+    }
+}
+fn rank(level: Severity) -> u8 {
+    match level {
+        Severity::Information => 0,
+        Severity::Warning => 1,
+        Severity::Error => 2,
+    }
+}
+fn decode_level(error: &TimeError) -> Severity {
+    match error {
+        TimeError::ReservedBitSet { .. }
+        | TimeError::NeedsContext { .. }
+        | TimeError::InvalidTimeStatus { .. }
+        | TimeError::OutOfRange {
+            field: "network_time_format",
+            ..
+        } => Severity::Warning,
+        _ => Severity::Error,
+    }
+}
+fn dispatch(
+    request: args::Request,
+    stdout: &mut dyn Write,
+    stderr: &mut dyn Write,
+) -> Result<Option<Severity>, Failure> {
     let args = match request {
-        args::Request::Help => return print_usage(stdout),
+        args::Request::Help => {
+            print_usage(stdout)?;
+            return Ok(None);
+        }
         args::Request::Version => {
             writeln!(stdout, "irigtime {}", PKG_VERSION)?;
-            return Ok(());
+            return Ok(None);
         }
         args::Request::File(args) => args,
     };
-    // Safe owned snapshot; S16b will replace this with bounded streaming.
     let data = std::fs::read(&args.input).map_err(|e| {
         Failure::new(
             ExitClass::Input,

@@ -547,7 +547,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1-CLI-004 | L2-CLI-104 | _(none)_ | Draft |
 | L1-CLI-005 | L2-CLI-105 | _(none)_ | Draft |
 | L1-CLI-006 | L2-CLI-106 | _(none)_ | Draft |
-| L1-CLI-007 | L2-CLI-107 | _(none)_ | Draft |
+| L1-CLI-007 | L2-CLI-107 | `irig106-time-cli/tests/s16_args_exits.rs::complete_five_class_threshold_precedence_and_host_contract` | Implemented |
 
 **L2 -> L3 -> Verification Artifacts**
 
@@ -559,7 +559,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L2-CLI-104 | L3-CLI-104 | _(TBD)_ | Draft |
 | L2-CLI-105 | L3-CLI-105 | _(TBD)_ | Draft |
 | L2-CLI-106 | L3-CLI-106 | _(TBD)_ | Draft |
-| L2-CLI-107 | L3-CLI-107 | _(TBD)_ | Draft |
+| L2-CLI-107 | L3-CLI-107 | `irig106-time-cli/tests/s16_args_exits.rs::complete_five_class_threshold_precedence_and_host_contract` | Implemented |
 
 ### L1-REL: Versioning and release
 
@@ -642,16 +642,16 @@ This matrix is the single source of truth for live status; the requirement docum
 | ERR | 5 | 5 | 5 | 4 | 4 | 4 | 4 |
 | API | 11 | 11 | 11 | 1 | 1 | 4 | 4 |
 | PERF | 1 | 1 | 1 | 0 | 0 | 0 | 0 |
-| CLI | 7 | 7 | 7 | 0 | 0 | 1 | 1 |
+| CLI | 7 | 7 | 7 | 1 | 1 | 2 | 2 |
 | REL | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
 | TST | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
-| **Total** | **124** | **144** | **144** | **98** | **98** | **102** | **102** |
+| **Total** | **124** | **144** | **144** | **99** | **99** | **103** | **103** |
 
 The countable requirement set is every L2 and L3 requirement plus the 0 L1 *leaf* requirement(s) (L1s with no L2 decomposition yet). Composite L1s are verified through their children.
 
-**Tested by at least one test marker**: 196 of 288 (68.1%).
+**Tested by at least one test marker**: 198 of 288 (68.8%).
 
-**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 204 of 288 (70.8%).
+**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 206 of 288 (71.5%).
 
 ### Orphan check
 

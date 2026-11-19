@@ -1,5 +1,5 @@
 //! Hand-rolled OS-native arguments (ADR-0008); parsing never opens input.
-use irig106_time::Rtc;
+use irig106_time::{Rtc, findings::Severity};
 use std::{
     collections::BTreeSet,
     ffi::{OsStr, OsString},
@@ -25,6 +25,7 @@ pub struct Args {
     pub(crate) rtc: Rtc,
     pub(crate) threshold_ms: u64,
     pub(crate) limit: usize,
+    pub(crate) fail_on: Option<Severity>,
 }
 fn decimal(value: &OsStr) -> Result<u64, String> {
     let text = value.to_str().ok_or("numeric argument is not UTF-8")?;
@@ -42,9 +43,7 @@ pub fn parse<S: AsRef<OsStr>>(raw: &[S]) -> Result<Request, String> {
     };
     let command = first.as_ref().to_str().ok_or("command is not UTF-8")?;
     if matches!(command, "--help" | "-h" | "help" | "--version" | "-V") {
-        if raw.len() != 1 {
-            return Err("unexpected arguments after help/version".into());
-        }
+        validate_no_finding_options(&raw[1..])?;
         return Ok(if matches!(command, "--version" | "-V") {
             Request::Version
         } else {
@@ -57,7 +56,11 @@ pub fn parse<S: AsRef<OsStr>>(raw: &[S]) -> Result<Request, String> {
     ) {
         return Err(format!("unknown command: {command}"));
     }
-    if raw.len() == 2 && matches!(raw[1].as_ref().to_str(), Some("--help" | "-h")) {
+    if raw
+        .get(1)
+        .is_some_and(|a| matches!(a.as_ref().to_str(), Some("--help" | "-h")))
+    {
+        validate_no_finding_options(&raw[2..])?;
         return Ok(Request::Help);
     }
     let mut parsed = Args {
@@ -67,6 +70,8 @@ pub fn parse<S: AsRef<OsStr>>(raw: &[S]) -> Result<Request, String> {
         rtc: Rtc::from_raw(0),
         threshold_ms: 1000,
         limit: 100,
+        // L2/L3-CLI-107, coordinator S16a3b shared irig106 convention.
+        fail_on: Some(Severity::Error),
     };
     let (mut index, mut literal) = (1, false);
     let mut seen = BTreeSet::new();
@@ -84,6 +89,7 @@ pub fn parse<S: AsRef<OsStr>>(raw: &[S]) -> Result<Request, String> {
         }
         let flag = argument.to_str().ok_or("option name is not UTF-8")?;
         let allowed = match flag {
+            "--fail-on" => true,
             "--threshold-ms" => command == "jumps",
             "--limit" => command == "timeline",
             "--output" => command == "csv",
@@ -115,6 +121,7 @@ pub fn parse<S: AsRef<OsStr>>(raw: &[S]) -> Result<Request, String> {
                 parsed.limit = n;
             }
             "--output" => parsed.output = Some(PathBuf::from(value)),
+            "--fail-on" => parsed.fail_on = threshold(value)?,
             _ => return Err("unrecognized option".into()),
         }
     }
@@ -141,4 +148,27 @@ pub fn parse<S: AsRef<OsStr>>(raw: &[S]) -> Result<Request, String> {
         parsed.rtc = Rtc::from_raw(value);
     }
     Ok(Request::File(parsed))
+}
+
+fn threshold(value: &OsStr) -> Result<Option<Severity>, String> {
+    match value.to_str() {
+        Some("error") => Ok(Some(Severity::Error)),
+        Some("warning") => Ok(Some(Severity::Warning)),
+        Some("info") => Ok(Some(Severity::Information)),
+        Some("never") => Ok(None),
+        _ => Err("fail-on must be error, warning, info or never".into()),
+    }
+}
+// Help/version do not produce findings, but still validate the shared option.
+fn validate_no_finding_options<S: AsRef<OsStr>>(raw: &[S]) -> Result<(), String> {
+    let mut tail = raw.iter();
+    let mut seen = false;
+    while let Some(option) = tail.next() {
+        if option.as_ref() != "--fail-on" || seen {
+            return Err("unexpected/duplicate argument after help/version".into());
+        }
+        threshold(tail.next().ok_or("missing fail-on value")?.as_ref())?;
+        seen = true;
+    }
+    Ok(())
 }
