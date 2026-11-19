@@ -288,4 +288,60 @@ fn complete_five_class_threshold_precedence_and_host_contract() {
     every_exit_class_has_host_standalone_parity();
     shared_option_is_validated_even_without_findings_and_edges_are_unchanged();
     recovered_sync_cut_packet_context_and_jumps_remain_warning();
+    review_short_f1_doy_body_is_an_error_finding();
+    review_no_time_packets_correlate_is_a_warning();
+}
+
+#[test]
+fn review_short_f1_doy_body_is_an_error_finding() {
+    // Fig11-13 requires six DOY body bytes. This complete32-byte frame declares
+    // CSDW4 + body4, so the time body is short without invalid packet bounds.
+    let mut bytes = reference();
+    bytes.truncate(32);
+    bytes[4..8].copy_from_slice(&32u32.to_le_bytes());
+    bytes[8..12].copy_from_slice(&8u32.to_le_bytes());
+    bytes[22..24].copy_from_slice(&0xfc4du16.to_le_bytes()); // EB25 +20 +8 +1100.
+    bytes[24..28].fill(0); // DATE0: DOY, not DMY.
+    let input = Input::new(&bytes);
+    let mut report = Vec::new();
+    assert_eq!(
+        run(&["summary", input.path()], &mut report, &mut Vec::new()) as u8,
+        1
+    );
+    assert!(
+        String::from_utf8(report)
+            .unwrap()
+            .contains("buffer too short for DOY BCD")
+    );
+    assert_eq!(on(&input, &["--fail-on", "never"]), 0);
+}
+
+#[test]
+fn review_no_time_packets_correlate_is_a_warning() {
+    // A complete non-time transport frame, as in the native-path control.
+    let mut bytes = reference();
+    bytes.truncate(24);
+    bytes[4..8].copy_from_slice(&24u32.to_le_bytes());
+    bytes[8..12].fill(0);
+    bytes[15] = 0x09;
+    bytes[22..24].copy_from_slice(&0xf43du16.to_le_bytes()); // EB25 +18 +900.
+    let input = Input::new(&bytes);
+    let mut diagnostic = Vec::new();
+    assert_eq!(
+        run(
+            &["correlate", input.path(), "0"],
+            &mut Vec::new(),
+            &mut diagnostic
+        ) as u8,
+        0
+    );
+    assert!(
+        String::from_utf8(diagnostic)
+            .unwrap()
+            .contains("Warning: No time reference points found")
+    );
+    assert_eq!(
+        invoke(&["correlate", input.path(), "0", "--fail-on", "warning"]),
+        1
+    );
 }

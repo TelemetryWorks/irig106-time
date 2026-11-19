@@ -72,3 +72,20 @@ needs-context raised to error; no-reference warning lowering an existing error;
 and default changed to warning. Mutations are restored before final checks.
 Coverage: tested198/288 (+2), verified206/288 (+2), through CLI-107 only. The
 existing CLI-103 inspection and every prior test remain; no FND overclaim.
+
+## Review follow-up — two missing level guards
+
+Both added tests pass on the correct9ff9e56 implementation; no production fix.
+A complete32-byte frame with DATE0, Data Length8 and only four DOY BCD bytes
+hits the specific short-DOY branch: default exit1, never0, with its diagnostic.
+A complete non-time transport frame leaves no references: correlate gives
+warning/default0 and warning-threshold1, with the no-reference diagnostic.
+Both are also included in the whole-contract aggregate. Test coverage counts
+remain198/288 tested and206/288 verified; no new whole-requirement marker.
+
+Temporary mutants all fail at runtime: short DOY error->warning; no-reference
+warning->info; no-reference warning->error. All production source is restored.
+The coordinator/reviewer confirms TF-005 warning is accepted, resolving the
+proposal conflict above. S16b follow-up only: decode_level currently identifies
+reserved NTF via the network_time_format field-name string; replace that with
+a dedicated error variant when qualified findings are rebuilt, not in this PR.
