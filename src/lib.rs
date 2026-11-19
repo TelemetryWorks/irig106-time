@@ -29,6 +29,21 @@
 //! - **jiff** — Optional checked civil conversions with explicit scale/year
 //!   and nanosecond precision; no timezone/clock or implicit UTC
 //!
+//! ## Recording-event boundary (0.8.0, ADR-0009)
+//!
+//! Event numbers/meanings belong to the setup-aware body decoder, not this crate.
+//! Time tags remain supported by [`extracted::inspect_stamp`]. Removed exports:
+//!
+//! ```compile_fail
+//! use irig106_time::recording_event;
+//! ```
+//! ```compile_fail
+//! use irig106_time::RecordingEvent;
+//! ```
+//! ```compile_fail
+//! use irig106_time::RecordingEventType;
+//! ```
+//!
 //! ## `no_std` Support
 //!
 //! The crate is `no_std`-compatible. Disable the default `std` feature to
