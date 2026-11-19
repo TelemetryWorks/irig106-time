@@ -47,30 +47,39 @@ fn input_error(bytes: &[u8]) {
         ExitClass::Input
     );
 }
+fn content_finding(bytes: &[u8]) {
+    let input = Input::new(bytes);
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+    assert_eq!(
+        run(&["summary", input.0.to_str().unwrap()], &mut out, &mut err),
+        ExitClass::Success
+    );
+    assert!(String::from_utf8(out).unwrap().contains("Errors ("));
+}
 #[test]
 fn f2_missing_secondary_header_is_an_input_error_not_host_panic() {
     input_error(&packet(0x12, 0x04, 24, 0));
 }
 #[test]
-fn packet_and_time_payload_truncations_are_input_errors() {
+fn structural_lengths_are_fatal_but_short_time_bodies_are_findings() {
     for kind in [0x11, 0x12] {
         for flags in [0, 4] {
             for length in 24..48 {
                 let start = if flags == 4 { 36 } else { 24 };
                 let minimum = if kind == 0x11 { 10 } else { 12 };
                 if length < start + minimum {
-                    input_error(&packet(
-                        kind,
-                        flags,
-                        length,
-                        (length.saturating_sub(start)) as u32,
-                    ));
+                    let bytes = packet(kind, flags, length, (length.saturating_sub(start)) as u32);
+                    if length < start || length % 4 != 0 {
+                        input_error(&bytes);
+                    } else {
+                        content_finding(&bytes);
+                    }
                 }
             }
         }
     }
     for length in 1..24 {
-        input_error(&vec![0; length]);
+        content_finding(&vec![0; length]);
     }
     let mut broken = packet(0x09, 0, 24, 0);
     broken[4..8].copy_from_slice(&u32::MAX.to_le_bytes());
@@ -107,7 +116,11 @@ fn declared_data_length_bounds_f1_and_f2_even_with_trailer_bytes() {
         );
         for length in [0u32, u32::MAX] {
             bytes[8..12].copy_from_slice(&length.to_le_bytes());
-            input_error(&bytes);
+            if length == 0 {
+                content_finding(&bytes);
+            } else {
+                input_error(&bytes);
+            }
         }
     }
 }
