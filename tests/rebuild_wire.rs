@@ -68,9 +68,9 @@ fn t12_day_body_is_six_bytes() {
         ),
         (187, 13, 45, 27, 350)
     );
-    assert_eq!(t.to_le_bytes().len(), 6);
+    assert_eq!(t.to_le_bytes().unwrap().len(), 6);
     let body = [0x35, 0x27, 0x45, 0x13, 0x87, 0x01];
-    assert_eq!(t.to_le_bytes(), body);
+    assert_eq!(t.to_le_bytes().unwrap(), body);
     for n in 0..6 {
         assert!(DayFormatTime::from_le_bytes(&body[..n]).is_err());
     }
@@ -86,9 +86,9 @@ fn t12_calendar_body_is_eight_bytes() {
     let t =
         DmyFormatTime::from_le_bytes(&[0x35, 0x27, 0x45, 0x13, 0x29, 0x02, 0x24, 0x20]).unwrap();
     assert_eq!((t.year(), t.month(), t.day()), (2024, 2, 29));
-    assert_eq!(t.to_le_bytes().len(), 8);
+    assert_eq!(t.to_le_bytes().unwrap().len(), 8);
     let body = [0x35, 0x27, 0x45, 0x13, 0x29, 0x02, 0x24, 0x20];
-    assert_eq!(t.to_le_bytes(), body);
+    assert_eq!(t.to_le_bytes().unwrap(), body);
     for n in 0..8 {
         assert!(DmyFormatTime::from_le_bytes(&body[..n]).is_err());
     }

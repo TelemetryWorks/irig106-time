@@ -285,10 +285,17 @@ impl DayFormatTime {
 
     /// Encode as 6 little-endian bytes (3× u16 LE) in the BCD Day-of-Year wire format.
     ///
-    /// This is the inverse of `from_le_bytes`.
-    ///
-    /// **Traces:** GAP-11
-    pub fn to_le_bytes(&self) -> [u8; 6] {
+    /// Refuse sub-10ms precision; DMY also requires year <=3999 because the
+    /// two high year bits in Figure11-14 are always zero. No truncation.
+    /// **Traces:** L3-ENC-101 ← L2-ENC-101 ← L1-ENC-001
+    pub fn to_le_bytes(&self) -> Result<[u8; 6]> {
+        if self.milliseconds % 10 != 0 {
+            return Err(TimeError::UnrepresentablePrecision {
+                field: "bcd_milliseconds",
+                value: self.milliseconds.into(),
+                quantum: 10,
+            });
+        }
         let ms_tens = (self.milliseconds / 10) % 10;
         let ms_hundreds = self.milliseconds / 100;
         let sec_units = self.seconds % 10;
@@ -314,7 +321,7 @@ impl DayFormatTime {
         buf[0..2].copy_from_slice(&w0.to_le_bytes());
         buf[2..4].copy_from_slice(&w1.to_le_bytes());
         buf[4..6].copy_from_slice(&w2.to_le_bytes());
-        buf
+        Ok(buf)
     }
 }
 
@@ -629,10 +636,24 @@ impl DmyFormatTime {
 
     /// Encode as 8 little-endian bytes (4× u16 LE) in the BCD Day-Month-Year wire format.
     ///
-    /// This is the inverse of `from_le_bytes`.
-    ///
-    /// **Traces:** GAP-11
-    pub fn to_le_bytes(&self) -> [u8; 8] {
+    /// Refuse sub-10ms precision; DMY also requires year <=3999 because the
+    /// two high year bits in Figure11-14 are always zero. No truncation.
+    /// **Traces:** L3-ENC-101 ← L2-ENC-101 ← L1-ENC-001
+    pub fn to_le_bytes(&self) -> Result<[u8; 8]> {
+        if self.milliseconds % 10 != 0 {
+            return Err(TimeError::UnrepresentablePrecision {
+                field: "bcd_milliseconds",
+                value: self.milliseconds.into(),
+                quantum: 10,
+            });
+        }
+        if self.year > 3999 {
+            return Err(TimeError::OutOfRange {
+                field: "bcd_year",
+                value: self.year.into(),
+                max: 3999,
+            });
+        }
         let ms_tens = (self.milliseconds / 10) % 10;
         let ms_hundreds = self.milliseconds / 100;
         let sec_units = self.seconds % 10;
@@ -666,7 +687,7 @@ impl DmyFormatTime {
         buf[2..4].copy_from_slice(&w1.to_le_bytes());
         buf[4..6].copy_from_slice(&w2.to_le_bytes());
         buf[6..8].copy_from_slice(&w3.to_le_bytes());
-        buf
+        Ok(buf)
     }
 }
 

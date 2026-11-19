@@ -652,9 +652,11 @@ caller context with the unresolved wording reported.
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Validate field representability, date, and leap rules before writing; use Figure 11-12 masks and Figure 11-13/14 body slots. Preserve payload-invalid NONE explicitly and never silently encode unsupported reserved enums as named formats.
 
-**Source**: §11.2.3.2; §11.2.1 f; contract 2.2, 4.11.
+**Source**: §11.2.3.2; §11.2.1 f; contract 2.2, 4.11. 106-24R1 Figure 11-12 (printed 11-23 / PDF 31), Figures 11-13/14 (11-25 / PDF 33), Table 11-16 (11-26 / PDF 34): "0", "Always zero"; "OYn", "Thousands of years". Figure 11-14 has two always-zero high year bits: the representable year is 0..3999 (derived). RDG-010 governs second-60 labels; S03 governs caller-selected EXT/SRC layout.
 
-**Planned verification**: Golden bytes from both figures and contract 7, NONE, reserved enum handling, nonrepresentable sub-10-ms time (explicit precision error, not silent truncation), and year/day bounds.
+**Encoder policy**: Checked CSDW/body encoding SHALL require an explicit layout, clear reserved positions, reject reserved applicable FMT/SRC/ITS, and preserve defined NONE/invalid source labels. Reject precision loss and unrepresentable years; do not round or truncate. Atomic CSDW+body encoding SHALL validate DATE/LY and stated UTC/GPS scale agreement, preserve valid second 60, and require a year for DMY. FMT NONE accepts no valid reading; its six/eight-byte invalid body is zero-filled by encoder policy, not interpreted as an absolute zero. No packet flags are repaired and no full-header/checksum API is introduced.
+
+**Planned verification**: Decoder-independent golden CSDW/DOY/DMY bytes, every reserved position, EXT versus SRC/ITS applicability, reserved enum rejection, NONE, DATE/LY/scale consistency, leap labels, sub-10-ms precision errors, and year/day bounds. Contract 7 clock digits are exercised without deriving bytes from a decoder.
 
 **L3-ENC-102** · Parent: L2-ENC-102 · Verification: T
 
