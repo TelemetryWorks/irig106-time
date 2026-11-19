@@ -96,8 +96,12 @@ pub fn compute_quality(refs: &[ReferencePoint]) -> TimeQuality {
         by_channel.iter().map(|(&ch, v)| (ch, v.len())).collect();
 
     // Global RTC span
-    let min_rtc = refs.iter().map(|r| r.rtc).min().unwrap();
-    let max_rtc = refs.iter().map(|r| r.rtc).max().unwrap();
+    // Empty state returned above; fold uses the RTC domain's actual bounds.
+    let (min_rtc, max_rtc) = refs
+        .iter()
+        .fold((crate::Rtc::MAX, crate::Rtc::ZERO), |(lo, hi), r| {
+            (lo.min(r.rtc), hi.max(r.rtc))
+        });
     let span_ticks = min_rtc.elapsed_ticks(max_rtc);
     let span_ns = span_ticks * 100;
 
@@ -161,5 +165,6 @@ pub fn compute_quality(refs: &[ReferencePoint]) -> TimeQuality {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)] // Test assertions only; production retains root denies.
 #[path = "quality_tests.rs"]
 mod quality_tests;

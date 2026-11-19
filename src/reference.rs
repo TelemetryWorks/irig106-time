@@ -541,6 +541,7 @@ pub(crate) fn normalization_warning(
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)] // Test assertions only; production retains root denies.
 mod review_s12a {
     use super::*;
     // Partial ANS/POL normalization clause, no whole-requirement marker.

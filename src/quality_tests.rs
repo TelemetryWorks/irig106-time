@@ -1,7 +1,7 @@
 use super::*;
-use crate::absolute::AbsoluteTime;
 use crate::correlation::ReferencePoint;
 use crate::rtc::Rtc;
+use crate::{TimeCorrelator, absolute::AbsoluteTime};
 use alloc::vec;
 
 fn make_ref(ch: u16, rtc_raw: u64, doy: u16, h: u8, m: u8, s: u8) -> ReferencePoint {
@@ -81,4 +81,19 @@ fn drift_ppm_not_populated_for_single_ref_channel() {
     let refs = [make_ref(1, 10_000_000, 100, 12, 0, 0)];
     let q = compute_quality(&refs);
     assert!(q.drift_ppm_per_channel.is_empty());
+}
+
+// Partial ERR-101 / API-112 cleanup control: existing valid extremes, no whole marker.
+#[test]
+fn rtc_span_extrema_and_empty_state_do_not_use_sentinel_values() {
+    let empty = compute_quality(TimeCorrelator::new().references());
+    assert_eq!(empty.rtc_span_ns, None);
+    let mut c = TimeCorrelator::new();
+    let time = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
+    c.add_reference(1, Rtc::MAX, time);
+    assert_eq!(compute_quality(c.references()).rtc_span_ns, None);
+    c.add_reference(1, Rtc::ZERO, time);
+    let quality = compute_quality(c.references());
+    assert_eq!(quality.rtc_span_ns, Some(28_147_497_671_065_500)); // (2^48-1)*100ns
+    assert_eq!(quality.total_refs, 2);
 }

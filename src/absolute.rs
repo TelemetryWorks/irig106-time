@@ -564,5 +564,6 @@ impl core::fmt::Display for CalendarTime {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)] // Test assertions only; production retains root denies.
 #[path = "absolute_tests.rs"]
 mod absolute_tests;
