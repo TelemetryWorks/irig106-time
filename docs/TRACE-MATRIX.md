@@ -543,7 +543,7 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L1-CLI-001 | L2-CLI-101 | _(none)_ | Draft |
 | L1-CLI-002 | L2-CLI-102 | _(none)_ | Draft |
-| L1-CLI-003 | L2-CLI-103 | _(none)_ | Draft |
+| L1-CLI-003 | L2-CLI-103 | _(none)_ | Implemented |
 | L1-CLI-004 | L2-CLI-104 | _(none)_ | Draft |
 | L1-CLI-005 | L2-CLI-105 | _(none)_ | Draft |
 | L1-CLI-006 | L2-CLI-106 | _(none)_ | Draft |
@@ -555,7 +555,7 @@ This matrix is the single source of truth for live status; the requirement docum
 |-------|-------------|----------------|--------|
 | L2-CLI-101 | L3-CLI-101 | _(TBD)_ | Draft |
 | L2-CLI-102 | L3-CLI-102 | _(TBD)_ | Draft |
-| L2-CLI-103 | L3-CLI-103 | _(TBD)_ | Draft |
+| L2-CLI-103 | L3-CLI-103 | `[S16a3a args inspection](verification-s16a3a.md#args-inspection)` | Implemented |
 | L2-CLI-104 | L3-CLI-104 | _(TBD)_ | Draft |
 | L2-CLI-105 | L3-CLI-105 | _(TBD)_ | Draft |
 | L2-CLI-106 | L3-CLI-106 | _(TBD)_ | Draft |
@@ -642,16 +642,16 @@ This matrix is the single source of truth for live status; the requirement docum
 | ERR | 5 | 5 | 5 | 4 | 4 | 4 | 4 |
 | API | 11 | 11 | 11 | 1 | 1 | 4 | 4 |
 | PERF | 1 | 1 | 1 | 0 | 0 | 0 | 0 |
-| CLI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
+| CLI | 7 | 7 | 7 | 0 | 0 | 1 | 1 |
 | REL | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
 | TST | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
-| **Total** | **124** | **144** | **144** | **98** | **98** | **101** | **101** |
+| **Total** | **124** | **144** | **144** | **98** | **98** | **102** | **102** |
 
 The countable requirement set is every L2 and L3 requirement plus the 0 L1 *leaf* requirement(s) (L1s with no L2 decomposition yet). Composite L1s are verified through their children.
 
 **Tested by at least one test marker**: 196 of 288 (68.1%).
 
-**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 202 of 288 (70.1%).
+**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 204 of 288 (70.8%).
 
 ### Orphan check
 

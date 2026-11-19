@@ -36,6 +36,7 @@ fn exit_two_validates_all_usage_before_opening_input() {
         "jumps --threshold-ms bad",
         "jumps --threshold-ms -1",
         "jumps --threshold-ms 18446744073709551615",
+        "jumps --threshold-ms 18446744073710",
         "jumps --threshold-ms",
         "jumps --threshold-ms 1 --threshold-ms 2",
         "timeline --limit bad",
@@ -51,10 +52,66 @@ fn exit_two_validates_all_usage_before_opening_input() {
         "csv --output",
         "csv --output a --output b",
         "correlate 1000000000000",
+        "correlate +1",
+        "correlate not-hex",
     ] {
         let mut args: Vec<_> = case.split_ascii_whitespace().collect();
         args.insert(1, missing.path());
         assert_eq!(invoke(&args), 2, "{case}");
     }
     assert_eq!(invoke(&["--version", "extra"]), 2);
+}
+
+#[test]
+fn grammar_bounds_and_command_help_are_explicit() {
+    use irig106_time_cli::args::parse;
+    for args in [
+        vec!["summary", "input"],
+        vec!["channels", "input"],
+        vec!["jumps", "input", "--threshold-ms", "0"],
+        vec!["jumps", "input", "--threshold-ms", "18446744073709"],
+        vec!["timeline", "input", "--limit", "1"],
+        vec!["csv", "input", "--output", "-out.csv"],
+        vec!["correlate", "input", "0xFFFFFFFFFFFF"],
+    ] {
+        assert!(parse(&args).is_ok(), "{args:?}");
+    }
+    assert!(parse(&["summary"]).is_err());
+    assert!(parse(&["correlate", "input", ""]).is_err());
+    assert!(parse(&["--help", "extra"]).is_err());
+    assert!(parse(&["summary", "input", "--fail-on", "error"]).is_err()); // Reserved for next slice, never silently ignored.
+    for command in [
+        "summary",
+        "channels",
+        "jumps",
+        "timeline",
+        "csv",
+        "correlate",
+    ] {
+        assert_eq!(invoke(&[command, "--help"]), 0);
+    }
+}
+#[test]
+fn terminator_opens_a_real_dash_leading_filename_without_changing_host_cwd() {
+    struct Directory(PathBuf);
+    impl Drop for Directory {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+    let file = Input::new(&[]);
+    let dir = Directory(file.0.with_extension("dir"));
+    std::fs::create_dir(&dir.0).unwrap();
+    std::fs::write(dir.0.join("-capture file.ch10"), []).unwrap();
+    for (args, expected) in [
+        (["summary", "--", "-capture file.ch10"].to_vec(), 0),
+        (["summary", "-capture file.ch10"].to_vec(), 2),
+    ] {
+        let result = std::process::Command::new(env!("CARGO_BIN_EXE_irigtime"))
+            .current_dir(&dir.0)
+            .args(args)
+            .output()
+            .unwrap();
+        assert_eq!(result.status.code(), Some(expected));
+    }
 }

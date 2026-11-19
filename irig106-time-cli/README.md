@@ -9,7 +9,8 @@ and invocations. The package name stays `irig106-time-cli`. The ecosystem host
 can mount the same implementation as `irig106 time` by calling
 `irig106_time_cli::run(&["--help"], &mut stdout, &mut stderr)`. Arguments exclude
 the executable/host subcommand; the runner returns `ExitClass` without exiting.
-Strict argument/threshold validation follows in S16a3. No CLI publication or
+Arguments are now validated before input is opened; findings-threshold wiring
+follows in S16a3b. No CLI publication or
 release tag before S16b.
 
 ## From the root of irig106-time, build it with:
@@ -138,3 +139,16 @@ or release tag before that implementation and its larger-than-buffer test land.
 ## License
 
 Apache-2.0
+
+## Strict arguments
+
+All option values are separate arguments. Unknown/inapplicable/duplicate options,
+missing values or extra positional arguments return2 before opening input.
+`--threshold-ms` accepts unsigned decimal0..18446744073709 (default1000);
+`--limit` accepts positive decimal fitting usize (default100). RTC is48-bit hex,
+with an optional0x prefix. Help: `irigtime --help` or `irigtime COMMAND --help`.
+Use `irigtime summary -- '-capture file.ch10'` for a dash-leading filename;
+place options before `--`. Native OS paths are preserved. The library's source
+is now the conventional src/lib.rs, with the thin binary in src/bin/irigtime.rs.
+No failure-threshold option is accepted yet; S16a3b adds it with the complete
+five-class/precedence tests. The S16b memory/publication gate still applies.

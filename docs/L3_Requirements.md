@@ -1509,7 +1509,7 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 
 **Planned verification**: Standalone and host-style calls produce the same report; injected I/O failures and help return without terminating the host.
 
-**L3-CLI-103** · Parent: L2-CLI-103 · Verification: I
+**L3-CLI-103** · Parent: L2-CLI-103 · Verification: I · Evidence: [S16a3a args inspection](verification-s16a3a.md#args-inspection)
 
 **L1 ancestor**: L1-CLI-003
 

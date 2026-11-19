@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S16a3a strict args and library target
+
+- Invalid/overflowing numeric values, unknown/inapplicable/duplicate options,
+  missing values and extra arguments return usage2 before input access.
+  No silent numeric defaults; retain defaults only when options are absent.
+- Support literal dash-leading paths via -- and command help; validate48-bit
+  RTC without masking. CLI library source is now lib.rs. No parser dependency.
+- Threshold/five-exit wiring remains S16a3b; #63 findings/tails/padding and the
+  S16b memory/publication gate remain unchanged. tested196/288, verified204/288.
+
 ### S16a2 host-callable CLI
 
 - Export CLI `run(args, stdout, stderr) -> ExitClass`; arguments accept

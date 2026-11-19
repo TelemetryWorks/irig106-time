@@ -38,6 +38,8 @@ use irig106_time::bcd::{DayFormatTime, DmyFormatTime};
 use irig106_time::csdw::{DateFormat, TimeF1Csdw};
 use irig106_time::network_time::{LeapSecondTable, NetworkTimeProtocol, parse_time_f2_payload};
 use irig106_time::*;
+/// Strict, filesystem-free OS-native argument parsing (ADR-0008).
+pub mod args;
 
 // ────────────────────────────────────────────────────────────────────
 // Constants
@@ -977,17 +979,10 @@ fn cmd_csv(
 
 fn cmd_correlate(
     mmap: &[u8],
-    rtc_hex: &str,
+    target: Rtc,
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
 ) -> Result<(), Failure> {
-    let rtc_val = u64::from_str_radix(
-        rtc_hex.trim_start_matches("0x").trim_start_matches("0X"),
-        16,
-    )
-    .map_err(|e| Failure::new(ExitClass::Usage, format!("invalid hex RTC value: {e}")))?;
-    let target = Rtc::from_raw(rtc_val);
-
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, false, None)?;
     scanner.report_findings(stderr)?;
@@ -1056,6 +1051,14 @@ fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
         "  irigtime correlate <file.ch10> <rtc_hex>          Resolve a single RTC value"
     )?;
     writeln!(stdout)?;
+    writeln!(
+        stdout,
+        "Use -- before dash-leading paths; option values are separate arguments."
+    )?;
+    writeln!(
+        stdout,
+        "--limit: positive decimal; --threshold-ms: unsigned decimal, checked in ns."
+    )?;
     writeln!(stdout, "Examples:")?;
     writeln!(stdout, "  irigtime summary flight_042.ch10")?;
     writeln!(
@@ -1108,7 +1111,7 @@ impl From<io::Error> for Failure {
 /// Arguments may be OsString/OsStr or strings. Paths retain native encoding;
 /// non-UTF-8 command/option syntax returns usage2.
 /// All output uses these writers; no global stdout/stderr or process exit.
-/// S16a3 replaces the permissive legacy dispatcher with strict args validation.
+/// Strict syntax (including numeric bounds) is validated before input opens.
 /// Input still uses the S15b whole-file snapshot until S16b bounded streaming.
 /// Traces: L3-CLI-101 <- L2-CLI-101 <- L1-CLI-001;
 /// L3-CLI-102 <- L2-CLI-102 <- L1-CLI-002 (host/writer clauses only).
@@ -1139,103 +1142,33 @@ pub fn run<S: AsRef<OsStr>>(
     }
 }
 fn dispatch<S: AsRef<OsStr>>(
-    args: &[S],
+    raw: &[S],
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
 ) -> Result<(), Failure> {
-    let command = args
-        .first()
-        .map(AsRef::as_ref)
-        .unwrap_or(OsStr::new("--help"))
-        .to_str()
-        .ok_or_else(|| Failure::new(ExitClass::Usage, "command is not UTF-8"))?;
-    for (index, argument) in args.iter().enumerate().skip(1) {
-        let input_path = index == 1
-            && matches!(
-                command,
-                "summary" | "channels" | "jumps" | "timeline" | "csv" | "correlate"
-            );
-        let output_path = command == "csv"
-            && args
-                .get(index - 1)
-                .is_some_and(|a| a.as_ref() == "--output");
-        let option_name = argument.as_ref().as_encoded_bytes().starts_with(b"-") && !output_path;
-        if argument.as_ref().to_str().is_none() && ((!input_path && !output_path) || option_name) {
-            return Err(Failure::new(
-                ExitClass::Usage,
-                "command argument or option name is not UTF-8",
-            ));
+    let request = args::parse(raw).map_err(|e| Failure::new(ExitClass::Usage, e))?;
+    let args = match request {
+        args::Request::Help => return print_usage(stdout),
+        args::Request::Version => {
+            writeln!(stdout, "irigtime {}", PKG_VERSION)?;
+            return Ok(());
         }
-    }
-    if matches!(command, "-h" | "--help" | "help") {
-        return print_usage(stdout);
-    }
-    if matches!(command, "-V" | "--version") {
-        writeln!(stdout, "irigtime {}", PKG_VERSION)?;
-        return Ok(());
-    }
-    if !matches!(
-        command,
-        "summary" | "channels" | "jumps" | "timeline" | "csv" | "correlate"
-    ) {
-        return Err(Failure::new(
-            ExitClass::Usage,
-            format!("Unknown command: '{command}'"),
-        ));
-    }
-    let path = Path::new(
-        args.get(1)
-            .ok_or_else(|| Failure::new(ExitClass::Usage, "missing input file"))?
-            .as_ref(),
-    );
-    let rtc = if command == "correlate" {
-        Some(
-            args.get(2)
-                .and_then(|s| s.as_ref().to_str())
-                .ok_or_else(|| Failure::new(ExitClass::Usage, "missing RTC"))?,
-        )
-    } else {
-        None
+        args::Request::File(args) => args,
     };
     // Safe owned snapshot; S16b will replace this with bounded streaming.
-    let data = std::fs::read(path).map_err(|e| {
+    let data = std::fs::read(&args.input).map_err(|e| {
         Failure::new(
             ExitClass::Input,
-            format!("cannot read '{}': {e}", path.display()),
+            format!("cannot read '{}': {e}", args.input.display()),
         )
     })?;
-    match command {
-        "summary" => cmd_summary(&data, path, stdout),
+    match args.command.as_str() {
+        "summary" => cmd_summary(&data, &args.input, stdout),
         "channels" => cmd_channels(&data, stdout, stderr),
-        "jumps" => {
-            let threshold = args
-                .iter()
-                .position(|a| a.as_ref() == "--threshold-ms")
-                .and_then(|i| args.get(i + 1))
-                .and_then(|v| v.as_ref().to_str())
-                .and_then(|v| v.parse::<u64>().ok())
-                .unwrap_or(1000);
-            cmd_jumps(&data, threshold, stdout, stderr)
-        }
-        "timeline" => {
-            let limit = args
-                .iter()
-                .position(|a| a.as_ref() == "--limit")
-                .and_then(|i| args.get(i + 1))
-                .and_then(|v| v.as_ref().to_str())
-                .and_then(|v| v.parse::<usize>().ok())
-                .unwrap_or(100);
-            cmd_timeline(&data, limit, stdout, stderr)
-        }
-        "csv" => {
-            let output = args
-                .iter()
-                .position(|a| a.as_ref() == "--output")
-                .and_then(|i| args.get(i + 1))
-                .map(|s| Path::new(s.as_ref()));
-            cmd_csv(&data, output, stdout, stderr)
-        }
-        "correlate" => cmd_correlate(&data, rtc.unwrap_or_default(), stdout, stderr),
+        "jumps" => cmd_jumps(&data, args.threshold_ms, stdout, stderr),
+        "timeline" => cmd_timeline(&data, args.limit, stdout, stderr),
+        "csv" => cmd_csv(&data, args.output.as_deref(), stdout, stderr),
+        "correlate" => cmd_correlate(&data, args.rtc, stdout, stderr),
         _ => Err(Failure::new(ExitClass::Usage, "unknown command")),
     }
 }
