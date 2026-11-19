@@ -85,3 +85,65 @@ fn declared_data_length_bounds_f1_and_f2_even_with_trailer_bytes() {
         input_error(&packet(kind, 0, 48, u32::MAX));
     }
 }
+
+#[cfg(unix)]
+mod native_argv {
+    use super::*;
+    use std::{ffi::OsString, os::unix::ffi::OsStringExt, process::Command};
+    fn native_path(path: &std::path::Path, byte: u8) -> PathBuf {
+        let mut name = path.as_os_str().to_os_string();
+        name.push(OsString::from_vec(vec![byte]));
+        PathBuf::from(name)
+    }
+    #[test]
+    fn non_utf8_input_and_output_paths_work_in_host_and_binary() {
+        let mut input = Input::new(&packet(0x09, 0, 24, 0));
+        let native = native_path(&input.0, 0xff);
+        std::fs::rename(&input.0, &native).unwrap();
+        input.0 = native;
+        let output = Input(native_path(&input.0, 0xfe));
+        let args = [
+            OsString::from("csv"),
+            input.0.as_os_str().to_owned(),
+            OsString::from("--output"),
+            output.0.as_os_str().to_owned(),
+        ];
+        assert_eq!(
+            run(&args, &mut Vec::new(), &mut Vec::new()),
+            ExitClass::Success
+        );
+        let bytes = std::fs::read(&output.0).unwrap();
+        assert!(bytes.starts_with(b"packet_num,"));
+        assert_eq!(bytes.iter().filter(|b| **b == b'\n').count(), 2);
+        let status = Command::new(env!("CARGO_BIN_EXE_irigtime"))
+            .args(&args)
+            .output()
+            .unwrap();
+        assert!(status.status.success(), "{:?}", status);
+        assert_eq!(std::fs::read(&output.0).unwrap(), bytes);
+    }
+    #[test]
+    fn non_utf8_command_and_option_are_usage_errors_not_panics() {
+        let input = Input::new(&packet(0x09, 0, 24, 0));
+        let bad = OsString::from_vec(vec![b'-', b'-', 0xff]);
+        for args in [
+            vec![bad.clone()],
+            vec![
+                OsString::from("summary"),
+                input.0.as_os_str().to_owned(),
+                bad,
+            ],
+        ] {
+            let result = catch_unwind(AssertUnwindSafe(|| {
+                run(&args, &mut Vec::new(), &mut Vec::new())
+            }));
+            assert_eq!(result.expect("host argv must not panic"), ExitClass::Usage);
+            let status = Command::new(env!("CARGO_BIN_EXE_irigtime"))
+                .args(&args)
+                .output()
+                .unwrap();
+            assert_eq!(status.status.code(), Some(2));
+            assert!(!String::from_utf8_lossy(&status.stderr).contains("panicked"));
+        }
+    }
+}
