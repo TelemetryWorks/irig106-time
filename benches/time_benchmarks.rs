@@ -245,8 +245,14 @@ fn main() {
         ));
     }));
     let ntp = irig106_time::network_time::NtpTime::from_le_bytes(&ntp_buf).unwrap();
-    r.push(bench("ntp_to_absolute", || {
-        let _ = black_box(black_box(ntp).to_absolute());
+    let table = LeapSecondTable::builtin();
+    let ntp_context = irig106_time::ntp::NtpContext::new(1);
+    r.push(bench("ntp_qualified_conversion", || {
+        black_box(irig106_time::ntp::convert_ntp(
+            black_box(ntp),
+            &ntp_context,
+            Some(&table),
+        ));
     }));
 
     // PTP
@@ -259,8 +265,8 @@ fn main() {
         ));
     }));
     let ptp = irig106_time::network_time::PtpTime::from_le_bytes(&ptp_buf).unwrap();
-    r.push(bench("ptp_to_absolute", || {
-        let _ = black_box(black_box(ptp).to_absolute(black_box(TaiUtcOffset::new(37))));
+    r.push(bench("ptp_qualified_conversion", || {
+        let _ = black_box(table.convert_ptp(black_box(ptp)));
     }));
 
     // Leap second table lookup

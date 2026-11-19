@@ -30,6 +30,9 @@ pub const NTP_UNIX_EPOCH_OFFSET: u64 = 2_208_988_800;
 /// This value is 37 seconds and has been stable since 2017.
 /// An explicit caller constant, never a fallback for an empty leap table.
 /// Use `LeapSecondTable::convert_ptp` for historical/currency-qualified UTC.
+/// # Warning
+/// Historical constant, not a date-dependent policy default. Never substitute
+/// it for a validated leap table/coverage evidence in recording answers.
 pub const DEFAULT_TAI_UTC_OFFSET: TaiUtcOffset = TaiUtcOffset::new(37);
 
 // ── Format 2 CSDW ───────────────────────────────────────────────────
@@ -231,6 +234,9 @@ impl NtpTime {
     /// Use crate::ntp::convert_ntp for qualified UTC, or raw_fixed_point_nanos
     /// for an explicitly modular view. Q-NTP was decided; context is required.
     /// **Traces:** L3-NTP-102 ← L2-NTP-102 ← L1-NTP-002
+    #[deprecated(
+        note = "Use raw_fixed_point_nanos for modular words or ntp::convert_ntp for era-qualified UTC."
+    )]
     pub fn to_nanos_since_ntp_epoch(&self) -> Result<u64> {
         Err(TimeError::NeedsContext {
             context: "NTP era/basis required; use ntp::convert_ntp",
@@ -240,6 +246,7 @@ impl NtpTime {
     /// Contextless compatibility API refuses to discard era/currency basis.
     /// Use crate::ntp::convert_ntp with explicit context (labelled fallback allowed).
     /// **Traces:** L3-NTP-104 ← L2-NTP-104 ← L1-NTP-004
+    #[deprecated(note = "Use ntp::convert_ntp; retain era, ambiguity and coverage basis.")]
     pub fn to_unix_seconds(&self) -> Result<u64> {
         Err(TimeError::NeedsContext {
             context: "NTP era/basis required; use ntp::convert_ntp",
@@ -249,6 +256,7 @@ impl NtpTime {
     /// Contextless compatibility API cannot report era assumptions or ambiguity.
     /// Use crate::ntp::convert_ntp for the evidence-qualified calendar result.
     /// **Traces:** L3-NTP-104 ← L2-NTP-104 ← L1-NTP-004
+    #[deprecated(note = "Use ntp::convert_ntp; retain scale, era and ambiguity basis.")]
     pub fn to_absolute(&self) -> Result<AbsoluteTime> {
         Err(TimeError::NeedsContext {
             context: "NTP era/basis required; use ntp::convert_ntp",
@@ -375,6 +383,9 @@ impl PtpTime {
     /// The offset accounts for accumulated leap seconds. As of 2017, the
     /// offset is 37 seconds (TAI = UTC + 37). For leap labels and currency/basis
     /// use LeapSecondTable::convert_ptp; this scalar helper has no table context.
+    #[deprecated(
+        note = "Use LeapSecondTable::convert_ptp; retain raw TAI, leap label, coverage and TF-021 basis."
+    )]
     pub fn to_absolute(&self, offset: TaiUtcOffset) -> Result<AbsoluteTime> {
         let utc_secs = self.to_utc_seconds(offset)?;
         let (year, doy, hour, minute, second) = unix_seconds_to_ymd(utc_secs);

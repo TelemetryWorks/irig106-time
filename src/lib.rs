@@ -13,11 +13,10 @@
 //!   PTP/IEEE 1588 decoding with built-in leap-second table
 //! - **Secondary headers** — Checksum validation and time extraction
 //! - **Intra-packet timestamps** — Format-discriminated timestamp parsing
-//! - **Correlation** — RTC-to-absolute-time interpolation engine with
-//!   channel-indexed O(log n) lookup, time-jump detection, drift estimation,
-//!   and RTC reset detection
-//! - **Streaming correlation** — Sliding-window correlator for live UDP
-//!   streams with automatic max-age eviction
+//! - **Correlation** — [`timeline`] preserves session/policy/scale and basis;
+//!   [`correlation`] is an unqualified compatibility engine
+//! - **Streaming correlation** — [`stream`] preserves bounded policy/basis;
+//!   [`streaming`] is an unqualified compatibility engine
 //! - **Quality metrics** — Reference point density, RTC gaps, per-channel
 //!   drift assessment
 //! - **Version detection** — IRIG 106 standard version identification from
@@ -27,6 +26,38 @@
 //!   construction (BCD, CSDW, NTP, PTP, RTC)
 //! - **jiff** — Optional checked civil conversions with explicit scale/year
 //!   and nanosecond precision; no timezone/clock or implicit UTC
+//!
+//! ## Retired context-free conversions (0.8.0)
+//!
+//! Use `ch4::Ch4Words::binary` with explicit context, `ntp::convert_ntp`,
+//! and `LeapSecondTable::convert_ptp` with retained basis instead.
+//!
+//! ```compile_fail
+//! use irig106_time::Ch4BinaryTimeExt;
+//! ```
+//! ```compile_fail
+//! use irig106_time::absolute::Ch4BinaryTimeExt;
+//! ```
+//! ```compile_fail
+//! #![deny(deprecated)]
+//! let t = irig106_time::NtpTime { seconds: 1, fraction: 0 };
+//! let _ = t.to_absolute();
+//! ```
+//! ```compile_fail
+//! #![deny(deprecated)]
+//! let t = irig106_time::NtpTime { seconds: 1, fraction: 0 };
+//! let _ = t.to_unix_seconds();
+//! ```
+//! ```compile_fail
+//! #![deny(deprecated)]
+//! let t = irig106_time::NtpTime { seconds: 1, fraction: 0 };
+//! let _ = t.to_nanos_since_ntp_epoch();
+//! ```
+//! ```compile_fail
+//! #![deny(deprecated)]
+//! let t = irig106_time::PtpTime { seconds: 1, nanoseconds: 0 };
+//! let _ = t.to_absolute(irig106_time::TaiUtcOffset::new(37));
+//! ```
 //!
 //! ## Recording-event boundary (0.8.0, ADR-0009)
 //!
@@ -150,9 +181,7 @@ pub(crate) mod util;
 pub mod jiff_interop;
 
 // Re-export key types at crate root for convenience.
-pub use absolute::{
-    AbsoluteTime, CalendarTime, Ch4BinaryTime, Ch4BinaryTimeExt, Ertc, Ieee1588Time,
-};
+pub use absolute::{AbsoluteTime, CalendarTime, Ch4BinaryTime, Ertc, Ieee1588Time};
 pub use bcd::{DayFormatTime, DmyFormatTime};
 pub use correlation::{ReferencePoint, RtcReset, TimeCorrelator, TimeJump};
 pub use csdw::{

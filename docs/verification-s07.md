@@ -110,3 +110,8 @@ mutation evidence28 initial +1 review =29 assertion-killed mutants.
 No whole-requirement marker added; matrix160/288 unchanged. Full18 bounded
 local CI-equivalent checks rerun for this revision, including CLI/benches/fuzz,
 MSRV/no_std/features, formatting/lints/docs, trace and deny; jobs/threads2.
+
+Subsequent S14b retirement: the compatibility Ch4BinaryTimeExt trait is removed
+from both paths. s07_existing now checks explicit Ch4Words::binary(None): valid
+counts stay labelled partial, invalid microseconds still reject. The preceding
+S07 verification narrative describes the API at that reviewed head.

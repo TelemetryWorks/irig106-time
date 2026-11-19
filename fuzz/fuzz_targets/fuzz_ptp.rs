@@ -9,13 +9,9 @@ fuzz_target!(|data: &[u8]| {
             assert!(ptp.nanoseconds < 1_000_000_000);
             let _ = ptp.to_nanos_since_tai_epoch();
             let _ = ptp.to_utc_seconds(TaiUtcOffset::new(37));
-            let _ = ptp.to_absolute(TaiUtcOffset::new(37));
 
             // Test with builtin leap table
             let table = LeapSecondTable::builtin();
-            if let Ok(offset) = table.offset_at_tai(ptp.tai_seconds()) {
-                let _ = ptp.to_absolute(offset);
-            }
             let _ = table.convert_ptp(ptp);
         }
         Err(_) => {}

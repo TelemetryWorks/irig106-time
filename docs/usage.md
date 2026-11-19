@@ -1,5 +1,11 @@
 # Usage Guide — irig106-time
 
+> **0.8 migration:** remaining prototype examples below are historical, not
+> recommended recording-answer APIs. Prefer README's qualified reader,
+> `timeline`/`stream`, and the S14 removed-export/migration audit. Context-free
+> NTP/PTP calendar helpers are deprecated; Chapter4's old trait is removed.
+
+
 **Document:** usage.md
 **Crate:** irig106-time v0.7.0
 **Date:** 2026-03-29
@@ -35,7 +41,7 @@ data — either from files or live UDP streams.
 21. [Time Quality Metrics](#21-time-quality-metrics)
 22. [Packet Standard (Ch10/Ch11)](#22-packet-standard-ch10ch11)
 23. [Recording-event Time Tags](#23-recording-event-time-tags)
-24. [chrono Interop](#24-chrono-interop)
+24. [Jiff Interop](#24-jiff-interop)
 25. [Integration with irig106-core](#25-integration-with-irig106-core)
 26. [Integration with irig106-decode](#26-integration-with-irig106-decode)
 27. [Integration with irig106-write](#27-integration-with-irig106-write)
@@ -48,19 +54,20 @@ data — either from files or live UDP streams.
 ## 1. Adding the Dependency
 
 ```toml
-# Cargo.toml
+# Cargo.toml for the upcoming0.8 release (not yet published):
 [dependencies]
-irig106-time = "0.7"
+irig106-time = "0.8"
 
 # For no_std environments (embedded, WASM):
-# irig106-time = { version = "0.7", default-features = false }
+# irig106-time = { version = "0.8", default-features = false }
 
-# For JSON/CSV export with serde:
-# irig106-time = { version = "0.7", features = ["serde"] }
-
-# For chrono::NaiveDateTime conversions:
-# irig106-time = { version = "0.7", features = ["chrono"] }
+# Optional checked jiff::civil::DateTime interoperability:
+# irig106-time = { version = "0.8", features = ["jiff"] }
 ```
+
+For a checkout before0.8 is published, use a path dependency. The library's
+serde/chrono features are removed in0.8; JSON belongs to the CLI and Jiff
+interop requires explicit year/scale. Do not add those removed feature names.
 
 The crate re-exports all key types at the root, so most code only needs:
 
@@ -506,8 +513,7 @@ for when you encounter each one:
 use irig106_time::*;
 use irig106_time::absolute::{Ch4BinaryTime, Ieee1588Time, Ertc};
 // `Ch4BinaryTime`, `Ieee1588Time`, and `Ertc` are defined in `irig106-types`
-// and re-exported here. `to_absolute()` on `Ch4BinaryTime` comes from the
-// `Ch4BinaryTimeExt` trait (included in `irig106_time::*`).
+// and re-exported here. Chapter4 requires explicit caller context via ch4.
 
 // ── 1. The 48-bit RTC ─────────────────────────────────────────────
 // WHERE: Every packet header, most intra-packet timestamps
@@ -518,13 +524,14 @@ let ns = rtc.to_nanos(); // 1_000_000_000 ns = 1 second
 
 // ── 2. Chapter 4 Binary Weighted Time ─────────────────────────────
 // WHERE: Secondary headers (flags [3:2]=0b00), intra-packet timestamps
-// WHAT:  Day-of-year + time-of-day in 10ms increments + microseconds
+// WHAT:  Full32-bit elapsed count in10ms increments plus microseconds; no origin
 let bwt = Ch4BinaryTime {
     high_order: 0x0003,
     low_order: 0x4650,
     microseconds: 500,
 };
-let abs = bwt.to_absolute().unwrap();
+let partial = irig106_time::ch4::Ch4Words::from(bwt).binary(None).unwrap();
+assert!(partial.calendar().is_none()); // Supply explicit origin to reconstruct.
 
 // ── 3. IEEE-1588 (PTP) ────────────────────────────────────────────
 // WHERE: Secondary headers (flags [3:2]=0b01), intra-packet timestamps
@@ -678,64 +685,110 @@ fn analyze_file(data: &[u8]) -> Vec<AnalysisResult> {
 
 ## 13. Processing Network Time Packets (0x12)
 
-*Added in v0.2.0.* Format 2 Network Time packets (Data Type 0x12) carry NTP or PTP
-timestamps instead of BCD-encoded IRIG time. The workflow is simpler than Format 1
-since there's no BCD decoding — just binary seconds and fractional/nanosecond fields.
+Format2 carries NTP UTC or native PTP TAI words (Chapter11 §11.2.3.3,
+Figures11-15..17). Convert with explicit session/table context and retain
+raw/status/basis; never call the deprecated context-free calendar shortcuts.
 
 ```rust
-use irig106_time::Rtc;
-use irig106_time::network_time::{
-    parse_time_f2_payload, NetworkTime, NetworkTimeProtocol,
-    TimeF2Csdw, NtpTime, PtpTime, LeapSecondTable,
+use irig106_time::{
+    Result,
+    format2::NetworkConversion,
+    network_time::{Format2Reading, LeapSecondTable, NetworkTime, decode_time_f2},
+    ntp::{NtpContext, convert_ntp},
 };
 
-/// Process a Time Data Format 2 packet payload.
-///
-/// `payload` starts AFTER the packet header (and secondary header if present).
-/// `rtc` is the RTC extracted from the packet header.
+// Payload excludes headers; Data Length excludes trailer filler/checksum.
+// Caller supplies this session's NTP evidence, never the host clock.
 fn process_time_f2_packet(
     payload: &[u8],
-    rtc: Rtc,
-    leap_table: &LeapSecondTable,
-) -> Option<irig106_time::AbsoluteTime> {
-    let (csdw, network_time) = parse_time_f2_payload(payload).ok()?;
-
-    match network_time {
-        NetworkTime::Ntp(ntp) => {
-            // NTP: UTC epoch (1900-01-01), no leap second conversion needed
-            ntp.to_absolute().ok()
+    data_length: usize,
+    ntp_context: &NtpContext,
+    table: &LeapSecondTable,
+) -> Result<(Format2Reading, Option<NetworkConversion>)> {
+    let reading = decode_time_f2(payload, data_length)?;
+    let conversion = if reading.is_usable() {
+        match reading.time.map(|t| t.value) {
+            Some(NetworkTime::Ntp(raw)) => Some(NetworkConversion::Ntp(convert_ntp(
+                raw,
+                ntp_context,
+                Some(table),
+            ))),
+            Some(NetworkTime::Ptp(raw)) => Some(NetworkConversion::Ptp(table.convert_ptp(raw)?)),
+            None => None,
         }
-        NetworkTime::Ptp(ptp) => {
-            // PTP: TAI epoch (1970-01-01), must apply leap-second offset
-            let offset = leap_table.offset_at_tai(ptp.tai_seconds());
-            ptp.to_absolute(offset).ok()
-        }
-    }
+    } else {
+        None // Invalid TS/reserved NTF is not promoted to absolute time.
+    };
+    Ok((reading, conversion)) // Retain raw/status and full conversion basis.
 }
 ```
 
+This is parsing/conversion, not reference admission. For recording answers use
+`format2::Format2Input::decode` then `Format2Observation::convert`, and
+`timeline`/`stream` with capture/declaration
+metadata; conversion alone does not declare a channel eligible. Missing NTP
+context/sentinel and missing PTP offset are explicit outcomes in the retained
+conversion, not panics or fabricated UTC. PTP after table coverage uses the last
+known offset with PossiblyOutOfDate/TF-021; retain that status and findings.
+
 ### NTP vs PTP: Key Differences
 
+NTP's era-qualified Unix coordinate subtracts2,208,988,800, never TAI-UTC;
+fractions floor to nanoseconds. Native PTP is TAI since1970, so conversion uses
+the supplied leap table. Keep NTP era/ambiguity and PTP leap/coverage evidence:
+
 ```rust
-use irig106_time::network_time::{NtpTime, PtpTime, NTP_UNIX_EPOCH_OFFSET};
-use irig106_time::TaiUtcOffset;
+fn main() -> irig106_time::Result<()> {
+    use irig106_time::{
+        NtpTime, PtpTime,
+        leap::PtpConversionStatus,
+        ntp::{EraBasis, EraDeclaration},
+    };
+    let table = LeapSecondTable::builtin();
+    let mut context = NtpContext::new(1); // Actual caller session.
+    context.declared = Some(EraDeclaration {
+        era: 0,
+        id: "caller era".into(),
+    });
 
-// ── NTP ──────────────────────────────────────────────────────────
-// Epoch: 1900-01-01 00:00:00 UTC
-// Timescale: UTC (leap seconds already applied)
-// Resolution: 2⁻³² seconds ≈ 233 picoseconds
-let ntp = NtpTime { seconds: 3_944_678_400, fraction: 1 << 31 };
-let unix_secs = ntp.to_unix_seconds().unwrap();  // subtract 2,208,988,800
-let nanos = ntp.fraction_as_nanos();             // ~500,000,000
+    // Ch11 Fig11-16 / RDG-012: UTC follows NTP reckoning, not TAI offsets.
+    let raw_ntp = NtpTime {
+        seconds: 3_944_678_400,
+        fraction: 1 << 31,
+    };
+    let ntp = convert_ntp(raw_ntp, &context, Some(&table));
+    assert_eq!(ntp.unix_seconds().map(|s| s.get()), Some(1_735_689_600));
+    assert_eq!(ntp.utc().map(|t| t.nanoseconds), Some(500_000_000));
+    assert_eq!(ntp.raw(), raw_ntp);
+    assert_eq!(ntp.basis().era_basis, Some(EraBasis::Declared));
 
-// ── PTP ──────────────────────────────────────────────────────────
-// Epoch: 1970-01-01 00:00:00 TAI (not UTC!)
-// Timescale: TAI (no leap seconds — monotonic)
-// Resolution: 1 nanosecond
-let ptp = PtpTime { seconds: 1_735_689_637, nanoseconds: 0 };
-let utc_secs = ptp.to_utc_seconds(TaiUtcOffset::new(37)); // TAI - 37 = UTC
-// 1_735_689_637 - 37 = 1_735_689_600 = 2025-01-01 00:00:00 UTC
+    // Fig11-17: native TAI; table conversion retains leap/currency evidence.
+    let raw_ptp = PtpTime {
+        seconds: 1_735_689_637,
+        nanoseconds: 0,
+    };
+    let ptp = table.convert_ptp(raw_ptp)?;
+    assert_eq!(ptp.unix_seconds().map(|s| s.get()), Some(1_735_689_600));
+    assert_eq!(ptp.status(), PtpConversionStatus::Covered);
+    assert_eq!(ptp.raw(), raw_ptp); // Keep this and the basis, not just UTC.
+
+    let mut payload = [0u8; 12];
+    payload[0] = 1; // NTF0, TS1; seconds/fraction are little-endian words.
+    payload[4..12].copy_from_slice(&raw_ntp.to_le_bytes());
+    let (reading, conversion) = process_time_f2_packet(&payload, 12, &context, &table)?;
+    assert!(reading.is_usable());
+    assert_eq!(conversion, Some(NetworkConversion::Ntp(ntp)));
+    payload[0] = 0; // Invalid TS: raw body remains, conversion withheld.
+    let (reading, conversion) = process_time_f2_packet(&payload, 12, &context, &table)?;
+    assert!(!reading.is_usable());
+    assert!(reading.time.is_some());
+    assert!(conversion.is_none());
+    Ok(())
+}
 ```
+
+Both snippets match [the compiled example](../examples/format2_usage.rs), which
+is checked with `deny(deprecated)`; run `cargo test --example format2_usage`.
 
 ---
 
@@ -1187,43 +1240,15 @@ for the body/time boundary. Replacement event-decoder availability is not claime
 
 ---
 
-## 24. chrono Interop
+## 24. Jiff Interop
 
-*Added in v0.6.0.* Enable the `chrono` feature for `From` conversions
-between `AbsoluteTime` and `chrono::NaiveDateTime`.
+In0.8.0 chrono is removed (ADR-0020). Enable optional `jiff` and use the checked
+`jiff_interop` functions with explicit `Scaled` evidence. The adapter uses
+`jiff::civil::DateTime`, preserving naive fields and UTC/TAI/GPS provenance;
+unknown year/scale and second60 refuse. It never guesses1970 or converts TAI
+or GPS to UTC implicitly. See the [current example](../src/jiff_interop.rs)
+and [exit-criteria verification](verification-jiff.md).
 
-```toml
-[dependencies]
-irig106-time = { version = "0.7", features = ["chrono"] }
-```
-
-```rust
-use irig106_time::AbsoluteTime;
-// use irig106_time::CalendarTime;
-// use chrono::NaiveDateTime;
-
-let t = AbsoluteTime::new(100, 12, 30, 25, 340_000_000).unwrap()
-    .with_year(Some(2025)).unwrap();
-
-// Convert AbsoluteTime to chrono (requires "chrono" feature, uses DOY)
-// let dt: NaiveDateTime = t.into();
-// assert_eq!(dt.year(), 2025);
-
-// Convert chrono to CalendarTime (chrono always has full date)
-// let ct: CalendarTime = dt.into();
-// assert_eq!(ct.month(), 4);
-// assert_eq!(ct.day_of_month(), 10);
-
-// Drop to AbsoluteTime if needed
-// let abs: AbsoluteTime = ct.into();
-```
-
-When converting `AbsoluteTime` to chrono, the year defaults to 1970 if absent.
-When converting from chrono, the result is a `CalendarTime` (chrono always
-provides year, month, and day). Use `.into_absolute_time()` or `.into()` to
-drop the calendar fields if you only need `AbsoluteTime`.
-
----
 
 ## 25. Integration with irig106-core
 

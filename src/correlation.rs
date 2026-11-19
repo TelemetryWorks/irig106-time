@@ -1,3 +1,7 @@
+//! # Legacy compatibility API
+//! Not recommended for new recording answers: this shape omits session/scale/basis.
+//! Use [`crate::timeline`] offline or [`crate::stream`] live with shared policy.
+//!
 //! Compatibility RTC-to-absolute-time correlation engine.
 //! For session/policy/scale-aware answers with basis use [`crate::timeline`].
 //!
@@ -191,7 +195,11 @@ impl TimeCorrelator {
         leap_table: &crate::network_time::LeapSecondTable,
     ) -> crate::error::Result<()> {
         let abs_time = match network_time {
-            crate::network_time::NetworkTime::Ntp(ntp) => ntp.to_absolute()?,
+            crate::network_time::NetworkTime::Ntp(_) => {
+                return Err(crate::TimeError::NeedsContext {
+                    context: "NTP era/basis required; use ntp::convert_ntp",
+                });
+            }
             crate::network_time::NetworkTime::Ptp(ptp) => {
                 // Compatibility calendar cannot hold second60. Canonical callers
                 // retain convert_ptp's raw TAI/currency/basis; this legacy API

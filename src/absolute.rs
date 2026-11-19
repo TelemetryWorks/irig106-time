@@ -66,11 +66,11 @@ const NANOS_PER_DAY: u64 = 86_400 * NANOS_PER_SECOND;
 
 /// Nanosecond-precision absolute time based on day-of-year.
 ///
-/// This is the primary time type in the crate. It represents a **DOY-based
+/// This compatibility value represents a **DOY-based
 /// timestamp** — a day-of-year (1–366) plus time-of-day, with an optional
 /// year annotation. It is produced by:
 /// - BCD Day-of-Year format parsing (`DayFormatTime::to_absolute`)
-/// - NTP/PTP conversion (`NtpTime::to_absolute`, `PtpTime::to_absolute`)
+/// - Explicit ordinary-calendar projections from qualified readings
 /// - The correlation engine (`TimeCorrelator::correlate`)
 ///
 /// A supplied year must agree with the day-of-year (including Gregorian
@@ -560,36 +560,6 @@ impl core::fmt::Display for CalendarTime {
             ms,
             us
         )
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// Chapter 4 Binary Weighted Time
-// ═══════════════════════════════════════════════════════════════════════
-
-/// Legacy context-free Chapter4 calendar conversion.
-/// Use [`crate::ch4::Ch4Words::binary`] with an explicit origin instead.
-pub trait Ch4BinaryTimeExt {
-    /// Context-free conversion cannot produce a calendar (Q-CH4, owner2026-11-12).
-    ///
-    /// # Warning
-    ///
-    /// The prototype's17-bit time/day split has been withdrawn. This method
-    /// validates microseconds then returns [`TimeError::NeedsContext`], never an
-    /// invented day1/year/origin. Use [`crate::ch4::Ch4Words::binary`] for labelled
-    /// partial elapsed time or explicitly qualified nominal calendar reconstruction.
-    /// Raw secondary/IPTS parsing remains the shared full32-bit count.
-    ///
-    /// **Traces:** L3-ABS-102 ← L2-ABS-102 ← L1-ABS-002
-    fn to_absolute(&self) -> Result<AbsoluteTime>;
-}
-
-impl Ch4BinaryTimeExt for Ch4BinaryTime {
-    fn to_absolute(&self) -> Result<AbsoluteTime> {
-        crate::ch4::Ch4Words::from(*self).binary(None)?;
-        Err(TimeError::NeedsContext {
-            context: "Chapter4 requires explicit calendar origin",
-        })
     }
 }
 

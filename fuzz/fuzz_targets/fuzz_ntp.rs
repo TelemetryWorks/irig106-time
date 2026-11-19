@@ -15,14 +15,7 @@ fuzz_target!(|data: &[u8]| {
             assert_eq!(converted.raw(),ntp);
             let _=converted.utc(); // Range/context outcomes are values, not fuzz crashes.
 
-            // to_unix_seconds must not panic
-            let _ = ntp.to_unix_seconds();
 
-            // to_nanos_since_ntp_epoch must not panic
-            let _ = ntp.to_nanos_since_ntp_epoch();
-
-            // to_absolute must not panic (may return Err for pre-Unix-epoch)
-            let _ = ntp.to_absolute();
         }
         Err(_) => {}
     }

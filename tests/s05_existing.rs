@@ -1,3 +1,4 @@
+#![allow(deprecated)] // Intentional tests of retired compatibility APIs; new code uses qualified adapters.
 //! Existing correct controls, not claims of main-first conversion failures.
 use irig106_time::{NtpTime, TimeError};
 /// Requirements: L1-NTP-001, L2-NTP-101, L3-NTP-101
