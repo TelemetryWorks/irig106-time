@@ -270,7 +270,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
 | L1-ENC-001 | L2-ENC-101 | _(none)_ | Draft |
-| L1-ENC-002 | L2-ENC-102 | _(none)_ | Draft |
+| L1-ENC-002 | L2-ENC-102 | `tests/s13a_format2_encode.rs::complete_format2_encoder_contract` | Implemented |
 | L1-ENC-003 | L2-ENC-103 | _(none)_ | Draft |
 
 **L2 -> L3 -> Verification Artifacts**
@@ -278,7 +278,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
 | L2-ENC-101 | L3-ENC-101 | _(TBD)_ | Draft |
-| L2-ENC-102 | L3-ENC-102 | _(TBD)_ | Draft |
+| L2-ENC-102 | L3-ENC-102 | `tests/s13a_format2_encode.rs::complete_format2_encoder_contract` | Implemented |
 | L2-ENC-103 | L3-ENC-103 | _(TBD)_ | Draft |
 
 ### L1-EDN: Editions
@@ -630,7 +630,7 @@ This matrix is the single source of truth for live status; the requirement docum
 | F2COR | 2 | 2 | 2 | 2 | 2 | 2 | 2 |
 | TAI | 7 | 7 | 7 | 7 | 7 | 7 | 7 |
 | WORD | 2 | 2 | 2 | 1 | 1 | 1 | 1 |
-| ENC | 3 | 3 | 3 | 0 | 0 | 0 | 0 |
+| ENC | 3 | 3 | 3 | 1 | 1 | 1 | 1 |
 | EDN | 3 | 4 | 4 | 4 | 4 | 4 | 4 |
 | DECL | 2 | 2 | 2 | 1 | 1 | 1 | 1 |
 | COR | 13 | 13 | 13 | 11 | 11 | 11 | 11 |
@@ -645,13 +645,13 @@ This matrix is the single source of truth for live status; the requirement docum
 | CLI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
 | REL | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
 | TST | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
-| **Total** | **124** | **144** | **144** | **96** | **96** | **96** | **96** |
+| **Total** | **124** | **144** | **144** | **97** | **97** | **97** | **97** |
 
 The countable requirement set is every L2 and L3 requirement plus the 0 L1 *leaf* requirement(s) (L1s with no L2 decomposition yet). Composite L1s are verified through their children.
 
-**Tested by at least one test marker**: 192 of 288 (66.7%).
+**Tested by at least one test marker**: 194 of 288 (67.4%).
 
-**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 192 of 288 (66.7%).
+**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 194 of 288 (67.4%).
 
 ### Orphan check
 

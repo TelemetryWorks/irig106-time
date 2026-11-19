@@ -784,9 +784,9 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-ENC-002
 
-**Statement**: The library SHALL encode Format 2 data words and bodies without confusing status, format, epochs, or byte order.
+**Statement**: The library SHALL encode Format 2 data words and bodies without confusing status, format, epochs, or byte order. Canonical CSDW output SHALL clear bits31..8, preserve TS0 as invalid, and reject reserved NTF/TS values. PTP encoding SHALL reject invalid raw nanoseconds and typed TAI seconds outside32 bits; raw NTP seconds/fraction (including the zero sentinel) SHALL remain unchanged.
 
-**Source**: §11.2.3.3; §11.2.1 f; contract 2.2, 4.11.
+**Source**: §11.2.3.3; §11.2.1 f; contract 2.2, 4.11. Figure11-15: "Bits 31-8 are reserved", "0x0 = Time Not Valid", "0x1 = Time Valid"; Figures11-16/17: "Time Unsigned Seconds", "Time Unsigned Seconds Fractions", "Time Unsigned Nanoseconds" (106-24R1 printed11-27 / PDF35). Canonical checked writing clears reserved positions and rejects reserved selectors; raw diagnostic preservation uses as_raw(), not the wire encoder.
 
 **Verification Method**: Test (T)
 
