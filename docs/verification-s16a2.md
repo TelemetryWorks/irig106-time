@@ -1,7 +1,7 @@
 # S16a2 — host-callable CLI and injected output
 
-Base main ac41df3. ADR-0007/0008; no time-library or reader-algorithm changes.
-run accepts &[&str] without argv[0]/host time and returns ExitClass; only the
+Base main ac41df3. ADR-0007/0008; no time-library changes.
+run accepts &[S] where S: AsRef<OsStr>, without argv[0]/host time, and returns ExitClass; only the
 thin src/bin/irigtime.rs obtains stdio handles and exits. All six command/help
 renderers use injected writers, propagating writes/flushes. CLI stays std-only.
 To bound the review, Cargo temporarily targets existing src/main.rs as the CLI
@@ -26,3 +26,47 @@ usage-before-input, invalid-input and all-five-code precedence remain S16a3.
 No whole markers added or tests lost; tested196/288, verified202/288 unchanged.
 S16b bounded memory and qualified joining/reporting remain separate. README
 memory/publication gate and publish=false remain. No Review/Design field changes.
+
+## S16a2 review fixes — host input and native arguments
+
+bf39b00 first reproduces the 24-byte Format 2/flag0x04 file panic at runtime,
+caught by the host test's catch_unwind before its expected exit3 assertion.
+5831ac6 adds Unix native-argv tests before the production change: both native
+input/output filenames work in host and binary; non-UTF-8 command/option names
+return2, including an option on a missing input before it can be opened.
+The coordinator's pre-freeze decision is now in CLI-102 and ADR-0007.
+run accepts strings or OsString/OsStr-compatible values without lossy path
+conversion. Main collects args_os. Only display labels may replace invalid
+Unicode; file access always receives the original Path. Other tmats work is
+outside this repository and was not touched.
+
+### Complete CLI packet slice/index inventory
+
+| Site | Bound or fix |
+| --- | --- |
+| PktHeader::parse fixed byte indexes 0..21 | Existing len>=24 guard proves all fixed header fields readable. |
+| scan remaining/packet selection | get(offset..) and get(..packet_length), minimum data_offset; zero/short/oversized/truncated lengths fail3. Partial trailing headers and invalid sync fail3 rather than silent success. |
+| scan progress and counters | Each accepted packet is at least24 bytes, bounded by the remaining slice; offset+packet.len cannot overflow or exceed file length. Sync retry offset+1 is bounded by that same remaining-header proof. Counts are bounded by file length/24 in this single-pass private scanner. |
+| PktHeader::payload | Checked get(data_offset..) then get(..Data Length); no addition of hostile lengths. u32 fits usize on supported32/64-bit targets. Trailer bytes cannot satisfy a short declared body. |
+| process_time_packet CSDW and BCD | get(..4) proves indexes0..3. Constant body offset4 plus minimum6/8-byte BCD guards proves the remaining body slice; library decoder sees only declared data. |
+| process_time_f2_packet | Replace unchecked data_start.. slice with checked payload. Short/absent bodies become errors; all six commands propagate scanner errors as input3. |
+| find_next_sync fixed checksum accesses | get(start..) then windows(24); header[..22] is safe, chunks_exact(2) proves each word index0/1, window proves indexes22/23. checked_add returns the recovered offset. Existing word-sum candidate convention is retained, not a new standard checksum claim. |
+| Other packet-path values/formatters | Arrays passed to RTC/CSDW are fixed after the bounds above; map entries use entry/get/iteration, resolved records use iteration, fmt_comma iterates bytes (i<len), no unchecked packet-derived indexes remain. |
+
+The legacy flag interpretation (including0x04) and qualification/report model
+remain S16b work; this audit repairs bounds, not those semantics. Empty input
+retains the S15 interim behavior so CSV flush/write guards still run. Whole-file
+allocation and the README memory/publication gate remain unchanged.
+
+### Focused evidence
+
+Five packet/native-argv tests, four host tests, six S15 guards and the two CLI
+BCD tests pass. Cases cover short headers, both time types with/without the
+legacy secondary offset, undersized/max packet lengths, declared body bounds
+with otherwise valid BCD/PTP bytes and trailer filler, and native filesystem
+input/output. No new whole-requirement markers: coverage remains unchanged.
+The success-path stderr-flush assertion kills its previously surviving mutant.
+Additional runtime mutants killed: ignore Data Length, open a lossy path, and
+use UTF-8 env::args in main. All mutations are restored before final checks.
+Local fmt, focused tests/mutants, touched-crate Clippy and trace check only;
+remaining checks use PR CI. Full strict grammar/threshold exits remain S16a3.

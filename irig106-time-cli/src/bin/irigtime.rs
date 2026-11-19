@@ -13,8 +13,7 @@
 )]
 
 fn main() {
-    let arguments: Vec<String> = std::env::args().skip(1).collect();
-    let arguments: Vec<&str> = arguments.iter().map(String::as_str).collect();
+    let arguments: Vec<std::ffi::OsString> = std::env::args_os().skip(1).collect();
     let class = irig106_time_cli::run(
         &arguments,
         &mut std::io::stdout().lock(),

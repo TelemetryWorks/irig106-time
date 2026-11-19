@@ -29,7 +29,9 @@
 )]
 
 use std::collections::BTreeMap;
+use std::ffi::OsStr;
 use std::io::{self, Write};
+use std::path::Path;
 use std::result::Result;
 
 use irig106_time::bcd::{DayFormatTime, DmyFormatTime};
@@ -78,6 +80,12 @@ impl PktHeader {
             data_type: buf[15],
             rtc: Rtc::from_le_bytes([buf[16], buf[17], buf[18], buf[19], buf[20], buf[21]]),
         })
+    }
+
+    fn payload<'a>(&self, packet: &'a [u8]) -> Option<&'a [u8]> {
+        packet
+            .get(self.data_offset()..)?
+            .get(..self._data_length as usize)
     }
 
     fn has_secondary_header(&self) -> bool {
@@ -178,18 +186,29 @@ impl Ch10TimeScanner {
         }
     }
 
-    fn scan(&mut self, mmap: &[u8], resolve_all: bool, limit: Option<usize>) {
+    fn scan(
+        &mut self,
+        mmap: &[u8],
+        resolve_all: bool,
+        limit: Option<usize>,
+    ) -> Result<(), Failure> {
         let mut offset = 0;
         let file_len = mmap.len();
 
-        while offset + HEADER_SIZE <= file_len {
+        while offset < file_len {
             if let Some(limit) = limit {
                 if self.total_packets >= limit {
                     break;
                 }
             }
 
-            let hdr = match PktHeader::parse(&mmap[offset..]) {
+            let remaining = mmap
+                .get(offset..)
+                .ok_or_else(|| Failure::new(ExitClass::Input, "invalid packet offset"))?;
+            if remaining.len() < HEADER_SIZE {
+                return Err(Failure::new(ExitClass::Input, "truncated packet header"));
+            }
+            let hdr = match PktHeader::parse(remaining) {
                 Some(h) => h,
                 None => {
                     // Try to find next sync
@@ -203,14 +222,23 @@ impl Ch10TimeScanner {
                         offset = next;
                         continue;
                     } else {
-                        break;
+                        return Err(Failure::new(ExitClass::Input, "invalid packet sync"));
                     }
                 }
             };
 
             let pkt_len = hdr.packet_length as usize;
-            if pkt_len < HEADER_SIZE || offset + pkt_len > file_len {
-                break;
+            let packet = remaining
+                .get(..pkt_len)
+                .filter(|p| p.len() >= hdr.data_offset())
+                .ok_or_else(|| {
+                    Failure::new(ExitClass::Input, "invalid or truncated packet length")
+                })?;
+            if hdr.payload(packet).is_none() {
+                return Err(Failure::new(
+                    ExitClass::Input,
+                    "Data Length exceeds packet body",
+                ));
             }
 
             // Track RTC range
@@ -224,10 +252,14 @@ impl Ch10TimeScanner {
             // Process time packets
             if hdr.data_type == DATA_TYPE_TIME_F1 {
                 self.time_packets += 1;
-                self.process_time_packet(&mmap[offset..offset + pkt_len], &hdr);
+                self.process_time_packet(packet, &hdr);
             } else if hdr.data_type == DATA_TYPE_TIME_F2 {
                 self.time_packets += 1;
-                self.process_time_f2_packet(&mmap[offset..offset + pkt_len], &hdr);
+                self.process_time_f2_packet(packet, &hdr);
+            }
+
+            if let Some(error) = self.errors.last() {
+                return Err(Failure::new(ExitClass::Input, error));
             }
 
             // Optionally resolve all packets
@@ -244,35 +276,40 @@ impl Ch10TimeScanner {
             }
 
             self.total_packets += 1;
-            offset += pkt_len;
+            offset += packet.len(); // Bounded by remaining.len(), so cannot overflow.
         }
+        if let Some(error) = self.errors.last() {
+            return Err(Failure::new(ExitClass::Input, error));
+        }
+        Ok(())
     }
 
     fn process_time_packet(&mut self, pkt_buf: &[u8], hdr: &PktHeader) {
-        let data_start = hdr.data_offset();
-        if data_start + 4 > pkt_buf.len() {
+        let Some(payload) = hdr.payload(pkt_buf) else {
+            self.errors.push("invalid Format 1 body bounds".into());
+            return;
+        };
+        let Some(csdw_bytes) = payload.get(..4) else {
             self.errors.push(format!(
                 "Time packet at ch={} too short for CSDW",
                 hdr.channel_id
             ));
             return;
-        }
-
-        let csdw_bytes = &pkt_buf[data_start..data_start + 4];
+        };
         let csdw =
             TimeF1Csdw::from_le_bytes([csdw_bytes[0], csdw_bytes[1], csdw_bytes[2], csdw_bytes[3]]);
 
-        let bcd_start = data_start + 4;
+        let bcd_start = 4;
         let abs_time = match csdw.date_format() {
             DateFormat::DayOfYear => {
-                if bcd_start + 6 > pkt_buf.len() {
+                if bcd_start + 6 > payload.len() {
                     self.errors.push(format!(
                         "Time packet ch={}: buffer too short for DOY BCD",
                         hdr.channel_id
                     ));
                     return;
                 }
-                match DayFormatTime::from_le_bytes(&pkt_buf[bcd_start..]) {
+                match DayFormatTime::from_le_bytes(&payload[bcd_start..]) {
                     Ok(t) => t.to_absolute(),
                     Err(e) => {
                         self.errors.push(format!(
@@ -284,14 +321,14 @@ impl Ch10TimeScanner {
                 }
             }
             DateFormat::DayMonthYear => {
-                if bcd_start + 8 > pkt_buf.len() {
+                if bcd_start + 8 > payload.len() {
                     self.errors.push(format!(
                         "Time packet ch={}: buffer too short for DMY BCD",
                         hdr.channel_id
                     ));
                     return;
                 }
-                match DmyFormatTime::from_le_bytes(&pkt_buf[bcd_start..]) {
+                match DmyFormatTime::from_le_bytes(&payload[bcd_start..]) {
                     Ok(t) => match t.to_calendar_time() {
                         Ok(ct) => ct.into_absolute_time(),
                         Err(e) => {
@@ -336,8 +373,10 @@ impl Ch10TimeScanner {
     }
 
     fn process_time_f2_packet(&mut self, pkt_buf: &[u8], hdr: &PktHeader) {
-        let data_start = hdr.data_offset();
-        let payload = &pkt_buf[data_start..];
+        let Some(payload) = hdr.payload(pkt_buf) else {
+            self.errors.push("invalid Format 2 body bounds".into());
+            return;
+        };
 
         let (csdw, network_time) = match parse_time_f2_payload(payload) {
             Ok(result) => result,
@@ -402,19 +441,14 @@ impl Ch10TimeScanner {
 }
 
 fn find_next_sync(buf: &[u8], start: usize) -> Option<usize> {
-    let end = buf.len().saturating_sub(HEADER_SIZE);
-    for i in start..end {
-        if u16::from_le_bytes([buf[i], buf[i + 1]]) == SYNC_PATTERN {
-            // Basic validation: check header checksum
-            let mut sum: u32 = 0;
-            for j in 0..11 {
-                let word = u16::from_le_bytes([buf[i + j * 2], buf[i + j * 2 + 1]]);
-                sum = sum.wrapping_add(word as u32);
-            }
-            let computed = (sum & 0xFFFF) as u16;
-            let stored = u16::from_le_bytes([buf[i + 22], buf[i + 23]]);
-            if computed == stored {
-                return Some(i);
+    let tail = buf.get(start..)?;
+    for (offset, header) in tail.windows(HEADER_SIZE).enumerate() {
+        if u16::from_le_bytes([header[0], header[1]]) == SYNC_PATTERN {
+            let sum = header[..22].chunks_exact(2).fold(0u16, |sum, word| {
+                sum.wrapping_add(u16::from_le_bytes([word[0], word[1]]))
+            });
+            if sum == u16::from_le_bytes([header[22], header[23]]) {
+                return start.checked_add(offset);
             }
         }
     }
@@ -518,9 +552,9 @@ fn fmt_comma(n: usize) -> String {
 // Command implementations
 // ────────────────────────────────────────────────────────────────────
 
-fn cmd_summary(mmap: &[u8], filename: &str, stdout: &mut dyn Write) -> Result<(), Failure> {
+fn cmd_summary(mmap: &[u8], filename: &Path, stdout: &mut dyn Write) -> Result<(), Failure> {
     let mut scanner = Ch10TimeScanner::new();
-    scanner.scan(mmap, false, None);
+    scanner.scan(mmap, false, None)?;
 
     writeln!(
         stdout,
@@ -532,7 +566,7 @@ fn cmd_summary(mmap: &[u8], filename: &str, stdout: &mut dyn Write) -> Result<()
         "================================================================"
     )?;
     writeln!(stdout)?;
-    writeln!(stdout, "File               : {}", filename)?;
+    writeln!(stdout, "File               : {}", filename.display())?;
     writeln!(
         stdout,
         "File Size          : {} bytes",
@@ -681,7 +715,7 @@ fn cmd_summary(mmap: &[u8], filename: &str, stdout: &mut dyn Write) -> Result<()
 
 fn cmd_channels(mmap: &[u8], stdout: &mut dyn Write) -> Result<(), Failure> {
     let mut scanner = Ch10TimeScanner::new();
-    scanner.scan(mmap, false, None);
+    scanner.scan(mmap, false, None)?;
 
     writeln!(
         stdout,
@@ -738,7 +772,7 @@ fn cmd_channels(mmap: &[u8], stdout: &mut dyn Write) -> Result<(), Failure> {
 
 fn cmd_jumps(mmap: &[u8], threshold_ms: u64, stdout: &mut dyn Write) -> Result<(), Failure> {
     let mut scanner = Ch10TimeScanner::new();
-    scanner.scan(mmap, false, None);
+    scanner.scan(mmap, false, None)?;
 
     let threshold_ns = threshold_ms.checked_mul(1_000_000).ok_or_else(|| {
         Failure::new(
@@ -796,7 +830,7 @@ fn cmd_jumps(mmap: &[u8], threshold_ms: u64, stdout: &mut dyn Write) -> Result<(
 
 fn cmd_timeline(mmap: &[u8], limit: usize, stdout: &mut dyn Write) -> Result<(), Failure> {
     let mut scanner = Ch10TimeScanner::new();
-    scanner.scan(mmap, true, Some(limit));
+    scanner.scan(mmap, true, Some(limit))?;
 
     writeln!(
         stdout,
@@ -833,12 +867,12 @@ fn cmd_timeline(mmap: &[u8], limit: usize, stdout: &mut dyn Write) -> Result<(),
 
 fn cmd_csv(
     mmap: &[u8],
-    output_path: Option<&str>,
+    output_path: Option<&Path>,
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
 ) -> Result<(), Failure> {
     let mut scanner = Ch10TimeScanner::new();
-    scanner.scan(mmap, true, None);
+    scanner.scan(mmap, true, None)?;
 
     let mut out: Box<dyn Write + '_> = match output_path {
         Some(path) => {
@@ -892,7 +926,12 @@ fn cmd_csv(
 
     out.flush()?;
     if let Some(path) = output_path {
-        writeln!(stderr, "Wrote {} rows to {}", scanner.resolved.len(), path)?;
+        writeln!(
+            stderr,
+            "Wrote {} rows to {}",
+            scanner.resolved.len(),
+            path.display()
+        )?;
     }
     Ok(())
 }
@@ -906,7 +945,7 @@ fn cmd_correlate(mmap: &[u8], rtc_hex: &str, stdout: &mut dyn Write) -> Result<(
     let target = Rtc::from_raw(rtc_val);
 
     let mut scanner = Ch10TimeScanner::new();
-    scanner.scan(mmap, false, None);
+    scanner.scan(mmap, false, None)?;
 
     writeln!(
         stdout,
@@ -1021,12 +1060,18 @@ impl From<io::Error> for Failure {
 
 /// Run with arguments after the program name (or after the host's `time`).
 ///
+/// Arguments may be OsString/OsStr or strings. Paths retain native encoding;
+/// non-UTF-8 command/option syntax returns usage2.
 /// All output uses these writers; no global stdout/stderr or process exit.
 /// S16a3 replaces the permissive legacy dispatcher with strict args validation.
 /// Input still uses the S15b whole-file snapshot until S16b bounded streaming.
 /// Traces: L3-CLI-101 <- L2-CLI-101 <- L1-CLI-001;
 /// L3-CLI-102 <- L2-CLI-102 <- L1-CLI-002 (host/writer clauses only).
-pub fn run(args: &[&str], stdout: &mut dyn Write, stderr: &mut dyn Write) -> ExitClass {
+pub fn run<S: AsRef<OsStr>>(
+    args: &[S],
+    stdout: &mut dyn Write,
+    stderr: &mut dyn Write,
+) -> ExitClass {
     let result = dispatch(args, stdout, stderr).and_then(|()| {
         stdout.flush()?;
         stderr.flush()?;
@@ -1048,8 +1093,35 @@ pub fn run(args: &[&str], stdout: &mut dyn Write, stderr: &mut dyn Write) -> Exi
         }
     }
 }
-fn dispatch(args: &[&str], stdout: &mut dyn Write, stderr: &mut dyn Write) -> Result<(), Failure> {
-    let command = args.first().copied().unwrap_or("--help");
+fn dispatch<S: AsRef<OsStr>>(
+    args: &[S],
+    stdout: &mut dyn Write,
+    stderr: &mut dyn Write,
+) -> Result<(), Failure> {
+    let command = args
+        .first()
+        .map(AsRef::as_ref)
+        .unwrap_or(OsStr::new("--help"))
+        .to_str()
+        .ok_or_else(|| Failure::new(ExitClass::Usage, "command is not UTF-8"))?;
+    for (index, argument) in args.iter().enumerate().skip(1) {
+        let input_path = index == 1
+            && matches!(
+                command,
+                "summary" | "channels" | "jumps" | "timeline" | "csv" | "correlate"
+            );
+        let output_path = command == "csv"
+            && args
+                .get(index - 1)
+                .is_some_and(|a| a.as_ref() == "--output");
+        let option_name = argument.as_ref().as_encoded_bytes().starts_with(b"-") && !output_path;
+        if argument.as_ref().to_str().is_none() && ((!input_path && !output_path) || option_name) {
+            return Err(Failure::new(
+                ExitClass::Usage,
+                "command argument or option name is not UTF-8",
+            ));
+        }
+    }
     if matches!(command, "-h" | "--help" | "help") {
         return print_usage(stdout);
     }
@@ -1066,29 +1138,36 @@ fn dispatch(args: &[&str], stdout: &mut dyn Write, stderr: &mut dyn Write) -> Re
             format!("Unknown command: '{command}'"),
         ));
     }
-    let path = args
-        .get(1)
-        .ok_or_else(|| Failure::new(ExitClass::Usage, "missing input file"))?;
+    let path = Path::new(
+        args.get(1)
+            .ok_or_else(|| Failure::new(ExitClass::Usage, "missing input file"))?
+            .as_ref(),
+    );
     let rtc = if command == "correlate" {
         Some(
-            *args
-                .get(2)
+            args.get(2)
+                .and_then(|s| s.as_ref().to_str())
                 .ok_or_else(|| Failure::new(ExitClass::Usage, "missing RTC"))?,
         )
     } else {
         None
     };
     // Safe owned snapshot; S16b will replace this with bounded streaming.
-    let data = std::fs::read(path)
-        .map_err(|e| Failure::new(ExitClass::Input, format!("cannot read '{path}': {e}")))?;
+    let data = std::fs::read(path).map_err(|e| {
+        Failure::new(
+            ExitClass::Input,
+            format!("cannot read '{}': {e}", path.display()),
+        )
+    })?;
     match command {
         "summary" => cmd_summary(&data, path, stdout),
         "channels" => cmd_channels(&data, stdout),
         "jumps" => {
             let threshold = args
                 .iter()
-                .position(|a| *a == "--threshold-ms")
+                .position(|a| a.as_ref() == "--threshold-ms")
                 .and_then(|i| args.get(i + 1))
+                .and_then(|v| v.as_ref().to_str())
                 .and_then(|v| v.parse::<u64>().ok())
                 .unwrap_or(1000);
             cmd_jumps(&data, threshold, stdout)
@@ -1096,8 +1175,9 @@ fn dispatch(args: &[&str], stdout: &mut dyn Write, stderr: &mut dyn Write) -> Re
         "timeline" => {
             let limit = args
                 .iter()
-                .position(|a| *a == "--limit")
+                .position(|a| a.as_ref() == "--limit")
                 .and_then(|i| args.get(i + 1))
+                .and_then(|v| v.as_ref().to_str())
                 .and_then(|v| v.parse::<usize>().ok())
                 .unwrap_or(100);
             cmd_timeline(&data, limit, stdout)
@@ -1105,9 +1185,9 @@ fn dispatch(args: &[&str], stdout: &mut dyn Write, stderr: &mut dyn Write) -> Re
         "csv" => {
             let output = args
                 .iter()
-                .position(|a| *a == "--output")
+                .position(|a| a.as_ref() == "--output")
                 .and_then(|i| args.get(i + 1))
-                .copied();
+                .map(|s| Path::new(s.as_ref()));
             cmd_csv(&data, output, stdout, stderr)
         }
         "correlate" => cmd_correlate(&data, rtc.unwrap_or_default(), stdout),

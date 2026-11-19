@@ -1712,9 +1712,9 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-CLI-002
 
-**Statement**: The CLI SHALL expose host-callable commands and renderers so irig106-cli can mount the same implementation.
+**Statement**: The CLI SHALL expose host-callable commands and renderers so irig106-cli can mount the same implementation. Arguments SHALL preserve OS-native paths; non-UTF-8 command/option names SHALL return usage exit 2 without panicking.
 
-**Source**: ADR-0007; ROADMAP P6-10.
+**Source**: ADR-0007; ROADMAP P6-10. Coordinator S16a2 review decision: "use OsString"; "Non-UTF-8 paths must work. A non-UTF-8 command or option name gives usage exit 2, never a panic."
 
 **Verification Method**: Test (T)
 

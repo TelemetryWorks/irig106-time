@@ -80,9 +80,35 @@ fn packet_and_time_payload_truncations_are_input_errors() {
 }
 #[test]
 fn declared_data_length_bounds_f1_and_f2_even_with_trailer_bytes() {
-    for kind in [0x11, 0x12] {
-        input_error(&packet(kind, 0, 48, 0));
-        input_error(&packet(kind, 0, 48, u32::MAX));
+    for (kind, body) in [
+        // Figure 11-13: CSDW=0, DOY001 00:00:00.00 (six BCD bytes).
+        (0x11, vec![0, 0, 0, 0, 0, 0, 0, 0, 1, 0]),
+        // Figures 11-15/17: NTF1/TS1; 2017-01-01 TAI seconds, zero ns.
+        (
+            0x12,
+            [
+                vec![0x11, 0, 0, 0],
+                1_483_228_837u32.to_le_bytes().to_vec(),
+                vec![0; 4],
+            ]
+            .concat(),
+        ),
+    ] {
+        let mut bytes = packet(kind, 0, 48, body.len() as u32);
+        bytes[24..24 + body.len()].copy_from_slice(&body);
+        let valid = Input::new(&bytes);
+        assert_eq!(
+            run(
+                &["summary", valid.0.to_str().unwrap()],
+                &mut Vec::new(),
+                &mut Vec::new()
+            ),
+            ExitClass::Success
+        );
+        for length in [0u32, u32::MAX] {
+            bytes[8..12].copy_from_slice(&length.to_le_bytes());
+            input_error(&bytes);
+        }
     }
 }
 
@@ -128,9 +154,15 @@ mod native_argv {
         let bad = OsString::from_vec(vec![b'-', b'-', 0xff]);
         for args in [
             vec![bad.clone()],
+            vec![OsString::from("summary"), bad.clone()],
             vec![
                 OsString::from("summary"),
                 input.0.as_os_str().to_owned(),
+                bad.clone(),
+            ],
+            vec![
+                OsString::from("summary"),
+                input.0.with_extension("missing").into_os_string(),
                 bad,
             ],
         ] {

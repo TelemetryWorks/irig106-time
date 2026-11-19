@@ -1503,9 +1503,9 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 
 **L1 ancestor**: L1-CLI-002
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Run accepts injected arguments and input/output interfaces and returns a structured outcome; it must not call process::exit. The host strips its time subcommand before invoking the shared parser. No reverse dependency on irig106-cli.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Run accepts injected arguments and input/output interfaces and returns a structured outcome; it must not call process::exit. The host strips its time subcommand before invoking the shared parser. No reverse dependency on irig106-cli. Arguments SHALL preserve OS-native paths; non-UTF-8 command/option names SHALL return usage exit 2 without panicking.
 
-**Source**: ADR-0007; ROADMAP P6-10.
+**Source**: ADR-0007; ROADMAP P6-10. Coordinator S16a2 review decision: "use OsString"; "Non-UTF-8 paths must work. A non-UTF-8 command or option name gives usage exit 2, never a panic."
 
 **Planned verification**: Standalone and host-style calls produce the same report; injected I/O failures and help return without terminating the host.
 
