@@ -1,3 +1,4 @@
+#![allow(deprecated)] // Intentional tests of retired compatibility APIs; new code uses qualified adapters.
 //! Hand-derived fixtures, ADR-0016. No fixture uses the implementation encoder.
 use irig106_time::network_time::{NetworkTimeProtocol, NtpTime, PtpTime, TimeF2Csdw};
 use irig106_time::secondary::validate_secondary_checksum;

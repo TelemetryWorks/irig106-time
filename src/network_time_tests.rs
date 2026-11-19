@@ -1,3 +1,4 @@
+#![allow(deprecated)] // Intentional tests of retired compatibility APIs; new code uses qualified adapters.
 //! Unit tests for the `network_time` module (Time Data Format 2, 0x12).
 //!
 //! # Test Documentation

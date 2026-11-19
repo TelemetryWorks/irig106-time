@@ -1,3 +1,4 @@
+#![allow(deprecated)] // Intentional tests of retired compatibility APIs; new code uses qualified adapters.
 //! New decoded-reading contracts; hand-derived values cited on each case.
 use irig106_time::csdw::TimeF1Layout;
 use irig106_time::format1::decode_time_f1;

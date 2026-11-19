@@ -13,11 +13,10 @@
 //!   PTP/IEEE 1588 decoding with built-in leap-second table
 //! - **Secondary headers** — Checksum validation and time extraction
 //! - **Intra-packet timestamps** — Format-discriminated timestamp parsing
-//! - **Correlation** — RTC-to-absolute-time interpolation engine with
-//!   channel-indexed O(log n) lookup, time-jump detection, drift estimation,
-//!   and RTC reset detection
-//! - **Streaming correlation** — Sliding-window correlator for live UDP
-//!   streams with automatic max-age eviction
+//! - **Correlation** — [`timeline`] preserves session/policy/scale and basis;
+//!   [`correlation`] is an unqualified compatibility engine
+//! - **Streaming correlation** — [`stream`] preserves bounded policy/basis;
+//!   [`streaming`] is an unqualified compatibility engine
 //! - **Quality metrics** — Reference point density, RTC gaps, per-channel
 //!   drift assessment
 //! - **Version detection** — IRIG 106 standard version identification from
@@ -170,9 +169,7 @@ pub(crate) mod util;
 pub mod jiff_interop;
 
 // Re-export key types at crate root for convenience.
-pub use absolute::{
-    AbsoluteTime, CalendarTime, Ch4BinaryTime, Ch4BinaryTimeExt, Ertc, Ieee1588Time,
-};
+pub use absolute::{AbsoluteTime, CalendarTime, Ch4BinaryTime, Ertc, Ieee1588Time};
 pub use bcd::{DayFormatTime, DmyFormatTime};
 pub use correlation::{ReferencePoint, RtcReset, TimeCorrelator, TimeJump};
 pub use csdw::{

@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S14b retired unqualified conversion shortcuts (0.8.0)
+
+- **Breaking:** remove `Ch4BinaryTimeExt` from root and `absolute`, including
+  `to_absolute`. The unsafe17-bit split was withdrawn in S07; its later
+  compatibility stub could only validate then return NeedsContext. Migrate to
+  `ch4::Ch4Words::from(raw).binary(None)` for a labelled partial or supply an
+  explicit origin; BCD needs explicit year/day/interpretation context.
+- Deprecate NTP `to_absolute`, `to_unix_seconds`, `to_nanos_since_ntp_epoch`
+  (still refuse as before), and PTP `to_absolute(offset)` (compatibility
+  arithmetic unchanged). Use `ntp::convert_ntp` / `LeapSecondTable::convert_ptp`
+  and retain raw values, scale/era/leap/coverage basis and findings.
+- Legacy BCD body projections and correlation/streaming engines are explicitly
+  unqualified compatibility APIs, not recommended recording-answer paths.
+  Prefer `format1`, `timeline`/`stream` and `AnswerView`; checked caller-offset
+  arithmetic remains supported, not an inferred leap-table conversion.
+  See docs/verification-s14b.md for removed/retained export and migration audit.
+
 ### S13b validated Format 1 encoders (breaking)
 
 - `TimeF1Csdw::to_le_bytes(layout)` now returns Result with explicit edition
@@ -31,7 +48,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   representability; no truncation, UTC conversion or leap-table inference.
   NTP's eight-byte raw writer remains infallible: all32 fraction bits and the
   zero sentinel are preserved. New full-header/stamp/checksum API stays deferred.
-
 
 ### Breaking: library serde and JSON APIs removed in 0.8.0
 

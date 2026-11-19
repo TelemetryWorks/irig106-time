@@ -1,3 +1,4 @@
+#![allow(deprecated)] // Intentional tests of retired compatibility APIs; new code uses qualified adapters.
 //! S01b adoption boundary, not a new calendar or leap-table implementation.
 use irig106_time::{PtpTime, TaiUtcOffset};
 /// Requirements: L1-API-004, L2-API-104, L3-API-104

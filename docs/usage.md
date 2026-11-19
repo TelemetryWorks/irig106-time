@@ -1,5 +1,11 @@
 # Usage Guide — irig106-time
 
+> **0.8 migration:** remaining prototype examples below are historical, not
+> recommended recording-answer APIs. Prefer README's qualified reader,
+> `timeline`/`stream`, and the S14 removed-export/migration audit. Context-free
+> NTP/PTP calendar helpers are deprecated; Chapter4's old trait is removed.
+
+
 **Document:** usage.md
 **Crate:** irig106-time v0.7.0
 **Date:** 2026-03-29
@@ -35,7 +41,7 @@ data — either from files or live UDP streams.
 21. [Time Quality Metrics](#21-time-quality-metrics)
 22. [Packet Standard (Ch10/Ch11)](#22-packet-standard-ch10ch11)
 23. [Recording Events](#23-recording-events)
-24. [chrono Interop](#24-chrono-interop)
+24. [Jiff Interop](#24-jiff-interop)
 25. [Integration with irig106-core](#25-integration-with-irig106-core)
 26. [Integration with irig106-decode](#26-integration-with-irig106-decode)
 27. [Integration with irig106-write](#27-integration-with-irig106-write)
@@ -506,8 +512,7 @@ for when you encounter each one:
 use irig106_time::*;
 use irig106_time::absolute::{Ch4BinaryTime, Ieee1588Time, Ertc};
 // `Ch4BinaryTime`, `Ieee1588Time`, and `Ertc` are defined in `irig106-types`
-// and re-exported here. `to_absolute()` on `Ch4BinaryTime` comes from the
-// `Ch4BinaryTimeExt` trait (included in `irig106_time::*`).
+// and re-exported here. Chapter4 requires explicit caller context via ch4.
 
 // ── 1. The 48-bit RTC ─────────────────────────────────────────────
 // WHERE: Every packet header, most intra-packet timestamps
@@ -518,13 +523,14 @@ let ns = rtc.to_nanos(); // 1_000_000_000 ns = 1 second
 
 // ── 2. Chapter 4 Binary Weighted Time ─────────────────────────────
 // WHERE: Secondary headers (flags [3:2]=0b00), intra-packet timestamps
-// WHAT:  Day-of-year + time-of-day in 10ms increments + microseconds
+// WHAT:  Full32-bit elapsed count in10ms increments plus microseconds; no origin
 let bwt = Ch4BinaryTime {
     high_order: 0x0003,
     low_order: 0x4650,
     microseconds: 500,
 };
-let abs = bwt.to_absolute().unwrap();
+let partial = irig106_time::ch4::Ch4Words::from(bwt).binary(None).unwrap();
+assert!(partial.calendar().is_none()); // Supply explicit origin to reconstruct.
 
 // ── 3. IEEE-1588 (PTP) ────────────────────────────────────────────
 // WHERE: Secondary headers (flags [3:2]=0b01), intra-packet timestamps
@@ -1203,43 +1209,15 @@ if event.has_reference_time() {
 
 ---
 
-## 24. chrono Interop
+## 24. Jiff Interop
 
-*Added in v0.6.0.* Enable the `chrono` feature for `From` conversions
-between `AbsoluteTime` and `chrono::NaiveDateTime`.
+In0.8.0 chrono is removed (ADR-0020). Enable optional `jiff` and use the checked
+`jiff_interop` functions with explicit `Scaled` evidence. The adapter uses
+`jiff::civil::DateTime`, preserving naive fields and UTC/TAI/GPS provenance;
+unknown year/scale and second60 refuse. It never guesses1970 or converts TAI
+or GPS to UTC implicitly. See the [current example](../src/jiff_interop.rs)
+and [exit-criteria verification](verification-jiff.md).
 
-```toml
-[dependencies]
-irig106-time = { version = "0.7", features = ["chrono"] }
-```
-
-```rust
-use irig106_time::AbsoluteTime;
-// use irig106_time::CalendarTime;
-// use chrono::NaiveDateTime;
-
-let t = AbsoluteTime::new(100, 12, 30, 25, 340_000_000).unwrap()
-    .with_year(Some(2025)).unwrap();
-
-// Convert AbsoluteTime to chrono (requires "chrono" feature, uses DOY)
-// let dt: NaiveDateTime = t.into();
-// assert_eq!(dt.year(), 2025);
-
-// Convert chrono to CalendarTime (chrono always has full date)
-// let ct: CalendarTime = dt.into();
-// assert_eq!(ct.month(), 4);
-// assert_eq!(ct.day_of_month(), 10);
-
-// Drop to AbsoluteTime if needed
-// let abs: AbsoluteTime = ct.into();
-```
-
-When converting `AbsoluteTime` to chrono, the year defaults to 1970 if absent.
-When converting from chrono, the result is a `CalendarTime` (chrono always
-provides year, month, and day). Use `.into_absolute_time()` or `.into()` to
-drop the calendar fields if you only need `AbsoluteTime`.
-
----
 
 ## 25. Integration with irig106-core
 

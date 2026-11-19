@@ -275,7 +275,12 @@ impl DayFormatTime {
         })
     }
 
-    /// Convert to `AbsoluteTime`.
+    /// Unqualified body-only projection to `AbsoluteTime` (compatibility).
+    ///
+    /// # Warning
+    /// Not recommended for recording answers: this drops CSDW/layout/scale,
+    /// LY/year inference and leap-label evidence. Use
+    /// [`crate::format1::decode_qualified_time_f1`] with explicit caller context.
     ///
     /// **Traces:** L3-BCD-105 ← L2-BCD-105 ← L1-BCD-005
     /// **Traces:** L3-ABS-101 ← L2-ABS-101 ← L1-ABS-001
@@ -621,6 +626,10 @@ impl DmyFormatTime {
     /// plain `AbsoluteTime`, use `.into_absolute_time()` on the result.
     ///
     /// **Traces:** L3-BCD-106 ← L2-BCD-106
+    /// # Warning
+    /// Unqualified compatibility projection, not a recording answer: a valid
+    /// year/date does not establish scale or CSDW validity. Prefer
+    /// [`crate::format1::decode_qualified_time_f1`] and retain its evidence.
     pub fn to_calendar_time(&self) -> crate::error::Result<crate::absolute::CalendarTime> {
         let doy = month_day_to_doy(self.year, self.month, self.day);
         let abs = crate::absolute::AbsoluteTime::new(

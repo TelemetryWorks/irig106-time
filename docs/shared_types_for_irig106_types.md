@@ -6,7 +6,7 @@
 re-exported by `irig106-time`. `SecHdrTimeFormat` and the unit/epoch newtypes (`UnixSeconds`,
 `TaiSeconds`, `TaiUtcOffset`, `NanosDuration`) were migrated as well. Because inherent methods
 cannot be added to foreign types, `Ch4BinaryTime::to_absolute` became the `Ch4BinaryTimeExt`
-trait in `irig106-time`, and byte parsers now return `irig106_types::TypesError`
+trait in `irig106-time` (removed in0.8.0/S14b; use `ch4::Ch4Words` with explicit context), and byte parsers now return `irig106_types::TypesError`
 (convertible into `TimeError`).
 
 ---

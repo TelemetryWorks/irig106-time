@@ -1,3 +1,4 @@
+#![allow(deprecated)] // Intentional tests of retired compatibility APIs; new code uses qualified adapters.
 //! Integration tests for `irig106-time`.
 //!
 //! These tests exercise the full pipeline: parsing CSDW + BCD time messages,

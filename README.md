@@ -53,45 +53,39 @@ IRIG 106 Chapter 10 separates *when data was recorded* (a free-running 10 MHz co
 ## Quick Start
 
 ```rust
-use irig106_time::*;
-use irig106_time::bcd::DayFormatTime;
-use irig106_time::csdw::TimeF1Csdw;
+use irig106_time::{TimeF1Layout, format1::decode_time_f1,
+    scale::{ScalePolicy, TimeScale}};
 
-// Parse a Time Data Format 1 packet
-let csdw = TimeF1Csdw::from_le_bytes([0x03, 0x00, 0x00, 0x00]);
-assert_eq!(csdw.time_source(), TimeSource::Gps);
-
-// Decode BCD time message (Day 100, 12:30:25.340)
-let bcd_bytes: [u8; 8] = [0x34, 0x25, 0x30, 0x12, 0x00, 0x01, 0x00, 0x00];
-let day_time = DayFormatTime::from_le_bytes(&bcd_bytes).unwrap();
-let abs_time = day_time.to_absolute();
-
-// Build a correlation table
-let mut correlator = TimeCorrelator::new();
-let ref_rtc = Rtc::from_raw(10_000_000); // 1 second into recording
-correlator.add_reference(1, ref_rtc, abs_time);
-
-// Resolve a data packet's RTC to absolute time
-let data_rtc = Rtc::from_raw(10_150_000); // 15 ms later
-let resolved = correlator.correlate(data_rtc, None).unwrap();
-// → Day 100, 12:30:25.355
+// Caller explicitly declares the packet layout; FMT4 states UTC.
+// Ch11 Figures11-12/13: DOY100,12:30:25.340; Data Length10.
+let bytes = [0x41,0,0,0,0x34,0x25,0x30,0x12,0,1];
+let decoded = decode_time_f1(&bytes, 10, TimeF1Layout::SourceWithIts17,
+    ScalePolicy::default()).unwrap();
+let time = decoded.time.unwrap();
+assert_eq!(time.scale.effective(), TimeScale::Utc);
+assert_eq!(time.year, None); // No host year guessed.
+assert_eq!(time.day_of_year, 100);
 ```
+
+For recording answers use `timeline` offline or `stream` live with shared
+policy; retain `AnswerView`/basis/findings. `correlation` and `streaming` are
+unqualified compatibility engines, not recommended paths for new answers.
 
 ## Modules
 
 | Module | Purpose |
 |--------|---------|
 | `rtc` | 48-bit Relative Time Counter newtype |
-| `absolute` | AbsoluteTime, CalendarTime, Ch4BinaryTimeExt; re-exports Ch4BinaryTime, Ieee1588Time, Ertc from `irig106-types` |
+| `absolute` | AbsoluteTime, CalendarTime, explicit Chapter4 context in `ch4`; re-exports Ch4BinaryTime, Ieee1588Time, Ertc from `irig106-types` |
 | `csdw` | Time F1 CSDW bitfield parsing, TimeSource/TimeFormat enums |
 | `bcd` | BCD Day-of-Year and Day-Month-Year decoding |
 | `secondary` | Secondary header checksum validation and time extraction |
 | `intra_packet` | Intra-packet timestamp format dispatch |
-| `correlation` | RTC-to-absolute time interpolation engine |
+| `correlation` | Unqualified compatibility engine; prefer `timeline` |
 | `network_time` | Format 2 (0x12): NTP, PTP, LeapSecondTable, F2 CSDW |
 | `version` | IRIG 106 version detection and version-aware parsing helpers |
 | `packet_standard` | Chapter 10 / Chapter 11 provenance from IRIG 106 version |
-| `streaming` | Sliding-window correlator for live telemetry streams |
+| `streaming` | Unqualified compatibility engine; prefer `stream` |
 | `quality` | Correlator health and reference-density metrics |
 | `recording_event` | Data Type 0x02 recording event parsing |
 | `jiff_interop` | Feature-gated checked Jiff civil conversions |
