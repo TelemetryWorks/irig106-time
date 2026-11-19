@@ -22,6 +22,16 @@ pub type Result<T> = core::result::Result<T, TimeError>;
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum TimeError {
+    /// A valid value cannot fit a wire format's fixed resolution without loss.
+    /// **Traces:** L3-ENC-101 ← L2-ENC-101 ← L1-ENC-001
+    UnrepresentablePrecision {
+        /// Field name including its units.
+        field: &'static str,
+        /// Original integer in the named units.
+        value: u32,
+        /// Required step in the same units.
+        quantum: u32,
+    },
     /// A Jiff civil year is outside the native calendar's 0..=9999 domain.
     /// **Traces:** L3-API-111 ← L2-API-111 ← L1-API-011
     CivilYearOutOfRange {
@@ -173,6 +183,11 @@ impl From<irig106_types::TypesError> for TimeError {
 impl fmt::Display for TimeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::UnrepresentablePrecision {
+                field,
+                value,
+                quantum,
+            } => write!(f, "{field} value {value} is not a multiple of {quantum}"),
             Self::CivilYearOutOfRange { year } => {
                 write!(f, "civil year {year} is outside 0..=9999")
             }

@@ -186,9 +186,9 @@ proptest! {
     }
 
     #[test]
-    fn csdw_f1_encode_round_trip(raw: u32) {
+    fn csdw_f1_raw_diagnostic_round_trip(raw: u32) {
         let csdw = irig106_time::TimeF1Csdw::from_raw(raw);
-        let bytes = csdw.to_le_bytes();
+        let bytes = csdw.as_raw().to_le_bytes();
         let csdw2 = irig106_time::TimeF1Csdw::from_le_bytes(bytes);
         prop_assert_eq!(csdw.as_raw(), csdw2.as_raw());
     }

@@ -849,10 +849,10 @@ fn rtc_to_le_bytes_round_trip() {
 }
 
 #[test]
-fn csdw_f1_to_le_bytes_round_trip() {
+fn csdw_f1_raw_diagnostic_round_trip() {
     let original = [0x12, 0x34, 0x56, 0x78];
     let csdw = TimeF1Csdw::from_le_bytes(original);
-    assert_eq!(csdw.to_le_bytes(), original);
+    assert_eq!(csdw.as_raw().to_le_bytes(), original);
 }
 
 #[test]
@@ -887,7 +887,7 @@ fn bcd_day_to_le_bytes_round_trip() {
     use irig106_time::bcd::DayFormatTime;
     // Construct known-good BCD values for Day 123, 14:30:45.670
     let dt = DayFormatTime::new(123, 14, 30, 45, 670).unwrap();
-    let encoded = dt.to_le_bytes();
+    let encoded = dt.to_le_bytes().unwrap();
     let decoded = DayFormatTime::from_le_bytes(&encoded).unwrap();
     assert_eq!(decoded.milliseconds(), 670);
     assert_eq!(decoded.seconds(), 45);
@@ -900,7 +900,7 @@ fn bcd_day_to_le_bytes_round_trip() {
 fn bcd_dmy_to_le_bytes_round_trip() {
     use irig106_time::bcd::DmyFormatTime;
     let dt = DmyFormatTime::new(2025, 3, 15, 23, 0, 59, 120).unwrap();
-    let encoded = dt.to_le_bytes();
+    let encoded = dt.to_le_bytes().unwrap();
     let decoded = DmyFormatTime::from_le_bytes(&encoded).unwrap();
     assert_eq!(decoded.milliseconds(), 120);
     assert_eq!(decoded.seconds(), 59);

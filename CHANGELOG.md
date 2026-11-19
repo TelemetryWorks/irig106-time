@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S13b validated Format 1 encoders (breaking)
+
+- `TimeF1Csdw::to_le_bytes(layout)` now returns Result with explicit edition
+  layout, reserved enum checks and cleared reserved bits. For lossless raw
+  diagnostics use `as_raw().to_le_bytes()`.
+- BCD `to_le_bytes()` now returns Result: reject sub-10-ms values instead of
+  truncating, and DMY years above3999 instead of setting always-zero year bits.
+  Handle `UnrepresentablePrecision` explicitly; calendar constructors retain
+  their wider native precision/year range.
+- Add `format1::encode_format1`: checked CSDW+body, DATE/LY/scale agreement,
+  second60 preservation, explicit missing context and NONE invalid body policy.
+  No full-header/stamp/checksum API. ENC-103 remains deferred; clause evidence
+  and tests-first/mutations are in verification-s13b.md.
+
 ### Breaking: library serde and JSON APIs removed in 0.8.0
 
 - Remove the optional `serde` feature from 0.1–0.7, its dependency and

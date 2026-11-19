@@ -109,7 +109,7 @@ fn date_format_dmy() {
 #[test]
 fn from_le_bytes_round_trip() {
     let raw: u32 = 0x0000_0351; // Source=1(External), Format=5(GPS), Leap=1, DateFmt=1(DMY)
-    let bytes = raw.to_le_bytes();
+    let bytes = raw.as_raw().to_le_bytes();
     let csdw = TimeF1Csdw::from_le_bytes(bytes);
     assert_eq!(csdw.as_raw(), raw);
 }

@@ -410,3 +410,105 @@ pub fn decode_qualified_time_f1(
         consumed,
     })
 }
+
+/// Canonical CSDW plus six/eight-byte body, not a primary/secondary header.
+/// **Traces:** L3-ENC-101 ← L2-ENC-101 ← L1-ENC-001
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EncodedFormat1 {
+    bytes: [u8; 12],
+    len: usize,
+}
+impl EncodedFormat1 {
+    /// Exact Data Length bytes; no padding/filler or packet flags are written.
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.bytes[..self.len]
+    }
+}
+/// Encode Figures11-12..14 with explicit edition layout and selected DATE.
+/// NONE accepts only None and zero-fills its invalid body as an encoder policy,
+/// never an absolute zero. Other formats require a validated reading. Require
+/// stated UTC/GPS formats to agree with the supplied scale; never convert it.
+/// Other FMT scale assumptions remain caller context, not serialized policy.
+/// **Traces:** L3-ENC-101 ← L2-ENC-101 ← L1-ENC-001
+pub fn encode_format1(
+    word: TimeF1Csdw,
+    layout: TimeF1Layout,
+    time: Option<CalendarReading>,
+) -> Result<EncodedFormat1> {
+    use crate::bcd::{DayFormatTime, DmyFormatTime};
+    use crate::util::{is_leap_year, month_day_to_doy};
+    let mut out = EncodedFormat1 {
+        bytes: [0; 12],
+        len: if word.date_format() == DateFormat::DayOfYear {
+            10
+        } else {
+            12
+        },
+    };
+    out.bytes[..4].copy_from_slice(&word.to_le_bytes(layout)?);
+    if word.time_format() == TimeFormat::None {
+        if time.is_some() {
+            return Err(TimeError::NeedsContext {
+                context: "FMT NONE cannot carry a valid time",
+            });
+        }
+        return Ok(out);
+    }
+    let t = time.ok_or(TimeError::NeedsContext {
+        context: "Format1 body required",
+    })?;
+    t.validate()?;
+    if (word.time_format() == TimeFormat::Utc && t.scale.effective() != TimeScale::Utc)
+        || (word.time_format() == TimeFormat::Gps && t.scale.effective() != TimeScale::Gps)
+    {
+        return Err(TimeError::NeedsContext {
+            context: "Format1 FMT/scale mismatch",
+        });
+    }
+    let leap = word.is_leap_year();
+    if t.year.is_some_and(|y| is_leap_year(y) != leap)
+        || (!leap && t.day_of_year == 366)
+        || (t.seconds == 60
+            && t.day_of_year != if leap { 182 } else { 181 }
+            && t.day_of_year != if leap { 366 } else { 365 })
+    {
+        return Err(TimeError::NeedsContext {
+            context: "Format1 LY/calendar mismatch",
+        });
+    }
+    if t.nanoseconds % 10_000_000 != 0 {
+        return Err(TimeError::UnrepresentablePrecision {
+            field: "format1_nanoseconds",
+            value: t.nanoseconds,
+            quantum: 10_000_000,
+        });
+    }
+    // Legacy calendar types cannot hold second60. Pack the ordinary fields
+    // with59 temporarily, then put the validated leap label in its exact slot.
+    let seconds = t.seconds.min(59);
+    let ms = (t.nanoseconds / 1_000_000) as u16;
+    if word.date_format() == DateFormat::DayOfYear {
+        out.bytes[4..10].copy_from_slice(
+            &DayFormatTime::new(t.day_of_year, t.hours, t.minutes, seconds, ms)?.to_le_bytes()?,
+        );
+    } else {
+        let year = t.year.ok_or(TimeError::NeedsContext {
+            context: "DMY encoding requires year",
+        })?;
+        let month = (1..=12)
+            .rev()
+            .find(|&m| t.day_of_year >= month_day_to_doy(year, m, 1))
+            .ok_or(TimeError::NeedsContext {
+                context: "DMY encoding requires a valid day",
+            })?;
+        let day = (t.day_of_year - month_day_to_doy(year, month, 1) + 1) as u8;
+        out.bytes[4..12].copy_from_slice(
+            &DmyFormatTime::new(year, month, day, t.hours, t.minutes, seconds, ms)?
+                .to_le_bytes()?,
+        );
+    }
+    if t.seconds == 60 {
+        out.bytes[5] = 0x60;
+    }
+    Ok(out)
+}

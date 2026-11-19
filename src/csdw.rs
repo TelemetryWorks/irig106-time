@@ -69,14 +69,45 @@ impl TimeF1Csdw {
         self.0
     }
 
-    /// Encode as 4 little-endian bytes.
-    ///
-    /// This is the inverse of `from_le_bytes`.
-    ///
-    /// **Traces:** GAP-11
-    #[inline]
-    pub fn to_le_bytes(self) -> [u8; 4] {
-        self.0.to_le_bytes()
+    /// Canonical word for an explicit caller layout; reject reserved selectors.
+    /// Clear reserved/inapplicable fields; modern NONE stays payload-invalid.
+    /// Diagnostic bytes remain available through `as_raw().to_le_bytes()`.
+    /// **Traces:** L3-ENC-101 ← L2-ENC-101 ← L1-ENC-001
+    pub fn to_le_bytes(self, layout: TimeF1Layout) -> Result<[u8; 4]> {
+        let fmt = (self.0 >> 4) & 15;
+        if fmt > 5 && !(fmt == 15 && layout != TimeF1Layout::Legacy04) {
+            return Err(TimeError::OutOfRange {
+                field: "reserved_f1_format",
+                value: fmt,
+                max: 5,
+            });
+        }
+        let mask = if layout == TimeF1Layout::Legacy04 {
+            0x3f1
+        } else {
+            let src = self.0 & 15;
+            if src > 2 && src != 15 {
+                return Err(TimeError::OutOfRange {
+                    field: "reserved_f1_source",
+                    value: src,
+                    max: 2,
+                });
+            }
+            if layout == TimeF1Layout::SourceWithIts17 && fmt < 3 {
+                let its = (self.0 >> 12) & 15;
+                if its > 7 {
+                    return Err(TimeError::OutOfRange {
+                        field: "reserved_f1_its",
+                        value: its,
+                        max: 7,
+                    });
+                }
+                0xf3ff
+            } else {
+                0x3ff
+            }
+        };
+        Ok((self.0 & mask).to_le_bytes())
     }
 
     /// Modern (106-05+) SRC, bits \[3:0\] (§11.2.3.2 a).
