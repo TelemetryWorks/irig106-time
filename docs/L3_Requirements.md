@@ -1411,7 +1411,7 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 
 **Source**: ADR-0006.
 
-**Planned verification**: Planned inspection: forbidden I/O API audit and deterministic replay with different host time/environment; no_std alone is not proof of no I/O through foreign imports.
+**Planned verification**: Inspection: forbidden I/O source/dependency audit and std-unavailable compilation probes for clock, environment, file and network APIs. These compile probes replace the planned deterministic replay with different host time/environment. Source/dependency inspection remains necessary; no_std alone is not proof of no foreign I/O path.
 
 **L3-API-107** · Parent: L2-API-107 · Verification: I
 

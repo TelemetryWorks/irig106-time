@@ -48,7 +48,7 @@ fn public_value_derive_inventory() {
 #[test]
 fn fixed_scalar_recording_metadata_derive_inventory() {
     scalars! { DateFormat, TimeSource, TimeFormat, IrigTimeSource, Irig106Version,
-    PacketStandard, NanosDuration, SignedNanos, SignedRtcTicks, SignedUnixSeconds,
+    PacketStandard, SecHdrTimeFormat, NanosDuration, SignedNanos, SignedRtcTicks, SignedUnixSeconds,
     UnixSeconds, TaiSeconds, TaiUtcOffset };
 
     scalars! { absolute::AbsoluteTime, absolute::CalendarTime }

@@ -2,7 +2,7 @@
 from pathlib import Path
 import tempfile
 import unittest
-from rust_safety_scan import scan_project
+from rust_safety_scan import scan_project, mask, root_policies
 
 
 class ScopeGuards(unittest.TestCase):
@@ -22,6 +22,25 @@ class ScopeGuards(unittest.TestCase):
         report = self.scan('#![allow(clippy::unwrap_used)]\nfn f(x:Option<u8>){x.unwrap();}')
         self.assertEqual(len(report.allowances), 1)
         self.assertFalse(report.allowances[0].allowed)
+
+    def test_raw_lint_identifier_is_not_a_bypass(self):
+        report = self.scan('#![allow(clippy::r#unwrap_used)]')
+        self.assertFalse(report.allowances[0].allowed)
+
+    def test_policy_headers_in_raw_strings_are_not_enforcement(self):
+        source = 'const X:&str=r#"\n#![deny(clippy::unwrap_used)]\n"#;'
+        self.assertEqual(root_policies(source), [])
+
+    def test_escaped_chars_do_not_change_brace_scope(self):
+        code = mask(r"""fn f<'a>() { let open='\u{7b}'; let quote='\''; }""")
+        self.assertEqual(code.count('{'), 1)
+        self.assertEqual(code.count('}'), 1)
+
+    def test_tests_filename_does_not_make_production_a_test(self):
+        report = self.scan('#[path="bad_tests.rs"] mod child;', {
+            "src/bad_tests.rs": '#![allow(clippy::unwrap_used)]\nextern crate std;'})
+        self.assertFalse(report.allowances[0].allowed)
+        self.assertEqual(len(report.io_errors), 1)
 
     def test_conditional_production_allow_is_rejected(self):
         report = self.scan('#[cfg_attr(test,allow(clippy::expect_used))]\nfn f(){}')

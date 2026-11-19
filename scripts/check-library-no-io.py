@@ -8,11 +8,16 @@ from pathlib import Path
 import os
 import subprocess
 import tempfile
+from rust_safety_scan import scan_project
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
 def main():
+    report = scan_project(ROOT, include_cli=False)
+    for error in report.io_errors:
+        print(error, flush=True)
+    assert not report.io_errors, "production std import/path outside cfg(test) code"
     source = (ROOT / "src/lib.rs").read_text()
     start = source.index("#![no_std]")
     end = source.index("extern crate alloc;") + len("extern crate alloc;")
