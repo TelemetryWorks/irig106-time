@@ -1,15 +1,17 @@
 [package]
 name = "irig106-time-cli"
-version = "0.7.0"
-edition = "2024"
-rust-version = "1.85"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
 description = "CLI tool for inspecting IRIG 106 Chapter 10 time data — summary, correlation, jump detection, and CSV export."
-license = "Apache-2.0"
+license.workspace = true
+repository.workspace = true
+# S15b gate: no CLI publication until S16b bounded streaming is complete.
 publish = false
 
 [[bin]]
-name = "ch10time"
+name = "irigtime"
 path = "src/main.rs"
 
 [dependencies]
-irig106-time = { path = ".." }
+irig106-time = { path = "..", version = "=0.7.0" }

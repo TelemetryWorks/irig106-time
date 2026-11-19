@@ -56,6 +56,19 @@ class ScopeGuards(unittest.TestCase):
                 report = self.scan('' if cli else source, cli=source if cli else None)
                 self.assertTrue(any('metavariable attribute' in e for e in report.source_errors))
 
+    def test_metavariables_anywhere_in_production_attributes_are_rejected(self):
+        attributes = ['#[cfg_attr(all(), $l(clippy::unwrap_used))]', '#[allow($n)]']
+        for attr in attributes:
+            source = 'macro_rules! m { ($l:ident, $n:path) => { ' + attr + ' fn f(){} }; }'
+            for cli in [False, True]:
+                with self.subTest(attr=attr, cli=cli):
+                    report = self.scan('' if cli else source, cli=source if cli else None)
+                    self.assertTrue(any('metavariable attribute' in e for e in report.source_errors))
+        control = self.scan('''#[doc = "dollar $ inside a literal"] fn f(){}
+#[cfg(test)] mod tests { macro_rules! m { ($n:path) => { #[allow($n)] fn f(){} }; } }
+''')
+        self.assertEqual(control.source_errors, [])
+
     def test_test_scopes_and_literals_do_not_trigger_source_guards(self):
         report = self.scan('''#[cfg(test)] mod tests {
 include!("evil.inc");

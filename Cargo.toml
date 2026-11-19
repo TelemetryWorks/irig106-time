@@ -1,11 +1,24 @@
-[package]
-name = "irig106-time"
+[workspace]
+members = [".", "irig106-time-cli"]
+exclude = ["fuzz"]
+
+# The library and CLI release in lockstep; change the version here and the
+# CLI's exact library dependency together (docs/RELEASING.md).
+[workspace.package]
 version = "0.7.0"
 edition = "2024"
 rust-version = "1.85"
-description = "Precision time interpretation and format conversion for IRIG 106 telemetry data."
-repository = "https://github.com/TelemetryWorks/irig106-time"
 license = "Apache-2.0"
+repository = "https://github.com/TelemetryWorks/irig106-time"
+
+[package]
+name = "irig106-time"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Precision time interpretation and format conversion for IRIG 106 telemetry data."
+repository.workspace = true
+license.workspace = true
 categories = ["aerospace", "parser-implementations", "no-std"]
 keywords = ["irig106", "telemetry", "time", "chapter10", "flight-test"]
 

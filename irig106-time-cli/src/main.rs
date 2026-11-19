@@ -1,4 +1,4 @@
-//! `ch10time` — CLI tool for inspecting IRIG 106 Chapter 10 time data.
+//! `irigtime` — CLI tool for inspecting IRIG 106 Chapter 10 time data.
 //!
 //! Reads a Ch10 file, extracts all time packets, builds a correlation table,
 //! and produces various diagnostic outputs.
@@ -6,12 +6,12 @@
 //! # Usage
 //!
 //! ```sh
-//! ch10time summary  <file.ch10>           # Time span, channels, sources
-//! ch10time channels <file.ch10>           # Per-channel time source inventory
-//! ch10time jumps    <file.ch10> [--threshold-ms 1000]
-//! ch10time timeline <file.ch10> [--limit 50]
-//! ch10time csv      <file.ch10> [--output times.csv]
-//! ch10time correlate <file.ch10> <rtc_hex>  # Resolve a single RTC value
+//! irigtime summary  <file.ch10>           # Time span, channels, sources
+//! irigtime channels <file.ch10>           # Per-channel time source inventory
+//! irigtime jumps    <file.ch10> [--threshold-ms 1000]
+//! irigtime timeline <file.ch10> [--limit 50]
+//! irigtime csv      <file.ch10> [--output times.csv]
+//! irigtime correlate <file.ch10> <rtc_hex>  # Resolve a single RTC value
 //! ```
 
 #![forbid(unsafe_code)]
@@ -523,7 +523,7 @@ fn cmd_summary(mmap: &[u8], filename: &str) {
     scanner.scan(mmap, false, None);
 
     println!("================================================================");
-    println!("ch10time — IRIG 106 Time Analysis");
+    println!("irigtime — IRIG 106 Time Analysis");
     println!("================================================================");
     println!();
     println!("File               : {}", filename);
@@ -897,27 +897,27 @@ fn cmd_correlate(mmap: &[u8], rtc_hex: &str) {
 #[allow(clippy::print_stdout)] // CLI rendering/diagnostic boundary only.
 fn print_usage() {
     println!(
-        "ch10time v{} — IRIG 106 Chapter 10 Time Inspector",
+        "irigtime v{} — IRIG 106 Chapter 10 Time Inspector",
         PKG_VERSION
     );
     println!();
     println!("Usage:");
-    println!("  ch10time summary   <file.ch10>                    File time summary");
-    println!("  ch10time channels  <file.ch10>                    Time channel inventory");
+    println!("  irigtime summary   <file.ch10>                    File time summary");
+    println!("  irigtime channels  <file.ch10>                    Time channel inventory");
     println!(
-        "  ch10time jumps     <file.ch10> [--threshold-ms N] Time jump detection (default: 1000 ms)"
+        "  irigtime jumps     <file.ch10> [--threshold-ms N] Time jump detection (default: 1000 ms)"
     );
     println!(
-        "  ch10time timeline  <file.ch10> [--limit N]        Per-packet timeline (default: 100)"
+        "  irigtime timeline  <file.ch10> [--limit N]        Per-packet timeline (default: 100)"
     );
-    println!("  ch10time csv       <file.ch10> [--output file]    Export all timestamps to CSV");
-    println!("  ch10time correlate <file.ch10> <rtc_hex>          Resolve a single RTC value");
+    println!("  irigtime csv       <file.ch10> [--output file]    Export all timestamps to CSV");
+    println!("  irigtime correlate <file.ch10> <rtc_hex>          Resolve a single RTC value");
     println!();
     println!("Examples:");
-    println!("  ch10time summary flight_042.ch10");
-    println!("  ch10time jumps   flight_042.ch10 --threshold-ms 500");
-    println!("  ch10time csv     flight_042.ch10 --output times.csv");
-    println!("  ch10time correlate flight_042.ch10 0x00009896800");
+    println!("  irigtime summary flight_042.ch10");
+    println!("  irigtime jumps   flight_042.ch10 --threshold-ms 500");
+    println!("  irigtime csv     flight_042.ch10 --output times.csv");
+    println!("  irigtime correlate flight_042.ch10 0x00009896800");
 }
 
 #[allow(clippy::print_stderr)] // CLI rendering/diagnostic boundary only.
@@ -943,7 +943,7 @@ fn main() {
     match command {
         "summary" => {
             if args.len() < 3 {
-                eprintln!("Usage: ch10time summary <file>");
+                eprintln!("Usage: irigtime summary <file>");
                 process::exit(1);
             }
             let mmap = open_file(&args[2]);
@@ -951,7 +951,7 @@ fn main() {
         }
         "channels" => {
             if args.len() < 3 {
-                eprintln!("Usage: ch10time channels <file>");
+                eprintln!("Usage: irigtime channels <file>");
                 process::exit(1);
             }
             let mmap = open_file(&args[2]);
@@ -959,7 +959,7 @@ fn main() {
         }
         "jumps" => {
             if args.len() < 3 {
-                eprintln!("Usage: ch10time jumps <file> [--threshold-ms N]");
+                eprintln!("Usage: irigtime jumps <file> [--threshold-ms N]");
                 process::exit(1);
             }
             let mmap = open_file(&args[2]);
@@ -973,7 +973,7 @@ fn main() {
         }
         "timeline" => {
             if args.len() < 3 {
-                eprintln!("Usage: ch10time timeline <file> [--limit N]");
+                eprintln!("Usage: irigtime timeline <file> [--limit N]");
                 process::exit(1);
             }
             let mmap = open_file(&args[2]);
@@ -987,7 +987,7 @@ fn main() {
         }
         "csv" => {
             if args.len() < 3 {
-                eprintln!("Usage: ch10time csv <file> [--output path]");
+                eprintln!("Usage: irigtime csv <file> [--output path]");
                 process::exit(1);
             }
             let mmap = open_file(&args[2]);
@@ -1003,7 +1003,7 @@ fn main() {
         }
         "correlate" => {
             if args.len() < 4 {
-                eprintln!("Usage: ch10time correlate <file> <rtc_hex>");
+                eprintln!("Usage: irigtime correlate <file> <rtc_hex>");
                 process::exit(1);
             }
             let mmap = open_file(&args[2]);
@@ -1013,7 +1013,7 @@ fn main() {
             print_usage();
         }
         "-V" | "--version" => {
-            println!("ch10time {}", PKG_VERSION);
+            println!("irigtime {}", PKG_VERSION);
         }
         _ => {
             eprintln!("Unknown command: '{}'", command);

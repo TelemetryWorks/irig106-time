@@ -4,6 +4,26 @@ Owner 2026-11-13, plan Q3/Q4; [ADR-0017](adr/0017-releases-after-the-rebuild.md)
 and [ADR-0018](adr/0018-0-8-release-scope-and-policy-decisions.md).
 This is a preparation checklist, not authorization to publish or configure CI.
 
+## Workspace and lockstep versioning
+
+The root library package and sibling `irig106-time-cli/` are the workspace
+members; `fuzz/` is excluded and keeps its independent lockfile. There is no
+`crates/` move. One root `Cargo.lock` now resolves the two release packages.
+The sole authoritative version is `[workspace.package] version`; both package
+versions inherit it. The CLI's exact library requirement (`=X.Y.Z` next to
+`path = ".."`) must match that value. The CI metadata/manifest checks enforce
+this, following the shipped TMATS pattern (ADR-0007's S16a clarification).
+
+Both remain at 0.7.0 during this restructure; the approved release-preparation
+PR will set 0.8.0 and the exact pin together. The standalone executable is now
+`irigtime`, replacing `ch10time`; the package stays `irig106-time-cli`. Update
+scripts to the new executable name. The 0.0.1 crates.io CLI placeholder reserves
+the name; it is not this implementation or permission to publish. The CLI stays
+`publish = false` until S16b's bounded-memory reader is implemented and tested.
+No CLI publication or release tag before that gate, per the owner.
+
+## Release checklist
+
 - Complete every remaining requirement except the current precisely scoped
   [release deferrals](analysis/plan-decisions-2026-11-13.md#release-scope).
   Do not treat a trace-matrix link as complete clause coverage. Offline

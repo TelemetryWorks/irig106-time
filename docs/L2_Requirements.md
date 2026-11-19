@@ -1702,7 +1702,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The CLI SHALL provide a reusable CLI library and a thin irigtime binary in the lockstep workspace.
 
-**Source**: ADR-0007; owner, 2026-09-26 and 2026-09-27.
+**Source**: ADR-0007; owner, 2026-09-26 and 2026-09-27. Owner S16a layout clarification: root library plus sibling irig106-time-cli; workspace members [".", "irig106-time-cli"], fuzz excluded, single workspace version and exact CLI dependency pin; no crates/ move. See ADR-0007 subsequent clarification.
 
 **Verification Method**: Inspection (I)
 

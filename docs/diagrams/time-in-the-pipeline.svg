@@ -35,7 +35,7 @@
   <rect class="box" x="190" y="76" width="200" height="80" rx="6"/>
   <text class="b" x="290" y="98" text-anchor="middle">Packet reader</text>
   <text class="l" x="290" y="116" text-anchor="middle">irig106-core (today: the</text>
-  <text class="l" x="290" y="130" text-anchor="middle">ch10time CLI's reader)</text>
+  <text class="l" x="290" y="130" text-anchor="middle">irigtime CLI's reader)</text>
   <text class="l" x="290" y="146" text-anchor="middle">headers, flags, bodies</text>
 
   <rect class="box" x="470" y="66" width="200" height="50" rx="6"/>

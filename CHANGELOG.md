@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S16a1 workspace and executable identity (breaking)
+
+- Root library and sibling CLI now share a lockstep workspace, one authoritative
+  workspace version and one lockfile; fuzz remains excluded. No version bump.
+  The CLI pins the matching library version; publication stays disabled pending
+  S16b bounded streaming. This is not a release or publication authorization.
+- **Breaking:** rename the standalone binary from `ch10time` to `irigtime`.
+  Update scripts and use root `target/` build outputs. Package name remains
+  `irig106-time-cli`. Only executable/help/banner identity changes here; the
+  reusable runner, hand-rolled args and exit contract follow in later S16a PRs.
+- Safety scanner rejects `$` anywhere in production attributes, including
+  cfg_attr/allow macro variants. Literal/comment/test-scope controls remain.
+  Clause coverage and tests-first evidence: docs/verification-s16a.md.
+
 ### S15e review guard hardening
 
 - CI lists every protected lint/unsafe allowance with its source scope and

@@ -1495,7 +1495,7 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 
 **Obligation**: The implementation SHALL satisfy the following layout or procedure: Expose args, input, commands, report, render and run modules. Main maps the returned exit classification to process exit. File I/O and packet walking stay outside the time library.
 
-**Source**: ADR-0007; owner, 2026-09-26 and 2026-09-27.
+**Source**: ADR-0007; owner, 2026-09-26 and 2026-09-27. Owner S16a layout clarification: root library plus sibling irig106-time-cli; workspace members [".", "irig106-time-cli"], fuzz excluded, single workspace version and exact CLI dependency pin; no crates/ move. See ADR-0007 subsequent clarification.
 
 **Planned verification**: Inspect workspace membership, binary naming and the public entry point; compare standalone invocation with an embedded library call.
 

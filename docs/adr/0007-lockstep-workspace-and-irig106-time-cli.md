@@ -49,9 +49,17 @@ Chosen option: **one workspace, two crates in lockstep**, as
 * **`irig106-cli` mounts it as `irig106 time …`**, through `run` or the
   individual commands and renderers.
 
-The directory layout follows whatever the ecosystem settles for
-`irig106-tmats` (its ROADMAP W1 to W3: a virtual workspace with `crates/`),
-so the two repositories look alike.
+### Subsequent owner clarification — S16a
+
+Use the shipped `irig106-tmats` layout: a root library package and the sibling
+`irig106-time-cli/`, with `[workspace] members = [".", "irig106-time-cli"]`
+and `exclude = ["fuzz"]`. Do not move into `crates/`. This supersedes the
+previous reference to TMATS's proposed virtual-workspace layout. Declare the
+version in `[workspace.package]`; both packages inherit it, and the CLI keeps
+the exact `=X.Y.Z` path dependency. The public TMATS pattern is documented in
+[docs/RELEASING.md at 18b34e6](https://github.com/TelemetryWorks/irig106-tmats/blob/18b34e66b276cfc4869b06bcda42ed50612e4286/docs/RELEASING.md#lockstep-versioning).
+The host-callable runner takes arguments and injected stdout/stderr, returns an
+exit class, and never exits the host; only the thin binary main exits.
 
 ### Consequences
 

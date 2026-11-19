@@ -23,7 +23,10 @@ fn serde_feature_is_rejected_before_compilation() {
     );
     let error = String::from_utf8_lossy(&output.stderr);
     assert!(
-        error.contains("does not") && error.contains("feature") && error.contains("serde"),
+        (error.contains("does not")
+            || error.contains("none of the selected packages contains this feature"))
+            && error.contains("feature")
+            && error.contains("serde"),
         "unexpected rejection: {error}"
     );
 }
