@@ -1,4 +1,6 @@
 //! Strict argument preflight only; threshold/complete exit work follows.
+#[path = "common/mod.rs"]
+mod common;
 use irig106_time_cli::run;
 use std::{
     path::PathBuf,
@@ -102,7 +104,7 @@ fn terminator_opens_a_real_dash_leading_filename_without_changing_host_cwd() {
     let file = Input::new(&[]);
     let dir = Directory(file.0.with_extension("dir"));
     std::fs::create_dir(&dir.0).unwrap();
-    std::fs::write(dir.0.join("-capture file.ch10"), []).unwrap();
+    std::fs::write(dir.0.join("-capture file.ch10"), common::NO_TIME).unwrap();
     for (args, expected) in [
         (["summary", "--", "-capture file.ch10"].to_vec(), 0),
         (["summary", "-capture file.ch10"].to_vec(), 2),

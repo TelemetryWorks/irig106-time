@@ -110,11 +110,7 @@ impl TimeF2Csdw {
         let ntf = (self.0 >> 4) & 15;
         let status = self.0 & 15;
         if ntf > 2 {
-            return Err(TimeError::OutOfRange {
-                field: "network_time_format",
-                value: ntf,
-                max: 2,
-            });
+            return Err(TimeError::ReservedNetworkTimeFormat { value: ntf as u8 });
         }
         if status > 1 {
             return Err(TimeError::OutOfRange {
@@ -483,10 +479,8 @@ pub fn parse_time_f2_payload(payload: &[u8]) -> Result<(TimeF2Csdw, NetworkTime)
             status: (reading.csdw.as_raw() & 15) as u8,
         });
     }
-    let time = reading.time.ok_or(TimeError::OutOfRange {
-        field: "network_time_format",
-        value: (reading.csdw.as_raw() >> 4) & 15,
-        max: 2,
+    let time = reading.time.ok_or(TimeError::ReservedNetworkTimeFormat {
+        value: ((reading.csdw.as_raw() >> 4) & 15) as u8,
     })?;
     Ok((reading.csdw, time.value))
 }

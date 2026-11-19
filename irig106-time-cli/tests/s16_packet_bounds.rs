@@ -31,7 +31,14 @@ fn packet(kind: u8, flags: u8, length: usize, data_length: u32) -> Vec<u8> {
     bytes[8..12].copy_from_slice(&data_length.to_le_bytes());
     bytes[14] = flags;
     bytes[15] = kind;
+    checksum(&mut bytes);
     bytes
+}
+fn checksum(bytes: &mut [u8]) {
+    let sum = bytes[..22].chunks_exact(2).fold(0u16, |s, w| {
+        s.wrapping_add(u16::from_le_bytes([w[0], w[1]]))
+    });
+    bytes[22..24].copy_from_slice(&sum.to_le_bytes());
 }
 fn input_error(bytes: &[u8]) {
     let input = Input::new(bytes);
@@ -62,14 +69,14 @@ fn content_finding(bytes: &[u8]) {
 }
 #[test]
 fn f2_missing_secondary_header_is_an_input_error_not_host_panic() {
-    input_error(&packet(0x12, 0x04, 24, 0));
+    input_error(&packet(0x12, 0x80, 24, 0));
 }
 #[test]
 fn structural_lengths_are_fatal_but_short_time_bodies_are_findings() {
     for kind in [0x11, 0x12] {
-        for flags in [0, 4] {
+        for flags in [0, 0x80] {
             for length in 24..48 {
-                let start = if flags == 4 { 36 } else { 24 };
+                let start = if flags == 0x80 { 36 } else { 24 };
                 let minimum = if kind == 0x11 { 10 } else { 12 };
                 if length < start + minimum {
                     let bytes = packet(kind, flags, length, (length.saturating_sub(start)) as u32);
@@ -83,13 +90,15 @@ fn structural_lengths_are_fatal_but_short_time_bodies_are_findings() {
         }
     }
     for length in 1..24 {
-        content_finding(&vec![0; length]);
+        content_finding(&[f1_reference(), vec![0; length]].concat());
     }
     input_error(&[0; 24]); // A full header-sized region with no recoverable sync.
     let mut broken = packet(0x09, 0, 24, 0);
     broken[4..8].copy_from_slice(&u32::MAX.to_le_bytes());
+    checksum(&mut broken);
     input_error(&broken);
     broken[4..8].copy_from_slice(&0u32.to_le_bytes());
+    checksum(&mut broken);
     input_error(&broken);
 }
 #[test]
@@ -121,6 +130,7 @@ fn declared_data_length_bounds_f1_and_f2_even_with_trailer_bytes() {
         );
         for length in [0u32, u32::MAX] {
             bytes[8..12].copy_from_slice(&length.to_le_bytes());
+            checksum(&mut bytes);
             if length == 0 {
                 content_finding(&bytes);
             } else {

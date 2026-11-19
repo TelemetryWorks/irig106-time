@@ -94,6 +94,13 @@ pub enum TimeError {
         max: u32,
     },
 
+    /// Reserved Format 2 NTF selector (106-24R1 Figure 11-15).
+    /// TF-006 warning; no supported body interpretation is invented.
+    ReservedNetworkTimeFormat {
+        /// Original four-bit selector.
+        value: u8,
+    },
+
     /// A secondary header checksum did not match.
     ChecksumMismatch {
         /// Checksum stored in the header.
@@ -229,6 +236,9 @@ impl fmt::Display for TimeError {
             }
             TimeError::InvalidPacketFlags { flags } => {
                 write!(f, "invalid intra-packet time flags {flags:#04x}")
+            }
+            TimeError::ReservedNetworkTimeFormat { value } => {
+                write!(f, "reserved network time format 0x{value:X}")
             }
             TimeError::ReservedPacketTimeFormat { flags } => {
                 write!(

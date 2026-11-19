@@ -48,9 +48,6 @@ pub mod input;
 // Constants
 // ────────────────────────────────────────────────────────────────────
 
-const SYNC_PATTERN: u16 = 0xEB25;
-const HEADER_SIZE: usize = 24;
-const SECONDARY_HEADER_SIZE: usize = 12;
 const DATA_TYPE_TIME_F1: u8 = 0x11;
 const DATA_TYPE_TIME_F2: u8 = 0x12;
 const PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -61,50 +58,8 @@ const PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 struct PktHeader {
     channel_id: u16,
-    packet_length: u32,
-    _data_length: u32,
-    packet_flags: u8,
     data_type: u8,
     rtc: Rtc,
-}
-
-impl PktHeader {
-    fn parse(buf: &[u8]) -> Option<Self> {
-        if buf.len() < HEADER_SIZE {
-            return None;
-        }
-        let sync = u16::from_le_bytes([buf[0], buf[1]]);
-        if sync != SYNC_PATTERN {
-            return None;
-        }
-        Some(PktHeader {
-            channel_id: u16::from_le_bytes([buf[2], buf[3]]),
-            packet_length: u32::from_le_bytes([buf[4], buf[5], buf[6], buf[7]]),
-            _data_length: u32::from_le_bytes([buf[8], buf[9], buf[10], buf[11]]),
-            packet_flags: buf[14],
-            data_type: buf[15],
-            rtc: Rtc::from_le_bytes([buf[16], buf[17], buf[18], buf[19], buf[20], buf[21]]),
-        })
-    }
-
-    fn payload<'a>(&self, packet: &'a [u8]) -> Option<&'a [u8]> {
-        packet
-            .get(self.data_offset()..)?
-            .get(..self._data_length as usize)
-    }
-
-    fn has_secondary_header(&self) -> bool {
-        (self.packet_flags & 0x04) != 0
-    }
-
-    fn data_offset(&self) -> usize {
-        HEADER_SIZE
-            + if self.has_secondary_header() {
-                SECONDARY_HEADER_SIZE
-            } else {
-                0
-            }
-    }
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -151,7 +106,7 @@ impl TimeChannelInfo {
 
 struct ResolvedPacket {
     packet_num: usize,
-    offset: usize,
+    offset: u64,
     channel_id: u16,
     data_type: u8,
     rtc: Rtc,
@@ -193,123 +148,108 @@ impl Ch10TimeScanner {
         }
     }
 
+    // Partial CLI-104: one transport/dispatch loop for every renderer.
     fn scan(
         &mut self,
-        mmap: &[u8],
+        source: impl io::Read,
         resolve_all: bool,
         limit: Option<usize>,
     ) -> Result<(), Failure> {
-        let mut offset = 0;
-        let file_len = mmap.len();
-
-        while offset < file_len {
-            if let Some(limit) = limit {
-                if self.total_packets >= limit {
+        use input::{Event, PacketReader, ReaderLimits, TailKind};
+        let mut reader = PacketReader::new(source, ReaderLimits::default())
+            .map_err(|e| Failure::new(ExitClass::Input, e.to_string()))?;
+        // Time bodies require at most CSDW + eight body bytes. Other payloads
+        // are drained without capture; neither Data nor Packet Length allocates.
+        while let Some(event) = reader
+            .next_packet(|h| {
+                if matches!(h.data_type, DATA_TYPE_TIME_F1 | DATA_TYPE_TIME_F2) {
+                    12
+                } else {
+                    0
+                }
+            })
+            .map_err(|e| {
+                Failure::new(
+                    ExitClass::Input,
+                    format!("invalid packet sync or framing: {e}"),
+                )
+            })?
+        {
+            let packet = match event {
+                Event::Packet(p) => p,
+                Event::Tail {
+                    offset,
+                    bytes,
+                    kind,
+                } => {
+                    if self.total_packets == 0 {
+                        return Err(Failure::new(ExitClass::Input, "no valid Chapter 10 header"));
+                    }
+                    let (level, message) = match kind {
+                        TailKind::PartialHeader => (
+                            Severity::Warning,
+                            format!("truncated final header at {offset:#X} ({bytes} bytes)"),
+                        ),
+                        TailKind::TruncatedPacket => (
+                            Severity::Warning,
+                            format!(
+                                "truncated final packet at {offset:#X} ({bytes} available bytes)"
+                            ),
+                        ),
+                        TailKind::Unsynchronized => (
+                            Severity::Information,
+                            format!("{bytes} trailing bytes without sync at offset {offset:#X}"),
+                        ),
+                    };
+                    self.note(level, message);
                     break;
                 }
-            }
-
-            let remaining = mmap
-                .get(offset..)
-                .ok_or_else(|| Failure::new(ExitClass::Input, "invalid packet offset"))?;
-            if remaining.len() < HEADER_SIZE {
+            };
+            if packet.recovered_bytes != 0 {
                 self.note(
                     Severity::Warning,
                     format!(
-                        "truncated final header at {offset:#X} ({} bytes)",
-                        remaining.len()
+                        "Sync lost at {:#X}, recovered at {:#X} ({} bytes skipped)",
+                        packet.offset - packet.recovered_bytes,
+                        packet.offset,
+                        packet.recovered_bytes
                     ),
                 );
-                break;
             }
-            let hdr = match PktHeader::parse(remaining) {
-                Some(h) => h,
-                None => {
-                    // Try to find next sync
-                    if let Some(next) = find_next_sync(mmap, offset + 1) {
-                        self.note(
-                            Severity::Warning,
-                            format!(
-                                "Sync lost at {:#X}, recovered at {:#X} ({} bytes skipped)",
-                                offset,
-                                next,
-                                next - offset
-                            ),
-                        );
-                        offset = next;
-                        continue;
-                    } else if self.total_packets > 0 {
-                        self.note(
-                            Severity::Information,
-                            format!(
-                                "{} trailing bytes without sync at offset {offset:#X}",
-                                remaining.len()
-                            ),
-                        );
-                        break;
-                    } else {
-                        return Err(Failure::new(ExitClass::Input, "invalid packet sync"));
-                    }
-                }
+            let hdr = PktHeader {
+                channel_id: packet.header.channel,
+                data_type: packet.header.data_type,
+                rtc: Rtc::from_le_bytes(packet.header.rtc),
             };
-
-            let pkt_len = hdr.packet_length as usize;
-            // Chapter11 §11.2.1.4: filler makes the packet a multiple of4.
-            if pkt_len < hdr.data_offset() || pkt_len % 4 != 0 {
-                return Err(Failure::new(ExitClass::Input, "invalid packet length"));
-            }
-            if hdr._data_length as usize > pkt_len - hdr.data_offset() {
-                return Err(Failure::new(
-                    ExitClass::Input,
-                    "Data Length exceeds packet body",
-                ));
-            }
-            let Some(packet) = remaining.get(..pkt_len) else {
-                self.note(Severity::Warning, format!(
-                    "truncated final packet at {offset:#X}: declared {pkt_len}, available {} bytes",
-                    remaining.len()
-                ));
-                break;
-            };
-            if hdr.payload(packet).is_none() {
-                return Err(Failure::new(
-                    ExitClass::Input,
-                    "Data Length exceeds packet body",
-                ));
-            }
-
-            // Track RTC range
             if self.first_rtc.is_none() {
                 self.first_rtc = Some(hdr.rtc);
             }
             self.last_rtc = Some(hdr.rtc);
-
             *self.data_type_counts.entry(hdr.data_type).or_insert(0) += 1;
-
-            // Process time packets
             if hdr.data_type == DATA_TYPE_TIME_F1 {
                 self.time_packets += 1;
-                self.process_time_packet(packet, &hdr);
+                self.process_time_packet(&packet.body_prefix, &hdr);
             } else if hdr.data_type == DATA_TYPE_TIME_F2 {
                 self.time_packets += 1;
-                self.process_time_f2_packet(packet, &hdr);
+                self.process_time_f2_packet(&packet.body_prefix, &hdr);
             }
-
-            // Optionally resolve all packets
-            if resolve_all {
-                let abs = self.correlator.correlate(hdr.rtc, None).ok();
+            if resolve_all && limit.is_none_or(|n| self.total_packets < n) {
                 self.resolved.push(ResolvedPacket {
                     packet_num: self.total_packets,
-                    offset,
+                    offset: packet.offset,
                     channel_id: hdr.channel_id,
                     data_type: hdr.data_type,
                     rtc: hdr.rtc,
-                    abs_time: abs,
+                    abs_time: self.correlator.correlate(hdr.rtc, None).ok(),
                 });
             }
-
             self.total_packets += 1;
-            offset += packet.len(); // Bounded by remaining.len(), so cannot overflow.
+        }
+        if self.total_packets == 0 {
+            return Err(Failure::new(ExitClass::Input, "no valid Chapter 10 header"));
+        }
+        if self.time_packets == 0 {
+            self.note(Severity::Warning, "TF-001: no time packets in session");
         }
         Ok(())
     }
@@ -332,11 +272,7 @@ impl Ch10TimeScanner {
         Ok(())
     }
 
-    fn process_time_packet(&mut self, pkt_buf: &[u8], hdr: &PktHeader) {
-        let Some(payload) = hdr.payload(pkt_buf) else {
-            self.note(Severity::Error, "invalid Format 1 body bounds");
-            return;
-        };
+    fn process_time_packet(&mut self, payload: &[u8], hdr: &PktHeader) {
         let Some(csdw_bytes) = payload.get(..4) else {
             self.note(
                 Severity::Error,
@@ -429,12 +365,7 @@ impl Ch10TimeScanner {
         info.last_rtc = Some(hdr.rtc);
     }
 
-    fn process_time_f2_packet(&mut self, pkt_buf: &[u8], hdr: &PktHeader) {
-        let Some(payload) = hdr.payload(pkt_buf) else {
-            self.note(Severity::Error, "invalid Format 2 body bounds");
-            return;
-        };
-
+    fn process_time_f2_packet(&mut self, payload: &[u8], hdr: &PktHeader) {
         let (csdw, network_time) = match parse_time_f2_payload(payload) {
             Ok(result) => result,
             Err(e) => {
@@ -498,21 +429,6 @@ impl Ch10TimeScanner {
         info.last_time = Some(abs_time);
         info.last_rtc = Some(hdr.rtc);
     }
-}
-
-fn find_next_sync(buf: &[u8], start: usize) -> Option<usize> {
-    let tail = buf.get(start..)?;
-    for (offset, header) in tail.windows(HEADER_SIZE).enumerate() {
-        if u16::from_le_bytes([header[0], header[1]]) == SYNC_PATTERN {
-            let sum = header[..22].chunks_exact(2).fold(0u16, |sum, word| {
-                sum.wrapping_add(u16::from_le_bytes([word[0], word[1]]))
-            });
-            if sum == u16::from_le_bytes([header[22], header[23]]) {
-                return start.checked_add(offset);
-            }
-        }
-    }
-    None
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -595,7 +511,7 @@ fn fmt_data_type_short(dt: u8) -> &'static str {
     }
 }
 
-fn fmt_comma(n: usize) -> String {
+fn fmt_comma(n: impl std::fmt::Display) -> String {
     let s = n.to_string();
     let bytes = s.as_bytes();
     let mut result = String::new();
@@ -613,12 +529,13 @@ fn fmt_comma(n: usize) -> String {
 // ────────────────────────────────────────────────────────────────────
 
 fn cmd_summary(
-    mmap: &[u8],
+    input: std::fs::File,
+    file_len: u64,
     filename: &Path,
     stdout: &mut dyn Write,
 ) -> Result<Option<Severity>, Failure> {
     let mut scanner = Ch10TimeScanner::new();
-    scanner.scan(mmap, false, None)?;
+    scanner.scan(input, false, None)?;
 
     writeln!(
         stdout,
@@ -631,11 +548,7 @@ fn cmd_summary(
     )?;
     writeln!(stdout)?;
     writeln!(stdout, "File               : {}", filename.display())?;
-    writeln!(
-        stdout,
-        "File Size          : {} bytes",
-        fmt_comma(mmap.len())
-    )?;
+    writeln!(stdout, "File Size          : {} bytes", fmt_comma(file_len))?;
     writeln!(
         stdout,
         "Total Packets      : {}",
@@ -781,12 +694,12 @@ fn cmd_summary(
 }
 
 fn cmd_channels(
-    mmap: &[u8],
+    input: std::fs::File,
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
 ) -> Result<Option<Severity>, Failure> {
     let mut scanner = Ch10TimeScanner::new();
-    scanner.scan(mmap, false, None)?;
+    scanner.scan(input, false, None)?;
     scanner.report_findings(stderr)?;
 
     writeln!(
@@ -843,13 +756,13 @@ fn cmd_channels(
 }
 
 fn cmd_jumps(
-    mmap: &[u8],
+    input: std::fs::File,
     threshold_ms: u64,
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
 ) -> Result<Option<Severity>, Failure> {
     let mut scanner = Ch10TimeScanner::new();
-    scanner.scan(mmap, false, None)?;
+    scanner.scan(input, false, None)?;
     scanner.report_findings(stderr)?;
 
     let threshold_ns = threshold_ms.checked_mul(1_000_000).ok_or_else(|| {
@@ -910,13 +823,13 @@ fn cmd_jumps(
 }
 
 fn cmd_timeline(
-    mmap: &[u8],
+    input: std::fs::File,
     limit: usize,
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
 ) -> Result<Option<Severity>, Failure> {
     let mut scanner = Ch10TimeScanner::new();
-    scanner.scan(mmap, true, Some(limit))?;
+    scanner.scan(input, true, Some(limit))?;
     scanner.report_findings(stderr)?;
 
     writeln!(
@@ -953,13 +866,13 @@ fn cmd_timeline(
 }
 
 fn cmd_csv(
-    mmap: &[u8],
+    input: std::fs::File,
     output_path: Option<&Path>,
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
 ) -> Result<Option<Severity>, Failure> {
     let mut scanner = Ch10TimeScanner::new();
-    scanner.scan(mmap, true, None)?;
+    scanner.scan(input, true, None)?;
     scanner.report_findings(stderr)?;
 
     let mut out: Box<dyn Write + '_> = match output_path {
@@ -1025,13 +938,13 @@ fn cmd_csv(
 }
 
 fn cmd_correlate(
-    mmap: &[u8],
+    input: std::fs::File,
     target: Rtc,
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
 ) -> Result<Option<Severity>, Failure> {
     let mut scanner = Ch10TimeScanner::new();
-    scanner.scan(mmap, false, None)?;
+    scanner.scan(input, false, None)?;
     scanner.report_findings(stderr)?;
 
     writeln!(
@@ -1238,10 +1151,7 @@ fn decode_level(error: &TimeError) -> Severity {
         TimeError::ReservedBitSet { .. }
         | TimeError::NeedsContext { .. }
         | TimeError::InvalidTimeStatus { .. }
-        | TimeError::OutOfRange {
-            field: "network_time_format",
-            ..
-        } => Severity::Warning,
+        | TimeError::ReservedNetworkTimeFormat { .. } => Severity::Warning,
         _ => Severity::Error,
     }
 }
@@ -1261,19 +1171,23 @@ fn dispatch(
         }
         args::Request::File(args) => args,
     };
-    let data = std::fs::read(&args.input).map_err(|e| {
+    let input = std::fs::File::open(&args.input).map_err(|e| {
         Failure::new(
             ExitClass::Input,
             format!("cannot read '{}': {e}", args.input.display()),
         )
     })?;
+    let file_len = input
+        .metadata()
+        .map_err(|e| Failure::new(ExitClass::Input, e.to_string()))?
+        .len();
     match args.command.as_str() {
-        "summary" => cmd_summary(&data, &args.input, stdout),
-        "channels" => cmd_channels(&data, stdout, stderr),
-        "jumps" => cmd_jumps(&data, args.threshold_ms, stdout, stderr),
-        "timeline" => cmd_timeline(&data, args.limit, stdout, stderr),
-        "csv" => cmd_csv(&data, args.output.as_deref(), stdout, stderr),
-        "correlate" => cmd_correlate(&data, args.rtc, stdout, stderr),
+        "summary" => cmd_summary(input, file_len, &args.input, stdout),
+        "channels" => cmd_channels(input, stdout, stderr),
+        "jumps" => cmd_jumps(input, args.threshold_ms, stdout, stderr),
+        "timeline" => cmd_timeline(input, args.limit, stdout, stderr),
+        "csv" => cmd_csv(input, args.output.as_deref(), stdout, stderr),
+        "correlate" => cmd_correlate(input, args.rtc, stdout, stderr),
         _ => Err(Failure::new(ExitClass::Usage, "unknown command")),
     }
 }

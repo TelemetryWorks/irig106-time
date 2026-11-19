@@ -123,18 +123,17 @@ Resolving RTC 0x00009896800 (10000000 ticks, 1000000000 ns)
   Channel   7  → Day 100 12:30:28.840.000
 ```
 
-## Interim input-memory limit (before S16)
+## Interim report-memory gate (S16b)
 
-The current CLI reads the whole file into an owned buffer. Files larger than
-available memory may be refused with exit3 or killed by the OS. This is an
-interim safety change only: S16 must use bounded-memory streaming (BufReader or
-chunked reads), never whole-file loading, mmap or new unsafe code. No CLI publish
-or release tag before that implementation and its larger-than-buffer test land.
+Input is now buffered, without whole-file loading or mmap. Reference, finding
+and CSV report state is still retained in memory; recordings can exhaust that
+state. S16b must finish its report-state audit and qualified joining before
+this interim warning and the CLI publication/release gate are removed.
 
 ## Dependencies
 
 - `irig106-time` — time parsing and correlation (the core library)
-- File I/O uses a safe owned byte snapshot (S15b): whole-file RAM use; no mmap/zero-copy claim.
+- File I/O uses the shared safe buffered packet reader; no mmap or library I/O.
 
 ## License
 

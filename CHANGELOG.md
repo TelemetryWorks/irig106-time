@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S16b2a command input integration (partial CLI-104)
+
+- All six commands use the bounded reader and one Data-Length-bounded scan
+  loop. Enforce checksums/bit7, retain EOF-tail/padding findings, report TF-001
+  for valid no-time input. Empty/no-valid-stream files now give input 3.
+- Timeline limits retained rows, not analysis; later fatal input wins before
+  rendering. CI measures reader plus six real commands on generated 384 MiB.
+  Report/reference/finding memory and qualified joins remain open; no release.
+- Diagnostic migration: reserved NTF now returns ReservedNetworkTimeFormat,
+  not OutOfRange with field network_time_format; match the dedicated variant.
+  TF-006 remains warning. Evidence/remaining clauses: verification-s16b2a.md.
+
 ### S16b1 bounded raw transport (partial CLI-104)
 
 - Fix framing in the new reader: require every primary header checksum;
