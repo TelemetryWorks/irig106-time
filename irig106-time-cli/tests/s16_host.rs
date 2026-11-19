@@ -75,3 +75,11 @@ fn invalid_command_returns_usage_and_input_failure_survives_diagnostic_failure()
         ExitClass::Input
     );
 }
+
+#[test]
+fn success_path_flushes_stderr_too() {
+    assert_eq!(
+        run(&["--version"], &mut Vec::new(), &mut FailedWriter(true)),
+        ExitClass::Output
+    );
+}
