@@ -22,6 +22,17 @@ class CliWorkspace(unittest.TestCase):
         self.assertFalse((ROOT / 'irig106-time-cli/Cargo.lock').exists())
         self.assertTrue((ROOT / 'Cargo.lock').is_file())
 
+    def test_fuzz_remains_a_separate_workspace_with_its_own_lock(self):
+        result = subprocess.run(['cargo', 'metadata', '--manifest-path',
+                                 str(ROOT / 'fuzz/Cargo.toml'), '--no-deps',
+                                 '--format-version', '1', '--locked'],
+                                cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        meta = json.loads(result.stdout)
+        self.assertEqual(Path(meta['workspace_root']), ROOT / 'fuzz')
+        self.assertEqual(len(meta['workspace_members']), 1)
+        self.assertTrue((ROOT / 'fuzz/Cargo.lock').is_file())
+
     def test_cargo_resolves_both_members_and_only_the_irigtime_binary(self):
         result = subprocess.run(['cargo', 'metadata', '--no-deps', '--format-version', '1',
                                  '--locked'], cwd=ROOT, capture_output=True, text=True)
