@@ -80,3 +80,14 @@ fn unreadable_input_is_an_input_error() {
         3,
     );
 }
+
+#[cfg(target_os = "linux")]
+#[test]
+fn csv_flush_failure_is_an_output_error_not_silent_success() {
+    let input = Input::new();
+    // BufWriter accepts this small header; /dev/full fails when flushed.
+    check(
+        &["csv", input.file.to_str().unwrap(), "--output", "/dev/full"],
+        4,
+    );
+}
