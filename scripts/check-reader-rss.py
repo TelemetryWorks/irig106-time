@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CI transport-only peak-RSS probe; not the still-pending whole-CLI gate."""
+"""CI reader and real-command input RSS; report-state audit remains open."""
 import json
 import os
 from pathlib import Path
@@ -28,22 +28,33 @@ with tempfile.TemporaryDirectory(prefix="irigtime-reader-rss-") as tmp:
     with path.open("wb") as out:
         for _ in range(size // len(packet)):
             out.write(packet)
-    with (Path(tmp) / "worker.log").open("w+") as log:
-        proc = subprocess.Popen(
-            [executables[0], "--exact", "rss_reader_worker", "--ignored"],
-            env={**os.environ, "IRIGTIME_RSS_INPUT": str(path)}, stdout=log,
-            stderr=subprocess.STDOUT,
-        )
-        _, status, usage = os.wait4(proc.pid, 0)  # Linux ru_maxrss is KiB.
-        proc.returncode = os.waitstatus_to_exitcode(status)
-        log.seek(0)
-        print(log.read())
-        assert proc.returncode == 0, proc.returncode
-    result = (f"Transport-only RSS: {usage.ru_maxrss} KiB peak; {size} input bytes; "
-              f"{size // len(packet)} packets; 8192-byte buffer, capture=0. "
-              "Whole-CLI joining/report memory gate remains open.")
-    print(result, flush=True)
-    if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
-        with open(summary, "a") as out:
-            out.write(result + "\n")
-    assert usage.ru_maxrss < 64 * 1024, "transport retains input-sized state"
+    binary = Path(executables[0]).parents[1] / "irigtime"
+    cases = [("transport", [executables[0], "--exact", "rss_reader_worker", "--ignored"])]
+    for command in ["summary", "channels", "jumps", "timeline", "csv", "correlate"]:
+        argv = [str(binary), command, str(path)]
+        if command == "correlate":
+            argv.append("0")
+        cases.append((command, argv))
+    for name, argv in cases:
+        with (Path(tmp) / f"{name}.log").open("w+") as log:
+            proc = subprocess.Popen(argv, env={**os.environ, "IRIGTIME_RSS_INPUT": str(path)},
+                                    stdout=log, stderr=subprocess.STDOUT)
+            _, status, usage = os.wait4(proc.pid, 0)  # Linux ru_maxrss is KiB.
+            proc.returncode = os.waitstatus_to_exitcode(status)
+            log.seek(0)
+            prefix = log.read(8192)  # Never load a CSV report into probe memory.
+            assert proc.returncode == 0, (name, proc.returncode, prefix)
+            if name != "transport":
+                assert "TF-001" in prefix, (name, prefix)
+            if name == "summary":
+                assert "Total Packets      : 24,576" in prefix, prefix
+            if name == "transport":
+                print(prefix)
+        result = (f"{name} input RSS: {usage.ru_maxrss} KiB peak; {size} input bytes; "
+                  f"{size // len(packet)} non-time packets; 8192-byte buffer. "
+                  "Reference/finding/report-state audit remains open.")
+        print(result, flush=True)
+        if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
+            with open(summary, "a") as out:
+                out.write(result + "\n")
+        assert usage.ru_maxrss < 64 * 1024, (name, "input-sized memory retained")

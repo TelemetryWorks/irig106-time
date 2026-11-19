@@ -71,10 +71,7 @@ fn complete_format2_encoder_contract() {
             if ntf > 2 {
                 assert!(matches!(
                     result,
-                    Err(TimeError::OutOfRange {
-                        field: "network_time_format",
-                        ..
-                    })
+                    Err(TimeError::ReservedNetworkTimeFormat { .. })
                 ));
             } else if ts > 1 {
                 assert!(matches!(

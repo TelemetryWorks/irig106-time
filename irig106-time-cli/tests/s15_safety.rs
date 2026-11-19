@@ -1,4 +1,5 @@
 //! S15 CLI failure controls; partial CLI-105/ERR-101, not whole markers.
+mod common;
 use std::{
     path::PathBuf,
     process::Command,
@@ -18,7 +19,7 @@ impl Input {
         ));
         std::fs::create_dir(&dir).unwrap();
         let file = dir.join("input.ch10");
-        std::fs::write(&file, []).unwrap();
+        std::fs::write(&file, common::NO_TIME).unwrap();
         Self { dir, file }
     }
 }

@@ -66,7 +66,7 @@ fn exit_zero_success() {
 }
 #[test]
 fn exit_one_uses_inclusive_severity_and_never() {
-    let warning = Input::new(&[0; 3]);
+    let warning = Input::new(&[reference(), vec![0; 3]].concat());
     let mut padding = reference();
     padding.resize(padding.len() + 512, 0);
     let info = Input::new(&padding);
@@ -160,7 +160,7 @@ fn exit_three_first_input_failure_survives_later_output_failure() {
 }
 #[test]
 fn exit_four_output_and_flush_failures_precede_findings() {
-    let warning = Input::new(&[0; 3]);
+    let warning = Input::new(&[reference(), vec![0; 3]].concat());
     let args = ["summary", warning.path(), "--fail-on", "warning"];
     let (mut out, mut err) = (FailedOutput::default(), FailedOutput::default());
     assert_eq!(run(&args, &mut out, &mut err) as u8, 4);
@@ -191,7 +191,7 @@ fn parity(args: &[&str], expected: i32) {
 }
 #[test]
 fn every_exit_class_has_host_standalone_parity() {
-    let warning = Input::new(&[0; 3]);
+    let warning = Input::new(&[reference(), vec![0; 3]].concat());
     let invalid = Input::new(&[0; 24]);
     let absent_output = warning.0.join("missing.csv");
     parity(&["--version", "--fail-on", "info"], 0);
@@ -255,7 +255,7 @@ fn recovered_sync_cut_packet_context_and_jumps_remain_warning() {
     ntp[28..32].copy_from_slice(&2_208_988_800u32.to_le_bytes()); // RFC5905 Fig4.
     let mut cases = vec![
         [vec![0xaa, 0xbb, 0xcc], reference()].concat(),
-        reference()[..30].to_vec(),
+        [reference(), reference()[..30].to_vec()].concat(),
         [reference(), ntp.clone()].concat(),
     ];
     for word in [0, 2, 0x31] {

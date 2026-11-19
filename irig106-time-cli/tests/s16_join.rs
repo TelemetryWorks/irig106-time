@@ -1,4 +1,5 @@
 //! Partial CLI-104 transport integration; qualified reports remain S16b.
+mod common;
 use irig106_time_cli::{ExitClass, run};
 use std::{
     path::PathBuf,
@@ -107,4 +108,29 @@ fn reserved_ntf_has_a_dedicated_error_not_a_field_name_convention() {
         assert_eq!(word.to_le_bytes(), Err(expected.clone()));
         assert_eq!(parse_time_f2_payload(&payload), Err(expected));
     }
+}
+
+#[test]
+fn timeline_limit_does_not_hide_later_structural_input_or_render_early() {
+    let mut broken = reference(false);
+    broken[4] = 26;
+    broken[8] = 0;
+    // EB25 + 001A + 1100 = FC3F: valid checksum, invalid alignment only.
+    broken[22..24].copy_from_slice(&[0x3F, 0xFC]);
+    let input = Input::new(&[reference(false), broken].concat());
+    let mut out = Vec::new();
+    assert_eq!(
+        run(
+            &["timeline", input.0.to_str().unwrap(), "--limit", "1"],
+            &mut out,
+            &mut Vec::new()
+        ),
+        ExitClass::Input
+    );
+    assert!(out.is_empty());
+}
+
+#[test]
+fn valid_no_time_file_reports_tf001_on_every_command() {
+    commands(&common::NO_TIME, ExitClass::Success, "TF-001");
 }

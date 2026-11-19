@@ -1,5 +1,7 @@
 # S16b — bounded transport, joining and reports
 
+S16b1 stage record; subsequent command integration: [S16b2a](verification-s16b2a.md).
+
 Base main 212a962. Reviewable split (about 600 changed lines per PR):
 1. S16b1 (this slice): bounded raw transport, small-buffer file test and CI
    transport RSS probe. No command integration yet.
