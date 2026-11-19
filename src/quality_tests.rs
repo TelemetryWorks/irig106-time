@@ -91,7 +91,7 @@ fn rtc_span_extrema_and_empty_state_do_not_use_sentinel_values() {
     let mut c = TimeCorrelator::new();
     let time = AbsoluteTime::new(1, 0, 0, 0, 0).unwrap();
     c.add_reference(1, Rtc::MAX, time);
-    assert_eq!(compute_quality(c.references()).rtc_span_ns, Some(0));
+    assert_eq!(compute_quality(c.references()).rtc_span_ns, None);
     c.add_reference(1, Rtc::ZERO, time);
     let quality = compute_quality(c.references());
     assert_eq!(quality.rtc_span_ns, Some(28_147_497_671_065_500)); // (2^48-1)*100ns
