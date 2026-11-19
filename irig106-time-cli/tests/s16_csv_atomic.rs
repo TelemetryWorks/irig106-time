@@ -140,6 +140,8 @@ fn stdout_csv_uses_and_cleans_its_isolated_system_temp_directory() {
         assert_eq!(std::fs::read_dir(&temp).unwrap().count(), 0);
         if bytes == common::NO_TIME {
             assert_eq!(String::from_utf8(result.stdout).unwrap().lines().count(), 2);
+        } else {
+            assert!(result.stdout.is_empty());
         }
     }
 }
@@ -169,4 +171,24 @@ fn stdout_csv_without_a_usable_temp_directory_returns_output() {
     assert_eq!(result.status.code(), Some(4));
     assert!(result.stdout.is_empty());
     assert!(!Path::new(&missing).exists());
+}
+
+#[test]
+fn broken_stdout_pipe_cleans_the_system_temp_spool() {
+    let f = Files::new(&common::NO_TIME);
+    let temp = f.dir.join("temp");
+    std::fs::create_dir(&temp).unwrap();
+    let mut child = Command::new(env!("CARGO_BIN_EXE_irigtime"))
+        .args(["csv", f.input.to_str().unwrap()])
+        .env("TMPDIR", &temp)
+        .env("TMP", &temp)
+        .env("TEMP", &temp)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    drop(child.stdout.take());
+    let result = child.wait_with_output().unwrap();
+    assert_eq!(result.status.code(), Some(4));
+    assert_eq!(std::fs::read_dir(&temp).unwrap().count(), 0);
 }

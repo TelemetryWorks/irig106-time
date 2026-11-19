@@ -125,10 +125,26 @@ Resolving RTC 0x00009896800 (10000000 ticks, 1000000000 ns)
 
 ## Interim report-memory gate (S16b)
 
-Input is now buffered, without whole-file loading or mmap. Reference, finding
-and CSV report state is still retained in memory; recordings can exhaust that
-state. S16b must finish its report-state audit and qualified joining before
+Input is buffered and CSV rows are spooled to disk, without whole-file loading
+or mmap. Reference and finding state is still retained in memory; recordings
+can exhaust that state. S16b must finish its report-state audit and qualified joining before
 this interim warning and the CLI publication/release gate are removed.
+
+## CSV transactions
+
+For `csv --output report.csv`, rows are spooled in the destination directory.
+Only exit 0 atomically replaces the destination. Exits 1–4 preserve an existing
+file and remove the temporary report. Use `--fail-on never` to export despite
+findings while retaining operational error handling. File output requires a
+regular-file target, not a symlink, directory, pipe or device.
+
+Without `--output`, the spool uses the system temp directory. After analysis
+succeeds it is copied to stdout, including reports returning findings exit 1.
+A temporary-storage or copy failure is output 4. Temporary creation/writes can
+precede later input analysis; the first fatal operational failure still wins.
+Temporary files are exclusive and private on Unix (0600, also after replacement).
+The runner flushes both host writers before file publication; rename is its
+last fallible operation. No report is published on a later host-flush failure.
 
 ## Dependencies
 
