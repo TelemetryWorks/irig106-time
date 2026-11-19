@@ -29,7 +29,7 @@
 //! - **jiff** — Optional checked civil conversions with explicit scale/year
 //!   and nanosecond precision; no timezone/clock or implicit UTC
 //!
-//! ## Removed context-free conversions (0.8.0)
+//! ## Retired context-free conversions (0.8.0)
 //!
 //! Use `ch4::Ch4Words::binary` with explicit context, `ntp::convert_ntp`,
 //! and `LeapSecondTable::convert_ptp` with retained basis instead.
@@ -41,18 +41,22 @@
 //! use irig106_time::absolute::Ch4BinaryTimeExt;
 //! ```
 //! ```compile_fail
+//! #![deny(deprecated)]
 //! let t = irig106_time::NtpTime { seconds: 1, fraction: 0 };
 //! let _ = t.to_absolute();
 //! ```
 //! ```compile_fail
+//! #![deny(deprecated)]
 //! let t = irig106_time::NtpTime { seconds: 1, fraction: 0 };
 //! let _ = t.to_unix_seconds();
 //! ```
 //! ```compile_fail
+//! #![deny(deprecated)]
 //! let t = irig106_time::NtpTime { seconds: 1, fraction: 0 };
 //! let _ = t.to_nanos_since_ntp_epoch();
 //! ```
 //! ```compile_fail
+//! #![deny(deprecated)]
 //! let t = irig106_time::PtpTime { seconds: 1, nanoseconds: 0 };
 //! let _ = t.to_absolute(irig106_time::TaiUtcOffset::new(37));
 //! ```
