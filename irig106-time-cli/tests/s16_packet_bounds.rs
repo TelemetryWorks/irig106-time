@@ -179,3 +179,89 @@ mod native_argv {
         }
     }
 }
+
+fn f1_reference() -> Vec<u8> {
+    // Figure11-14: DATE1/LY1, 2024-02-29 13:45:27.35; 12 data bytes.
+    let mut bytes = packet(0x11, 0, 36, 12);
+    bytes[24..].copy_from_slice(&[0, 3, 0, 0, 0x35, 0x27, 0x45, 0x13, 0x29, 2, 0x24, 0x20]);
+    // Primary header word sum: EB25 + 24 + C + 1100 = FC55.
+    bytes[22..24].copy_from_slice(&0xfc55u16.to_le_bytes());
+    bytes
+}
+fn success_with_finding(bytes: &[u8], finding: &str, count: usize) {
+    let input = Input::new(bytes);
+    for command in [
+        "summary",
+        "channels",
+        "jumps",
+        "timeline",
+        "csv",
+        "correlate",
+    ] {
+        let mut args = vec![command, input.0.to_str().unwrap()];
+        if command == "correlate" {
+            args.push("0");
+        }
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        let result = catch_unwind(AssertUnwindSafe(|| run(&args, &mut out, &mut err)));
+        assert_eq!(
+            result.expect("run must not panic"),
+            ExitClass::Success,
+            "{command}: {}",
+            String::from_utf8_lossy(&err)
+        );
+        let report = String::from_utf8(out).unwrap();
+        let messages = format!("{report}\n{}", String::from_utf8_lossy(&err));
+        assert!(messages.contains(finding), "{command}: {messages}");
+        if command == "summary" {
+            assert!(report.contains(&format!("Total Packets      : {count}")));
+            assert!(report.contains("Data Type Breakdown"));
+            assert!(report.contains("2024"));
+        }
+        if command == "csv" {
+            assert_eq!(report.lines().count(), count + 1);
+        }
+    }
+}
+#[test]
+fn ntp_context_error_between_valid_f1_packets_is_a_reported_finding() {
+    // Figs11-15/16: NTF0/TS1, RFC5905 Fig4's 1970 seconds, fraction0.
+    let mut ntp = packet(0x12, 0, 36, 12);
+    ntp[2..4].copy_from_slice(&2u16.to_le_bytes());
+    ntp[22..24].copy_from_slice(&0xfd57u16.to_le_bytes());
+    ntp[24] = 1;
+    ntp[28..32].copy_from_slice(&2_208_988_800u32.to_le_bytes());
+    success_with_finding(
+        &[f1_reference(), ntp, f1_reference()].concat(),
+        "NTP era/basis required",
+        3,
+    );
+}
+#[test]
+fn recovered_sync_loss_is_a_reported_finding() {
+    success_with_finding(
+        &[vec![0xaa, 0xbb, 0xcc], f1_reference(), f1_reference()].concat(),
+        "Sync lost",
+        2,
+    );
+}
+#[test]
+fn power_loss_tail_keeps_the_full_preceding_analysis() {
+    for tail in [vec![0x25, 0xeb, 0], f1_reference()[..30].to_vec()] {
+        success_with_finding(
+            &[f1_reference(), f1_reference(), tail].concat(),
+            "truncated final",
+            2,
+        );
+    }
+}
+#[test]
+fn reserved_bcd_bit_is_a_reported_finding() {
+    let mut reserved = f1_reference();
+    reserved[29] |= 0x80;
+    success_with_finding(
+        &[f1_reference(), reserved, f1_reference()].concat(),
+        "reserved bit",
+        3,
+    );
+}
