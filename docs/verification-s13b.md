@@ -18,6 +18,8 @@ sets an always-zero bit, one body golden already passes. ccc71f8 adds checked
 API tests before implementation (compile-first, not runtime failures).
 Final focused checks: four S13b tests and20 rebuild-wire tests pass; migrated
 pipeline encoding cases pass; fmt and trace check pass. CI owns the full matrix.
+First CI44467905273 caught an unnecessary `as_raw()` on an already-raw u32
+in a unit test; restored that unchanged raw-byte construction.
 Thirteen independent temporary production mutations each compile and fail a
 runtime assertion: FMT/SRC/ITS guards, reserved mask, both BCD precision guards,
 year bound, NONE with time, LY consistency, lost second60, nanosecond precision,
