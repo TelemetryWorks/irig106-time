@@ -213,3 +213,31 @@ fn latest_rtc_tracks_maximum() {
     );
     assert_eq!(sc.latest_rtc(), Some(Rtc::from_raw(100_000_000)));
 }
+
+// Partial NTP-104 compatibility refusal; no whole-requirement coverage claim.
+#[test]
+fn format2_ntp_needs_context_without_inserting_a_reference() {
+    // Ch11 Fig11-16 carries32-bit seconds/fraction, not an era declaration.
+    // This legacy engine cannot retain RDG-012's per-session era/basis.
+    let mut sc = StreamingTimeCorrelator::new(NanosDuration::new(1_000_000_000));
+    let raw = crate::NetworkTime::Ntp(crate::NtpTime {
+        seconds: 3_944_678_400, // 2025 only when era0 is established.
+        fraction: 0,
+    });
+    let result = sc.add_reference_f2(
+        7,
+        Rtc::from_raw(10_000_000),
+        &raw,
+        &crate::LeapSecondTable::builtin(),
+    );
+    assert!(matches!(
+        result,
+        Err(TimeError::NeedsContext {
+            context: "NTP era/basis required; use ntp::convert_ntp"
+        })
+    ));
+    assert!(sc.is_empty());
+    assert_eq!(sc.len(), 0);
+    assert_eq!(sc.latest_rtc(), None);
+    assert_eq!(sc.total_evicted(), 0);
+}
