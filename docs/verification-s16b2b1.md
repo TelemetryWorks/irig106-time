@@ -43,8 +43,15 @@ Six integration tests + four focused unit controls pass: exits 1–4 rollback,
 output/diagnostic flush failure, valid replacement/hard-link preservation,
 missing stdout temp directory, isolated stdout temp success/input failure,
 rename failure, broken-copy/pipe cleanup, same-directory placement and no
-row retention. Windows/macOS now run CLI tests in existing OS jobs; Ubuntu
+row retention. Windows/macOS now run CLI transaction tests in existing OS jobs; Ubuntu
 already does. Five runtime mutants killed: omitted cleanup; publish on
 findings; publish before host flushes; wrong temp directory; retain CSV rows.
 Sources restored. Local fmt, focused/touched CLI tests and Clippy only; full
 matrix/RSS via PR CI. Physical temp-disk exhaustion is not injected locally.
+
+CI 44526050932 caught a race in the tiny broken-pipe fixture (child could finish
+before parent closed the reader); use 32768 packets so output exceeds pipe
+capacity. The broad macOS CLI step also exposed a pre-existing invalid-byte
+filename fixture rejected by APFS. Scope the new cross-platform step to the
+CSV transaction targets; Ubuntu retains the full CLI suite. No production fix
+or unrelated filesystem-test change. The revised pipe fixture passes locally.

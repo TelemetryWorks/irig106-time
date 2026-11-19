@@ -33,7 +33,7 @@ jobs:
       - run: cargo test --no-default-features --features jiff
       - name: CLI transactions on Windows and macOS (Ubuntu covered by CLI job)
         if: matrix.os != 'ubuntu-latest'
-        run: cargo test -p irig106-time-cli --locked
+        run: cargo test -p irig106-time-cli --lib --test s16_csv_atomic --locked
 
   msrv:
     name: MSRV Check (1.85.0)

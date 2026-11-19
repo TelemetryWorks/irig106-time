@@ -175,7 +175,8 @@ fn stdout_csv_without_a_usable_temp_directory_returns_output() {
 
 #[test]
 fn broken_stdout_pipe_cleans_the_system_temp_spool() {
-    let f = Files::new(&common::NO_TIME);
+    // Exceed pipe capacity: the child cannot finish before its reader closes.
+    let f = Files::new(&common::NO_TIME.repeat(32_768));
     let temp = f.dir.join("temp");
     std::fs::create_dir(&temp).unwrap();
     let mut child = Command::new(env!("CARGO_BIN_EXE_irigtime"))
