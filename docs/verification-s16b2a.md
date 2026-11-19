@@ -61,3 +61,34 @@ fixture-module paths confused the safety scanner, and the RSS runner assumed
 Cargo's executable layout. Use explicit module paths and Cargo binary artifact
 metadata. The safety probe and a temporary 64 KiB seven-process RSS smoke pass;
 full 384 MiB measurement remains CI-only. No policy exemptions were added.
+
+## Delta review: confirmed framing and reporting decisions
+
+Coordinator confirms: no COMPLETE valid packet means input 3, including a lone
+packet whose primary header/checksum is valid but whose body is truncated.
+After a complete packet, a truncated tail remains a finding. TF-001 keeps its
+owner-approved warning level: non-time-only input succeeds at fail-on error
+and returns 1 at warning/info; `--fail-on never` keeps exit 0.
+
+Three new tests pass without production changes: lone truncated packet on all
+six commands; TF-001 error/warning/info/never thresholds on all six commands;
+and exactly one timeline row (packet 0, total 2) with --limit 1. Nine joining tests
+now pass. Each corresponding runtime mutant fails: both no-complete-packet
+checks bypassed; TF-001 lowered to Information; row bound changed from < to <=.
+Sources restored and suite rerun green. No whole-requirement marker is added;
+coverage remains 198 tested / 206 verified. Full matrix remains PR CI only.
+
+### S16b2b CSV recommendation (not implemented in this delta)
+
+Use an exclusively created, cleanup-owned temporary CSV sink, writing each
+released row immediately; never collect all rows in Vec<ResolvedPacket>.
+After successful analysis, rewind/copy the sink to the injected writer or
+requested output and flush. Disk use grows with the requested report, RAM does
+not. This keeps destination output after input analysis. Treat temporary sink
+creation/write failures as output 4, retain the first fatal operational failure
+(input 3/output 4), and attempt later diagnostics without replacing it. Test
+input failure before destination creation, destination failure after analysis,
+temporary-write failure and cleanup. No parser/dependency decision is implied.
+S16b2b must also bound finding samples with exact per-level counts, adopt
+bounded streaming references/online jump and quality state, and run a dense
+small-packet/F1 RSS workload before removing the interim README warning.

@@ -135,3 +135,72 @@ fn timeline_limit_does_not_hide_later_structural_input_or_render_early() {
 fn valid_no_time_file_reports_tf001_on_every_command() {
     commands(&common::NO_TIME, ExitClass::Success, "TF-001");
 }
+
+#[test]
+fn lone_truncated_packet_with_valid_header_is_input_on_every_command() {
+    // §11.2.1.1: FC55 still validates the complete primary header; six of
+    // the declared twelve data bytes are missing. No complete packet exists.
+    commands(&reference(false)[..30], ExitClass::Input, "valid");
+}
+
+#[test]
+fn tf001_warning_threshold_is_preserved_on_every_command() {
+    let input = Input::new(&common::NO_TIME);
+    for command in [
+        "summary",
+        "channels",
+        "jumps",
+        "timeline",
+        "csv",
+        "correlate",
+    ] {
+        for (level, expected) in [
+            ("error", ExitClass::Success),
+            ("warning", ExitClass::Findings),
+            ("info", ExitClass::Findings),
+            ("never", ExitClass::Success),
+        ] {
+            let mut args = vec![command, input.0.to_str().unwrap()];
+            if command == "correlate" {
+                args.push("0");
+            }
+            args.extend(["--fail-on", level]);
+            let (mut out, mut err) = (Vec::new(), Vec::new());
+            assert_eq!(
+                run(&args, &mut out, &mut err),
+                expected,
+                "{command} {level}"
+            );
+            let messages = format!(
+                "{}{}",
+                String::from_utf8(out).unwrap(),
+                String::from_utf8(err).unwrap()
+            );
+            assert!(
+                messages.contains("Warning: TF-001"),
+                "{command}: {messages}"
+            );
+        }
+    }
+}
+
+#[test]
+fn timeline_limit_one_on_two_time_packets_emits_exactly_one_row() {
+    let input = Input::new(&[reference(false), reference(false)].concat());
+    let mut out = Vec::new();
+    assert_eq!(
+        run(
+            &["timeline", input.0.to_str().unwrap(), "--limit", "1"],
+            &mut out,
+            &mut Vec::new()
+        ),
+        ExitClass::Success
+    );
+    let report = String::from_utf8(out).unwrap();
+    let rows: Vec<usize> = report
+        .lines()
+        .filter_map(|line| line.split_whitespace().next()?.parse().ok())
+        .collect();
+    assert_eq!(rows, [0], "{report}");
+    assert!(report.contains("showing first 1 of 2 packets"), "{report}");
+}
