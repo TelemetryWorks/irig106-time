@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S16b1 bounded raw transport (partial CLI-104)
+
+- Add a buffered, caller-capped packet reader with checksum-qualified recovery,
+  Data-Length-only capture and explicit final-tail events; no Packet-Length
+  allocation. CI measures transport peak RSS on generated 384 MiB input.
+- Commands still use the old scanner: the whole-CLI memory/publication gate
+  and interim README warning remain. Joining/report integration is subsequent
+  S16b work; no coverage increase (198 tested / 206 verified of 288).
+  Clause limits and tests-first evidence: docs/verification-s16b.md.
+
 ### S16a3b shared irig106 exit convention
 
 - Add --fail-on error|warning|info|never (default error), inclusive and validated

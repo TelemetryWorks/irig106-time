@@ -1738,9 +1738,9 @@ does not settle it or replace its real-recording evidence.
 
 **Parent**: L1-CLI-004
 
-**Statement**: The CLI SHALL implement the six commands over a shared joining loop and report model with basis and findings.
+**Statement**: The CLI SHALL implement the six commands over a shared joining loop and report model with basis and findings. Chapter 10 input SHALL use bounded buffered or chunked reads, never a whole-file read, mmap or unsafe code; memory SHALL not grow with file size beyond the report state required by the command.
 
-**Source**: Contract 4.12; ADR-0011, ADR-0013.
+**Source**: Contract 4.12; ADR-0011, ADR-0013; coordinator S16b bounded-memory release gate (2026-11-19), reader policy, not an IRIG 106 resource limit.
 
 **Verification Method**: Test (T)
 

@@ -2,7 +2,7 @@
 use irig106_time_cli::input::{Event, PacketReader, ReaderLimits, TailKind};
 use std::io::{self, Read};
 
-// 106-24R1 §11.2.1.1, Figure 11-2: 24-byte primary header, little-endian
+// 106-24R1 §11.2.1.1, 24-byte primary header, little-endian
 // word checksum over bytes 0..22. Bit 7, not bit 2, selects the secondary.
 fn packet(flags: u8, data: &[u8]) -> Vec<u8> {
     let start = 24 + if flags & 0x80 != 0 { 12 } else { 0 };
@@ -34,7 +34,7 @@ fn reader(bytes: &[u8]) -> PacketReader<&[u8]> {
 #[test]
 fn bounded_reader_crosses_small_buffers_without_exposing_filler() {
     struct Chunked {
-        bytes: std::io::Cursor<Vec<u8>>,
+        bytes: std::fs::File,
         largest: usize,
     }
     impl Read for Chunked {
@@ -45,8 +45,10 @@ fn bounded_reader_crosses_small_buffers_without_exposing_filler() {
         }
     }
     let data = packet(0, &[1, 2, 3, 4, 5]).repeat(100);
+    let path = std::env::temp_dir().join(format!("irigtime-small-buffer-{}", std::process::id()));
+    std::fs::write(&path, data).unwrap();
     let input = Chunked {
-        bytes: std::io::Cursor::new(data),
+        bytes: std::fs::File::open(&path).unwrap(),
         largest: 0,
     };
     let mut r = PacketReader::new(
@@ -69,6 +71,7 @@ fn bounded_reader_crosses_small_buffers_without_exposing_filler() {
     assert!(r.next_packet(|_| 0).unwrap().is_none());
     assert_eq!(r.position(), 3200);
     assert!(r.into_inner().largest <= 32);
+    std::fs::remove_file(path).unwrap();
 }
 #[test]
 fn secondary_bit_and_capture_cap_are_explicit() {
@@ -128,6 +131,21 @@ fn framing_recovery_and_final_tails_remain_distinct() {
         assert!(
             matches!(reader(&good[..cut]).next_packet(|_| 4).unwrap(), Some(Event::Tail { kind: k, bytes: n, .. }) if k == kind && n == cut as u64)
         );
+    }
+    for (flags, length) in [(0, 0u32), (0, 25), (0x80, 24)] {
+        let mut bad = good.clone();
+        bad[4..8].copy_from_slice(&length.to_le_bytes());
+        bad[14] = flags;
+        let sum = bad[..22].chunks_exact(2).fold(0u16, |s, w| {
+            s.wrapping_add(u16::from_le_bytes([w[0], w[1]]))
+        });
+        bad[22..24].copy_from_slice(&sum.to_le_bytes());
+        let mut r = reader(&bad);
+        assert_eq!(
+            r.next_packet(|_| 0).unwrap_err().kind(),
+            io::ErrorKind::InvalidData
+        );
+        assert!(r.next_packet(|_| 0).unwrap().is_none());
     }
     // A valid primary checksum cannot excuse impossible Data Length.
     let mut bad = good.clone();

@@ -1523,9 +1523,9 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 
 **L1 ancestor**: L1-CLI-004
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Summary shows sessions/spans/quality; channels shows declarations/observations; jumps shows residuals/thresholds; timeline and csv show packet answers; correlate shows requested session/counter answers. No command independently converts time or assigns fixed event meanings.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Summary shows sessions/spans/quality; channels shows declarations/observations; jumps shows residuals/thresholds; timeline and csv show packet answers; correlate shows requested session/counter answers. No command independently converts time or assigns fixed event meanings. All commands SHALL share a validated Data-Length-bounded joining loop over bounded buffered input. Test a file larger than a small configured buffer and measure CI peak RSS on a generated few-hundred-MiB file; the transport probe alone does not close the joining/report memory gate.
 
-**Source**: Contract 4.12; ADR-0011, ADR-0013.
+**Source**: Contract 4.12; ADR-0011, ADR-0013; coordinator S16b bounded-memory release gate (2026-11-19), reader policy, not an IRIG 106 resource limit.
 
 **Planned verification**: A synthetic recording with both formats, two sessions, gaps/jumps, unknown year and counter-only answers; assert relevant provenance in each command.
 
