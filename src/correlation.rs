@@ -476,5 +476,6 @@ impl Default for TimeCorrelator {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // Test assertions only; production retains root denies.
 #[path = "correlation_tests.rs"]
 mod correlation_tests;

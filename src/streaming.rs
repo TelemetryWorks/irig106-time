@@ -323,5 +323,6 @@ impl StreamingTimeCorrelator {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)] // Test assertions only; production retains root denies.
 #[path = "streaming_tests.rs"]
 mod streaming_tests;

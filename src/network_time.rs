@@ -558,5 +558,6 @@ fn is_leap_year(year: u16) -> bool {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::panic)] // Test assertions only; production retains root denies.
 #[path = "network_time_tests.rs"]
 mod network_time_tests;

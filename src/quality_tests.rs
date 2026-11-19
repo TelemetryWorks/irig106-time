@@ -1,7 +1,7 @@
 use super::*;
-use crate::{TimeCorrelator, absolute::AbsoluteTime};
 use crate::correlation::ReferencePoint;
 use crate::rtc::Rtc;
+use crate::{TimeCorrelator, absolute::AbsoluteTime};
 use alloc::vec;
 
 fn make_ref(ch: u16, rtc_raw: u64, doy: u16, h: u8, m: u8, s: u8) -> ReferencePoint {

@@ -713,5 +713,6 @@ fn days_in_month(year: u16, month: u8) -> u8 {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::panic)] // Test assertions only; production retains root denies.
 #[path = "bcd_tests.rs"]
 mod bcd_tests;

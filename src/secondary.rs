@@ -127,6 +127,7 @@ pub fn parse_secondary_header(buf: &[u8], fmt: SecHdrTimeFormat) -> Result<Secon
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::panic)] // Test assertions only; production retains root denies.
 #[path = "secondary_tests.rs"]
 mod secondary_tests;
 

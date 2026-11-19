@@ -102,6 +102,18 @@
 //! which in turn trace to IRIG 106-17 Chapters 10/11 and RCC 123-20.
 
 #![no_std]
+#![forbid(unsafe_code)]
+#![deny(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable,
+    clippy::dbg_macro,
+    clippy::print_stdout,
+    clippy::print_stderr
+)]
 #![deny(missing_docs)]
 
 #[cfg(feature = "std")]

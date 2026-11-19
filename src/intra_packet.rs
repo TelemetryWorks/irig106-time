@@ -126,6 +126,7 @@ pub fn parse_intra_packet_time(buf: &[u8], fmt: IntraPacketTimeFormat) -> Result
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::panic)] // Test assertions only; production retains root denies.
 #[path = "intra_packet_tests.rs"]
 mod intra_packet_tests;
 

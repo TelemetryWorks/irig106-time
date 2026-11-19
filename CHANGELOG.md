@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S15a library safety enforcement
+
+- Forbid project-library unsafe code and deny the nine accepted no-panic/
+  no-print Clippy operations. Only test-module assertion allowances are added;
+  production modules have no exemptions. CI exercises negative policy probes.
+- Replace legacy quality min/max unwraps with a bounded fold, retaining its
+  public results and empty/singleton conventions. This is lint cleanup, not a
+  claim of a reproduced runtime panic. S15's CLI/trait/allocation/I/O audit
+  continues in separate slices; see docs/verification-s15a.md.
+
 ### S14b retired unqualified conversion shortcuts (0.8.0)
 
 - **Breaking:** remove `Ch4BinaryTimeExt` from root and `absolute`, including
