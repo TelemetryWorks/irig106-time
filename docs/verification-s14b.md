@@ -50,3 +50,21 @@ no manifest edge added. L1-API-011 → L2/L3-API-111 Jiff remains unchanged.
 Retirement controls are partial compatibility evidence, not whole markers.
 Matrix remains196/288. Fmt and trace check locally; full targets/CLI/benches/
 fuzz/deny/MSRV/WASM in PR CI under owner compute rule2026-11-18.
+
+## PR56 review — compiled usage and stream refusal
+
+Replaced section13's deprecated NTP/PTP calendar calls and panicking NTP
+unwrap with convert_ntp / table.convert_ptp. Return raw/status and full
+conversion objects; invalid TS/reserved NTF cannot produce a conversion.
+The example is conversion, not declaration/channel admission; the guide
+points to Format2Input/Observation and timeline/stream for recording answers.
+Both Rust snippets are pinned to examples/format2_usage.rs by a sync test;
+the example compiles with deny(deprecated), and its literal2025 NTP/PTP UTC
+fixtures and invalid-TS control pass as a focused example test. Section1
+now documents the upcoming0.8/no-default/Jiff choices, not serde/chrono.
+54a2940 adds a legacy-stream NTP test before documentation changes: it passes
+at the reviewed head (no runtime-first defect claim). Replacing the explicit
+NeedsContext branch with return Ok(()) compiles and fails the new exact-error
+assertion. The test also requires len0/empty/latest_rtc=None/evictions0.
+Production source restored; no conversion/stream implementation change.
+No new whole markers; coverage remains196/288.
