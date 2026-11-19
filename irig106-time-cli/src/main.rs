@@ -1,5 +1,6 @@
 //! `irigtime` — CLI tool for inspecting IRIG 106 Chapter 10 time data.
 //!
+//! Host-callable CLI implementation. `run` accepts arguments without argv[0].
 //! Reads a Ch10 file, extracts all time packets, builds a correlation table,
 //! and produces various diagnostic outputs.
 //!
@@ -28,8 +29,8 @@
 )]
 
 use std::collections::BTreeMap;
-use std::env;
-use std::process;
+use std::io::{self, Write};
+use std::result::Result;
 
 use irig106_time::bcd::{DayFormatTime, DmyFormatTime};
 use irig106_time::csdw::{DateFormat, TimeF1Csdw};
@@ -517,43 +518,66 @@ fn fmt_comma(n: usize) -> String {
 // Command implementations
 // ────────────────────────────────────────────────────────────────────
 
-#[allow(clippy::print_stdout)] // CLI rendering/diagnostic boundary only.
-fn cmd_summary(mmap: &[u8], filename: &str) {
+fn cmd_summary(mmap: &[u8], filename: &str, stdout: &mut dyn Write) -> Result<(), Failure> {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, false, None);
 
-    println!("================================================================");
-    println!("irigtime — IRIG 106 Time Analysis");
-    println!("================================================================");
-    println!();
-    println!("File               : {}", filename);
-    println!("File Size          : {} bytes", fmt_comma(mmap.len()));
-    println!("Total Packets      : {}", fmt_comma(scanner.total_packets));
-    println!("Time Packets (0x11): {}", fmt_comma(scanner.time_packets));
-    println!("Time Channels      : {}", scanner.time_channels.len());
-    println!("Correlation Refs   : {}", scanner.correlator.len());
-    println!();
+    writeln!(
+        stdout,
+        "================================================================"
+    )?;
+    writeln!(stdout, "irigtime — IRIG 106 Time Analysis")?;
+    writeln!(
+        stdout,
+        "================================================================"
+    )?;
+    writeln!(stdout)?;
+    writeln!(stdout, "File               : {}", filename)?;
+    writeln!(
+        stdout,
+        "File Size          : {} bytes",
+        fmt_comma(mmap.len())
+    )?;
+    writeln!(
+        stdout,
+        "Total Packets      : {}",
+        fmt_comma(scanner.total_packets)
+    )?;
+    writeln!(
+        stdout,
+        "Time Packets (0x11): {}",
+        fmt_comma(scanner.time_packets)
+    )?;
+    writeln!(
+        stdout,
+        "Time Channels      : {}",
+        scanner.time_channels.len()
+    )?;
+    writeln!(stdout, "Correlation Refs   : {}", scanner.correlator.len())?;
+    writeln!(stdout)?;
 
     if let (Some(first), Some(last)) = (scanner.first_rtc, scanner.last_rtc) {
         let dur_ns = first.elapsed_nanos(last);
         let dur_s = dur_ns as f64 / 1_000_000_000.0;
-        println!(
+        writeln!(
+            stdout,
             "RTC Range          : {:#014X} → {:#014X}",
             first.as_raw(),
             last.as_raw()
-        );
-        println!(
+        )?;
+        writeln!(
+            stdout,
             "RTC Duration       : {:.3} seconds ({:.1} minutes)",
             dur_s,
             dur_s / 60.0
-        );
+        )?;
     }
-    println!();
+    writeln!(stdout)?;
 
     // Per-channel summary
     if !scanner.time_channels.is_empty() {
-        println!("Time Channels");
-        println!("─────────────");
+        writeln!(stdout, "Time Channels")?;
+        writeln!(stdout, "─────────────")?;
         for info in scanner.time_channels.values() {
             let proto_str = match info.network_protocol {
                 Some(NetworkTimeProtocol::Ntp) => "  Proto: NTP",
@@ -561,7 +585,8 @@ fn cmd_summary(mmap: &[u8], filename: &str) {
                 Some(NetworkTimeProtocol::Reserved(_)) => "  Proto: ?",
                 None => "",
             };
-            println!(
+            writeln!(
+                stdout,
                 "  Channel {:>3}  │  Source: {:<12}  Format: {:<8}  Date: {:<4}  Leap: {}  Packets: {}{}",
                 info.channel_id,
                 info.source.as_ref().map(fmt_time_source).unwrap_or("?"),
@@ -578,15 +603,15 @@ fn cmd_summary(mmap: &[u8], filename: &str) {
                 },
                 fmt_comma(info.packet_count),
                 proto_str,
-            );
+            )?;
             if let Some(ref ft) = info.first_time {
-                println!("                │  First: {}", fmt_abs_time(ft));
+                writeln!(stdout, "                │  First: {}", fmt_abs_time(ft))?;
             }
             if let Some(ref lt) = info.last_time {
-                println!("                │  Last:  {}", fmt_abs_time(lt));
+                writeln!(stdout, "                │  Last:  {}", fmt_abs_time(lt))?;
             }
         }
-        println!();
+        writeln!(stdout)?;
     }
 
     // Time jump detection
@@ -598,13 +623,14 @@ fn cmd_summary(mmap: &[u8], filename: &str) {
             .detect_time_jump(*ch, NanosDuration::new(1_000_000_000));
         if !jumps.is_empty() {
             if !any_jumps {
-                println!("Time Jumps Detected (threshold: 1 second)");
-                println!("──────────────────────────────────────────");
+                writeln!(stdout, "Time Jumps Detected (threshold: 1 second)")?;
+                writeln!(stdout, "──────────────────────────────────────────")?;
                 any_jumps = true;
             }
             for j in &jumps {
                 let delta_ms = j.delta_nanos as f64 / 1_000_000.0;
-                println!(
+                writeln!(
+                    stdout,
                     "  Channel {:>3}  │  Ref #{:<4}  Delta: {:>+10.1} ms  ({})",
                     j.channel_id,
                     j.index,
@@ -614,46 +640,51 @@ fn cmd_summary(mmap: &[u8], filename: &str) {
                     } else {
                         "jump backward"
                     }
-                );
+                )?;
             }
         }
     }
     if !any_jumps && !all_channels.is_empty() {
-        println!("Time Jumps         : None detected (threshold: 1 second)");
+        writeln!(
+            stdout,
+            "Time Jumps         : None detected (threshold: 1 second)"
+        )?;
     }
-    println!();
+    writeln!(stdout)?;
 
     // Data type breakdown
-    println!("Data Type Breakdown");
-    println!("───────────────────");
+    writeln!(stdout, "Data Type Breakdown")?;
+    writeln!(stdout, "───────────────────")?;
     for (dt, count) in &scanner.data_type_counts {
-        println!(
+        writeln!(
+            stdout,
             "  0x{:02X} {:<14}  {:>10}",
             dt,
             fmt_data_type_short(*dt),
             fmt_comma(*count)
-        );
+        )?;
     }
-    println!();
+    writeln!(stdout)?;
 
     if !scanner.errors.is_empty() {
-        println!("Errors ({})", scanner.errors.len());
-        println!("──────");
+        writeln!(stdout, "Errors ({})", scanner.errors.len())?;
+        writeln!(stdout, "──────")?;
         for (i, e) in scanner.errors.iter().enumerate().take(20) {
-            println!("  {}. {}", i + 1, e);
+            writeln!(stdout, "  {}. {}", i + 1, e)?;
         }
         if scanner.errors.len() > 20 {
-            println!("  ... and {} more", scanner.errors.len() - 20);
+            writeln!(stdout, "  ... and {} more", scanner.errors.len() - 20)?;
         }
     }
+    Ok(())
 }
 
-#[allow(clippy::print_stdout)] // CLI rendering/diagnostic boundary only.
-fn cmd_channels(mmap: &[u8]) {
+fn cmd_channels(mmap: &[u8], stdout: &mut dyn Write) -> Result<(), Failure> {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, false, None);
 
-    println!(
+    writeln!(
+        stdout,
         "{:<8}  {:<12}  {:<10}  {:<5}  {:<5}  {:<5}  {:>8}  {:>28}  {:>28}",
         "Channel",
         "Source",
@@ -664,8 +695,8 @@ fn cmd_channels(mmap: &[u8]) {
         "Packets",
         "First Time",
         "Last Time"
-    );
-    println!("{}", "─".repeat(126));
+    )?;
+    writeln!(stdout, "{}", "─".repeat(126))?;
 
     for info in scanner.time_channels.values() {
         let proto = match info.network_protocol {
@@ -674,7 +705,8 @@ fn cmd_channels(mmap: &[u8]) {
             Some(NetworkTimeProtocol::Reserved(_)) => "?",
             None => "—",
         };
-        println!(
+        writeln!(
+            stdout,
             "{:>7}  {:<12}  {:<10}  {:<5}  {:<5}  {:<5}  {:>8}  {:>28}  {:>28}",
             info.channel_id,
             info.source.as_ref().map(fmt_time_source).unwrap_or("?"),
@@ -699,72 +731,83 @@ fn cmd_channels(mmap: &[u8]) {
                 .as_ref()
                 .map(fmt_abs_time)
                 .unwrap_or_default(),
-        );
+        )?;
     }
+    Ok(())
 }
 
-#[allow(clippy::print_stdout, clippy::print_stderr)] // CLI rendering/diagnostic boundary only.
-fn cmd_jumps(mmap: &[u8], threshold_ms: u64) {
+fn cmd_jumps(mmap: &[u8], threshold_ms: u64, stdout: &mut dyn Write) -> Result<(), Failure> {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, false, None);
 
-    let threshold_ns = threshold_ms.checked_mul(1_000_000).unwrap_or_else(|| {
-        eprintln!("Error: threshold milliseconds cannot be represented in nanoseconds");
-        process::exit(2);
-    });
+    let threshold_ns = threshold_ms.checked_mul(1_000_000).ok_or_else(|| {
+        Failure::new(
+            ExitClass::Usage,
+            "threshold milliseconds cannot be represented in nanoseconds",
+        )
+    })?;
     let channels: Vec<u16> = scanner.time_channels.keys().cloned().collect();
     let mut total_jumps = 0;
 
-    println!("Time Jump Detection (threshold: {} ms)", threshold_ms);
-    println!("{}", "═".repeat(70));
+    writeln!(
+        stdout,
+        "Time Jump Detection (threshold: {} ms)",
+        threshold_ms
+    )?;
+    writeln!(stdout, "{}", "═".repeat(70))?;
 
     for ch in &channels {
         let jumps = scanner
             .correlator
             .detect_time_jump(*ch, NanosDuration::new(threshold_ns));
         if !jumps.is_empty() {
-            println!();
-            println!("Channel {} — {} jump(s):", ch, jumps.len());
+            writeln!(stdout)?;
+            writeln!(stdout, "Channel {} — {} jump(s):", ch, jumps.len())?;
             for j in &jumps {
                 let delta_ms = j.delta_nanos as f64 / 1_000_000.0;
-                println!(
+                writeln!(
+                    stdout,
                     "  Ref #{:<4}  Expected: {:>15} ns  Actual: {:>15} ns  Delta: {:>+12.3} ms",
                     j.index, j.expected_nanos, j.actual_nanos, delta_ms
-                );
+                )?;
             }
             total_jumps += jumps.len();
         }
     }
 
     if total_jumps == 0 {
-        println!();
-        println!(
+        writeln!(stdout)?;
+        writeln!(
+            stdout,
             "No time jumps detected across {} channel(s).",
             channels.len()
-        );
+        )?;
     } else {
-        println!();
-        println!(
+        writeln!(stdout)?;
+        writeln!(
+            stdout,
             "Total: {} jump(s) across {} channel(s).",
             total_jumps,
             channels.len()
-        );
+        )?;
     }
+    Ok(())
 }
 
-#[allow(clippy::print_stdout)] // CLI rendering/diagnostic boundary only.
-fn cmd_timeline(mmap: &[u8], limit: usize) {
+fn cmd_timeline(mmap: &[u8], limit: usize, stdout: &mut dyn Write) -> Result<(), Failure> {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, true, Some(limit));
 
-    println!(
+    writeln!(
+        stdout,
         "{:>8}  {:>12}  {:>6}  {:<14}  {:>14}  {:>28}",
         "Pkt#", "Offset", "Ch", "Type", "RTC", "Absolute Time"
-    );
-    println!("{}", "─".repeat(100));
+    )?;
+    writeln!(stdout, "{}", "─".repeat(100))?;
 
     for r in &scanner.resolved {
-        println!(
+        writeln!(
+            stdout,
             "{:>8}  {:>#12X}  {:>6}  {:<14}  {:>14}  {:>28}",
             r.packet_num,
             r.offset,
@@ -775,28 +818,34 @@ fn cmd_timeline(mmap: &[u8], limit: usize) {
                 .as_ref()
                 .map(fmt_abs_time)
                 .unwrap_or_else(|| "N/A".to_string()),
-        );
+        )?;
     }
 
     if scanner.total_packets > limit {
-        println!(
+        writeln!(
+            stdout,
             "... showing first {} of {} packets",
             limit, scanner.total_packets
-        );
+        )?;
     }
+    Ok(())
 }
 
-#[allow(clippy::print_stderr)] // CLI rendering/diagnostic boundary only.
-fn cmd_csv(mmap: &[u8], output_path: Option<&str>) -> std::io::Result<()> {
+fn cmd_csv(
+    mmap: &[u8],
+    output_path: Option<&str>,
+    stdout: &mut dyn Write,
+    stderr: &mut dyn Write,
+) -> Result<(), Failure> {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, true, None);
 
-    let mut out: Box<dyn std::io::Write> = match output_path {
+    let mut out: Box<dyn Write + '_> = match output_path {
         Some(path) => {
             let f = std::fs::File::create(path)?;
             Box::new(std::io::BufWriter::new(f))
         }
-        None => Box::new(std::io::stdout()),
+        None => Box::new(stdout),
     };
 
     writeln!(
@@ -843,188 +892,228 @@ fn cmd_csv(mmap: &[u8], output_path: Option<&str>) -> std::io::Result<()> {
 
     out.flush()?;
     if let Some(path) = output_path {
-        eprintln!("Wrote {} rows to {}", scanner.resolved.len(), path);
+        writeln!(stderr, "Wrote {} rows to {}", scanner.resolved.len(), path)?;
     }
     Ok(())
 }
 
-#[allow(clippy::print_stdout, clippy::print_stderr)] // CLI rendering/diagnostic boundary only.
-fn cmd_correlate(mmap: &[u8], rtc_hex: &str) {
+fn cmd_correlate(mmap: &[u8], rtc_hex: &str, stdout: &mut dyn Write) -> Result<(), Failure> {
     let rtc_val = u64::from_str_radix(
         rtc_hex.trim_start_matches("0x").trim_start_matches("0X"),
         16,
     )
-    .unwrap_or_else(|e| {
-        eprintln!("Error: invalid hex RTC value: {}", e);
-        process::exit(2);
-    });
+    .map_err(|e| Failure::new(ExitClass::Usage, format!("invalid hex RTC value: {e}")))?;
     let target = Rtc::from_raw(rtc_val);
 
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, false, None);
 
-    println!(
+    writeln!(
+        stdout,
         "Resolving RTC {:#014X} ({} ticks, {} ns)",
         target.as_raw(),
         target.as_raw(),
         target.to_nanos()
-    );
-    println!();
+    )?;
+    writeln!(stdout)?;
 
     if scanner.correlator.is_empty() {
-        eprintln!("Error: No time reference points found in file.");
-        process::exit(1);
+        return Err(Failure::new(
+            ExitClass::Findings,
+            "No time reference points found in file.",
+        ));
     }
 
     // Correlate with all channels
     match scanner.correlator.correlate(target, None) {
-        Ok(t) => println!("  Any channel  → {}", fmt_abs_time(&t)),
-        Err(e) => println!("  Any channel  → Error: {}", e),
+        Ok(t) => writeln!(stdout, "  Any channel  → {}", fmt_abs_time(&t))?,
+        Err(e) => writeln!(stdout, "  Any channel  → Error: {}", e)?,
     }
 
     // Per-channel
     for ch in scanner.time_channels.keys() {
         if let Ok(t) = scanner.correlator.correlate(target, Some(*ch)) {
-            println!("  Channel {:>3}  → {}", ch, fmt_abs_time(&t));
+            writeln!(stdout, "  Channel {:>3}  → {}", ch, fmt_abs_time(&t))?;
         }
     }
+    Ok(())
 }
 
-// ────────────────────────────────────────────────────────────────────
-// Main / CLI dispatch
-// ────────────────────────────────────────────────────────────────────
-
-#[allow(clippy::print_stdout)] // CLI rendering/diagnostic boundary only.
-fn print_usage() {
-    println!(
+fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
+    writeln!(
+        stdout,
         "irigtime v{} — IRIG 106 Chapter 10 Time Inspector",
         PKG_VERSION
-    );
-    println!();
-    println!("Usage:");
-    println!("  irigtime summary   <file.ch10>                    File time summary");
-    println!("  irigtime channels  <file.ch10>                    Time channel inventory");
-    println!(
+    )?;
+    writeln!(stdout)?;
+    writeln!(stdout, "Usage:")?;
+    writeln!(
+        stdout,
+        "  irigtime summary   <file.ch10>                    File time summary"
+    )?;
+    writeln!(
+        stdout,
+        "  irigtime channels  <file.ch10>                    Time channel inventory"
+    )?;
+    writeln!(
+        stdout,
         "  irigtime jumps     <file.ch10> [--threshold-ms N] Time jump detection (default: 1000 ms)"
-    );
-    println!(
+    )?;
+    writeln!(
+        stdout,
         "  irigtime timeline  <file.ch10> [--limit N]        Per-packet timeline (default: 100)"
-    );
-    println!("  irigtime csv       <file.ch10> [--output file]    Export all timestamps to CSV");
-    println!("  irigtime correlate <file.ch10> <rtc_hex>          Resolve a single RTC value");
-    println!();
-    println!("Examples:");
-    println!("  irigtime summary flight_042.ch10");
-    println!("  irigtime jumps   flight_042.ch10 --threshold-ms 500");
-    println!("  irigtime csv     flight_042.ch10 --output times.csv");
-    println!("  irigtime correlate flight_042.ch10 0x00009896800");
+    )?;
+    writeln!(
+        stdout,
+        "  irigtime csv       <file.ch10> [--output file]    Export all timestamps to CSV"
+    )?;
+    writeln!(
+        stdout,
+        "  irigtime correlate <file.ch10> <rtc_hex>          Resolve a single RTC value"
+    )?;
+    writeln!(stdout)?;
+    writeln!(stdout, "Examples:")?;
+    writeln!(stdout, "  irigtime summary flight_042.ch10")?;
+    writeln!(
+        stdout,
+        "  irigtime jumps   flight_042.ch10 --threshold-ms 500"
+    )?;
+    writeln!(
+        stdout,
+        "  irigtime csv     flight_042.ch10 --output times.csv"
+    )?;
+    writeln!(stdout, "  irigtime correlate flight_042.ch10 0x00009896800")?;
+    Ok(())
 }
 
-#[allow(clippy::print_stderr)] // CLI rendering/diagnostic boundary only.
-fn open_file(path: &str) -> Vec<u8> {
-    // Safe snapshot: no unsafe mapping of a file another process could modify.
-    std::fs::read(path).unwrap_or_else(|e| {
-        eprintln!("Error: cannot read '{}': {}", path, e);
-        process::exit(3);
-    })
+/// Shared exit classes; numeric assignments agree with irig106 tmats.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u8)]
+pub enum ExitClass {
+    /// Completed successfully.
+    Success = 0,
+    /// Findings meet the selected threshold.
+    Findings = 1,
+    /// Invalid command-line usage.
+    Usage = 2,
+    /// Input could not be read or recognized.
+    Input = 3,
+    /// Output could not be written or flushed.
+    Output = 4,
 }
-
-#[allow(clippy::print_stdout, clippy::print_stderr)] // CLI rendering/diagnostic boundary only.
-fn main() {
-    let args: Vec<String> = env::args().collect();
-
-    if args.len() < 2 {
-        print_usage();
-        process::exit(0);
+struct Failure {
+    class: ExitClass,
+    message: String,
+}
+impl Failure {
+    fn new(class: ExitClass, message: impl ToString) -> Self {
+        Self {
+            class,
+            message: message.to_string(),
+        }
     }
+}
+impl From<io::Error> for Failure {
+    fn from(error: io::Error) -> Self {
+        Self::new(ExitClass::Output, error)
+    }
+}
 
-    let command = args[1].as_str();
-
+/// Run with arguments after the program name (or after the host's `time`).
+///
+/// All output uses these writers; no global stdout/stderr or process exit.
+/// S16a3 replaces the permissive legacy dispatcher with strict args validation.
+/// Input still uses the S15b whole-file snapshot until S16b bounded streaming.
+/// Traces: L3-CLI-101 <- L2-CLI-101 <- L1-CLI-001;
+/// L3-CLI-102 <- L2-CLI-102 <- L1-CLI-002 (host/writer clauses only).
+pub fn run(args: &[&str], stdout: &mut dyn Write, stderr: &mut dyn Write) -> ExitClass {
+    let result = dispatch(args, stdout, stderr).and_then(|()| {
+        stdout.flush()?;
+        stderr.flush()?;
+        Ok(())
+    });
+    match result {
+        Ok(()) => ExitClass::Success,
+        Err(error) => {
+            // Preserve the first input/output failure if its diagnostic also fails.
+            if writeln!(stderr, "Error: {}", error.message)
+                .and_then(|()| stderr.flush())
+                .is_err()
+                && error.class == ExitClass::Findings
+            {
+                ExitClass::Output
+            } else {
+                error.class
+            }
+        }
+    }
+}
+fn dispatch(args: &[&str], stdout: &mut dyn Write, stderr: &mut dyn Write) -> Result<(), Failure> {
+    let command = args.first().copied().unwrap_or("--help");
+    if matches!(command, "-h" | "--help" | "help") {
+        return print_usage(stdout);
+    }
+    if matches!(command, "-V" | "--version") {
+        writeln!(stdout, "irigtime {}", PKG_VERSION)?;
+        return Ok(());
+    }
+    if !matches!(
+        command,
+        "summary" | "channels" | "jumps" | "timeline" | "csv" | "correlate"
+    ) {
+        return Err(Failure::new(
+            ExitClass::Usage,
+            format!("Unknown command: '{command}'"),
+        ));
+    }
+    let path = args
+        .get(1)
+        .ok_or_else(|| Failure::new(ExitClass::Usage, "missing input file"))?;
+    let rtc = if command == "correlate" {
+        Some(
+            *args
+                .get(2)
+                .ok_or_else(|| Failure::new(ExitClass::Usage, "missing RTC"))?,
+        )
+    } else {
+        None
+    };
+    // Safe owned snapshot; S16b will replace this with bounded streaming.
+    let data = std::fs::read(path)
+        .map_err(|e| Failure::new(ExitClass::Input, format!("cannot read '{path}': {e}")))?;
     match command {
-        "summary" => {
-            if args.len() < 3 {
-                eprintln!("Usage: irigtime summary <file>");
-                process::exit(1);
-            }
-            let mmap = open_file(&args[2]);
-            cmd_summary(&mmap, &args[2]);
-        }
-        "channels" => {
-            if args.len() < 3 {
-                eprintln!("Usage: irigtime channels <file>");
-                process::exit(1);
-            }
-            let mmap = open_file(&args[2]);
-            cmd_channels(&mmap);
-        }
+        "summary" => cmd_summary(&data, path, stdout),
+        "channels" => cmd_channels(&data, stdout),
         "jumps" => {
-            if args.len() < 3 {
-                eprintln!("Usage: irigtime jumps <file> [--threshold-ms N]");
-                process::exit(1);
-            }
-            let mmap = open_file(&args[2]);
             let threshold = args
                 .iter()
-                .position(|a| a == "--threshold-ms")
+                .position(|a| *a == "--threshold-ms")
                 .and_then(|i| args.get(i + 1))
                 .and_then(|v| v.parse::<u64>().ok())
                 .unwrap_or(1000);
-            cmd_jumps(&mmap, threshold);
+            cmd_jumps(&data, threshold, stdout)
         }
         "timeline" => {
-            if args.len() < 3 {
-                eprintln!("Usage: irigtime timeline <file> [--limit N]");
-                process::exit(1);
-            }
-            let mmap = open_file(&args[2]);
             let limit = args
                 .iter()
-                .position(|a| a == "--limit")
+                .position(|a| *a == "--limit")
                 .and_then(|i| args.get(i + 1))
                 .and_then(|v| v.parse::<usize>().ok())
                 .unwrap_or(100);
-            cmd_timeline(&mmap, limit);
+            cmd_timeline(&data, limit, stdout)
         }
         "csv" => {
-            if args.len() < 3 {
-                eprintln!("Usage: irigtime csv <file> [--output path]");
-                process::exit(1);
-            }
-            let mmap = open_file(&args[2]);
             let output = args
                 .iter()
-                .position(|a| a == "--output")
+                .position(|a| *a == "--output")
                 .and_then(|i| args.get(i + 1))
-                .map(|s| s.as_str());
-            if let Err(e) = cmd_csv(&mmap, output) {
-                eprintln!("Error: cannot write CSV: {}", e);
-                process::exit(4);
-            }
+                .copied();
+            cmd_csv(&data, output, stdout, stderr)
         }
-        "correlate" => {
-            if args.len() < 4 {
-                eprintln!("Usage: irigtime correlate <file> <rtc_hex>");
-                process::exit(1);
-            }
-            let mmap = open_file(&args[2]);
-            cmd_correlate(&mmap, &args[3]);
-        }
-        "-h" | "--help" | "help" => {
-            print_usage();
-        }
-        "-V" | "--version" => {
-            println!("irigtime {}", PKG_VERSION);
-        }
-        _ => {
-            eprintln!("Unknown command: '{}'", command);
-            eprintln!();
-            print_usage();
-            process::exit(1);
-        }
+        "correlate" => cmd_correlate(&data, rtc.unwrap_or_default(), stdout),
+        _ => Err(Failure::new(ExitClass::Usage, "unknown command")),
     }
 }
-
-use std::io::Write;
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used)] // Test assertions only.

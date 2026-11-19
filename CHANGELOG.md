@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S16a2 host-callable CLI
+
+- Export CLI `run(args, stdout, stderr) -> ExitClass`; only the thin binary
+  exits. Renderers use injected writers and return write/flush failures (4).
+  Unknown/missing commands now return usage (2); input failure remains (3)
+  even if diagnostic output fails. Strict args/threshold exits follow in S16a3.
+- Native time library and interim whole-file reader remain unchanged; no CLI
+  publication before S16b. Partial coverage: docs/verification-s16a2.md.
+
 ### S16a1 workspace and executable identity (breaking)
 
 - Root library and sibling CLI now share a lockstep workspace, one authoritative
