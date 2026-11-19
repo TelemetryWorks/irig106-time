@@ -280,3 +280,26 @@ fn reserved_bcd_bit_is_a_reported_finding() {
         3,
     );
 }
+
+#[test]
+fn trailing_zero_block_padding_preserves_analysis() {
+    success_with_finding(
+        &[f1_reference(), f1_reference(), vec![0; 512]].concat(),
+        "512 trailing bytes without sync at offset 0x48",
+        2,
+    );
+}
+#[test]
+fn trailing_ff_block_padding_preserves_analysis() {
+    success_with_finding(
+        &[f1_reference(), f1_reference(), vec![0xff; 4096]].concat(),
+        "4096 trailing bytes without sync at offset 0x48",
+        2,
+    );
+}
+#[test]
+fn no_sync_without_established_stream_is_still_input_error() {
+    for bytes in [vec![0; 24], vec![0; 512], vec![0xff; 4096]] {
+        input_error(&bytes);
+    }
+}
