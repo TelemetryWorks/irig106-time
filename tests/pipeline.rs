@@ -860,7 +860,7 @@ fn csdw_f2_to_le_bytes_round_trip() {
     use irig106_time::network_time::TimeF2Csdw;
     let original = [0x01, 0x00, 0x00, 0x00]; // NTP protocol
     let csdw = TimeF2Csdw::from_le_bytes(original);
-    assert_eq!(csdw.to_le_bytes(), original);
+    assert_eq!(csdw.to_le_bytes().unwrap(), original);
 }
 
 #[test]
@@ -879,7 +879,7 @@ fn ptp_to_le_bytes_round_trip() {
     original[0..4].copy_from_slice(&100_000u32.to_le_bytes());
     original[4..8].copy_from_slice(&500_000_000u32.to_le_bytes());
     let ptp = PtpTime::from_le_bytes(&original).unwrap();
-    assert_eq!(ptp.to_le_bytes(), original);
+    assert_eq!(ptp.to_le_bytes().unwrap(), original);
 }
 
 #[test]

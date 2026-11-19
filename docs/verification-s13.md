@@ -52,8 +52,8 @@ force TS valid; accept nanos1e9; bypass raw-struct validation; truncate seconds;
 zero NTP fraction; swap PTP words. No compile errors counted as mutation kills.
 Focused local checks only: three encoder tests, nine existing slice2 wire tests,
 and the PTP roundtrip property, plus fmt. Full matrix is GitHub CI, not rerun
-locally (owner compute policy 2026-11-18). Caller migration is limited to the
-existing PTP roundtrip property and slice2 writer assertion; CLI has no use.
+locally (owner compute policy 2026-11-18). Caller migration covers the PTP roundtrip property, slice2 writer assertion
+and two pipeline writer assertions; CLI has no use.
 
 | Requirement | S13a coverage | Remaining |
 |---|---|---|
@@ -63,3 +63,10 @@ existing PTP roundtrip property and slice2 writer assertion; CLI has no use.
 
 Trace matrix advances 192->194/288 through ENC-102 only. No marker claims
 Format 1, header checksum, stamp capacity or invalid-flag encoding coverage.
+
+
+CI44465476351 found two pipeline assertions not migrated to Result; tests and
+clippy failed to compile those call sites. Add unwrap only to their validated
+literal inputs, and run the seven filtered pipeline writer cases locally.
+This is a caller-migration correction, not another encoder algorithm change.
+The corrected head relies on a new GitHub CI run for the full matrix.
