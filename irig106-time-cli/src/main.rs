@@ -225,6 +225,12 @@ impl Ch10TimeScanner {
                         ));
                         offset = next;
                         continue;
+                    } else if self.total_packets > 0 {
+                        self.errors.push(format!(
+                            "{} trailing bytes without sync at offset {offset:#X}",
+                            remaining.len()
+                        ));
+                        break;
                     } else {
                         return Err(Failure::new(ExitClass::Input, "invalid packet sync"));
                     }

@@ -45,7 +45,7 @@ outside this repository and was not touched.
 | Site | Bound or fix |
 | --- | --- |
 | PktHeader::parse fixed byte indexes 0..21 | Existing len>=24 guard proves all fixed header fields readable. |
-| scan remaining/packet selection | Checked remaining/packet slices. Length below the declared header size or not divisible by4 fails3 (§11.2.1.4 filler rule); Data Length past the declared body fails3. A plausible aligned final packet extending past EOF, or a partial final header, is a reported cut-tail finding. Recovered sync is a finding; no recoverable sync remains fatal3. |
+| scan remaining/packet selection | Checked remaining/packet slices. Length below the declared header size or not divisible by4 fails3 (§11.2.1.4 filler rule); Data Length past the declared body fails3. A plausible aligned final packet extending past EOF, or a partial final header, is a reported cut-tail finding. Recovered sync is a finding; no further sync after an established stream is an EOF-tail finding. No recoverable sync before any packet is parsed remains fatal3. |
 | scan progress and counters | Each accepted packet is at least24 bytes, bounded by the remaining slice; offset+packet.len cannot overflow or exceed file length. Sync retry offset+1 is bounded by that same remaining-header proof. Counts are bounded by file length/24 in this single-pass private scanner. |
 | PktHeader::payload | Checked get(data_offset..) then get(..Data Length); no addition of hostile lengths. u32 fits usize on supported32/64-bit targets. Trailer bytes cannot satisfy a short declared body. |
 | process_time_packet CSDW and BCD | get(..4) proves indexes0..3. Constant body offset4 plus minimum6/8-byte BCD guards proves the remaining body slice; library decoder sees only declared data. |
@@ -60,7 +60,7 @@ allocation and the README memory/publication gate remain unchanged.
 
 ### Focused evidence
 
-Nine packet/native-argv tests, four host tests, six S15 guards and the two CLI
+Twelve packet/native-argv tests, four host tests, six S15 guards and the two CLI
 BCD tests pass. Cases cover short headers, both time types with/without the
 legacy secondary offset, undersized/max packet lengths, declared body bounds
 with otherwise valid BCD/PTP bytes and trailer filler, and native filesystem
@@ -88,7 +88,7 @@ packet length and Data Length against the declared body first; impossible
 structure is still3. If a structurally plausible aligned packet extends beyond
 remaining file bytes, stop with a tail finding, without reading or counting the
 incomplete packet. No guessed maximum packet size is introduced. Zero length,
-missing declared header, Data Length overrun and unrecoverable sync stay3.
+missing declared header and Data Length overrun stay3; no recoverable sync before any packet is parsed also stays3.
 
 Tests-first c5160a5: NTP-between-F1, recovered sync and reserved-bit tests each
 fail at runtime on the prior head; the tail test also fails when replayed against
@@ -100,3 +100,24 @@ The structural and catch_unwind panic regressions remain3. Both independent
 silent-tail mutants (omit header finding / omit packet finding) fail at runtime.
 All mutated/replayed source is restored. Local focused tests, fmt, touched CLI
 Clippy and trace check only; full matrix delegated to CI. Coverage unchanged.
+
+## EOF-padding refinement
+
+Tests-first beab39b reproduces both padding regressions at runtime on331ec75:
+512 zero bytes or4096 FF bytes after two valid packets incorrectly return3.
+Once total_packets>0, no further sync to EOF now records the exact trailing
+byte count and offset, then finishes the preceding analysis. With no established
+packet stream, a full-header-sized region without recoverable sync remains3;
+24/512 zero-byte and4096 FF-byte controls assert that without a host panic.
+The two padding tests exercise all six commands with success plus the finding,
+full packet/reference counts, report content and CSV row counts. Mutants that
+omit the established-stream guard or silently discard padding both fail.
+
+Declared-length limitation (code-path inspection): a mid-file packet whose
+plausible declared length extends beyond EOF is labelled a truncated final
+packet. Its remaining bytes, including possible later packet headers, are not
+rescanned; that swallowed data is lost from the analysis but reported through
+the offset, declared length and available-byte count. This is consistent with
+the coordinator's EOF-tail decision, not evidence that corruption can always
+be distinguished from a power-loss truncation. Other structural checks and
+prior panic/argument/flush fixes are unchanged; coverage remains unchanged.

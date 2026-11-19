@@ -13,8 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   OsString/OsStr-compatible values, preserving native paths. Non-UTF-8 syntax
   returns usage2; the binary uses args_os. Fatal structural packet/body bounds
   return input3 without panicking. Decode/context and recovered-sync issues are
-  reported findings; a cut final packet/header preserves the complete preceding
-  analysis. These findings remain success0 until S16a3 wires the threshold.
+  reported findings; a cut final packet/header or unsynchronized EOF padding
+  after an established stream preserves the complete preceding analysis. These findings remain success0 until S16a3 wires the threshold.
   Only the thin binary exits. Renderers use injected writers and return write/flush failures (4).
   Unknown/missing commands now return usage (2); input failure remains (3)
   even if diagnostic output fails. Strict args/threshold exits follow in S16a3.
