@@ -74,3 +74,13 @@ kept both lib.rs compile-fail groups with separate closing fences; combined
 the usage TOC's new section23 event-tag and section24 Jiff anchors. Compared
 merged section23 byte-for-byte to main and section24 to the pre-merge branch;
 both match. No removed event API or invented meaning restored.
+
+## PR56 CI-wiring review
+
+Run44474154287 compiled the example but did not execute its assertions; the
+previous fixture pass was local-only. s14_usage_snippets now includes the
+example as a module, so its existing #[test] is discovered by the ordinary
+integration-test harness as format2_usage::format2_usage_fixtures. No duplicate
+fixture, exported main, manifest/CI change or whole marker. The focused local
+integration target runs both the example assertions and snippet-sync check.
+The new PR CI log is checked for that exact fixture name before reporting.

@@ -1,4 +1,8 @@
 //! Documentation clauses only; no whole-requirement marker.
+// Reuse the example's #[test] fixture in the normal integration-test harness.
+#[path = "../examples/format2_usage.rs"]
+mod format2_usage;
+
 #[test]
 fn network_usage_snippets_match_the_compiled_example() {
     let example = include_str!("../examples/format2_usage.rs");
