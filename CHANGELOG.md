@@ -11,9 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Export CLI `run(args, stdout, stderr) -> ExitClass`; arguments accept
   OsString/OsStr-compatible values, preserving native paths. Non-UTF-8 syntax
-  returns usage2; the binary uses args_os. Reject malformed packet/body bounds
-  as input3 rather than panicking or silently accepting truncation. Only the
-  thin binary exits. Renderers use injected writers and return write/flush failures (4).
+  returns usage2; the binary uses args_os. Fatal structural packet/body bounds
+  return input3 without panicking. Decode/context and recovered-sync issues are
+  reported findings; a cut final packet/header preserves the complete preceding
+  analysis. These findings remain success0 until S16a3 wires the threshold.
+  Only the thin binary exits. Renderers use injected writers and return write/flush failures (4).
   Unknown/missing commands now return usage (2); input failure remains (3)
   even if diagnostic output fails. Strict args/threshold exits follow in S16a3.
 - Native time library and interim whole-file allocation remain unchanged; no CLI

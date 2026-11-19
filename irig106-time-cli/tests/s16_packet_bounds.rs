@@ -81,6 +81,7 @@ fn structural_lengths_are_fatal_but_short_time_bodies_are_findings() {
     for length in 1..24 {
         content_finding(&vec![0; length]);
     }
+    input_error(&[0; 24]); // A full header-sized region with no recoverable sync.
     let mut broken = packet(0x09, 0, 24, 0);
     broken[4..8].copy_from_slice(&u32::MAX.to_le_bytes());
     input_error(&broken);
@@ -229,6 +230,7 @@ fn success_with_finding(bytes: &[u8], finding: &str, count: usize) {
         if command == "summary" {
             assert!(report.contains(&format!("Total Packets      : {count}")));
             assert!(report.contains("Data Type Breakdown"));
+            assert!(report.contains("Correlation Refs   : 2"));
             assert!(report.contains("2024"));
         }
         if command == "csv" {

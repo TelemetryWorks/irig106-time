@@ -206,7 +206,11 @@ impl Ch10TimeScanner {
                 .get(offset..)
                 .ok_or_else(|| Failure::new(ExitClass::Input, "invalid packet offset"))?;
             if remaining.len() < HEADER_SIZE {
-                return Err(Failure::new(ExitClass::Input, "truncated packet header"));
+                self.errors.push(format!(
+                    "truncated final header at {offset:#X} ({} bytes)",
+                    remaining.len()
+                ));
+                break;
             }
             let hdr = match PktHeader::parse(remaining) {
                 Some(h) => h,
@@ -228,12 +232,23 @@ impl Ch10TimeScanner {
             };
 
             let pkt_len = hdr.packet_length as usize;
-            let packet = remaining
-                .get(..pkt_len)
-                .filter(|p| p.len() >= hdr.data_offset())
-                .ok_or_else(|| {
-                    Failure::new(ExitClass::Input, "invalid or truncated packet length")
-                })?;
+            // Chapter11 §11.2.1.4: filler makes the packet a multiple of4.
+            if pkt_len < hdr.data_offset() || pkt_len % 4 != 0 {
+                return Err(Failure::new(ExitClass::Input, "invalid packet length"));
+            }
+            if hdr._data_length as usize > pkt_len - hdr.data_offset() {
+                return Err(Failure::new(
+                    ExitClass::Input,
+                    "Data Length exceeds packet body",
+                ));
+            }
+            let Some(packet) = remaining.get(..pkt_len) else {
+                self.errors.push(format!(
+                    "truncated final packet at {offset:#X}: declared {pkt_len}, available {} bytes",
+                    remaining.len()
+                ));
+                break;
+            };
             if hdr.payload(packet).is_none() {
                 return Err(Failure::new(
                     ExitClass::Input,
@@ -258,10 +273,6 @@ impl Ch10TimeScanner {
                 self.process_time_f2_packet(packet, &hdr);
             }
 
-            if let Some(error) = self.errors.last() {
-                return Err(Failure::new(ExitClass::Input, error));
-            }
-
             // Optionally resolve all packets
             if resolve_all {
                 let abs = self.correlator.correlate(hdr.rtc, None).ok();
@@ -278,8 +289,12 @@ impl Ch10TimeScanner {
             self.total_packets += 1;
             offset += packet.len(); // Bounded by remaining.len(), so cannot overflow.
         }
-        if let Some(error) = self.errors.last() {
-            return Err(Failure::new(ExitClass::Input, error));
+        Ok(())
+    }
+
+    fn report_findings(&self, stderr: &mut dyn Write) -> Result<(), Failure> {
+        for error in &self.errors {
+            writeln!(stderr, "Finding: {error}")?;
         }
         Ok(())
     }
@@ -713,9 +728,14 @@ fn cmd_summary(mmap: &[u8], filename: &Path, stdout: &mut dyn Write) -> Result<(
     Ok(())
 }
 
-fn cmd_channels(mmap: &[u8], stdout: &mut dyn Write) -> Result<(), Failure> {
+fn cmd_channels(
+    mmap: &[u8],
+    stdout: &mut dyn Write,
+    stderr: &mut dyn Write,
+) -> Result<(), Failure> {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, false, None)?;
+    scanner.report_findings(stderr)?;
 
     writeln!(
         stdout,
@@ -770,9 +790,15 @@ fn cmd_channels(mmap: &[u8], stdout: &mut dyn Write) -> Result<(), Failure> {
     Ok(())
 }
 
-fn cmd_jumps(mmap: &[u8], threshold_ms: u64, stdout: &mut dyn Write) -> Result<(), Failure> {
+fn cmd_jumps(
+    mmap: &[u8],
+    threshold_ms: u64,
+    stdout: &mut dyn Write,
+    stderr: &mut dyn Write,
+) -> Result<(), Failure> {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, false, None)?;
+    scanner.report_findings(stderr)?;
 
     let threshold_ns = threshold_ms.checked_mul(1_000_000).ok_or_else(|| {
         Failure::new(
@@ -828,9 +854,15 @@ fn cmd_jumps(mmap: &[u8], threshold_ms: u64, stdout: &mut dyn Write) -> Result<(
     Ok(())
 }
 
-fn cmd_timeline(mmap: &[u8], limit: usize, stdout: &mut dyn Write) -> Result<(), Failure> {
+fn cmd_timeline(
+    mmap: &[u8],
+    limit: usize,
+    stdout: &mut dyn Write,
+    stderr: &mut dyn Write,
+) -> Result<(), Failure> {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, true, Some(limit))?;
+    scanner.report_findings(stderr)?;
 
     writeln!(
         stdout,
@@ -873,6 +905,7 @@ fn cmd_csv(
 ) -> Result<(), Failure> {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, true, None)?;
+    scanner.report_findings(stderr)?;
 
     let mut out: Box<dyn Write + '_> = match output_path {
         Some(path) => {
@@ -936,7 +969,12 @@ fn cmd_csv(
     Ok(())
 }
 
-fn cmd_correlate(mmap: &[u8], rtc_hex: &str, stdout: &mut dyn Write) -> Result<(), Failure> {
+fn cmd_correlate(
+    mmap: &[u8],
+    rtc_hex: &str,
+    stdout: &mut dyn Write,
+    stderr: &mut dyn Write,
+) -> Result<(), Failure> {
     let rtc_val = u64::from_str_radix(
         rtc_hex.trim_start_matches("0x").trim_start_matches("0X"),
         16,
@@ -946,6 +984,7 @@ fn cmd_correlate(mmap: &[u8], rtc_hex: &str, stdout: &mut dyn Write) -> Result<(
 
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, false, None)?;
+    scanner.report_findings(stderr)?;
 
     writeln!(
         stdout,
@@ -1161,7 +1200,7 @@ fn dispatch<S: AsRef<OsStr>>(
     })?;
     match command {
         "summary" => cmd_summary(&data, path, stdout),
-        "channels" => cmd_channels(&data, stdout),
+        "channels" => cmd_channels(&data, stdout, stderr),
         "jumps" => {
             let threshold = args
                 .iter()
@@ -1170,7 +1209,7 @@ fn dispatch<S: AsRef<OsStr>>(
                 .and_then(|v| v.as_ref().to_str())
                 .and_then(|v| v.parse::<u64>().ok())
                 .unwrap_or(1000);
-            cmd_jumps(&data, threshold, stdout)
+            cmd_jumps(&data, threshold, stdout, stderr)
         }
         "timeline" => {
             let limit = args
@@ -1180,7 +1219,7 @@ fn dispatch<S: AsRef<OsStr>>(
                 .and_then(|v| v.as_ref().to_str())
                 .and_then(|v| v.parse::<usize>().ok())
                 .unwrap_or(100);
-            cmd_timeline(&data, limit, stdout)
+            cmd_timeline(&data, limit, stdout, stderr)
         }
         "csv" => {
             let output = args
@@ -1190,7 +1229,7 @@ fn dispatch<S: AsRef<OsStr>>(
                 .map(|s| Path::new(s.as_ref()));
             cmd_csv(&data, output, stdout, stderr)
         }
-        "correlate" => cmd_correlate(&data, rtc.unwrap_or_default(), stdout),
+        "correlate" => cmd_correlate(&data, rtc.unwrap_or_default(), stdout, stderr),
         _ => Err(Failure::new(ExitClass::Usage, "unknown command")),
     }
 }
