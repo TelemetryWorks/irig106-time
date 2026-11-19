@@ -47,14 +47,12 @@ src/
   streaming_tests.rs    ← 10 unit tests
   quality.rs
   quality_tests.rs      ← 6 unit tests
-  recording_event.rs
-  recording_event_tests.rs ← 9 unit tests
   jiff_interop.rs       ← checked civil adapters (optional jiff)
   util.rs               ← 18 unit tests (is_leap_year + abs_diff_u64)
 tests/
   jiff_interop.rs      ← 13 civil conversion cases (optional jiff)
   library_boundary.rs  ← removed-feature rejection (no build subprocess)
-  pipeline.rs         ← 68 integration tests
+  pipeline.rs         ← integration tests (event-meaning prototype removed in0.8)
   properties.rs       ← 17 property-based tests
 ```
 

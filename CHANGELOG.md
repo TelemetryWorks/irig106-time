@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S14a recording-event API removal (0.8.0 breaking, T-8)
+
+- Remove `recording_event`, `RecordingEvent` and `RecordingEventType`, including
+  fixed Started/Stopped/Overrun/IndexPoint meanings and derived gap heuristics.
+  Chapter11 §11.2.7.3 event numbers are setup-defined12-bit values, not that
+  prototype's8-bit enum. No event number alone implies a session/gap/reference.
+- Event-body decoding belongs in irig106-decode with setup definitions from
+  irig106-tmats (ADR-0009). No replacement decoder availability is claimed.
+  Callers retain raw event metadata and pass extracted time tags to
+  `extracted::inspect_stamp`, then resolve with explicit context/timeline.
+  See docs/handoff-recording-events-to-decode.md and verification-s14.md.
+
 ### S13b validated Format 1 encoders (breaking)
 
 - `TimeF1Csdw::to_le_bytes(layout)` now returns Result with explicit edition
@@ -31,7 +43,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   representability; no truncation, UTC conversion or leap-table inference.
   NTP's eight-byte raw writer remains infallible: all32 fraction bits and the
   zero sentinel are preserved. New full-header/stamp/checksum API stays deferred.
-
 
 ### Breaking: library serde and JSON APIs removed in 0.8.0
 

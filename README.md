@@ -41,7 +41,7 @@ IRIG 106 Chapter 10 separates *when data was recorded* (a free-running 10 MHz co
 - **Quality metrics** — Reference point density, RTC gaps, per-channel drift assessment
 - **Version detection** — IRIG 106 standard version from TMATS CSDW (106-04 through 106-23), version-aware CSDW parsing, configurable out-of-order tolerance
 - **Packet standard** — Ch10/Ch11 provenance tracking (106-17 split)
-- **Recording events** — Data Type 0x02 event parsing with time context
+- **Event time tags** — Generic extracted-stamp adapters; event-body decoding belongs in irig106-decode (ADR-0009), replacement availability not claimed
 - **Encoding** — `to_le_bytes()` on all wire-format types for packet construction
 - **`impl Display`** — ISO-like formatting for `AbsoluteTime`
 - **`jiff`** — Optional checked civil conversions with explicit year/scale and nanosecond precision; unknown context/leap labels refuse
@@ -93,7 +93,6 @@ let resolved = correlator.correlate(data_rtc, None).unwrap();
 | `packet_standard` | Chapter 10 / Chapter 11 provenance from IRIG 106 version |
 | `streaming` | Sliding-window correlator for live telemetry streams |
 | `quality` | Correlator health and reference-density metrics |
-| `recording_event` | Data Type 0x02 recording event parsing |
 | `jiff_interop` | Feature-gated checked Jiff civil conversions |
 | `error` | TimeError enum, Result alias |
 

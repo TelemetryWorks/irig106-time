@@ -128,7 +128,7 @@ absolute time, and says how good that time is. It is a `no_std` library
 | Quality | A measure of how trustworthy the correlation is | `quality` |
 | Leap seconds | The TAI–UTC offset, from a built-in table the caller can extend | `network_time` |
 | Edition | The edition declared by the setup record's CSDW | `version` (T-9; moving to `irig106-types`) |
-| Recording events | Recording event types | `recording_event` (T-8: whether they belong here is open) |
+| Recording events | Recording event types | Removed in0.8.0; event bodies belong in irig106-decode, time tags stay here (T-8, ADR-0009) |
 
 ### 1.3 What it deliberately does not do
 
