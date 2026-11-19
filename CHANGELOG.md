@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rejects production/root exemptions; only the existing cfg(test) modules and
   named CLI print functions qualify. Production library child modules are
   also scanned for std imports/paths before the std-unavailable compile probes.
+- Reject production lint-diagnostic suppressors and list legacy unwrap/expect
+  aliases. Reject production library/CLI include! and literal metavariable
+  attributes instead of attempting expansion; scanner limits remain explicit.
 - Assert the SecHdrTimeFormat root re-export traits, clarify API-106's compile
   probe verification, and remove temporary S15-branch CI triggers. No runtime
   or wire change; tested196/288, verified202/288 remain unchanged.

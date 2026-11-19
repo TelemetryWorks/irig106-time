@@ -15,9 +15,9 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def main():
     report = scan_project(ROOT, include_cli=False)
-    for error in report.io_errors:
+    for error in report.io_errors + report.source_errors:
         print(error, flush=True)
-    assert not report.io_errors, "production std import/path outside cfg(test) code"
+    assert not (report.io_errors or report.source_errors), "production std import/path or source indirection outside cfg(test) code"
     source = (ROOT / "src/lib.rs").read_text()
     start = source.index("#![no_std]")
     end = source.index("extern crate alloc;") + len("extern crate alloc;")

@@ -11,6 +11,10 @@ import re
 PROTECTED = {"clippy::" + n for n in (
     "unwrap_used", "expect_used", "panic", "todo", "unimplemented",
     "unreachable", "dbg_macro", "print_stdout", "print_stderr")}
+# Old Clippy spellings and suppression of their diagnostics must remain visible.
+PROTECTED |= {f"clippy::{kind}_{operation}_used"
+              for kind in ("option", "result") for operation in ("unwrap", "expect")}
+PROTECTED |= {"renamed_and_removed_lints", "unknown_lints"}
 BROAD = {"warnings", "clippy::all", "clippy::restriction", "clippy::pedantic", "clippy::nursery"}
 CLI_PRINTS = {name: {"clippy::" + channel for channel in channels} for name, channels in {
     "cmd_summary": ["print_stdout"], "cmd_channels": ["print_stdout"],
@@ -105,6 +109,7 @@ class Allowance:
 class Report:
     allowances: list[Allowance] = field(default_factory=list)
     io_errors: list[str] = field(default_factory=list)
+    source_errors: list[str] = field(default_factory=list)
 
 
 def scan_project(root, include_cli=True):
@@ -173,6 +178,14 @@ def scan_project(root, include_cli=True):
                 scope.cli = item["name"]
             item["scope"] = scope
             if scope.test_code: extra_test.append((item["start"], item["end"]))
+        def production(pos):
+            return role in {"library", "cli"} and not (
+                enclosing(pos).test_code or any(a <= pos < b for a, b in extra_test))
+
+        def source_error(pos, message):
+            report.source_errors.append(
+                f"{path.relative_to(root)}:{source.count(chr(10), 0, pos)+1}: {message}")
+
         for a in attrs:
             if re.sub(r"\s+", "", a["body"]) == "cfg(test)" and "item" not in a:
                 pos = after_attrs(a["end"])
@@ -191,6 +204,13 @@ def scan_project(root, include_cli=True):
                 where = "cfg(test) module" if scope.test_module else f"CLI {scope.cli}" if scope.cli else "production/root"
                 location = f"{path.relative_to(root)}:{source.count(chr(10), 0, a['start'])+1}"
                 report.allowances.append(Allowance(location, names, allowed, where))
+        # No expansion is attempted: reject these simple source indirections.
+        for m in re.finditer(r"\b(?:r#)?include\s*!", code):
+            if production(m.start()):
+                source_error(m.start(), "production include! is forbidden")
+        for a in attrs:
+            if re.match(r"\s*\$", a["body"]) and production(a["start"]):
+                source_error(a["start"], "production metavariable attribute is forbidden")
         if role == "library":
             for m in re.finditer(r"\bextern\s+crate\s+(?:r#)?std\b|\b(?:r#)?std\s*::", code):
                 if enclosing(m.start()).test_code or any(a <= m.start() < b for a,b in extra_test): continue
@@ -217,5 +237,6 @@ def scan_project(root, include_cli=True):
         for directory in ["tests", "examples", "benches", "fuzz/fuzz_targets",
                           "irig106-time-cli/src", "irig106-time-cli/tests"]:
             for path in sorted((root / directory).rglob("*.rs")):
-                if not any(p == path.resolve() for p, *_ in seen): visit(path, "auxiliary")
+                if not any(p == path.resolve() for p, *_ in seen):
+                    visit(path, "cli" if directory == "irig106-time-cli/src" else "auxiliary")
     return report

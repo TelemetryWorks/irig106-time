@@ -66,6 +66,9 @@ if __name__ == "__main__":
     for allowance in report.allowances:
         print(f"{allowance.location}: {','.join(sorted(allowance.lints))}: "
               f"{'allowed' if allowance.allowed else 'FORBIDDEN'} ({allowance.scope})", flush=True)
+    for error in report.source_errors:
+        print(error, flush=True)
+    assert not report.source_errors, "forbidden production source indirection(s) above"
     assert all(a.allowed for a in report.allowances), "forbidden safety-policy allowance(s) above"
     for root in [ROOT / "src/lib.rs", ROOT / "irig106-time-cli/src/main.rs"]:
         check_root(root)
