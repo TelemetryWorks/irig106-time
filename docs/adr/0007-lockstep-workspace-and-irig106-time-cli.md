@@ -68,3 +68,8 @@ exit class, and never exits the host; only the thin binary main exits.
 * Bad: every CLI release is a library release and the reverse.
 * The command set is `summary`, `channels`, `jumps`, `timeline`, `csv`,
   `correlate`; network time is reported as itself, not as GPS (P6-10).
+
+Coordinator S16a2 review clarification, before exit-contract freeze: use
+OsString-compatible arguments and args_os in main. Native non-UTF-8 paths work;
+non-UTF-8 command/option names return usage2 without a panic. This applies to
+the shared runner and standalone binary, not only one invocation form.

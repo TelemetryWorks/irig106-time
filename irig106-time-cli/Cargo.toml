@@ -9,9 +9,15 @@ repository.workspace = true
 # S15b gate: no CLI publication until S16b bounded streaming is complete.
 publish = false
 
+# Keep the extraction review bounded; S16a3 renames the library source lib.rs.
+autobins = false
+
+[lib]
+path = "src/main.rs"
+
 [[bin]]
 name = "irigtime"
-path = "src/main.rs"
+path = "src/bin/irigtime.rs"
 
 [dependencies]
 irig106-time = { path = "..", version = "=0.7.0" }

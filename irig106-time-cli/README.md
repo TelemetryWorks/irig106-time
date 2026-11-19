@@ -6,8 +6,11 @@ A command-line tool for inspecting IRIG 106 Chapter 10 time data. Reads a Ch10 f
 
 The standalone binary is now `irigtime` (formerly `ch10time`); update scripts
 and invocations. The package name stays `irig106-time-cli`. The ecosystem host
-will mount the shared CLI library as `irig106 time`; that runner is not wired
-in this workspace/name slice. No CLI publication or release tag before S16b.
+can mount the same implementation as `irig106 time` by calling
+`irig106_time_cli::run(&["--help"], &mut stdout, &mut stderr)`. Arguments exclude
+the executable/host subcommand; the runner returns `ExitClass` without exiting.
+Strict argument/threshold validation follows in S16a3. No CLI publication or
+release tag before S16b.
 
 ## From the root of irig106-time, build it with:
 ```sh
