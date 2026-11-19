@@ -486,7 +486,7 @@ carried over through tests written from the standard (ADR-0016).
 | `quality` | `quality`, feeding the basis | — |
 | `version` | the mappings move to `irig106-types`; `0x0F` unknown; `edition` keeps what changes for time | T-9 |
 | `packet_standard` | `edition` | — |
-| `recording_event` | leaves the crate, for `irig106-decode` (ADR-0009) | T-8 |
+| `recording_event` | removed in S14a; body decoder belongs in `irig106-decode`, generic time-tag adapters stay here (ADR-0009); replacement not claimed | T-8 |
 | `error`, `util`, `jiff_interop` | `error`; `util` as needed; `jiff` feature | — |
 | `irig106-time-cli/src/main.rs` | `irig106-time-cli` library and `irigtime` binary | P6-10 |
 

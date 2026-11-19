@@ -93,7 +93,6 @@ let resolved = correlator.correlate(data_rtc, None).unwrap();
 | `packet_standard` | Chapter 10 / Chapter 11 provenance from IRIG 106 version |
 | `streaming` | Sliding-window correlator for live telemetry streams |
 | `quality` | Correlator health and reference-density metrics |
-| `recording_event` | Data Type 0x02 recording event parsing |
 | `jiff_interop` | Feature-gated checked Jiff civil conversions |
 | `error` | TimeError enum, Result alias |
 

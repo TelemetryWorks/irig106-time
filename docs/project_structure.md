@@ -51,8 +51,6 @@ irig106-time/
 |   |-- streaming_tests.rs             # 10 unit tests
 |   |-- quality.rs                     # TimeQuality, compute_quality
 |   |-- quality_tests.rs               # 6 unit tests
-|   |-- recording_event.rs             # RecordingEvent, RecordingEventType
-|   |-- recording_event_tests.rs       # 9 unit tests
 |   |-- jiff_interop.rs                # checked civil adapters (optional jiff; tests/jiff_interop.rs)
 |   `-- util.rs                        # MSRV helpers: is_leap_year, abs_diff_u64 (18 tests)
 |
@@ -197,7 +195,6 @@ lib.rs -> error.rs           (no deps)
        -> version.rs         (no deps)
        -> packet_standard.rs -> version.rs
        -> quality.rs         -> correlation.rs  (requires alloc)
-       -> recording_event.rs -> absolute.rs
        -> streaming.rs       -> error.rs, rtc.rs, absolute.rs, network_time.rs  (requires alloc)
        `-> jiff_interop.rs -> absolute.rs, format1.rs, scale.rs, jiff  (feature = "jiff")
 ```

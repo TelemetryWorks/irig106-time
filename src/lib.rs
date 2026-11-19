@@ -23,7 +23,6 @@
 //! - **Version detection** — IRIG 106 standard version identification from
 //!   TMATS CSDW, with version-aware CSDW parsing for 106-04 through 106-23
 //! - **Packet standard** — Ch10/Ch11 provenance tracking (106-17 split)
-//! - **Recording events** — Data Type 0x02 event parsing with time context
 //! - **Encoding** — `to_le_bytes()` on all wire-format types for packet
 //!   construction (BCD, CSDW, NTP, PTP, RTC)
 //! - **jiff** — Optional checked civil conversions with explicit scale/year
@@ -126,8 +125,6 @@ pub mod own_time;
 pub mod packet_standard;
 /// Time quality metrics for correlation health assessment.
 pub mod quality;
-/// Recording Event (Data Type 0x02) time extraction.
-pub mod recording_event;
 /// 48-bit Relative Time Counter (RTC) newtype.
 pub mod rtc;
 /// Secondary header time extraction and checksum validation.
@@ -169,8 +166,6 @@ pub use network_time::{
 };
 pub use packet_standard::PacketStandard;
 pub use quality::{TimeQuality, compute_quality};
-#[allow(deprecated)] // Compatibility re-export until the reviewed migration.
-pub use recording_event::{RecordingEvent, RecordingEventType};
 pub use rtc::Rtc;
 pub use secondary::{SecHdrTimeFormat, SecondaryHeaderTime};
 pub use streaming::{StreamingRef, StreamingTimeCorrelator};
