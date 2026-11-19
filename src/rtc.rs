@@ -55,7 +55,7 @@ pub fn signed_nanos_to_unsigned(nanos: SignedNanos) -> Result<NanosDuration> {
 }
 /// Caller ordering context, never an inference of multiple wraps.
 /// **Traces:** L3-RTC-103 ← L2-RTC-103 ← L1-RTC-003
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CounterOrder {
     /// Signed nearest modular displacement; the exact half range is ambiguous.
     Nearest,
@@ -66,7 +66,7 @@ pub enum CounterOrder {
 }
 /// A raw shared counter in a caller-named, nonzero session.
 /// **Traces:** L3-RTC-103 ← L2-RTC-103 ← L1-RTC-003
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SessionRtc {
     /// Nonzero session identity; raw counters cannot establish it.
     pub session: usize,

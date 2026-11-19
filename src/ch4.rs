@@ -15,7 +15,7 @@ use crate::{
 /// Secondary/IPTS byte decoding belongs to shared [`Ch4BinaryTime`]; retain its
 /// reserved half-word separately with `secondary::validate_ch4_reserved` (TF-005).
 /// **Traces:** L3-WORD-101 ← L2-WORD-101 ← L1-WORD-001
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Ch4Words {
     /// High order word, without masking the BCD day fragment.
     pub high: u16,
@@ -35,7 +35,7 @@ impl From<Ch4BinaryTime> for Ch4Words {
 }
 
 /// Caller-selected interpretation, NOT a resolution of §4.7's wording conflict.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BcdDayInterpretation {
     /// Compare the three wire bits to the low3 bits of the packed BCD ordinal day.
     /// Only its units digit contributes: day131 -> BCD0x131 -> fragment1;
@@ -44,7 +44,7 @@ pub enum BcdDayInterpretation {
 }
 /// Independently optional context; incomplete context produces labelled partials.
 /// No default year, day, edition or interpretation is selected.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BcdContext {
     /// Explicit Gregorian year0..9999, never inferred from the fragment.
     pub year: Option<u16>,
@@ -56,7 +56,7 @@ pub struct BcdContext {
     pub edition: Option<PacketEdition>,
 }
 /// Exact caller context retained with the result.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Ch4Context {
     /// Binary elapsed count relative to this supplied nominal calendar origin.
     Binary {
@@ -67,7 +67,7 @@ pub enum Ch4Context {
     Bcd(BcdContext),
 }
 /// Missing inputs, without fabricated date fields or nearest-reference fallback.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MissingCh4Context {
     /// Binary calendar origin was not supplied.
     pub origin: bool,
@@ -79,7 +79,7 @@ pub struct MissingCh4Context {
     pub interpretation: bool,
 }
 /// Original edition-dependent phrase, never a settled interpretation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BcdDayWording {
     /// 106-04..106-15: "three least significant characters of the BCD Julian date".
     Characters,
@@ -89,7 +89,7 @@ pub enum BcdDayWording {
     EditionNotDeclared,
 }
 /// Labelled decoded value before any calendar reconstruction.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Ch4Value {
     /// Full binary elapsed count, never split into an invented day field.
     BinaryElapsed(NanosDuration),
@@ -111,7 +111,7 @@ pub enum Ch4Value {
 /// Fields are immutable; construction validates the explicit caller context.
 /// **Traces:** L3-WORD-101 ← L2-WORD-101 ← L1-WORD-001
 /// **Traces:** L3-ABS-102 ← L2-ABS-102 ← L1-ABS-002
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Ch4Reading {
     raw: Ch4Words,
     context: Ch4Context,

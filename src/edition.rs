@@ -5,7 +5,7 @@ use alloc::string::String;
 
 /// Explicit supported release, independent of shared version-code list names.
 /// **Traces:** L3-EDN-103 ← L2-EDN-103 ← L1-EDN-003
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PacketEdition {
     /// RCC 106-04.
     V04,
