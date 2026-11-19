@@ -231,8 +231,10 @@ def scan_project(root, include_cli=True):
     # by their actual module declaration, never by a *_tests filename heuristic.
     for path in sorted((root / "src").rglob("*.rs")):
         if not any(p == path.resolve() for p, *_ in seen): visit(path, "library")
-    cli = root / "irig106-time-cli/src/main.rs"
-    if include_cli and cli.is_file(): visit(cli, "cli")
+    if include_cli:
+        for name in ["lib.rs", "main.rs", "bin/irigtime.rs"]:
+            cli = root / "irig106-time-cli/src" / name
+            if cli.is_file(): visit(cli, "cli")
     if include_cli:
         for directory in ["tests", "examples", "benches", "fuzz/fuzz_targets",
                           "irig106-time-cli/src", "irig106-time-cli/tests"]:

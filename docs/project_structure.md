@@ -119,7 +119,9 @@ irig106-time-cli/
 |-- Cargo.toml                         # deps: irig106-time; safe owned file-byte input
 |-- README.md                          # CLI usage documentation
 `-- src/
-    `-- main.rs                        # irigtime: summary, channels, jumps, timeline, csv, correlate
+    |-- lib.rs                         # host-callable run and existing commands
+    |-- args.rs                        # strict OS-native preflight (no I/O)
+    `-- bin/irigtime.rs                 # thin standalone entry point
 ```
 
 ### CLI Commands

@@ -1730,6 +1730,8 @@ does not settle it or replace its real-recording evidence.
 
 **Verification Method**: Inspection (I)
 
+**Evidence**: [S16a3a args inspection](verification-s16a3a.md#args-inspection)
+
 **Planned verification**: All six commands, every option, invalid limits, missing arguments, filenames beginning with a dash, and dependency inspection.
 
 #### L2-CLI-104
