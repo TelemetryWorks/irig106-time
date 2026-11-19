@@ -581,7 +581,7 @@ No breaking changes without major version bump after this release.
 | GAP-05 | ~~`AbsoluteTime::sub_nanos` doesn't handle year rollover~~ | — | ✅ Resolved (v0.5.0). Correctly decrements year across day-1 boundary with leap-year-aware day count. |
 | GAP-06 | ~~No `From`/`Into` conversions to `chrono` or `time` crates~~ | — | ✅ Resolved (v0.6.0). Feature-gated `chrono` interop with `From<AbsoluteTime>` and reverse. |
 | GAP-07 | ~~Correlation doesn't handle RTC reset mid-recording~~ | — | ✅ Resolved (v0.4.0). `TimeCorrelator::detect_rtc_resets(channel_id)` with `RtcReset` struct. |
-| GAP-08 | ~~No support for time data in Ch10 Recording Events (0x02)~~ | — | ✅ Resolved (v0.6.0). `RecordingEvent` and `RecordingEventType` in `recording_event` module. |
+| GAP-08 | ~~No support for time data in Ch10 Recording Events (0x02)~~ | — | Prototype v0.6.0 fixed meanings removed for0.8.0 (S14a, T-8, ADR-0009). Event-body decoding moves to irig106-decode; time-tag adapters remain. Replacement availability is not claimed. |
 | GAP-09 | ~~DMY `to_absolute` doesn't validate day-for-month~~ | — | ✅ Resolved (v0.3.0). `days_in_month()` rejects Feb 30, Jun 31, etc. |
 | GAP-10 | ~~No RTC drift estimation~~ | — | ✅ Resolved (v0.3.0). `TimeCorrelator::drift_ppm(channel_id)`. |
 | GAP-11 | ~~Missing `to_le_bytes()` (encode) for BCD and CSDW types~~ | — | ✅ Resolved (v0.4.0). `to_le_bytes()` on `Rtc`, `TimeF1Csdw`, `TimeF2Csdw`, `NtpTime`, `PtpTime`, `DayFormatTime`, `DmyFormatTime`. |

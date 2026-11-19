@@ -202,7 +202,7 @@ reserved-bit checks for bits 31–16 and 11–10.
 
 ### T-8 Recording event numbers do not have fixed meanings
 
-**Code:** `src/recording_event.rs` — `RecordingEventType{Started=1,
+**Prototype code (removed in S14a, ADR-0009):** `src/recording_event.rs` — `RecordingEventType{Started=1,
 Stopped=2, Overrun=3, IndexPoint(4..0xF), Reserved}`.
 
 **Standard** (§11.2.7.3, Figure 11-38): "Event Number. Bits 11-0 represent an
@@ -215,9 +215,10 @@ begin at 0x0 for the first event type defined in the setup record"; bits
 **Effect:** an event's meaning comes from the setup record (TMATS), not
 from its number.
 
-**Change:** decode the entry as the standard lays it out and take each
-event's meaning from the TMATS description (`irig106-tmats`); decide
-whether recording events belong in this crate at all.
+**Outcome (S14a):** remove the module and fixed meanings from time. The setup-aware
+event body decoder belongs in irig106-decode (ADR-0009); time retains generic
+time-tag adapters. Replacement availability is not claimed. See
+[coordinator handoff](handoff-recording-events-to-decode.md).
 
 ### T-9 The version code `0x0F` is read as 106-23
 

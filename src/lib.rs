@@ -22,7 +22,6 @@
 //! - **Version detection** — IRIG 106 standard version identification from
 //!   TMATS CSDW, with version-aware CSDW parsing for 106-04 through 106-23
 //! - **Packet standard** — Ch10/Ch11 provenance tracking (106-17 split)
-//! - **Recording events** — Data Type 0x02 event parsing with time context
 //! - **Encoding** — `to_le_bytes()` on all wire-format types for packet
 //!   construction (BCD, CSDW, NTP, PTP, RTC)
 //! - **jiff** — Optional checked civil conversions with explicit scale/year
@@ -58,6 +57,21 @@
 //! #![deny(deprecated)]
 //! let t = irig106_time::PtpTime { seconds: 1, nanoseconds: 0 };
 //! let _ = t.to_absolute(irig106_time::TaiUtcOffset::new(37));
+//! ```
+//!
+//! ## Recording-event boundary (0.8.0, ADR-0009)
+//!
+//! Event numbers/meanings belong to the setup-aware body decoder, not this crate.
+//! Time tags remain supported by [`extracted::inspect_stamp`]. Removed exports:
+//!
+//! ```compile_fail
+//! use irig106_time::recording_event;
+//! ```
+//! ```compile_fail
+//! use irig106_time::RecordingEvent;
+//! ```
+//! ```compile_fail
+//! use irig106_time::RecordingEventType;
 //! ```
 //!
 //! ## `no_std` Support
@@ -142,8 +156,6 @@ pub mod own_time;
 pub mod packet_standard;
 /// Time quality metrics for correlation health assessment.
 pub mod quality;
-/// Recording Event (Data Type 0x02) time extraction.
-pub mod recording_event;
 /// 48-bit Relative Time Counter (RTC) newtype.
 pub mod rtc;
 /// Secondary header time extraction and checksum validation.
@@ -183,8 +195,6 @@ pub use network_time::{
 };
 pub use packet_standard::PacketStandard;
 pub use quality::{TimeQuality, compute_quality};
-#[allow(deprecated)] // Compatibility re-export until the reviewed migration.
-pub use recording_event::{RecordingEvent, RecordingEventType};
 pub use rtc::Rtc;
 pub use secondary::{SecHdrTimeFormat, SecondaryHeaderTime};
 pub use streaming::{StreamingRef, StreamingTimeCorrelator};

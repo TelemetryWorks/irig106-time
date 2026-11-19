@@ -1185,26 +1185,6 @@ fn is_near_leap_second_boundary() {
     assert!(!table.is_near_leap_second(UnixSeconds::new(1_600_000_000), 10));
 }
 
-// ── GAP-08: Recording events ────────────────────────────────────────
-
-#[allow(deprecated)] // Compatibility test only; fixed meanings remain deprecated (ADR-0009).
-#[test]
-fn recording_event_pipeline() {
-    use irig106_time::recording_event::{RecordingEvent, RecordingEventType};
-
-    let abs = AbsoluteTime::new(100, 12, 0, 0, 0).unwrap();
-    let event = RecordingEvent::new(0x01, 1, Rtc::from_raw(10_000_000), Some(abs));
-
-    assert_eq!(event.event_type, RecordingEventType::Started);
-    assert!(event.has_reference_time());
-    assert!(!event.event_type.may_cause_time_gap());
-
-    // Overrun event without secondary header
-    let overrun = RecordingEvent::new(0x03, 1, Rtc::from_raw(50_000_000), None);
-    assert!(!overrun.has_reference_time());
-    assert!(overrun.event_type.may_cause_time_gap());
-}
-
 // ═══════════════════════════════════════════════════════════════════════
 // v0.7.0 MSRV integration tests — exercise functionality backed by
 // util::is_leap_year and util::abs_diff_u64 through the public API

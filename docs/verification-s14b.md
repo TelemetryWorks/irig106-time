@@ -68,3 +68,9 @@ NeedsContext branch with return Ok(()) compiles and fails the new exact-error
 assertion. The test also requires len0/empty/latest_rtc=None/evictions0.
 Production source restored; no conversion/stream implementation change.
 No new whole markers; coverage remains196/288.
+
+Ordinary merge of main0c17434 (PR55): retained both S14 CHANGELOG entries;
+kept both lib.rs compile-fail groups with separate closing fences; combined
+the usage TOC's new section23 event-tag and section24 Jiff anchors. Compared
+merged section23 byte-for-byte to main and section24 to the pre-merge branch;
+both match. No removed event API or invented meaning restored.
