@@ -92,3 +92,19 @@ fn no_command_accepts_a_file_without_any_valid_header() {
         commands(&bytes, ExitClass::Input, "valid");
     }
 }
+
+#[test]
+fn reserved_ntf_has_a_dedicated_error_not_a_field_name_convention() {
+    use irig106_time::{
+        TimeError,
+        network_time::{TimeF2Csdw, parse_time_f2_payload},
+    };
+    for ntf in 3..16 {
+        let word = TimeF2Csdw::from_raw((ntf << 4) | 1);
+        let mut payload = [0; 12];
+        payload[..4].copy_from_slice(&word.as_raw().to_le_bytes());
+        let expected = TimeError::ReservedNetworkTimeFormat { value: ntf as u8 };
+        assert_eq!(word.to_le_bytes(), Err(expected.clone()));
+        assert_eq!(parse_time_f2_payload(&payload), Err(expected));
+    }
+}
