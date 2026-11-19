@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S16a3b shared irig106 exit convention
+
+- Add --fail-on error|warning|info|never (default error), inclusive and validated
+  on every command. Usage2 precedes first fatal input3/output4, which precedes
+  findings1/success0; select finding failure only after successful output flushes.
+- Diagnostics now show their severity. Malformed time bodies become findings1
+  by default, not structural input3. Warning-only tails/context stay0 by default;
+  no-reference correlate now follows its warning threshold instead of always1.
+- Preserve owner TF-005 warning for reserved BCD bits; flag its conflict with
+  the generic decode-error proposal. Full table, tests-first and limits:
+  docs/verification-s16a3b.md. No TF levels/IDs or memory/release gate changes.
+
 ### S16a3a strict args and library target
 
 - Invalid/overflowing numeric values, unknown/inapplicable/duplicate options,

@@ -79,7 +79,7 @@ fn grammar_bounds_and_command_help_are_explicit() {
     assert!(parse(&["summary"]).is_err());
     assert!(parse(&["correlate", "input", ""]).is_err());
     assert!(parse(&["--help", "extra"]).is_err());
-    assert!(parse(&["summary", "input", "--fail-on", "error"]).is_err()); // Reserved for next slice, never silently ignored.
+    assert!(parse(&["summary", "input", "--fail-on", "error"]).is_ok());
     for command in [
         "summary",
         "channels",

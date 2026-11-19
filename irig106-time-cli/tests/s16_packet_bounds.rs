@@ -51,7 +51,11 @@ fn content_finding(bytes: &[u8]) {
     let input = Input::new(bytes);
     let (mut out, mut err) = (Vec::new(), Vec::new());
     assert_eq!(
-        run(&["summary", input.0.to_str().unwrap()], &mut out, &mut err),
+        run(
+            &["summary", input.0.to_str().unwrap(), "--fail-on", "never"],
+            &mut out,
+            &mut err
+        ),
         ExitClass::Success
     );
     assert!(String::from_utf8(out).unwrap().contains("Errors ("));
