@@ -15,7 +15,7 @@ const EPOCH: i128 = 2_208_988_800;
 const NANO: i128 = 1_000_000_000;
 /// Why an era was selected; a policy assumption is never independent evidence.
 /// **Traces:** L3-NTP-102 ← L2-NTP-102 ← L1-NTP-002
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EraBasis {
     /// Caller declared the era and supplied its identity.
     Declared,
@@ -34,7 +34,7 @@ pub struct EraDeclaration {
     pub id: String,
 }
 /// Preserve the precision of pivot evidence instead of rounding before selection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PivotFraction {
     /// Caller/calendar fraction in nanoseconds, below1e9.
     Nanoseconds(u32),
@@ -43,7 +43,7 @@ pub enum PivotFraction {
 }
 /// Independent dated evidence origin; private pivot fields prevent relabelling
 /// an assumed-era NTP result through the conversion factory.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PivotOrigin {
     /// Caller explicitly supplies an approximate UTC date.
     CallerApproximateDate,
@@ -200,7 +200,7 @@ impl NtpContext {
     }
 }
 /// Explicit unresolved era reason; no new permanent TF identifier is invented.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EraIssue {
     /// A session was unnamed.
     InvalidSession,
@@ -216,7 +216,7 @@ pub enum EraIssue {
     QuantityRange,
 }
 /// Mapping status is separate from leap ambiguity and calendar range.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NtpConversionStatus {
     /// Signed Unix coordinate produced; calendar may separately exceed its range.
     Mapped,
@@ -226,7 +226,7 @@ pub enum NtpConversionStatus {
     NeedsContext(EraIssue),
 }
 /// NTP has no leap indicator in IRIG Format2; certainty depends on table coverage.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NtpLeapStatus {
     /// No mapped coordinate to assess.
     NoValue,
@@ -239,7 +239,7 @@ pub enum NtpLeapStatus {
 }
 /// Accepted owner rounding2026-11-13; no carry into seconds.
 /// **Traces:** L3-NTP-103 ← L2-NTP-103 ← L1-NTP-003
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NtpRounding {
     /// Floor to integer nanoseconds; error is less than1ns.
     FloorNanoseconds,

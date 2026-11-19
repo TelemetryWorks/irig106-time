@@ -5,7 +5,7 @@ extern crate alloc;
 use crate::{NtpTime, Result, Rtc, TimeError, UnixSeconds};
 use alloc::vec::Vec;
 /// Accepted finding level, independent of factual validity/admission.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Severity {
     /// Context or diagnostic evidence.
     Information,
@@ -16,7 +16,7 @@ pub enum Severity {
 }
 /// Permanent catalog identity. Unknown IDs cannot be constructed.
 /// **Traces:** L3-FND-101 ← L2-FND-101 ← L1-FND-001
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FindingCode(u8, &'static str);
 impl FindingCode {
     /// Look up an approved permanent identity, all32 with owner-approved levels.
@@ -91,7 +91,7 @@ impl FindingCode {
     }
 }
 /// Factual effect is never changed by a caller severity override.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ValueValidity {
     /// Affected mapped value is retained, possibly labelled ambiguous.
     Kept,
@@ -101,7 +101,7 @@ pub enum ValueValidity {
     Undetermined,
 }
 /// Optional recording identity; a packet ID is never silently a byte offset.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FindingLocation {
     /// Caller session, when known.
     pub session: Option<usize>,
@@ -113,7 +113,7 @@ pub struct FindingLocation {
     pub byte_offset: Option<u64>,
 }
 /// Exact raw wire/derived integer quantity, independent of JSON representation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RawValue {
     /// Unsigned bits or count.
     Unsigned(u128),
@@ -131,7 +131,7 @@ pub struct RawField {
     pub expected: Option<RawValue>,
 }
 /// Raw NTP evidence; fraction stays in 2^-32 s units, never rounded away.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct NtpEvidence {
     /// Wire seconds/fraction, no inferred era.
     pub raw: NtpTime,

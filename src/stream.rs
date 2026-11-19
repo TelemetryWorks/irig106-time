@@ -7,7 +7,7 @@ use alloc::{collections::VecDeque, vec::Vec};
 const MASK: i128 = (1i128 << 48) - 1;
 /// Explicit stream strategy; Standard is the owner-accepted default.
 /// **Traces:** L3-POL-201 ← L2-POL-201 ← L1-POL-001
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StreamMode {
     /// RCC 123-20 §5.6 printed 5-44: preceding time plus RTC displacement.
     Standard,
@@ -17,7 +17,7 @@ pub enum StreamMode {
 /// Mandatory caller limits. Bytes account declared retained packet sizes;
 /// packet/reference caps bound retained snapshots. Caller-supplied table/pivot
 /// sizes and declared byte charges determine the size of each snapshot.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BufferCaps {
     /// Maximum pending data observations; must be positive.
     pub packets: usize,
@@ -94,7 +94,7 @@ impl StreamPolicy {
 }
 /// Complete advance channel inventory supplied by the caller; never inferred
 /// from arrival counts. `None` inventory means selection is undecidable.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StreamChannel {
     /// Channel identifier.
     pub id: u16,
@@ -104,7 +104,7 @@ pub struct StreamChannel {
     pub external: bool,
 }
 /// Option A commitment reason; no valid-count choice exists here.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StreamChannelChoice {
     /// Explicit caller choice, without substitution.
     Caller,
@@ -115,7 +115,7 @@ pub enum StreamChannelChoice {
 }
 /// Why an answer is released. All non-interpolated fallbacks carry this reason
 /// and the old policy/progress/deadline; none silently claims drift correction.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ReleaseReason {
     /// Immediate preceding/reference-exact answer, no drift correction.
     Standard,
@@ -200,7 +200,7 @@ impl StreamAnswer {
     }
 }
 /// Incremental return value; outputs/findings are caller-owned, not queued.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct StreamBatch {
     /// Newly released answers only.
     pub answers: Vec<StreamAnswer>,
@@ -208,7 +208,7 @@ pub struct StreamBatch {
     pub findings: Vec<TimelineFinding>,
 }
 /// Current bounded retained storage; output batches are not retained.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BufferUsage {
     /// Held observations.
     pub packets: usize,

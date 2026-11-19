@@ -89,7 +89,7 @@ pub struct SetupDeclarations {
     pub channels: Vec<ChannelDeclaration>,
 }
 /// Declaration availability is independent of whether a channel is declared.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DeclarationPresence {
     /// No setup declarations were supplied.
     Absent,
@@ -132,7 +132,7 @@ impl DeclarationBasis {
     }
 }
 /// Prepared observation plus provenance, to be retained with consumer results.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PreparedObservation {
     /// Original counter/payload; governing admission flags and RI4 are refreshed.
     pub observation: PacketObservation,
@@ -413,7 +413,7 @@ impl Declarations {
     }
 }
 /// The only accepted declaration-to-packet mapping vocabularies (D8).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Reading {
     /// TTF to packet type.
     Rdg001,
@@ -442,7 +442,7 @@ impl Reading {
     }
 }
 /// Mapping provenance; inference is never silently promoted to a stated fact.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Mapping {
     /// Exact declared designation, including I whose pairing is inferred.
     pub declared: &'static str,
@@ -507,7 +507,7 @@ pub fn format2_mapping(value: &str) -> Option<Mapping> {
     })
 }
 /// Independent comparison policy; missing-required validation is unconditional.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct DeclarationPolicy {
     /// Owner2026-11-13 opt-in to published A, always labelled default-derived.
     pub use_tfmt_default: bool,
@@ -515,7 +515,7 @@ pub struct DeclarationPolicy {
     pub levels: BTreeMap<u8, Severity>,
 }
 /// Raw packet facts supplied by a header/CSDW reader, not inferred from TMATS.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PacketFields {
     /// Session, unwrapped RTC and actual packet identity.
     pub key: PacketKey,
@@ -530,7 +530,7 @@ pub struct PacketFields {
     pub source: Option<u8>,
 }
 /// Why a declaration/packet comparison cannot silently imply equality.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ComparisonStatus {
     /// No governing TIMEIN channel.
     NotApplicable,
@@ -572,7 +572,7 @@ pub struct Comparison {
     pub status: ComparisonStatus,
 }
 /// Declaration attribute involved in a finding.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DeclarationField {
     /// R-x\TTF-n.
     Ttf,
@@ -584,7 +584,7 @@ pub enum DeclarationField {
     Shtf,
 }
 /// Diagnostic reason, independent of accepted severity defaults.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DeclarationIssue {
     /// No declared TTF to compare; no default is invented.
     MissingDeclaration,

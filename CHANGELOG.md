@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S15d public-value and recording boundary audit
+
+- Complete the structural public-value derive inventory: Clone/PartialEq/Eq
+  for owned snapshots/adapters, Hash for fixed metadata, Copy for legacy jump/
+  reset records. Floating quality values retain PartialEq; owning controllers
+  remain distinct from value snapshots. No arithmetic or wire/output change.
+- The inventory test requires every new public value definition to be checked
+  or explicitly classified. Inspection evidence closes API-101/102/106;
+  tested196/288, verified202/288. Remaining whole-marker limits and CLI S16
+  obligations are explicit in docs/verification-s15d.md.
+
 ### S15c fixed-reader and I/O boundary
 
 - Add permitted fixed-value Eq/Hash/Copy derives and compile assertions, keeping

@@ -24,7 +24,7 @@ fn overflow() -> TimeError {
     }
 }
 /// Caller-defined meaning of elapsed epoch seconds; no default interpretation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EpochCounting {
     /// Continuous SI time, including UTC insertions when crossing them.
     Continuous,
@@ -78,7 +78,7 @@ pub struct OwnPolicy {
     pub levels: BTreeMap<u8, Severity>,
 }
 /// Borrowed, unchanged released answer; no session/channel/reference reselection.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CounterAnswer<'a> {
     /// Offline nearest/selected-reference answer with its original basis.
     Offline(&'a OfflineAnswer),
@@ -271,7 +271,7 @@ fn utc_projection(tai: i128, table: &LeapSecondTable) -> Result<OwnUtc> {
     Ok(out)
 }
 /// Own and independent counter result with immutable context, policy and findings.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OwnAnswer<'a> {
     counter: CounterAnswer<'a>,
     header: SecondaryInspection,
