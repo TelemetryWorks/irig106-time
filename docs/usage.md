@@ -34,7 +34,7 @@ data — either from files or live UDP streams.
 20. [Streaming Correlation](#20-streaming-correlation)
 21. [Time Quality Metrics](#21-time-quality-metrics)
 22. [Packet Standard (Ch10/Ch11)](#22-packet-standard-ch10ch11)
-23. [Recording Events](#23-recording-events)
+23. [Recording-event Time Tags](#23-recording-event-time-tags)
 24. [chrono Interop](#24-chrono-interop)
 25. [Integration with irig106-core](#25-integration-with-irig106-core)
 26. [Integration with irig106-decode](#26-integration-with-irig106-decode)
@@ -1173,33 +1173,17 @@ assert!(standard.is_ch11() || standard.is_ch10());
 
 ---
 
-## 23. Recording Events
+## 23. Recording-event Time Tags
 
-*Added in v0.6.0.* Data Type 0x02 (Recording Event) packets carry
-timestamps that can supplement correlation. Events with secondary headers
-can serve as additional reference points.
+The `recording_event` module and its fixed event meanings are removed in0.8.0
+(T-8, ADR-0009). Chapter11 §11.2.7.3 event numbers are setup-defined12-bit
+values; no number alone implies a time gap or an admissible time reference.
 
-```rust
-use irig106_time::recording_event::{RecordingEvent, RecordingEventType};
-use irig106_time::{Rtc, AbsoluteTime};
-
-// Parse from packet header fields
-let abs = AbsoluteTime::new(100, 12, 0, 0, 0).unwrap();
-let event = RecordingEvent::new(0x01, 1, Rtc::from_raw(10_000_000), Some(abs));
-
-match event.event_type {
-    RecordingEventType::Started => println!("Recording started"),
-    RecordingEventType::Stopped => println!("Recording stopped"),
-    RecordingEventType::Overrun => println!("Data overrun — possible time gap"),
-    RecordingEventType::IndexPoint(n) => println!("Index point {}", n),
-    RecordingEventType::Reserved(v) => println!("Reserved event 0x{:02X}", v),
-}
-
-// Use as correlation reference if secondary header present
-if event.has_reference_time() {
-    // correlator.add_reference(event.channel_id, event.rtc, event.absolute_time.unwrap());
-}
-```
+The caller/body decoder retains event metadata and passes extracted tag bytes,
+packet flags and origin to `extracted::inspect_stamp`, then uses
+`StampInspection::resolve` with explicit context and a counter-answer resolver.
+See the [irig106-decode coordinator handoff](handoff-recording-events-to-decode.md)
+for the body/time boundary. Replacement event-decoder availability is not claimed.
 
 ---
 

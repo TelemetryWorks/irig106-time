@@ -35,3 +35,12 @@ T-8 handoff: [coordinator note](handoff-recording-events-to-decode.md).
 Matrix remains196/288; obsolete GAP-08 text was not valid requirement coverage.
 Only fmt, focused doctests/Jiff/tag tests, dependency inspection and trace check
 run locally; full checks belong to PR CI under owner compute rule2026-11-18.
+
+## PR55 review — usage guidance
+
+Replaced section23's removed RecordingEvent/RecordingEventType example and
+invented event-number meanings with the extracted::inspect_stamp / resolve
+boundary and coordinator handoff. Updated the TOC anchor. No event-number
+admission/gap heuristic, replacement decoder or new API is introduced.
+Documentation-only update; inspected section/TOC and local handoff target,
+fmt and trace check. Full checks delegated to the new PR CI run.
