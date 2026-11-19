@@ -6,9 +6,9 @@ A failure counts only if the expected policy diagnostic is present.
 """
 from pathlib import Path
 import os
-import re
 import subprocess
 import tempfile
+from rust_safety_scan import scan_project, root_policies
 
 ROOT = Path(__file__).resolve().parent.parent
 LINTS = {
@@ -26,7 +26,7 @@ LINTS = {
 
 def check_root(root):
     source = root.read_text()
-    attrs = re.findall(r"^#!\[(?:forbid|deny)\([\s\S]*?\)\]", source, re.M)
+    attrs = root_policies(source)
     policy = [a for a in attrs if "unsafe_code" in a or "clippy::" in a]
     header = "\n".join(policy)
     assert "#![forbid(unsafe_code)]" in header, "missing root forbid(unsafe_code)"
@@ -62,5 +62,13 @@ def check_root(root):
 
 
 if __name__ == "__main__":
+    report = scan_project(ROOT)
+    for allowance in report.allowances:
+        print(f"{allowance.location}: {','.join(sorted(allowance.lints))}: "
+              f"{'allowed' if allowance.allowed else 'FORBIDDEN'} ({allowance.scope})", flush=True)
+    for error in report.source_errors:
+        print(error, flush=True)
+    assert not report.source_errors, "forbidden production source indirection(s) above"
+    assert all(a.allowed for a in report.allowances), "forbidden safety-policy allowance(s) above"
     for root in [ROOT / "src/lib.rs", ROOT / "irig106-time-cli/src/main.rs"]:
         check_root(root)

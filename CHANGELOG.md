@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S15e review guard hardening
+
+- CI lists every protected lint/unsafe allowance with its source scope and
+  rejects production/root exemptions; only the existing cfg(test) modules and
+  named CLI print functions qualify. Production library child modules are
+  also scanned for std imports/paths before the std-unavailable compile probes.
+- Reject production lint-diagnostic suppressors and list legacy unwrap/expect
+  aliases. Reject production library/CLI include! and literal metavariable
+  attributes instead of attempting expansion; scanner limits remain explicit.
+- Assert the SecHdrTimeFormat root re-export traits, clarify API-106's compile
+  probe verification, and remove temporary S15-branch CI triggers. No runtime
+  or wire change; tested196/288, verified202/288 remain unchanged.
+  Scope, negative-probe evidence and limitations: docs/verification-s15e.md.
+
 ### S15b CLI safety boundary
 
 - Forbid CLI unsafe code and deny the accepted panic/print operations, with
