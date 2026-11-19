@@ -91,3 +91,25 @@ fn csv_flush_failure_is_an_output_error_not_silent_success() {
         4,
     );
 }
+
+// S16a1 layout/name clause only; host runner and exit contract follow later.
+#[test]
+fn standalone_identity_matches_lockstep_version() {
+    let version = Command::new(env!("CARGO_BIN_EXE_ch10time"))
+        .arg("--version")
+        .output()
+        .unwrap();
+    assert!(version.status.success());
+    assert_eq!(
+        String::from_utf8(version.stdout).unwrap(),
+        concat!("irigtime ", env!("CARGO_PKG_VERSION"), "\n")
+    );
+    let help = Command::new(env!("CARGO_BIN_EXE_ch10time"))
+        .arg("--help")
+        .output()
+        .unwrap();
+    assert!(help.status.success());
+    let help = String::from_utf8(help.stdout).unwrap();
+    assert!(help.contains("irigtime summary"));
+    assert!(!help.contains("ch10time"));
+}
