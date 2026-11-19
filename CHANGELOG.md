@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S15c fixed-reader and I/O boundary
+
+- Add permitted fixed-value Eq/Hash/Copy derives and compile assertions, keeping
+  shared types unchanged. Distinguish allocation-free fixed readers from owned
+  recording/evidence wrappers; trait shape alone is not an allocation proof.
+- Production library no longer imports std, even with the std feature. The
+  existing gated Error implementation uses core's equivalent trait; test-only
+  std remains. CI negative compilation rejects clock/env/file/network access.
+  Source/dependency bounds and limits:docs/verification-s15c.md. Recording and
+  adaptor trait audit continues in S15d; no whole-marker overclaim.
+
 ### S15a library safety enforcement
 
 - Forbid project-library unsafe code and deny the nine accepted no-panic/

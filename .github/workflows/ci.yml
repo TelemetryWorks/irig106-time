@@ -63,6 +63,7 @@ jobs:
           components: clippy
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - run: python3 scripts/check-safety-policy.py
+      - run: python3 scripts/check-library-no-io.py
 
   fmt:
     name: Format

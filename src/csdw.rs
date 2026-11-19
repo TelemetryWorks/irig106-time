@@ -233,7 +233,7 @@ impl TimeF1Csdw {
 mod csdw_tests;
 
 /// Applicability is separate from a numeric ITS value (RDG-007).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ItsQualification {
     /// Applicable 106-17+ A/B/G, including Reserved(raw).
     Reported(IrigTimeSource),

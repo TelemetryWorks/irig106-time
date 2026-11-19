@@ -158,7 +158,7 @@ pub struct Format1Reading {
 
 /// Caller-qualified bounded Format 1 input; payload need not exclude filler.
 /// **Traces:** L3-CSDW-105 ← L2-CSDW-105 ← L1-CSDW-005
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Format1Input<'a> {
     /// Original bytes, including the data word.
     pub payload: &'a [u8],
@@ -413,7 +413,7 @@ pub fn decode_qualified_time_f1(
 
 /// Canonical CSDW plus six/eight-byte body, not a primary/secondary header.
 /// **Traces:** L3-ENC-101 ← L2-ENC-101 ← L1-ENC-001
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy, Hash)]
 pub struct EncodedFormat1 {
     bytes: [u8; 12],
     len: usize,
