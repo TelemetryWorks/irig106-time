@@ -4,6 +4,11 @@ A command-line tool for inspecting IRIG 106 Chapter 10 time data. Reads a Ch10 f
 
 ## Install
 
+The standalone binary is now `irigtime` (formerly `ch10time`); update scripts
+and invocations. The package name stays `irig106-time-cli`. The ecosystem host
+will mount the shared CLI library as `irig106 time`; that runner is not wired
+in this workspace/name slice. No CLI publication or release tag before S16b.
+
 ## From the root of irig106-time, build it with:
 ```sh
 cargo build --manifest-path irig106-time-cli/Cargo.toml
@@ -14,9 +19,9 @@ For a release build:
 cargo build --release --manifest-path irig106-time-cli/Cargo.toml
 ```
 
-This produces the `ch10time` binary:
-- debug: irig106-time-cli/target/debug/ch10time
-- release: irig106-time-cli/target/release/ch10time
+This produces the `irigtime` binary:
+- debug: target/debug/irigtime
+- release: target/release/irigtime
 
 ## You can also run it directly from the root with:
 ```sh
@@ -30,12 +35,12 @@ cargo run --manifest-path irig106-time-cli/Cargo.toml -- --help
 Full file overview: packet counts, time channels, RTC range, time jump detection, and data type breakdown.
 
 ```sh
-ch10time summary flight_042.ch10
+irigtime summary flight_042.ch10
 ```
 
 ```
 ================================================================
-ch10time — IRIG 106 Time Analysis
+irigtime — IRIG 106 Time Analysis
 ================================================================
 
 File               : flight_042.ch10
@@ -65,7 +70,7 @@ Time Jumps         : None detected (threshold: 1 second)
 Per-channel time source inventory as a table.
 
 ```sh
-ch10time channels flight_042.ch10
+irigtime channels flight_042.ch10
 ```
 
 ### jumps
@@ -73,8 +78,8 @@ ch10time channels flight_042.ch10
 Time discontinuity detection with configurable threshold.
 
 ```sh
-ch10time jumps flight_042.ch10
-ch10time jumps flight_042.ch10 --threshold-ms 500
+irigtime jumps flight_042.ch10
+irigtime jumps flight_042.ch10 --threshold-ms 500
 ```
 
 Flags GPS lock events, clock resets, or any point where absolute time jumps relative to what the RTC progression predicts.
@@ -84,8 +89,8 @@ Flags GPS lock events, clock resets, or any point where absolute time jumps rela
 Per-packet table showing packet number, file offset, channel, data type, raw RTC, and correlated absolute time.
 
 ```sh
-ch10time timeline flight_042.ch10
-ch10time timeline flight_042.ch10 --limit 500
+irigtime timeline flight_042.ch10
+irigtime timeline flight_042.ch10 --limit 500
 ```
 
 ### csv
@@ -93,7 +98,7 @@ ch10time timeline flight_042.ch10 --limit 500
 Export every packet's timestamp to CSV for analysis in pandas, Excel, or your data lake pipeline.
 
 ```sh
-ch10time csv flight_042.ch10 --output times.csv
+irigtime csv flight_042.ch10 --output times.csv
 ```
 
 Columns: `packet_num, offset_hex, channel_id, data_type_hex, data_type_name, rtc_raw, rtc_nanos, day_of_year, hours, minutes, seconds, nanoseconds, year, month, day`
@@ -103,7 +108,7 @@ Columns: `packet_num, offset_hex, channel_id, data_type_hex, data_type_name, rtc
 Resolve a single RTC value against all available time channels. Useful for debugging specific packets.
 
 ```sh
-ch10time correlate flight_042.ch10 0x00009896800
+irigtime correlate flight_042.ch10 0x00009896800
 ```
 
 ```

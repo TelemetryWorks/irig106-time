@@ -28,7 +28,7 @@ impl Drop for Input {
     }
 }
 fn check(args: &[&str], code: i32) {
-    let output = Command::new(env!("CARGO_BIN_EXE_ch10time"))
+    let output = Command::new(env!("CARGO_BIN_EXE_irigtime"))
         .args(args)
         .output()
         .unwrap();
@@ -95,7 +95,7 @@ fn csv_flush_failure_is_an_output_error_not_silent_success() {
 // S16a1 layout/name clause only; host runner and exit contract follow later.
 #[test]
 fn standalone_identity_matches_lockstep_version() {
-    let version = Command::new(env!("CARGO_BIN_EXE_ch10time"))
+    let version = Command::new(env!("CARGO_BIN_EXE_irigtime"))
         .arg("--version")
         .output()
         .unwrap();
@@ -104,7 +104,7 @@ fn standalone_identity_matches_lockstep_version() {
         String::from_utf8(version.stdout).unwrap(),
         concat!("irigtime ", env!("CARGO_PKG_VERSION"), "\n")
     );
-    let help = Command::new(env!("CARGO_BIN_EXE_ch10time"))
+    let help = Command::new(env!("CARGO_BIN_EXE_irigtime"))
         .arg("--help")
         .output()
         .unwrap();

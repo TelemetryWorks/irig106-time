@@ -209,7 +209,7 @@ def scan_project(root, include_cli=True):
             if production(m.start()):
                 source_error(m.start(), "production include! is forbidden")
         for a in attrs:
-            if re.match(r"\s*\$", a["body"]) and production(a["start"]):
+            if "$" in a["body"] and production(a["start"]):
                 source_error(a["start"], "production metavariable attribute is forbidden")
         if role == "library":
             for m in re.finditer(r"\bextern\s+crate\s+(?:r#)?std\b|\b(?:r#)?std\s*::", code):

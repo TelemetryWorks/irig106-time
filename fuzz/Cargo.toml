@@ -1,3 +1,6 @@
+# Independent cargo-fuzz workspace, excluded from the release workspace.
+[workspace]
+
 [package]
 name = "irig106-time-fuzz"
 version = "0.0.0"
