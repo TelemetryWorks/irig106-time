@@ -102,6 +102,7 @@ jobs:
         with:
           toolchain: stable
       - run: cargo build --manifest-path irig106-time-cli/Cargo.toml
+      - run: cargo test --manifest-path irig106-time-cli/Cargo.toml --locked
       - run: cargo clippy --manifest-path irig106-time-cli/Cargo.toml --all-targets -- -D warnings
 
   fuzz-check:

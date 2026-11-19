@@ -117,7 +117,7 @@ Resolving RTC 0x00009896800 (10000000 ticks, 1000000000 ns)
 ## Dependencies
 
 - `irig106-time` — time parsing and correlation (the core library)
-- `memmap2` — memory-mapped file I/O for zero-copy Ch10 reading
+- File I/O uses a safe owned byte snapshot (S15b): whole-file RAM use; no mmap/zero-copy claim.
 
 ## License
 

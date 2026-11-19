@@ -14,10 +14,21 @@
 //! ch10time correlate <file.ch10> <rtc_hex>  # Resolve a single RTC value
 //! ```
 
-use memmap2::Mmap;
+#![forbid(unsafe_code)]
+#![deny(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable,
+    clippy::dbg_macro,
+    clippy::print_stdout,
+    clippy::print_stderr
+)]
+
 use std::collections::BTreeMap;
 use std::env;
-use std::fs::File;
 use std::process;
 
 use irig106_time::bcd::{DayFormatTime, DmyFormatTime};
@@ -506,6 +517,7 @@ fn fmt_comma(n: usize) -> String {
 // Command implementations
 // ────────────────────────────────────────────────────────────────────
 
+#[allow(clippy::print_stdout)] // CLI rendering/diagnostic boundary only.
 fn cmd_summary(mmap: &[u8], filename: &str) {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, false, None);
@@ -636,6 +648,7 @@ fn cmd_summary(mmap: &[u8], filename: &str) {
     }
 }
 
+#[allow(clippy::print_stdout)] // CLI rendering/diagnostic boundary only.
 fn cmd_channels(mmap: &[u8]) {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, false, None);
@@ -690,11 +703,15 @@ fn cmd_channels(mmap: &[u8]) {
     }
 }
 
+#[allow(clippy::print_stdout, clippy::print_stderr)] // CLI rendering/diagnostic boundary only.
 fn cmd_jumps(mmap: &[u8], threshold_ms: u64) {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, false, None);
 
-    let threshold_ns = threshold_ms * 1_000_000;
+    let threshold_ns = threshold_ms.checked_mul(1_000_000).unwrap_or_else(|| {
+        eprintln!("Error: threshold milliseconds cannot be represented in nanoseconds");
+        process::exit(2);
+    });
     let channels: Vec<u16> = scanner.time_channels.keys().cloned().collect();
     let mut total_jumps = 0;
 
@@ -735,6 +752,7 @@ fn cmd_jumps(mmap: &[u8], threshold_ms: u64) {
     }
 }
 
+#[allow(clippy::print_stdout)] // CLI rendering/diagnostic boundary only.
 fn cmd_timeline(mmap: &[u8], limit: usize) {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, true, Some(limit));
@@ -768,19 +786,23 @@ fn cmd_timeline(mmap: &[u8], limit: usize) {
     }
 }
 
-fn cmd_csv(mmap: &[u8], output_path: Option<&str>) {
+#[allow(clippy::print_stderr)] // CLI rendering/diagnostic boundary only.
+fn cmd_csv(mmap: &[u8], output_path: Option<&str>) -> std::io::Result<()> {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(mmap, true, None);
 
     let mut out: Box<dyn std::io::Write> = match output_path {
         Some(path) => {
-            let f = std::fs::File::create(path).expect("Failed to create output file");
+            let f = std::fs::File::create(path)?;
             Box::new(std::io::BufWriter::new(f))
         }
         None => Box::new(std::io::stdout()),
     };
 
-    writeln!(out, "packet_num,offset_hex,channel_id,data_type_hex,data_type_name,rtc_raw,rtc_nanos,day_of_year,hours,minutes,seconds,nanoseconds,year,month,day").unwrap();
+    writeln!(
+        out,
+        "packet_num,offset_hex,channel_id,data_type_hex,data_type_name,rtc_raw,rtc_nanos,day_of_year,hours,minutes,seconds,nanoseconds,year,month,day"
+    )?;
 
     for r in &scanner.resolved {
         match &r.abs_time {
@@ -801,8 +823,7 @@ fn cmd_csv(mmap: &[u8], output_path: Option<&str>) {
                     t.seconds(),
                     t.nanoseconds(),
                     t.year().map(|y| y.to_string()).unwrap_or_default(),
-                )
-                .unwrap();
+                )?;
             }
             None => {
                 writeln!(
@@ -815,23 +836,28 @@ fn cmd_csv(mmap: &[u8], output_path: Option<&str>) {
                     fmt_data_type_short(r.data_type),
                     r.rtc.as_raw(),
                     r.rtc.to_nanos(),
-                )
-                .unwrap();
+                )?;
             }
         }
     }
 
+    out.flush()?;
     if let Some(path) = output_path {
         eprintln!("Wrote {} rows to {}", scanner.resolved.len(), path);
     }
+    Ok(())
 }
 
+#[allow(clippy::print_stdout, clippy::print_stderr)] // CLI rendering/diagnostic boundary only.
 fn cmd_correlate(mmap: &[u8], rtc_hex: &str) {
     let rtc_val = u64::from_str_radix(
         rtc_hex.trim_start_matches("0x").trim_start_matches("0X"),
         16,
     )
-    .expect("Invalid hex RTC value");
+    .unwrap_or_else(|e| {
+        eprintln!("Error: invalid hex RTC value: {}", e);
+        process::exit(2);
+    });
     let target = Rtc::from_raw(rtc_val);
 
     let mut scanner = Ch10TimeScanner::new();
@@ -868,6 +894,7 @@ fn cmd_correlate(mmap: &[u8], rtc_hex: &str) {
 // Main / CLI dispatch
 // ────────────────────────────────────────────────────────────────────
 
+#[allow(clippy::print_stdout)] // CLI rendering/diagnostic boundary only.
 fn print_usage() {
     println!(
         "ch10time v{} — IRIG 106 Chapter 10 Time Inspector",
@@ -893,17 +920,16 @@ fn print_usage() {
     println!("  ch10time correlate flight_042.ch10 0x00009896800");
 }
 
-fn open_file(path: &str) -> Mmap {
-    let file = File::open(path).unwrap_or_else(|e| {
-        eprintln!("Error: cannot open '{}': {}", path, e);
-        process::exit(1);
-    });
-    unsafe { Mmap::map(&file) }.unwrap_or_else(|e| {
-        eprintln!("Error: cannot mmap '{}': {}", path, e);
-        process::exit(1);
+#[allow(clippy::print_stderr)] // CLI rendering/diagnostic boundary only.
+fn open_file(path: &str) -> Vec<u8> {
+    // Safe snapshot: no unsafe mapping of a file another process could modify.
+    std::fs::read(path).unwrap_or_else(|e| {
+        eprintln!("Error: cannot read '{}': {}", path, e);
+        process::exit(3);
     })
 }
 
+#[allow(clippy::print_stdout, clippy::print_stderr)] // CLI rendering/diagnostic boundary only.
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -970,7 +996,10 @@ fn main() {
                 .position(|a| a == "--output")
                 .and_then(|i| args.get(i + 1))
                 .map(|s| s.as_str());
-            cmd_csv(&mmap, output);
+            if let Err(e) = cmd_csv(&mmap, output) {
+                eprintln!("Error: cannot write CSV: {}", e);
+                process::exit(4);
+            }
         }
         "correlate" => {
             if args.len() < 4 {
@@ -998,5 +1027,6 @@ fn main() {
 use std::io::Write;
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)] // Test assertions only.
 #[path = "main_tests.rs"]
 mod main_tests;

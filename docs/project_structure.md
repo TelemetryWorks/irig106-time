@@ -116,7 +116,7 @@ irig106-time/
 
 ```text
 irig106-time-cli/
-|-- Cargo.toml                         # deps: irig106-time + memmap2
+|-- Cargo.toml                         # deps: irig106-time; safe owned file-byte input
 |-- README.md                          # CLI usage documentation
 `-- src/
     `-- main.rs                        # ch10time: summary, channels, jumps, timeline, csv, correlate

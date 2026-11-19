@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S15b CLI safety boundary
+
+- Forbid CLI unsafe code and deny the accepted panic/print operations, with
+  print allowances only on named CLI rendering/diagnostic functions. Remove
+  unsafe mmap/memmap2; input is now an owned file-byte snapshot, increasing
+  whole-file RAM use and reading latency rather than on-demand mapping.
+- Malformed RTC/overflowing threshold report usage2; unreadable input3;
+  CSV create/write/flush failures4 instead of panic. Successful output is
+  unchanged. Full CLI parser/output contract remains S16 work. See
+  docs/verification-s15b.md; CI now executes the CLI regression tests.
+
 ### S15a library safety enforcement
 
 - Forbid project-library unsafe code and deny the nine accepted no-panic/
