@@ -41,7 +41,7 @@ fn t3_ptp_has_two_u32_words() {
         (u64::from(t.seconds), t.nanoseconds),
         (0x01020304, 500_000_000)
     );
-    assert_eq!(&t.to_le_bytes()[..], &bytes);
+    assert_eq!(&t.to_le_bytes().unwrap()[..], &bytes);
     let maximum = PtpTime::from_le_bytes(&[255, 255, 255, 255, 0, 0, 0, 0]).unwrap();
     assert_eq!(u64::from(maximum.seconds), u32::MAX as u64);
 }

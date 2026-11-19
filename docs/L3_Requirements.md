@@ -662,9 +662,9 @@ caller context with the unresolved wording reported.
 
 **L1 ancestor**: L1-ENC-002
 
-**Obligation**: The implementation SHALL satisfy the following layout or procedure: Construct CSDW=(NTF<<4)+TS with reserved 31..8 zero; write NTP seconds/fraction or PTP seconds/nanos as8 bytes. Check PTP nanos and raw 32-bit seconds range; report unrepresentable requested time instead of truncating.
+**Obligation**: The implementation SHALL satisfy the following layout or procedure: Construct CSDW=(NTF<<4)+TS with reserved 31..8 zero; write NTP seconds/fraction or PTP seconds/nanos as8 bytes. Check PTP nanos and raw 32-bit seconds range; report unrepresentable requested time instead of truncating. Reject NTF3..15 and TS2..15; clear every reserved position without changing TS0 to1. Preserve all32 NTP fraction bits and the zero sentinel without era/leap/UTC conversion. A public invalid PtpTime struct literal SHALL not bypass the writer nanosecond check; checked construction from TaiSeconds SHALL reject overflow before narrowing.
 
-**Source**: §11.2.3.3; §11.2.1 f; contract 2.2, 4.11.
+**Source**: §11.2.3.3; §11.2.1 f; contract 2.2, 4.11. Figure11-15: "Bits 31-8 are reserved", "0x0 = Time Not Valid", "0x1 = Time Valid"; Figures11-16/17: "Time Unsigned Seconds", "Time Unsigned Seconds Fractions", "Time Unsigned Nanoseconds" (106-24R1 printed11-27 / PDF35). Canonical checked writing clears reserved positions and rejects reserved selectors; raw diagnostic preservation uses as_raw(), not the wire encoder.
 
 **Planned verification**: NTF 0/1/2 with TS 0/1 expected words, independent NTP/PTP bytes, high 32-bit seconds overflow, and fraction preservation.
 

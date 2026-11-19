@@ -208,7 +208,7 @@ proptest! {
         nanoseconds in 0u32..1_000_000_000u32,
     ) {
         let ptp = irig106_time::network_time::PtpTime { seconds, nanoseconds };
-        let bytes = ptp.to_le_bytes();
+        let bytes = ptp.to_le_bytes().unwrap();
         let ptp2 = irig106_time::network_time::PtpTime::from_le_bytes(&bytes).unwrap();
         prop_assert_eq!(ptp.seconds, ptp2.seconds);
         prop_assert_eq!(ptp.nanoseconds, ptp2.nanoseconds);
