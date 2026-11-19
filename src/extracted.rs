@@ -113,7 +113,7 @@ fn conversion_findings(
     Ok(())
 }
 /// Eight-byte stamp plus explicit ordering for modular counter unwrapping.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StampInput<'a> {
     /// Caller extraction metadata.
     pub origin: ExtractionOrigin,
@@ -161,7 +161,7 @@ impl ResolvedCounter {
 }
 /// Flags/raw stamp and simultaneous findings, before calendar resolution.
 /// **Traces:** L3-IPT-107 ← L2-IPT-107 ← L1-IPT-007
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StampInspection {
     origin: ExtractionOrigin,
     flags: u8,
@@ -306,7 +306,7 @@ impl StampInspection {
     }
 }
 /// Raw, partial or absolute stamp result with the actual query answer beside it.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StampAnswer {
     inspection: StampInspection,
     counter: Option<ResolvedCounter>,
@@ -515,7 +515,7 @@ pub fn inspect_stamp(input: StampInput<'_>, policy: &SecondaryPolicy) -> Result<
     Ok(r)
 }
 /// All six C-d\NTM kinds; components are not complete timestamps.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NetworkWord {
     /// Full PTP seconds and nanoseconds, in TAI.
     Ptp(PtpTime),
@@ -531,7 +531,7 @@ pub enum NetworkWord {
     NtpFraction(u32),
 }
 /// Caller-supplied words in significance order, not payload byte extraction.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TimeWord {
     /// Chapter4 binary weighting, including low bit15 as count data.
     Binary(Ch4Words),
@@ -577,7 +577,7 @@ impl WordContext {
     }
 }
 /// Caller word, extraction, context and conversion; raw values always retained.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WordAnswer {
     origin: ExtractionOrigin,
     word: TimeWord,

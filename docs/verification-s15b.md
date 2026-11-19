@@ -45,3 +45,12 @@ L1-API-012 → L2/L3-API-112 library policy from S15a plus CLI root policy and
 narrow I/O allowances. L1-ERR-001 → L2/L3-ERR-101 library work remains partial;
 these CLI controls are not evidence of every library parser being panic-free.
 No whole markers;196/288. Traits/allocation/no-I/O audit continues in S15c.
+
+## PR58 review — buffered write failure and main integration
+
+Linux-only csv_flush_failure_is_an_output_error_not_silent_success writes CSV
+to /dev/full and requires class4. It passes before any production change;
+removing out.flush()? compiles, exits0 and fails the new assertion. Restored.
+Ordinarily merged mainc809708, retaining all S15 CHANGELOG sections. CLI README
+now warns whole-file input may return3 or be killed by the OS; no CLI publication
+or release tag before S16 bounded streaming and larger-than-buffer verification.

@@ -174,7 +174,7 @@ fn check_reference(r: &TimelineReference, key: PacketKey, channel: Option<u16>) 
     Ok(())
 }
 /// Own-time envelope keeps independent counter, raw trust and exact adapter inputs.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OwnEnvelope {
     counter: CounterBasis,
     header: SecondaryInspection,
@@ -200,7 +200,7 @@ impl OwnEnvelope {
     }
 }
 /// Stamp envelope retains extraction, raw flags/bytes/order and actual query basis.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StampEnvelope {
     inspection: StampInspection,
     counter: Option<CounterBasis>,
@@ -221,7 +221,7 @@ impl StampEnvelope {
     }
 }
 /// Word envelope retains raw components, matching binding and session era/table.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WordEnvelope {
     origin: ExtractionOrigin,
     word: TimeWord,
@@ -249,7 +249,7 @@ impl WordEnvelope {
 /// Immutable inputs sufficient to reproduce the answer without an engine.
 /// **Traces:** L3-ANS-101 ← L2-ANS-101 ← L1-ANS-001
 /// **Traces:** L3-POL-102 ← L2-POL-102 ← L1-POL-002
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AnswerBasis {
     /// Selected offline/released stream answer.
     Counter(Box<CounterBasis>),
@@ -314,7 +314,7 @@ impl AnswerValue {
     }
 }
 /// Owned replayable answer view; no live timeline, callback or borrowed raw bytes.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnswerView {
     basis: AnswerBasis,
     value: AnswerValue,

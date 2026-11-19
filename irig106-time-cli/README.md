@@ -114,6 +114,14 @@ Resolving RTC 0x00009896800 (10000000 ticks, 1000000000 ns)
   Channel   7  → Day 100 12:30:28.840.000
 ```
 
+## Interim input-memory limit (before S16)
+
+The current CLI reads the whole file into an owned buffer. Files larger than
+available memory may be refused with exit3 or killed by the OS. This is an
+interim safety change only: S16 must use bounded-memory streaming (BufReader or
+chunked reads), never whole-file loading, mmap or new unsafe code. No CLI publish
+or release tag before that implementation and its larger-than-buffer test land.
+
 ## Dependencies
 
 - `irig106-time` — time parsing and correlation (the core library)

@@ -24,7 +24,7 @@ pub enum TimeApplicability {
     },
 }
 /// Primary facts and bounded secondary bytes, supplied by the packet reader.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SecondaryPacket<'a> {
     /// Caller-resolved session, unwrapped counter and packet identity.
     pub key: PacketKey,
@@ -419,7 +419,7 @@ pub fn inspect_secondary(
 /// Borrowed independent answer plus own-time evidence; no compatibility assumed.
 /// The caller supplies the same packet's counter answer. Borrowing guarantees
 /// header errors cannot consume it, including caller-metadata validation errors.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SecondaryWithCounter<'a, C> {
     /// Exact caller-owned counter answer (offline, stream, or another adapter).
     pub counter: &'a C,
@@ -439,7 +439,7 @@ pub fn with_counter<'a, C>(
     })
 }
 /// Mutually exclusive checksum classifications, never counted as interpretation settlement.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ChecksumCounts {
     /// Only the standard-wording byte checksum matches.
     pub byte_only: u64,

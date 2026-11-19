@@ -493,11 +493,11 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L1 ID | L2 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L1-API-001 | L2-API-101 | _(none)_ | Draft |
-| L1-API-002 | L2-API-102 | _(none)_ | Implemented (I) |
+| L1-API-001 | L2-API-101 | _(none)_ | Implemented |
+| L1-API-002 | L2-API-102 | _(none)_ | Implemented |
 | L1-API-004 | L2-API-104 | `tests/s01_existing.rs::shared_values_keep_width_and_unit_contracts`<br>`tests/s01b_adoption.rs::legacy_calendar_rejects_pre1970_instead_of_clamping`<br>`tests/s01b_adoption.rs::ptp_retains_signed_unix_and_unsigned_failure_is_explicit`<br>`tests/s01b_adoption.rs::signed_quantities_are_shared_and_checked_errors_remain_typed`<br>`tests/s01b_adoption.rs::upstream_unit_and_epoch_conversions_do_not_saturate` | Implemented |
 | L1-API-005 | L2-API-105 | _(none)_ | Draft |
-| L1-API-006 | L2-API-106 | _(none)_ | Draft |
+| L1-API-006 | L2-API-106 | _(none)_ | Implemented |
 | L1-API-007 | L2-API-107 | _(none)_ | Draft |
 | L1-API-008 | L2-API-108 | _(none)_ | Implemented (I) |
 | L1-API-009 | L2-API-109 | _(none)_ | Draft |
@@ -509,11 +509,11 @@ This matrix is the single source of truth for live status; the requirement docum
 
 | L2 ID | L3 Children | Test Artifacts | Status |
 |-------|-------------|----------------|--------|
-| L2-API-101 | L3-API-101 | _(TBD)_ | Draft |
-| L2-API-102 | L3-API-102 | _(TBD)_ | Draft |
+| L2-API-101 | L3-API-101 | `[S15d inspection](verification-s15d.md#trait-contract)` | Implemented |
+| L2-API-102 | L3-API-102 | `[S15d inspection](verification-s15d.md#allocation-boundary)` | Implemented |
 | L2-API-104 | L3-API-104 | `tests/s01_existing.rs::shared_values_keep_width_and_unit_contracts`<br>`tests/s01b_adoption.rs::legacy_calendar_rejects_pre1970_instead_of_clamping`<br>`tests/s01b_adoption.rs::ptp_retains_signed_unix_and_unsigned_failure_is_explicit`<br>`tests/s01b_adoption.rs::signed_quantities_are_shared_and_checked_errors_remain_typed`<br>`tests/s01b_adoption.rs::upstream_unit_and_epoch_conversions_do_not_saturate` | Implemented |
 | L2-API-105 | L3-API-105 | _(TBD)_ | Draft |
-| L2-API-106 | L3-API-106 | _(TBD)_ | Draft |
+| L2-API-106 | L3-API-106 | `[S15d inspection](verification-s15d.md#library-io)` | Implemented |
 | L2-API-107 | L3-API-107 | _(TBD)_ | Draft |
 | L2-API-108 | L3-API-108 | _(TBD)_ | Draft |
 | L2-API-109 | L3-API-109 | _(TBD)_ | Draft |
@@ -640,18 +640,18 @@ This matrix is the single source of truth for live status; the requirement docum
 | RDG | 2 | 14 | 14 | 8 | 8 | 8 | 8 |
 | STRM | 1 | 7 | 7 | 7 | 7 | 7 | 7 |
 | ERR | 5 | 5 | 5 | 4 | 4 | 4 | 4 |
-| API | 11 | 11 | 11 | 1 | 1 | 1 | 1 |
+| API | 11 | 11 | 11 | 1 | 1 | 4 | 4 |
 | PERF | 1 | 1 | 1 | 0 | 0 | 0 | 0 |
 | CLI | 7 | 7 | 7 | 0 | 0 | 0 | 0 |
 | REL | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
 | TST | 6 | 6 | 6 | 0 | 0 | 0 | 0 |
-| **Total** | **124** | **144** | **144** | **98** | **98** | **98** | **98** |
+| **Total** | **124** | **144** | **144** | **98** | **98** | **101** | **101** |
 
 The countable requirement set is every L2 and L3 requirement plus the 0 L1 *leaf* requirement(s) (L1s with no L2 decomposition yet). Composite L1s are verified through their children.
 
 **Tested by at least one test marker**: 196 of 288 (68.1%).
 
-**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 196 of 288 (68.1%).
+**Verified (Test or evidenced Inspection/Analysis/Demonstration)**: 202 of 288 (70.1%).
 
 ### Orphan check
 

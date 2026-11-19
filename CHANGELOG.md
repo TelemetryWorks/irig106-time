@@ -18,6 +18,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unchanged. Full CLI parser/output contract remains S16 work. See
   docs/verification-s15b.md; CI now executes the CLI regression tests.
 
+### S15d public-value and recording boundary audit
+
+- Complete the structural public-value derive inventory: Clone/PartialEq/Eq
+  for owned snapshots/adapters, Hash for fixed metadata, Copy for legacy jump/
+  reset records. Floating quality values retain PartialEq; owning controllers
+  remain distinct from value snapshots. No arithmetic or wire/output change.
+- The inventory test requires every new public value definition to be checked
+  or explicitly classified. Inspection evidence closes API-101/102/106;
+  tested196/288, verified202/288. Remaining whole-marker limits and CLI S16
+  obligations are explicit in docs/verification-s15d.md.
+
+### S15c fixed-reader and I/O boundary
+
+- Add permitted fixed-value Eq/Hash/Copy derives and compile assertions, keeping
+  shared types unchanged. Distinguish allocation-free fixed readers from owned
+  recording/evidence wrappers; trait shape alone is not an allocation proof.
+- Production library no longer imports std, even with the std feature. The
+  existing gated Error implementation uses core's equivalent trait; test-only
+  std remains. CI negative compilation rejects clock/env/file/network access.
+  Source/dependency bounds and limits:docs/verification-s15c.md. Recording and
+  adaptor trait audit continues in S15d; no whole-marker overclaim.
+
 ### S15a library safety enforcement
 
 - Forbid project-library unsafe code and deny the nine accepted no-panic/

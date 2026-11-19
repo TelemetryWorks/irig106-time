@@ -116,7 +116,7 @@
 )]
 #![deny(missing_docs)]
 
-#[cfg(feature = "std")]
+#[cfg(test)]
 extern crate std;
 
 extern crate alloc;

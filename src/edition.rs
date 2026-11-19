@@ -5,7 +5,7 @@ use alloc::string::String;
 
 /// Explicit supported release, independent of shared version-code list names.
 /// **Traces:** L3-EDN-103 ← L2-EDN-103 ← L1-EDN-003
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PacketEdition {
     /// RCC 106-04.
     V04,
@@ -37,7 +37,7 @@ pub enum PacketEdition {
     V24R1,
 }
 /// Edition facts supported by the cited rule boundaries, not a fallback edition.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EditionRules {
     /// EXT / SRC / SRC+ITS layout.
     pub layout: TimeF1Layout,
@@ -115,7 +115,7 @@ impl PacketEdition {
 }
 /// Caller identifies whether the setup field exists; reserved legacy words are
 /// retained, never interpreted as RCCVER. Setup alone never selects EXT/SRC.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
 pub enum SetupVersionEvidence {
     /// No applicable field supplied (106-04 has none).
     #[default]
@@ -151,7 +151,7 @@ pub struct EditionEvidence {
     pub data_type_version: Option<u8>,
 }
 /// ADR-0028 vocabulary; no fallback assumption selects a packet layout.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EditionBasis {
     /// Explicit caller declaration, including retained contrary evidence.
     Override,

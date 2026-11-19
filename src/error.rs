@@ -262,7 +262,7 @@ impl fmt::Display for TimeError {
 
 /// **Traces:** L3-ERR-003 ← L2-ERR-003 ← L1-ERR-001
 #[cfg(feature = "std")]
-impl std::error::Error for TimeError {}
+impl core::error::Error for TimeError {}
 
 #[cfg(test)]
 #[path = "error_tests.rs"]

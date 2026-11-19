@@ -4,7 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    # Keep module-sized S15 stack PRs covered by the normal matrix.
+    branches: [main, 'work/time-s15*']
 
 permissions:
   contents: read
@@ -63,6 +64,7 @@ jobs:
           components: clippy
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - run: python3 scripts/check-safety-policy.py
+      - run: python3 scripts/check-library-no-io.py
 
   fmt:
     name: Format

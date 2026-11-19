@@ -1363,7 +1363,7 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 
 ## API
 
-**L3-API-101** · Parent: L2-API-101 · Verification: I
+**L3-API-101** · Parent: L2-API-101 · Verification: I · Evidence: [S15d inspection](verification-s15d.md#trait-contract)
 
 **L1 ancestor**: L1-API-001
 
@@ -1373,7 +1373,7 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 
 **Planned verification**: Planned inspection: public-type inventory with derive assertions, including feature-gated types and corrected shared types; absence of Copy on owning collections justified.
 
-**L3-API-102** · Parent: L2-API-102 · Verification: I
+**L3-API-102** · Parent: L2-API-102 · Verification: I · Evidence: [S15d inspection](verification-s15d.md#allocation-boundary)
 
 **L1 ancestor**: L1-API-002
 
@@ -1403,7 +1403,7 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 
 **Planned verification**: Planned inspection: cargo-tree review for every feature combination, manifest edge inventory, and standalone library-use example using plain declarations.
 
-**L3-API-106** · Parent: L2-API-106 · Verification: I
+**L3-API-106** · Parent: L2-API-106 · Verification: I · Evidence: [S15d inspection](verification-s15d.md#library-io)
 
 **L1 ancestor**: L1-API-006
 
