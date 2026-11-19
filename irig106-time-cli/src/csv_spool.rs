@@ -180,4 +180,23 @@ mod tests {
         assert_eq!(fs::read(temporary).unwrap(), b"other owner");
         assert_eq!(fs::read(target).unwrap(), b"new");
     }
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn spool_write_and_flush_errors_remove_the_owned_temp() {
+        for size in [1, 16_384] {
+            let d = Dir::new();
+            let mut spool = CsvSpool::create_in(&d.0, None).unwrap();
+            let temporary = spool.path.clone();
+            // Inject ENOSPC without exhausting a disk or altering the device.
+            // One byte fails at flush; 16 KiB takes BufWriter's direct-write path.
+            let full = OpenOptions::new().write(true).open("/dev/full").unwrap();
+            spool.writer = Some(BufWriter::new(full));
+            let result = spool
+                .write_all(&vec![b'x'; size])
+                .and_then(|()| spool.flush());
+            assert!(result.is_err());
+            drop(spool);
+            assert!(!temporary.exists());
+        }
+    }
 }
