@@ -24,8 +24,8 @@ LINTS = {
 }
 
 
-def main():
-    source = (ROOT / "src/lib.rs").read_text()
+def check_root(root):
+    source = root.read_text()
     attrs = re.findall(r"^#!\[(?:forbid|deny)\([\s\S]*?\)\]", source, re.M)
     policy = [a for a in attrs if "unsafe_code" in a or "clippy::" in a]
     header = "\n".join(policy)
@@ -51,7 +51,7 @@ def main():
             else:
                 assert result.returncode != 0, f"{name}: violation compiled successfully"
                 assert diagnostic in result.stderr, f"{name}: unexpected failure: {result.stderr}"
-            print(f"{name}: {'accepted' if diagnostic is None else 'rejected by policy'}")
+            print(f"{root.relative_to(ROOT)} / {name}: {'accepted' if diagnostic is None else 'rejected by policy'}")
 
         check("checked positive control", "pub fn probe(x: Option<u8>) -> u8 { x.unwrap_or(0) }")
         check("unsafe block", "pub fn probe() { unsafe { core::ptr::read_volatile(&0u8); } }",
@@ -62,4 +62,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    for root in [ROOT / "src/lib.rs", ROOT / "irig106-time-cli/src/main.rs"]:
+        check_root(root)
