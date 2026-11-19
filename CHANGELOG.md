@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S13a validated Format 2 wire encoders
+
+- **Breaking:** `TimeF2Csdw::to_le_bytes` and `PtpTime::to_le_bytes` now return
+  Result. Handle encoding errors: reserved NTF/TS and invalid PTP nanoseconds
+  cannot become emitted time. CSDW output clears bits31..8, retaining TS0 as
+  invalid; use `as_raw().to_le_bytes()` only for lossless diagnostic bytes.
+- Add `PtpTime::from_tai_seconds(TaiSeconds, nanoseconds)` with checked32-bit
+  representability; no truncation, UTC conversion or leap-table inference.
+  NTP's eight-byte raw writer remains infallible: all32 fraction bits and the
+  zero sentinel are preserved. New full-header/stamp/checksum API stays deferred.
+
+
 ### Breaking: library serde and JSON APIs removed in 0.8.0
 
 - Remove the optional `serde` feature from 0.1–0.7, its dependency and

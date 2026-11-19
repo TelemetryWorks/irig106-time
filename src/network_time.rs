@@ -98,12 +98,29 @@ impl TimeF2Csdw {
         self.0
     }
 
-    /// Encode as 4 little-endian bytes.
-    ///
-    /// **Traces:** GAP-11
+    /// Canonical Figure 11-15 word: preserve defined NTF/TS, clear bits31..8.
+    /// TS0 stays invalid; reserved selectors are rejected, never relabelled.
+    /// Use `as_raw().to_le_bytes()` for lossless diagnostic bytes instead.
+    /// **Traces:** L3-ENC-102 ← L2-ENC-102 ← L1-ENC-002
     #[inline]
-    pub fn to_le_bytes(self) -> [u8; 4] {
-        self.0.to_le_bytes()
+    pub fn to_le_bytes(self) -> Result<[u8; 4]> {
+        let ntf = (self.0 >> 4) & 15;
+        let status = self.0 & 15;
+        if ntf > 2 {
+            return Err(TimeError::OutOfRange {
+                field: "network_time_format",
+                value: ntf,
+                max: 2,
+            });
+        }
+        if status > 1 {
+            return Err(TimeError::OutOfRange {
+                field: "network_time_status",
+                value: status,
+                max: 1,
+            });
+        }
+        Ok([self.0 as u8, 0, 0, 0])
     }
 
     /// Broad protocol from NTF bits 7–4. Use [`Self::time_format`] for PTP revision.
@@ -242,7 +259,8 @@ impl NtpTime {
     ///
     /// This is the inverse of `from_le_bytes`.
     ///
-    /// **Traces:** GAP-11
+    /// Raw zero sentinel and all 32 fraction bits are preserved (RDG-012).
+    /// **Traces:** L3-ENC-102 ← L2-ENC-102 ← L1-ENC-002
     #[inline]
     pub fn to_le_bytes(&self) -> [u8; 8] {
         let mut buf = [0u8; 8];
@@ -270,6 +288,26 @@ pub struct PtpTime {
 }
 
 impl PtpTime {
+    /// Construct Figure 11-17 fields from typed TAI seconds since 1970.
+    /// Refuse seconds above 32 bits and nanoseconds >=1e9; no UTC/leap mapping.
+    /// **Traces:** L3-ENC-102 ← L2-ENC-102 ← L1-ENC-002
+    pub fn from_tai_seconds(seconds: TaiSeconds, nanoseconds: u32) -> Result<Self> {
+        let seconds = u32::try_from(seconds.get()).map_err(|_| TimeError::QuantityOverflow {
+            quantity: "PTP wire seconds exceed 32 bits",
+        })?;
+        if nanoseconds >= 1_000_000_000 {
+            return Err(TimeError::OutOfRange {
+                field: "ptp_nanoseconds",
+                value: nanoseconds,
+                max: 999_999_999,
+            });
+        }
+        Ok(Self {
+            seconds,
+            nanoseconds,
+        })
+    }
+
     /// Parse from an 8-byte little-endian buffer.
     ///
     /// Layout: `[seconds(4 LE), nanoseconds(4 LE)]` (Figure 11-17).
@@ -346,17 +384,16 @@ impl PtpTime {
         Ok(abs)
     }
 
-    /// Encode as 8 little-endian bytes: 4B seconds + 4B nanoseconds.
-    ///
-    /// This is the inverse of `from_le_bytes`.
-    ///
-    /// **Traces:** GAP-11
+    /// Encode Figure 11-17's two 32-bit LE words, rejecting invalid raw nanos.
+    /// Public struct literals cannot bypass representability checks here.
+    /// **Traces:** L3-ENC-102 ← L2-ENC-102 ← L1-ENC-002
     #[inline]
-    pub fn to_le_bytes(&self) -> [u8; 8] {
+    pub fn to_le_bytes(&self) -> Result<[u8; 8]> {
+        Self::from_tai_seconds(self.tai_seconds(), self.nanoseconds)?;
         let mut buf = [0u8; 8];
         buf[0..4].copy_from_slice(&self.seconds.to_le_bytes());
         buf[4..8].copy_from_slice(&self.nanoseconds.to_le_bytes());
-        buf
+        Ok(buf)
     }
 }
 
