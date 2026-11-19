@@ -14,7 +14,6 @@ pub use irig106_types::SecHdrTimeFormat;
 /// Parsed secondary header time value.
 ///
 /// **Traces:** L3-SEC-101, L3-SEC-102, L3-SEC-103
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SecondaryHeaderTime {
     /// Chapter 4 Binary Weighted Time.
@@ -22,11 +21,10 @@ pub enum SecondaryHeaderTime {
     /// IEEE-1588 time.
     Ieee1588(Ieee1588Time),
     /// 64-bit Extended RTC.
-    Ertc(#[cfg_attr(feature = "serde", serde(with = "crate::snapshot::adapters::ertc"))] Ertc),
+    Ertc(Ertc),
 }
 
 /// Both checksum readings and the recorded checksum (RDG-008, suspect).
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SecondaryChecksum {
     /// Recorded little-endian checksum.

@@ -441,7 +441,7 @@ it.
 |---|---|
 | **Dependencies** | `irig106-types` (required); `jiff` (optional feature); no library serde dependency (ADR-0019) |
 | **Features** | `std` (default: `std::error::Error`); `alloc` implied by the recording layer; `jiff` (checked scale-qualified civil conversions) |
-| **Targets** | any Rust target; CI builds `wasm32-unknown-unknown` without default features and checks supported native features; no library serde feature (ADR-0014/0019) |
+| **Targets** | any Rust target; CI builds `wasm32-unknown-unknown` with `--no-default-features` and `--no-default-features --features jiff`, and checks supported native features; no library serde feature (ADR-0014/0019/0020) |
 | **Edition and MSRV** | edition 2024, Rust 1.85 (ADR-0003) |
 | **JSON boundary** | Library values, policies, findings, answers and timelines are Rust data; retain non-JSON AnswerView/replay and complete basis (ADR-0010/0011). The CLI owns JSON report output (L1-CLI-006) under owner Q5: versioned reviewed schema, units, decimal-string 64/128-bit quantities and raw/stated/assumed provenance. No library JSON loading. Remove 0.1–0.7 optional serde in 0.8.0 (breaking); irig106-types' own serde feature untouched. Q3 library rehydration deferral is moot (owner 2026-11-17, ADR-0019). |
 | **`jiff`** | Optional/off by default; Jiff1.0.1 MSRV1.85 with default features disabled. Checked `Scaled<jiff::civil::DateTime>` conversions require year/scale, preserve naive fields/provenance, reject second60/negative years; no Timestamp, clock or timezone I/O. Replaces chrono due to RUSTSEC-2026-0543 (ADR-0020). |

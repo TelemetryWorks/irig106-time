@@ -29,7 +29,6 @@ jobs:
           toolchain: stable
       - run: cargo test --all-features
       - run: cargo test --no-default-features
-      - run: cargo test --features serde
       - run: cargo test --features jiff
       - run: cargo test --no-default-features --features jiff
 
@@ -49,7 +48,6 @@ jobs:
       # MSRV verification uses cargo check on the library only.
       - run: cargo check --no-default-features
       - run: cargo check
-      - run: cargo check --features serde
       - run: cargo check --no-default-features --features jiff
 
   clippy:
@@ -134,7 +132,6 @@ jobs:
           targets: wasm32-unknown-unknown
       - run: cargo build --target wasm32-unknown-unknown --no-default-features
       - run: cargo build --target wasm32-unknown-unknown --no-default-features --features jiff
-      - run: cargo build --target wasm32-unknown-unknown --no-default-features --features serde
 
   trace-matrix:
     name: Trace matrix up to date

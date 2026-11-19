@@ -922,30 +922,3 @@ fn resolve_session_pass(
     }
     Ok(findings)
 }
-
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(YearContext { caller, recording });
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(YearCandidate {
-    supplied,
-    year,
-    origin,
-    packet
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(YearBasis {
-    context,
-    order,
-    packet_year,
-    candidates,
-    original,
-    original_origin,
-    phase,
-    observed_leap_ns,
-    resolved,
-    normalization_issue,
-    segment,
-    gap,
-    year_issue,
-    phase_residual
-});

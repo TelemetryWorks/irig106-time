@@ -1056,6 +1056,10 @@ assert_eq!(TimeF2Csdw::from_le_bytes(f2_bytes).as_raw(), f2_csdw.as_raw());
 
 ## 19. Using serde for Serialization
 
+> Historical 0.5–0.7 API only. The 0.8.0 rebuild removes library serde and JSON
+> loading (ADR-0019); migrate to the CLI's JSON report output. The examples
+> below do not apply to the rebuilt library.
+
 *Added in v0.5.0.* Enable the `serde` feature to derive `Serialize` and
 `Deserialize` on all public data types (except `TimeError`, which contains
 `&'static str` fields that are not serde-compatible).

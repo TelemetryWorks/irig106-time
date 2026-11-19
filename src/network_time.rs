@@ -37,7 +37,6 @@ pub const DEFAULT_TAI_UTC_OFFSET: TaiUtcOffset = TaiUtcOffset::new(37);
 /// Network time protocol discriminant from the Format 2 CSDW.
 ///
 /// **Traces:** L3-F2CSDW-104
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NetworkTimeProtocol {
     /// Network Time Protocol version 3 (RFC 1305). UTC, 1900 epoch; era unresolved.
@@ -50,7 +49,6 @@ pub enum NetworkTimeProtocol {
 
 /// Exact NTF discriminant (106-24R1 Figure 11-15, printed 11-27).
 /// **Traces:** L3-F2CSDW-104 ← L2-F2CSDW-104
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NetworkTimeFormat {
     /// NTP version 3.
@@ -65,7 +63,6 @@ pub enum NetworkTimeFormat {
 
 /// Recorded network time status, independent of format and reserved bits.
 /// **Traces:** L3-F2CSDW-105 ← L2-F2CSDW-105
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TimeStatus {
     /// TS zero: time not valid.
@@ -79,7 +76,6 @@ pub enum TimeStatus {
 /// Parsed Time Data Format 2 (0x12) Channel-Specific Data Word.
 ///
 /// **Traces:** L3-F2CSDW-101
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TimeF2Csdw(u32);
 
@@ -169,7 +165,6 @@ impl TimeF2Csdw {
 /// seconds (each fractional unit = 2⁻³² seconds ≈ 233 picoseconds).
 ///
 /// **Traces:** L3-NTP-101, L3-NTP-102
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct NtpTime {
     /// Raw 32-bit UTC-labelled seconds relative to 1900; era is unresolved.
@@ -266,15 +261,9 @@ impl NtpTime {
 /// so PTP time differs from UTC by the accumulated leap-second offset.
 ///
 /// **Traces:** L3-PTP-105, L3-PTP-102
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", serde(try_from = "PtpWire"))]
 pub struct PtpTime {
     /// Seconds since 1970-01-01 00:00:00 TAI (32 bits).
-    #[cfg_attr(
-        feature = "serde",
-        serde(with = "crate::snapshot::adapters::ptp_seconds")
-    )]
     pub seconds: u32,
     /// Nanoseconds within the current second (0–999,999,999).
     pub nanoseconds: u32,
@@ -374,7 +363,6 @@ impl PtpTime {
 // ── Parsed Network Time ──────────────────────────────────────────────
 
 /// Parsed payload from a Format 2 Network Time packet.
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NetworkTime {
     /// NTP time (UTC epoch 1900-01-01).
@@ -385,7 +373,6 @@ pub enum NetworkTime {
 
 /// Raw Format 2 reading; invalid status remains recorded, never promoted.
 /// **Traces:** L3-F2CSDW-105 ← L2-F2CSDW-105
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Format2Reading {
     /// Raw data word and independent NTF/TS/reserved evidence.
@@ -393,10 +380,6 @@ pub struct Format2Reading {
     /// Decoded body and stated scale; None for reserved NTF.
     pub time: Option<Scaled<NetworkTime>>,
     /// Number of bytes consumed, excluding filler/checksum.
-    #[cfg_attr(
-        feature = "serde",
-        serde(serialize_with = "crate::snapshot::adapters::count::serialize")
-    )]
     pub consumed: usize,
 }
 impl Format2Reading {
@@ -529,22 +512,3 @@ fn is_leap_year(year: u16) -> bool {
 #[cfg(test)]
 #[path = "network_time_tests.rs"]
 mod network_time_tests;
-
-#[cfg(feature = "serde")]
-#[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-struct PtpWire {
-    #[serde(with = "crate::snapshot::adapters::ptp_seconds")]
-    seconds: u32,
-    nanoseconds: u32,
-}
-#[cfg(feature = "serde")]
-impl TryFrom<PtpWire> for PtpTime {
-    type Error = TimeError;
-    fn try_from(w: PtpWire) -> Result<Self> {
-        let mut bytes = [0; 8];
-        bytes[..4].copy_from_slice(&w.seconds.to_le_bytes());
-        bytes[4..].copy_from_slice(&w.nanoseconds.to_le_bytes());
-        Self::from_le_bytes(&bytes)
-    }
-}

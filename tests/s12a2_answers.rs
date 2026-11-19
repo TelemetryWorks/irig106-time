@@ -1,5 +1,5 @@
 //! Partial ANS101/105 and POL101/102 replay clauses, ADR0010/0011.
-//! No whole markers: serialized/schema verification remains S12b.
+//! Native replay is retained under ADR-0019; JSON output belongs to the CLI.
 use irig106_time::{answer::*, policy::*, scale::*, stream::*, timeline::*, *};
 fn packet(id: u64, ticks: u64, reference: Option<ReferenceInput>) -> PacketObservation {
     PacketObservation {

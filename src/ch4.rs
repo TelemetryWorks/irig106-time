@@ -36,7 +36,6 @@ impl From<Ch4BinaryTime> for Ch4Words {
 
 /// Caller-selected interpretation, NOT a resolution of §4.7's wording conflict.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum BcdDayInterpretation {
     /// Compare the three wire bits to the low3 bits of the packed BCD ordinal day.
     /// Only its units digit contributes: day131 -> BCD0x131 -> fragment1;
@@ -58,7 +57,6 @@ pub struct BcdContext {
 }
 /// Exact caller context retained with the result.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum Ch4Context {
     /// Binary elapsed count relative to this supplied nominal calendar origin.
     Binary {
@@ -66,13 +64,7 @@ pub enum Ch4Context {
         origin: Option<AbsoluteTime>,
     },
     /// BCD full calendar and explicitly selected day interpretation.
-    Bcd(
-        #[cfg_attr(
-            feature = "serde",
-            serde(serialize_with = "crate::snapshot::wide::serialize")
-        )]
-        BcdContext,
-    ),
+    Bcd(BcdContext),
 }
 /// Missing inputs, without fabricated date fields or nearest-reference fallback.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -88,7 +80,6 @@ pub struct MissingCh4Context {
 }
 /// Original edition-dependent phrase, never a settled interpretation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum BcdDayWording {
     /// 106-04..106-15: "three least significant characters of the BCD Julian date".
     Characters,
@@ -99,16 +90,9 @@ pub enum BcdDayWording {
 }
 /// Labelled decoded value before any calendar reconstruction.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum Ch4Value {
     /// Full binary elapsed count, never split into an invented day field.
-    BinaryElapsed(
-        #[cfg_attr(
-            feature = "serde",
-            serde(serialize_with = "crate::snapshot::wide::serialize")
-        )]
-        NanosDuration,
-    ),
+    BinaryElapsed(NanosDuration),
     /// Partial BCD clock plus raw day fragment, not a complete day of year.
     BcdTimeOfDay {
         /// Raw3-bit day fragment.
@@ -124,7 +108,7 @@ pub enum Ch4Value {
     },
 }
 /// Validated value with raw words, context, partial labels and ambiguity evidence.
-/// Fields are immutable; no Deserialize bypass of context validation is provided.
+/// Fields are immutable; construction validates the explicit caller context.
 /// **Traces:** L3-WORD-101 ← L2-WORD-101 ← L1-WORD-001
 /// **Traces:** L3-ABS-102 ← L2-ABS-102 ← L1-ABS-002
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -319,34 +303,3 @@ impl Ch4Words {
         })
     }
 }
-
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(Ch4Words {
-    high,
-    low,
-    microseconds
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(BcdContext {
-    year,
-    full_day,
-    interpretation,
-    edition
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(MissingCh4Context {
-    origin,
-    year,
-    full_day,
-    interpretation
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(Ch4Reading {
-    raw,
-    context,
-    value,
-    calendar,
-    missing,
-    wording,
-    reserved
-});

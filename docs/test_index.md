@@ -9,7 +9,7 @@
 **Document:** TEST_INDEX.md
 **Crate:** irig106-time v0.7.0
 **Default `cargo test`:** 269 tests (184 unit, 68 integration, 17 property)
-**`cargo test --all-features`:** includes chrono doc tests
+**`cargo test --all-features`:** includes Jiff civil doc tests; library serde has been removed (ADR-0019/0020)
 **Date:** 2026-03-29
 
 ---
@@ -49,9 +49,11 @@ src/
   quality_tests.rs      ← 6 unit tests
   recording_event.rs
   recording_event_tests.rs ← 9 unit tests
-  chrono_interop.rs     ← 4 unit tests (feature-gated)
+  jiff_interop.rs       ← checked civil adapters (optional jiff)
   util.rs               ← 18 unit tests (is_leap_year + abs_diff_u64)
 tests/
+  jiff_interop.rs      ← 13 civil conversion cases (optional jiff)
+  library_boundary.rs  ← removed-feature rejection (no build subprocess)
   pipeline.rs         ← 68 integration tests
   properties.rs       ← 17 property-based tests
 ```

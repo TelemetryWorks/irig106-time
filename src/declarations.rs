@@ -55,9 +55,7 @@ impl GoverningRange {
     }
 }
 /// Raw structured attribute values; original spelling/absence are preserved.
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct ChannelDeclaration {
     /// Packet channel identifier, supplied by the caller's configuration join.
     pub id: u16,
@@ -92,7 +90,6 @@ pub struct SetupDeclarations {
 }
 /// Declaration availability is independent of whether a channel is declared.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum DeclarationPresence {
     /// No setup declarations were supplied.
     Absent,
@@ -685,37 +682,3 @@ fn diagnostic(
         basis: basis.clone(),
     })
 }
-
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(GoverningRange {
-    session,
-    start,
-    end
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(SetupDeclarations {
-    range,
-    setup_packet,
-    provenance,
-    declared_version,
-    ri4,
-    recording_year,
-    channels
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(GoverningSetup {
-    range,
-    setup_packet,
-    provenance,
-    declared_version,
-    ri4,
-    recording_year
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(DeclarationBasis {
-    presence,
-    governing,
-    channel
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(Declarations { snapshots });

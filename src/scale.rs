@@ -3,7 +3,6 @@ use crate::csdw::TimeFormat;
 
 /// Time scale, independent of epoch or counter units.
 /// **Traces:** L3-TAI-105 ← L2-TAI-105
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TimeScale {
     /// Coordinated Universal Time.
@@ -18,7 +17,6 @@ pub enum TimeScale {
 
 /// Why the effective scale is assigned.
 /// **Traces:** L3-TAI-105 ← L2-TAI-105
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ScaleOrigin {
     /// Explicitly stated for this format by the standard.
@@ -32,9 +30,7 @@ pub enum ScaleOrigin {
 /// Stated and effective scales retained independently.
 /// **Traces:** L3-TAI-105 ← L2-TAI-105
 /// **Traces:** L3-TAI-106 ← L2-TAI-106
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", serde(try_from = "ScaleWire"))]
 pub struct ScaleEvidence {
     stated: TimeScale,
     effective: TimeScale,
@@ -86,9 +82,7 @@ impl ScaleEvidence {
 /// Explicit scale assumptions for otherwise unspecified Format 1 sources.
 /// Stated UTC/GPS formats cannot be relabelled by these settings.
 /// **Traces:** L3-TAI-106 ← L2-TAI-106
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct ScalePolicy {
     /// IRIG-A/B/G assumption. Default UTC, labelled Policy (RCC 200-16 §1).
     pub irig: TimeScale,
@@ -125,7 +119,6 @@ pub const TAI_MINUS_GPS_SECONDS: i32 = 19;
 
 /// Value paired with scale provenance, without implicit normalization.
 /// **Traces:** L3-TAI-105 ← L2-TAI-105
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Scaled<T> {
     /// Unconverted decoded value.
@@ -164,29 +157,3 @@ unknown_scale!(
     crate::SecondaryHeaderTime,
     crate::IntraPacketTime
 );
-
-#[cfg(feature = "serde")]
-#[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-struct ScaleWire {
-    stated: TimeScale,
-    effective: TimeScale,
-    origin: ScaleOrigin,
-}
-#[cfg(feature = "serde")]
-impl TryFrom<ScaleWire> for ScaleEvidence {
-    type Error = crate::TimeError;
-    fn try_from(w: ScaleWire) -> crate::Result<Self> {
-        let value = match w.origin {
-            ScaleOrigin::Standard => Self::standard(w.stated),
-            ScaleOrigin::Policy => Self::assumed(w.effective),
-            ScaleOrigin::Unspecified => Self::unknown(),
-        };
-        if value.stated != w.stated || value.effective != w.effective || value.origin != w.origin {
-            return Err(crate::TimeError::InvalidTimelineInput(
-                "contradictory scale provenance",
-            ));
-        }
-        Ok(value)
-    }
-}

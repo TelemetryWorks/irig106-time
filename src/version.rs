@@ -39,7 +39,6 @@ pub fn supports_format_2(version: &Irig106Version) -> bool {
 mod version_tests;
 
 /// Availability in an explicitly caller-declared edition, not header inference.
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Format2Availability {
     /// Declared release is earlier than 106-17 (TF-026).

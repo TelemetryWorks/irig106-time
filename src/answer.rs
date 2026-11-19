@@ -1,6 +1,6 @@
 //! Owned answer replay: ADR-0010/0011, contract3.1/3.5/5.6/7.3.
 //! Captures selected evidence, never a live engine or hidden reference registry.
-//! Versioned output uses snapshot::AnswerOutput; checked loads replay report inputs.
+//! Native AnswerView/replay remains independent of JSON; CLI owns report output.
 //!
 //! ```
 //! use irig106_time::{answer::AnswerView, timeline::OfflineAnswer, Result};
@@ -20,24 +20,11 @@ fn invalid() -> TimeError {
 }
 /// Full core policy, selected references and release/selection reason.
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum ClockBasis {
     /// Offline selection; no new search during replay.
-    Offline(
-        #[cfg_attr(
-            feature = "serde",
-            serde(serialize_with = "crate::snapshot::wide::serialize")
-        )]
-        Box<OfflineBasis>,
-    ),
+    Offline(Box<OfflineBasis>),
     /// Released stream selection, including original mode/progress/fallback.
-    Stream(
-        #[cfg_attr(
-            feature = "serde",
-            serde(serialize_with = "crate::snapshot::wide::serialize")
-        )]
-        Box<StreamBasis>,
-    ),
+    Stream(Box<StreamBasis>),
 }
 /// Owned selected counter basis with explicitly caller-supplied findings.
 /// **Traces:** L3-ANS-101 ← L2-ANS-101 ← L1-ANS-001
@@ -263,40 +250,15 @@ impl WordEnvelope {
 /// **Traces:** L3-ANS-101 ← L2-ANS-101 ← L1-ANS-001
 /// **Traces:** L3-POL-102 ← L2-POL-102 ← L1-POL-002
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum AnswerBasis {
     /// Selected offline/released stream answer.
-    Counter(
-        #[cfg_attr(
-            feature = "serde",
-            serde(serialize_with = "crate::snapshot::wide::serialize")
-        )]
-        Box<CounterBasis>,
-    ),
+    Counter(Box<CounterBasis>),
     /// Secondary own and independent counter answers.
-    Own(
-        #[cfg_attr(
-            feature = "serde",
-            serde(serialize_with = "crate::snapshot::wide::serialize")
-        )]
-        Box<OwnEnvelope>,
-    ),
+    Own(Box<OwnEnvelope>),
     /// Extracted intra-packet stamp answer.
-    Stamp(
-        #[cfg_attr(
-            feature = "serde",
-            serde(serialize_with = "crate::snapshot::wide::serialize")
-        )]
-        Box<StampEnvelope>,
-    ),
+    Stamp(Box<StampEnvelope>),
     /// Caller-extracted time word answer.
-    Word(
-        #[cfg_attr(
-            feature = "serde",
-            serde(serialize_with = "crate::snapshot::wide::serialize")
-        )]
-        Box<WordEnvelope>,
-    ),
+    Word(Box<WordEnvelope>),
 }
 /// Common result projection. Values are output, never trusted replay inputs.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -514,41 +476,3 @@ impl AnswerBasis {
         })
     }
 }
-
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(CounterBasis { clock, findings });
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(OwnEnvelope {
-    counter,
-    header,
-    context,
-    policy
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(StampEnvelope {
-    inspection,
-    counter,
-    context
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(WordEnvelope {
-    origin,
-    word,
-    context,
-    policy
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(AnswerValue {
-    calendar,
-    counter_duration,
-    counter,
-    point,
-    own_minus_counter,
-    tolerance,
-    issue,
-    findings,
-    network,
-    chapter4
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(AnswerView { basis, value });

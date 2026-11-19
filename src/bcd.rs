@@ -96,44 +96,6 @@ pub struct DayFormatTime {
     day_of_year: u16,
 }
 
-#[cfg(feature = "serde")]
-mod day_serde {
-    use super::*;
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-    #[derive(Serialize, Deserialize)]
-    struct Fields {
-        milliseconds: u16,
-        seconds: u8,
-        minutes: u8,
-        hours: u8,
-        day_of_year: u16,
-    }
-
-    impl Serialize for DayFormatTime {
-        fn serialize<S: Serializer>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error> {
-            Fields {
-                milliseconds: self.milliseconds,
-                seconds: self.seconds,
-                minutes: self.minutes,
-                hours: self.hours,
-                day_of_year: self.day_of_year,
-            }
-            .serialize(serializer)
-        }
-    }
-
-    impl<'de> Deserialize<'de> for DayFormatTime {
-        fn deserialize<D: Deserializer<'de>>(
-            deserializer: D,
-        ) -> core::result::Result<Self, D::Error> {
-            let f = Fields::deserialize(deserializer)?;
-            DayFormatTime::new(f.day_of_year, f.hours, f.minutes, f.seconds, f.milliseconds)
-                .map_err(serde::de::Error::custom)
-        }
-    }
-}
-
 impl DayFormatTime {
     /// Construct a validated `DayFormatTime`.
     ///
@@ -391,56 +353,6 @@ pub struct DmyFormatTime {
     month: u8,
     /// Year (0–9999).
     year: u16,
-}
-
-#[cfg(feature = "serde")]
-mod dmy_serde {
-    use super::*;
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-    #[derive(Serialize, Deserialize)]
-    struct Fields {
-        milliseconds: u16,
-        seconds: u8,
-        minutes: u8,
-        hours: u8,
-        day: u8,
-        month: u8,
-        year: u16,
-    }
-
-    impl Serialize for DmyFormatTime {
-        fn serialize<S: Serializer>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error> {
-            Fields {
-                milliseconds: self.milliseconds,
-                seconds: self.seconds,
-                minutes: self.minutes,
-                hours: self.hours,
-                day: self.day,
-                month: self.month,
-                year: self.year,
-            }
-            .serialize(serializer)
-        }
-    }
-
-    impl<'de> Deserialize<'de> for DmyFormatTime {
-        fn deserialize<D: Deserializer<'de>>(
-            deserializer: D,
-        ) -> core::result::Result<Self, D::Error> {
-            let f = Fields::deserialize(deserializer)?;
-            DmyFormatTime::new(
-                f.year,
-                f.month,
-                f.day,
-                f.hours,
-                f.minutes,
-                f.seconds,
-                f.milliseconds,
-            )
-            .map_err(serde::de::Error::custom)
-        }
-    }
 }
 
 impl DmyFormatTime {

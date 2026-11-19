@@ -6,12 +6,10 @@ use crate::error::{Result, TimeError};
 use crate::scale::{ScaleEvidence, ScalePolicy, Scaled, TimeScale, TimeScaleTagged};
 
 /// Calendar fields retained without normalization, including second 60.
-/// Parser results are validated. Publicly constructed/deserialized fields must
+/// Parser results are validated. Publicly constructed fields must
 /// pass [`Self::validate`] before use; [`Self::to_absolute`] always checks them.
 /// **Traces:** L3-TAI-107 ← L2-TAI-107
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", serde(try_from = "CalendarWire"))]
 pub struct CalendarReading {
     /// Explicit year if DATE=1 or caller supplied; never invented.
     pub year: Option<u16>,
@@ -146,7 +144,6 @@ impl TimeScaleTagged for CalendarReading {
 
 /// Format 1 raw data word and decoded calendar reading, without correlation.
 /// **Traces:** L3-TAI-105 ← L2-TAI-105
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Format1Reading {
     /// Raw CSDW; its reserved findings remain separately inspectable.
@@ -156,10 +153,6 @@ pub struct Format1Reading {
     /// Raw per-word reserved intersections, for TF-005 warnings. No fifth word.
     pub reserved_body_bits: [u16; 4],
     /// Bytes consumed, excluding filler/checksum.
-    #[cfg_attr(
-        feature = "serde",
-        serde(serialize_with = "crate::snapshot::adapters::count::serialize")
-    )]
     pub consumed: usize,
 }
 
@@ -417,41 +410,3 @@ pub fn decode_qualified_time_f1(
         consumed,
     })
 }
-
-#[cfg(feature = "serde")]
-#[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-struct CalendarWire {
-    year: Option<u16>,
-    day_of_year: u16,
-    hours: u8,
-    minutes: u8,
-    seconds: u8,
-    nanoseconds: u32,
-    scale: ScaleEvidence,
-}
-#[cfg(feature = "serde")]
-impl TryFrom<CalendarWire> for CalendarReading {
-    type Error = TimeError;
-    fn try_from(w: CalendarWire) -> Result<Self> {
-        let value = Self {
-            year: w.year,
-            day_of_year: w.day_of_year,
-            hours: w.hours,
-            minutes: w.minutes,
-            seconds: w.seconds,
-            nanoseconds: w.nanoseconds,
-            scale: w.scale,
-        };
-        value.validate()?;
-        Ok(value)
-    }
-}
-
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(QualifiedFormat1Reading {
-    csdw,
-    time,
-    reserved_body_bits,
-    consumed
-});

@@ -6,6 +6,9 @@
 > on 2026-09-27 to rebuild the crate, documentation first (`docs/adr/0001`,
 > `0002`); this layout changes when the rebuilt code lands.
 
+Current interop/dependency rows below reflect ADR-0019/0020: Jiff replaces
+chrono and library serde is removed. Other prototype layout/counts are historical.
+
 ---
 
 ## Repository Layout
@@ -50,7 +53,7 @@ irig106-time/
 |   |-- quality_tests.rs               # 6 unit tests
 |   |-- recording_event.rs             # RecordingEvent, RecordingEventType
 |   |-- recording_event_tests.rs       # 9 unit tests
-|   |-- chrono_interop.rs              # chrono From conversions (feature-gated, 4 tests)
+|   |-- jiff_interop.rs                # checked civil adapters (optional jiff; tests/jiff_interop.rs)
 |   `-- util.rs                        # MSRV helpers: is_leap_year, abs_diff_u64 (18 tests)
 |
 |-- tests/
@@ -147,7 +150,7 @@ irig106-time-cli/
 | Fuzz targets | 10 |
 | Benchmarks | 28 (zero-dep) + criterion suite |
 | **Total tests** | **269** |
-| Required runtime deps | **0** (serde, chrono optional) |
+| Required runtime deps | **1** (`irig106-types`; `jiff` optional; no library serde) |
 | L1 requirements | 53 (37 base + 16 F2) |
 | `#![no_std]` | Yes |
 | `unsafe` blocks | **0** |
@@ -196,5 +199,5 @@ lib.rs -> error.rs           (no deps)
        -> quality.rs         -> correlation.rs  (requires alloc)
        -> recording_event.rs -> absolute.rs
        -> streaming.rs       -> error.rs, rtc.rs, absolute.rs, network_time.rs  (requires alloc)
-       `-> chrono_interop.rs -> absolute.rs, chrono  (feature = "chrono")
+       `-> jiff_interop.rs -> absolute.rs, format1.rs, scale.rs, jiff  (feature = "jiff")
 ```

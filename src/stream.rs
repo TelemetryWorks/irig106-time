@@ -7,7 +7,6 @@ use alloc::{collections::VecDeque, vec::Vec};
 const MASK: i128 = (1i128 << 48) - 1;
 /// Explicit stream strategy; Standard is the owner-accepted default.
 /// **Traces:** L3-POL-201 ← L2-POL-201 ← L1-POL-001
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StreamMode {
     /// RCC 123-20 §5.6 printed 5-44: preceding time plus RTC displacement.
@@ -106,7 +105,6 @@ pub struct StreamChannel {
 }
 /// Option A commitment reason; no valid-count choice exists here.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum StreamChannelChoice {
     /// Explicit caller choice, without substitution.
     Caller,
@@ -118,7 +116,6 @@ pub enum StreamChannelChoice {
 /// Why an answer is released. All non-interpolated fallbacks carry this reason
 /// and the old policy/progress/deadline; none silently claims drift correction.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum ReleaseReason {
     /// Immediate preceding/reference-exact answer, no drift correction.
     Standard,
@@ -959,44 +956,3 @@ impl StreamTimeline {
         self.set_policy(p, progress)
     }
 }
-
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(BufferCaps {
-    packets,
-    bytes,
-    references
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(StreamPolicy {
-    id,
-    mode,
-    offline,
-    hold_tolerance_ns,
-    hold_interval_ns,
-    raw_network_rate,
-    caps
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(StreamBasis {
-    session_origin,
-    key,
-    channel,
-    preceding,
-    following,
-    policy,
-    progress_ns,
-    deadline_ns,
-    extrapolated,
-    release,
-    drift_correction_ns,
-    precision_ns,
-    rounding,
-    unresolved
-});
-#[cfg(feature = "serde")]
-crate::snapshot::wide::serialize_struct!(StreamAnswer {
-    time,
-    reading,
-    counter_ns,
-    basis
-});
