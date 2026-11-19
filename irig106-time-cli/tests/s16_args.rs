@@ -1,4 +1,5 @@
 //! Strict argument preflight only; threshold/complete exit work follows.
+#[path = "common/mod.rs"]
 mod common;
 use irig106_time_cli::run;
 use std::{

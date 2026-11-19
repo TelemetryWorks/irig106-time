@@ -28,7 +28,15 @@ with tempfile.TemporaryDirectory(prefix="irigtime-reader-rss-") as tmp:
     with path.open("wb") as out:
         for _ in range(size // len(packet)):
             out.write(packet)
-    binary = Path(executables[0]).parents[1] / "irigtime"
+    binaries = subprocess.check_output([
+        "cargo", "build", "-p", "irig106-time-cli", "--bin", "irigtime",
+        "--locked", "--message-format=json",
+    ], text=True)
+    cli = [m["executable"] for line in binaries.splitlines()
+           if (m := json.loads(line)).get("reason") == "compiler-artifact"
+           and m.get("executable") and m["target"]["name"] == "irigtime"]
+    assert len(cli) == 1, cli
+    binary = cli[0]
     cases = [("transport", [executables[0], "--exact", "rss_reader_worker", "--ignored"])]
     for command in ["summary", "channels", "jumps", "timeline", "csv", "correlate"]:
         argv = [str(binary), command, str(path)]

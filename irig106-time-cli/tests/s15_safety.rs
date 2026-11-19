@@ -1,4 +1,5 @@
 //! S15 CLI failure controls; partial CLI-105/ERR-101, not whole markers.
+#[path = "common/mod.rs"]
 mod common;
 use std::{
     path::PathBuf,

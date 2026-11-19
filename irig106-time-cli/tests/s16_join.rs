@@ -1,4 +1,5 @@
 //! Partial CLI-104 transport integration; qualified reports remain S16b.
+#[path = "common/mod.rs"]
 mod common;
 use irig106_time_cli::{ExitClass, run};
 use std::{

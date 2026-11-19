@@ -55,3 +55,9 @@ published, using bounded setup payloads, explicit parse limits and copying only
 required declarations. No time-library dependency, defaults insertion or local
 TMATS checkout. Do not substitute the placeholder or silently add a git pin.
 Setup-range integration remains pending that decision and functional release.
+
+First CI 44520257330 exposed two wiring errors (Rust tests passed): implicit
+fixture-module paths confused the safety scanner, and the RSS runner assumed
+Cargo's executable layout. Use explicit module paths and Cargo binary artifact
+metadata. The safety probe and a temporary 64 KiB seven-process RSS smoke pass;
+full 384 MiB measurement remains CI-only. No policy exemptions were added.
