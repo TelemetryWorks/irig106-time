@@ -31,6 +31,22 @@ directory therefore gives 4 even when a readable input is structurally bad;
 an unreadable input gives 3 before spool creation. Exit 1 still publishes CSV.
 Other commands complete their current analysis before rendering.
 
+The correlation cache retains at most 1,024 references globally and 30 seconds
+of RTC history. A quiet channel may be fully evicted. Unavailable live-window
+answers produce findings, not invented extrapolations. Coordinator-approved
+level for QueryBeforeRetainedWindow / NoReferencePoint: warning; counter data
+remains readable. No new TF ID. The correlate target is known before scanning:
+retain its nearest RTC brackets per channel (at most six values/channel), so old RTCs
+remain answerable without retaining a whole-file index.
+CSV/timeline leave the corresponding absolute field empty. Summary/jumps count
+all non-backward-reference jumps online, display the first 20 details and an
+omitted count. Indices are accepted-observation order, not file-wide RTC sort.
+First/last/count and gap extrema are fixed-size per-channel statistics.
+Backward RTCs emit an out-of-order warning with channel, previous/current RTCs
+and zero-based packet index; skip the jump/gap update for that pair, retaining
+the late reference for correlation. Jump/gap pairs retain their last non-backward
+baseline; Last remains the latest arrival.
+
 Finding output retains the first 20 generated messages with exact per-level
 counts and an `N more findings` line. Sampling never changes --fail-on.
 Existing read-only/non-writable CSV destinations give 4 unchanged; rename must

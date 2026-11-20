@@ -44,6 +44,7 @@ pub mod args;
 mod csv_spool;
 /// Bounded raw packet transport; command integration follows in S16b.
 pub mod input;
+mod target_refs;
 
 // ────────────────────────────────────────────────────────────────────
 // Constants
@@ -52,6 +53,11 @@ pub mod input;
 const DATA_TYPE_TIME_F1: u8 = 0x11;
 const DATA_TYPE_TIME_F2: u8 = 0x12;
 const FINDING_SAMPLE_LIMIT: usize = 20;
+// Resource policy, not a standard-imposed time/reference bound.
+const REFERENCE_CAP: core::num::NonZeroUsize = match core::num::NonZeroUsize::new(1024) {
+    Some(n) => n,
+    None => core::num::NonZeroUsize::MIN,
+};
 const PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // ────────────────────────────────────────────────────────────────────
@@ -82,6 +88,11 @@ struct TimeChannelInfo {
     last_time: Option<AbsoluteTime>,
     first_rtc: Option<Rtc>,
     last_rtc: Option<Rtc>,
+    // Last non-backward reference used for jump/gap pairs. Displayed Last
+    // remains the latest arrival, including accepted late references.
+    pair_baseline: Option<(Rtc, AbsoluteTime)>,
+    min_gap_ns: Option<u64>,
+    max_gap_ns: Option<u64>,
 }
 
 impl TimeChannelInfo {
@@ -98,6 +109,9 @@ impl TimeChannelInfo {
             last_time: None,
             first_rtc: None,
             last_rtc: None,
+            pair_baseline: None,
+            min_gap_ns: None,
+            max_gap_ns: None,
         }
     }
 }
@@ -122,7 +136,12 @@ type RowSink<'a> = &'a mut dyn FnMut(&ResolvedPacket) -> io::Result<()>;
 // ────────────────────────────────────────────────────────────────────
 
 struct Ch10TimeScanner {
-    correlator: TimeCorrelator,
+    correlator: StreamingTimeCorrelator,
+    query_refs: Option<target_refs::TargetReferences>,
+    references_seen: usize,
+    jump_threshold: Option<u64>,
+    jumps_seen: usize,
+    jumps: Vec<TimeJump>,
     leap_table: LeapSecondTable,
     time_channels: BTreeMap<u16, TimeChannelInfo>,
     total_packets: usize,
@@ -139,7 +158,15 @@ struct Ch10TimeScanner {
 impl Ch10TimeScanner {
     fn new() -> Self {
         Self {
-            correlator: TimeCorrelator::new(),
+            correlator: StreamingTimeCorrelator::with_reference_limit(
+                NanosDuration::new(30_000_000_000),
+                REFERENCE_CAP,
+            ),
+            query_refs: None,
+            references_seen: 0,
+            jump_threshold: None,
+            jumps_seen: 0,
+            jumps: Vec::new(),
             leap_table: LeapSecondTable::builtin(),
             time_channels: BTreeMap::new(),
             total_packets: 0,
@@ -255,7 +282,7 @@ impl Ch10TimeScanner {
                     channel_id: hdr.channel_id,
                     data_type: hdr.data_type,
                     rtc: hdr.rtc,
-                    abs_time: self.correlator.correlate(hdr.rtc, None).ok(),
+                    abs_time: self.resolve(hdr.rtc, None),
                 };
                 if let Some(write_row) = emit.as_mut() {
                     write_row(&row)?;
@@ -270,6 +297,116 @@ impl Ch10TimeScanner {
         }
         if self.time_packets == 0 {
             self.note(Severity::Warning, "TF-001: no time packets in session");
+        }
+        Ok(())
+    }
+
+    // Coordinator-approved WARNING: missing retained context is not malformed
+    // packet data. No new TF ID. A known target has its own retained brackets.
+    fn correlate(&self, rtc: Rtc, channel: Option<u16>) -> irig106_time::Result<AbsoluteTime> {
+        if let Some(query) = &self.query_refs {
+            if query.target == rtc {
+                return query.correlate(channel);
+            }
+        }
+        self.correlator.correlate(rtc, channel)
+    }
+    fn resolve(&mut self, rtc: Rtc, channel: Option<u16>) -> Option<AbsoluteTime> {
+        match self.correlate(rtc, channel) {
+            Ok(t) => Some(t),
+            Err(e) => {
+                self.note(decode_level(&e), format!("Correlation query: {e}"));
+                None
+            }
+        }
+    }
+
+    fn observe_reference(&mut self, hdr: &PktHeader, time: AbsoluteTime) {
+        if let Some(query) = self.query_refs.as_mut() {
+            query.observe(hdr.channel_id, hdr.rtc, time);
+        }
+        let out_of_order = self
+            .time_channels
+            .get(&hdr.channel_id)
+            .and_then(|c| c.pair_baseline.map(|(rtc, _)| rtc))
+            .filter(|previous| hdr.rtc < *previous);
+        if let Some(previous) = out_of_order {
+            self.note(
+                Severity::Warning,
+                format!(
+                    "Out-of-order time reference: channel {} RTC {:#X} -> {:#X} at packet {}",
+                    hdr.channel_id,
+                    previous.as_raw(),
+                    hdr.rtc.as_raw(),
+                    self.total_packets
+                ),
+            );
+            self.references_seen += 1;
+            return; // Accepted for correlation/inventory, not a jump/gap pair.
+        }
+        if let Some(info) = self.time_channels.get_mut(&hdr.channel_id) {
+            if let Some((previous, _)) = info.pair_baseline {
+                let gap = previous.elapsed_nanos(hdr.rtc);
+                info.min_gap_ns = Some(info.min_gap_ns.map_or(gap, |old| old.min(gap)));
+                info.max_gap_ns = Some(info.max_gap_ns.map_or(gap, |old| old.max(gap)));
+            }
+        }
+        if let Some(threshold) = self.jump_threshold {
+            if let Some((rtc, previous)) = self
+                .time_channels
+                .get(&hdr.channel_id)
+                .and_then(|c| c.pair_baseline)
+            {
+                // Adjacent non-backward observations: online state never sorts a file.
+                let expected_nanos = previous.as_total_ns() + rtc.elapsed_nanos(hdr.rtc);
+                let actual_nanos = time.as_total_ns();
+                let delta_nanos = actual_nanos as i64 - expected_nanos as i64;
+                if delta_nanos.unsigned_abs() > threshold {
+                    self.jumps_seen += 1;
+                    if self.jumps.len() < FINDING_SAMPLE_LIMIT {
+                        self.jumps.push(TimeJump {
+                            index: self.references_seen,
+                            channel_id: hdr.channel_id,
+                            expected_nanos,
+                            actual_nanos,
+                            delta_nanos,
+                        });
+                    }
+                    self.note(
+                        Severity::Warning,
+                        format!(
+                            "Time jump on channel {} at reference {}",
+                            hdr.channel_id, self.references_seen
+                        ),
+                    );
+                }
+            }
+        }
+        self.time_channels
+            .entry(hdr.channel_id)
+            .or_insert_with(|| TimeChannelInfo::new(hdr.channel_id))
+            .pair_baseline = Some((hdr.rtc, time));
+        self.references_seen += 1;
+    }
+
+    fn report_jump_samples(&self, out: &mut dyn Write) -> io::Result<()> {
+        for j in &self.jumps {
+            writeln!(
+                out,
+                "  Channel {:>3} Ref #{:<4} Expected: {} ns Actual: {} ns Delta: {:+.3} ms",
+                j.channel_id,
+                j.index,
+                j.expected_nanos,
+                j.actual_nanos,
+                j.delta_nanos as f64 / 1_000_000.0
+            )?;
+        }
+        if self.jumps_seen > self.jumps.len() {
+            writeln!(
+                out,
+                "  ... and {} more jump details",
+                self.jumps_seen - self.jumps.len()
+            )?;
         }
         Ok(())
     }
@@ -398,6 +535,7 @@ impl Ch10TimeScanner {
         self.correlator
             .add_reference(hdr.channel_id, hdr.rtc, abs_time);
 
+        self.observe_reference(hdr, abs_time);
         // Update channel info
         let info = self
             .time_channels
@@ -428,31 +566,41 @@ impl Ch10TimeScanner {
             }
         };
 
-        // Use the library's add_reference_f2 which handles NTP/PTP→AbsoluteTime
-        // conversion and leap-second offset application internally.
-        if let Err(e) = self.correlator.add_reference_f2(
-            hdr.channel_id,
-            hdr.rtc,
-            &network_time,
-            &self.leap_table,
-        ) {
-            self.note(
-                decode_level(&e),
-                format!(
-                    "Time F2 packet ch={}: correlation error: {}",
-                    hdr.channel_id, e
-                ),
-            );
-            return;
-        }
-
-        // Retrieve the resolved absolute time for channel info tracking.
-        // We just inserted a reference at this exact RTC, so correlate is an exact match.
-        let abs_time = match self.correlator.correlate(hdr.rtc, Some(hdr.channel_id)) {
-            Ok(t) => t,
-            Err(_) => return,
+        // Same compatibility conversion as StreamingTimeCorrelator, performed
+        // before eviction so late PTP references can still bracket a known query.
+        let converted = match network_time {
+            irig106_time::network_time::NetworkTime::Ntp(_) => Err(TimeError::NeedsContext {
+                context: "NTP era/basis required; use ntp::convert_ntp",
+            }),
+            irig106_time::network_time::NetworkTime::Ptp(ptp) => {
+                self.leap_table.convert_ptp(ptp).and_then(|result| {
+                    result
+                        .utc()
+                        .ok_or(TimeError::NeedsContext {
+                            context: "no known applicable TAI-UTC offset",
+                        })?
+                        .to_absolute()
+                        .map(|t| t.value)
+                })
+            }
         };
+        let abs_time = match converted {
+            Ok(t) => t,
+            Err(e) => {
+                self.note(
+                    decode_level(&e),
+                    format!(
+                        "Time F2 packet ch={}: correlation error: {}",
+                        hdr.channel_id, e
+                    ),
+                );
+                return;
+            }
+        };
+        self.correlator
+            .add_reference(hdr.channel_id, hdr.rtc, abs_time);
 
+        self.observe_reference(hdr, abs_time);
         // Update channel info
         let info = self
             .time_channels
@@ -586,6 +734,7 @@ fn cmd_summary(
     stdout: &mut dyn Write,
 ) -> Result<Option<Severity>, Failure> {
     let mut scanner = Ch10TimeScanner::new();
+    scanner.jump_threshold = Some(1_000_000_000);
     scanner.scan(input, false, None)?;
 
     writeln!(
@@ -616,6 +765,12 @@ fn cmd_summary(
         scanner.time_channels.len()
     )?;
     writeln!(stdout, "Correlation Refs   : {}", scanner.correlator.len())?;
+    writeln!(stdout, "References Seen    : {}", scanner.references_seen)?;
+    writeln!(
+        stdout,
+        "References Evicted : {}",
+        scanner.correlator.total_evicted()
+    )?;
     writeln!(stdout)?;
 
     if let (Some(first), Some(last)) = (scanner.first_rtc, scanner.last_rtc) {
@@ -672,48 +827,21 @@ fn cmd_summary(
             if let Some(ref lt) = info.last_time {
                 writeln!(stdout, "                │  Last:  {}", fmt_abs_time(lt))?;
             }
+            if let Some((min, max)) = info.min_gap_ns.zip(info.max_gap_ns) {
+                writeln!(
+                    stdout,
+                    "                │  Observed RTC gaps: min={min} ns max={max} ns"
+                )?;
+            }
         }
         writeln!(stdout)?;
     }
 
-    // Time jump detection
-    let all_channels: Vec<u16> = scanner.time_channels.keys().cloned().collect();
-    let mut any_jumps = false;
-    for ch in &all_channels {
-        let jumps = scanner
-            .correlator
-            .detect_time_jump(*ch, NanosDuration::new(1_000_000_000));
-        if !jumps.is_empty() {
-            if !any_jumps {
-                writeln!(stdout, "Time Jumps Detected (threshold: 1 second)")?;
-                writeln!(stdout, "──────────────────────────────────────────")?;
-                any_jumps = true;
-            }
-            for j in &jumps {
-                scanner.note(
-                    Severity::Warning,
-                    format!(
-                        "Time jump on channel {} at reference {}",
-                        j.channel_id, j.index
-                    ),
-                );
-                let delta_ms = j.delta_nanos as f64 / 1_000_000.0;
-                writeln!(
-                    stdout,
-                    "  Channel {:>3}  │  Ref #{:<4}  Delta: {:>+10.1} ms  ({})",
-                    j.channel_id,
-                    j.index,
-                    delta_ms,
-                    if j.delta_nanos > 0 {
-                        "jump forward"
-                    } else {
-                        "jump backward"
-                    }
-                )?;
-            }
-        }
-    }
-    if !any_jumps && !all_channels.is_empty() {
+    if scanner.jumps_seen != 0 {
+        writeln!(stdout, "Time Jumps Detected (threshold: 1 second)")?;
+        scanner.report_jump_samples(stdout)?;
+        writeln!(stdout, "Total: {} jump(s).", scanner.jumps_seen)?;
+    } else if !scanner.time_channels.is_empty() {
         writeln!(
             stdout,
             "Time Jumps         : None detected (threshold: 1 second)"
@@ -821,65 +949,33 @@ fn cmd_jumps(
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
 ) -> Result<Option<Severity>, Failure> {
-    let mut scanner = Ch10TimeScanner::new();
-    scanner.scan(input, false, None)?;
-
-    let threshold_ns = threshold_ms.checked_mul(1_000_000).ok_or_else(|| {
+    let threshold = threshold_ms.checked_mul(1_000_000).ok_or_else(|| {
         Failure::new(
             ExitClass::Usage,
             "threshold milliseconds cannot be represented in nanoseconds",
         )
     })?;
-    let channels: Vec<u16> = scanner.time_channels.keys().cloned().collect();
-    let mut total_jumps = 0;
-
+    let mut scanner = Ch10TimeScanner::new();
+    scanner.jump_threshold = Some(threshold);
+    scanner.scan(input, false, None)?;
     writeln!(
         stdout,
         "Time Jump Detection (threshold: {} ms)",
         threshold_ms
     )?;
-    writeln!(stdout, "{}", "═".repeat(70))?;
-
-    for ch in &channels {
-        let jumps = scanner
-            .correlator
-            .detect_time_jump(*ch, NanosDuration::new(threshold_ns));
-        if !jumps.is_empty() {
-            writeln!(stdout)?;
-            writeln!(stdout, "Channel {} — {} jump(s):", ch, jumps.len())?;
-            for j in &jumps {
-                scanner.note(
-                    Severity::Warning,
-                    format!(
-                        "Time jump on channel {} at reference {}",
-                        j.channel_id, j.index
-                    ),
-                );
-                let delta_ms = j.delta_nanos as f64 / 1_000_000.0;
-                writeln!(
-                    stdout,
-                    "  Ref #{:<4}  Expected: {:>15} ns  Actual: {:>15} ns  Delta: {:>+12.3} ms",
-                    j.index, j.expected_nanos, j.actual_nanos, delta_ms
-                )?;
-            }
-            total_jumps += jumps.len();
-        }
-    }
-
-    if total_jumps == 0 {
-        writeln!(stdout)?;
+    scanner.report_jump_samples(stdout)?;
+    if scanner.jumps_seen == 0 {
         writeln!(
             stdout,
             "No time jumps detected across {} channel(s).",
-            channels.len()
+            scanner.time_channels.len()
         )?;
     } else {
-        writeln!(stdout)?;
         writeln!(
             stdout,
             "Total: {} jump(s) across {} channel(s).",
-            total_jumps,
-            channels.len()
+            scanner.jumps_seen,
+            scanner.time_channels.len()
         )?;
     }
     scanner.report_findings(stderr)?;
@@ -1005,6 +1101,7 @@ fn cmd_correlate(
     stderr: &mut dyn Write,
 ) -> Result<Option<Severity>, Failure> {
     let mut scanner = Ch10TimeScanner::new();
+    scanner.query_refs = Some(target_refs::TargetReferences::new(target));
     scanner.scan(input, false, None)?;
 
     writeln!(
@@ -1023,7 +1120,7 @@ fn cmd_correlate(
     }
 
     // Correlate with all channels
-    match scanner.correlator.correlate(target, None) {
+    match scanner.correlate(target, None) {
         Ok(t) => writeln!(stdout, "  Any channel  → {}", fmt_abs_time(&t))?,
         Err(e) => {
             let level = decode_level(&e);
@@ -1033,8 +1130,9 @@ fn cmd_correlate(
     }
 
     // Per-channel
-    for ch in scanner.time_channels.keys() {
-        if let Ok(t) = scanner.correlator.correlate(target, Some(*ch)) {
+    let channels: Vec<u16> = scanner.time_channels.keys().copied().collect();
+    for ch in channels {
+        if let Some(t) = scanner.resolve(target, Some(ch)) {
             writeln!(stdout, "  Channel {:>3}  → {}", ch, fmt_abs_time(&t))?;
         }
     }
@@ -1106,6 +1204,10 @@ fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
     writeln!(
         stdout,
         "reserved BCD bits: warning (TF-005, owner-approved); invalid TS/reserved NTF: warning (TF-003/006); jumps: warning (TF-017)."
+    )?;
+    writeln!(
+        stdout,
+        "Correlation: 1024 references globally / 30 seconds RTC; old/empty-window answers: warning (coordinator-approved)."
     )?;
     writeln!(stdout, "Examples:")?;
     writeln!(stdout, "  irigtime summary flight_042.ch10")?;
@@ -1215,7 +1317,10 @@ fn decode_level(error: &TimeError) -> Severity {
         TimeError::ReservedBitSet { .. }
         | TimeError::NeedsContext { .. }
         | TimeError::InvalidTimeStatus { .. }
-        | TimeError::ReservedNetworkTimeFormat { .. } => Severity::Warning,
+        | TimeError::ReservedNetworkTimeFormat { .. }
+        // Coordinator-approved WARNING for unavailable retained context (no TF level change).
+        | TimeError::QueryBeforeRetainedWindow
+        | TimeError::NoReferencePoint => Severity::Warning,
         _ => Severity::Error,
     }
 }

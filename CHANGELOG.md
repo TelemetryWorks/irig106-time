@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S16b2b3b CLI bounded correlation and online reports (partial CLI-104)
+
+- Replace file-wide TimeCorrelator with StreamingTimeCorrelator: 1,024 global
+  references and a 30-second RTC window. Summary distinguishes retained,
+  accepted and evicted counts. Unavailable live-window answers surface as
+  coordinator-approved WARNING findings. Absolute CSV/timeline fields remain
+  empty when unavailable; no TF level changes. Known correlate targets retain
+  bounded bracketing candidates per channel independently of live-cache eviction.
+- Breaking report change: jumps compare consecutive non-backward references online,
+  not a whole-file RTC sort. Indices use accepted-observation order. Show first
+  20 jump details plus omitted/exact totals; every jump still affects fail-on.
+  Keep per-channel first/last/count and gap extrema without reference vectors.
+  Backward-RTC observations emit an out-of-order WARNING (channel, both RTCs,
+  packet index); skip that jump/gap pair and preserve the last non-backward
+  pair baseline, retaining the late reference for queries and displayed Last.
+- Dense-F1 RSS remains the next gate: keep the README interim warning and no
+  publication. No whole CLI-104 coverage claim. See verification-s16b2b3b.md.
+
 ### Breaking fix: honest streaming reference windows
 
 - **Breaking:** `StreamingTimeCorrelator::new` (age-only) now returns
