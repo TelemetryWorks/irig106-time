@@ -383,4 +383,24 @@ mod tests {
         drop(spool);
         assert!(!temporary.exists());
     }
+    #[cfg(unix)]
+    #[test]
+    fn target_becoming_readonly_after_staging_is_not_replaced() {
+        use std::os::unix::fs::{MetadataExt, PermissionsExt};
+        let d = Dir::new();
+        let target = d.0.join("report.csv");
+        fs::write(&target, b"original").unwrap();
+        let inode = fs::metadata(&target).unwrap().ino();
+        let mut spool = CsvSpool::new(Some(&target)).unwrap();
+        let temporary = spool.path.clone();
+        spool.write_all(b"replacement").unwrap();
+        fs::set_permissions(&target, fs::Permissions::from_mode(0o444)).unwrap();
+        assert!(spool.commit().is_err());
+        drop(spool);
+        assert_eq!(fs::read(&target).unwrap(), b"original");
+        let after = fs::metadata(&target).unwrap();
+        assert_eq!(after.ino(), inode);
+        assert_eq!(after.permissions().mode() & 0o777, 0o444);
+        assert!(!temporary.exists());
+    }
 }
