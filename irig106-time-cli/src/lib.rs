@@ -1157,7 +1157,10 @@ fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
         stdout,
         "reserved BCD bits: warning (TF-005, owner-approved); invalid TS/reserved NTF: warning (TF-003/006); jumps: warning (TF-017)."
     )?;
-    writeln!(stdout, "Correlation: 1024 references globally / 30 seconds RTC; old/empty-window answers: warning (proposed, pending coordinator confirmation).")?;
+    writeln!(
+        stdout,
+        "Correlation: 1024 references globally / 30 seconds RTC; old/empty-window answers: warning (proposed, pending coordinator confirmation)."
+    )?;
     writeln!(stdout, "Examples:")?;
     writeln!(stdout, "  irigtime summary flight_042.ch10")?;
     writeln!(
