@@ -57,12 +57,16 @@ reports needs-context WARNING and no silent absolute pick; live pending/reset
 answers also remain counter-only. These guards keep provisional/old/new
 candidates from becoming unqualified answers. With independently reset channel
 RTCs, the legacy shared cache age origin is not a qualified cross-channel clock;
-this PR does not claim that it can provide such answers after reset.
+this PR does not claim that it can provide such answers after reset. Summary
+also withholds the single first-to-last RTC duration across reset segments;
+it must not turn overlapping raw RTC ranges into a recording-duration scalar.
 
 C2 must archive each closed segment's range and target answer with bounded
 RAM (spool output to disk as needed), retain only active per-channel candidates,
 warn for overlapping target ranges, and display EACH answer labelled by channel
-and segment. Only remove the corresponding guard when covered. Dense-F1
+and segment. Withhold provisional run points from closed-segment candidates
+until classification (or roll them back before archive); c1 guards prohibit
+reading those provisional candidates. Only remove the corresponding guard when covered. Dense-F1
 small-packet six-command <64MiB RSS is still separate; README and publication
 gates stay. CLI-104 qualified setup/scale/session joining remains partial.
 

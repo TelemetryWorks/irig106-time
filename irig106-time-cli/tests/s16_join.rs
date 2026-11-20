@@ -692,6 +692,10 @@ fn rtc_reset_single_step_and_three_reference_run_keep_real_jump_only() {
             if command == "summary" {
                 assert!(text.contains("max=1000000000 ns"), "{text}");
                 assert!(text.contains("Correlation Refs   : 4"), "{text}");
+                assert!(
+                    text.contains("RTC Duration       : unavailable across reset segments"),
+                    "{text}"
+                );
             }
         }
     }

@@ -890,21 +890,28 @@ fn cmd_summary(
     )?;
     writeln!(stdout)?;
 
-    if let (Some(first), Some(last)) = (scanner.first_rtc, scanner.last_rtc) {
-        let dur_ns = first.elapsed_nanos(last);
-        let dur_s = dur_ns as f64 / 1_000_000_000.0;
+    if scanner.reset_count != 0 {
         writeln!(
             stdout,
-            "RTC Range          : {:#014X} → {:#014X}",
-            first.as_raw(),
-            last.as_raw()
+            "RTC Duration       : unavailable across reset segments"
         )?;
-        writeln!(
-            stdout,
-            "RTC Duration       : {:.3} seconds ({:.1} minutes)",
-            dur_s,
-            dur_s / 60.0
-        )?;
+    } else {
+        if let (Some(first), Some(last)) = (scanner.first_rtc, scanner.last_rtc) {
+            let dur_ns = first.elapsed_nanos(last);
+            let dur_s = dur_ns as f64 / 1_000_000_000.0;
+            writeln!(
+                stdout,
+                "RTC Range          : {:#014X} → {:#014X}",
+                first.as_raw(),
+                last.as_raw()
+            )?;
+            writeln!(
+                stdout,
+                "RTC Duration       : {:.3} seconds ({:.1} minutes)",
+                dur_s,
+                dur_s / 60.0
+            )?;
+        }
     }
     writeln!(stdout)?;
 
