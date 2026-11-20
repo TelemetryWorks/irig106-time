@@ -562,3 +562,59 @@ fn midnight_crossing_is_not_a_negative_day_jump() {
         assert!(err.is_empty());
     }
 }
+
+fn one_hz_file_with_late_reference(late_time_offset: u32) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    for second in 0..=20 {
+        bytes.extend(doy_packet(1, second, 100, 43200 + second as u32));
+    }
+    bytes.extend(doy_packet(1, 8, 100, 43208 + late_time_offset));
+    bytes.extend(doy_packet(1, 21, 100, 43221));
+    bytes
+}
+
+#[test]
+fn late_reference_does_not_inflate_next_gap() {
+    // Fig11-13 clock labels at 1 Hz; late RTC8 follows RTC20, then RTC21.
+    let input = Input::new(&one_hz_file_with_late_reference(0));
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+    assert_eq!(
+        run(
+            &["summary", input.0.to_str().unwrap(), "--fail-on", "warning"],
+            &mut out,
+            &mut err
+        ),
+        ExitClass::Findings
+    );
+    let text = String::from_utf8(out).unwrap();
+    assert!(
+        text.contains("Observed RTC gaps: min=1000000000 ns max=1000000000 ns"),
+        "{text}"
+    );
+    assert!(text.contains("warning=1"), "{text}");
+    assert!(!text.contains("Delta:"), "{text}");
+}
+
+#[test]
+fn inconsistent_late_reference_does_not_poison_next_jump() {
+    let input = Input::new(&one_hz_file_with_late_reference(300));
+    for command in ["summary", "jumps"] {
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        assert_eq!(
+            run(
+                &[command, input.0.to_str().unwrap(), "--fail-on", "warning"],
+                &mut out,
+                &mut err
+            ),
+            ExitClass::Findings
+        );
+        let text = format!(
+            "{}{}",
+            String::from_utf8(out).unwrap(),
+            String::from_utf8(err).unwrap()
+        );
+        assert!(!text.contains("Delta:"), "{text}");
+        assert!(text.contains("warning=1"), "{text}");
+        assert!(text.contains("Out-of-order time reference"));
+    }
+}
