@@ -169,3 +169,23 @@ uses displayed Last RTC/time; late branch advances the pair baseline; display
 Last stops reflecting late arrivals. Sources restored. Focused CLI tests, fmt,
 Clippy and trace check pass; full platform/feature/RSS checks delegated to CI.
 No new whole-requirement markers, coverage increase or release-gate lift.
+
+## PR #71 consecutive-late test
+
+Tests/record only: literal Fig11-13 frames at RTC15 -> 3 -> 4 -> 16 seconds,
+with matching clock labels, produce exactly two out-of-order warnings (packet
+indices 1 and 2), zero jumps and a 1s maximum/minimum gap. Both summary and
+jumps exercise the finding counts. The reviewed implementation already passes;
+this is not claimed failing on the production baseline. Replacing only the
+out-of-order lookup's pair_baseline RTC with displayed last_rtc compiles and
+fails this test at runtime. Source restored, focused test rerun green; fmt,
+touched CLI Clippy and trace check pass. No production/requirement changes,
+whole-requirement marker or coverage increase. Full checks delegated to CI.
+
+S16b2b3c is separate: coordinator specifies >30s backward step as a channel
+reset, one warning, fresh baseline/channel correlation segment, and labelled
+multiple answers with a warning when a target spans reset segments. No reset
+behavior is implemented here. The requested probe's 20s -> 1s is only a 19s
+step and does not satisfy >30s; recommended clarification is retain the stated
+threshold and use 40s -> 1s in that future fixture. Await coordinator resolution
+of that probe before treating it as a reset acceptance test.

@@ -618,3 +618,47 @@ fn inconsistent_late_reference_does_not_poison_next_jump() {
         assert!(text.contains("Out-of-order time reference"));
     }
 }
+
+#[test]
+fn consecutive_late_references_compare_against_pair_baseline() {
+    // Fig11-13 DOY clock labels: RTC15 -> 3 -> 4 -> 16 seconds.
+    let bytes: Vec<u8> = [15, 3, 4, 16]
+        .into_iter()
+        .flat_map(|second| doy_packet(1, second, 100, 43200 + second as u32))
+        .collect();
+    let input = Input::new(&bytes);
+    for command in ["summary", "jumps"] {
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        assert_eq!(
+            run(
+                &[command, input.0.to_str().unwrap(), "--fail-on", "warning"],
+                &mut out,
+                &mut err
+            ),
+            ExitClass::Findings
+        );
+        let text = format!(
+            "{}{}",
+            String::from_utf8(out).unwrap(),
+            String::from_utf8(err).unwrap()
+        );
+        assert!(
+            text.contains("Findings: error=0, warning=2, info=0 (total=2)"),
+            "{text}"
+        );
+        assert_eq!(
+            text.matches("Out-of-order time reference").count(),
+            2,
+            "{text}"
+        );
+        assert!(text.contains("at packet 1"));
+        assert!(text.contains("at packet 2"));
+        assert!(!text.contains("Delta:"), "{text}");
+        if command == "summary" {
+            assert!(
+                text.contains("Observed RTC gaps: min=1000000000 ns max=1000000000 ns"),
+                "{text}"
+            );
+        }
+    }
+}
