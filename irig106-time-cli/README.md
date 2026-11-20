@@ -143,7 +143,9 @@ other hard links keep the old contents. This copies standard file permissions,
 not ownership or other inode metadata. An existing destination must also be
 writable: a read-only file (including mode 444) gives exit 4 unchanged rather
 than being replaced through directory permissions. Writability is checked
-without truncation before staging and again before rename.
+without truncation before staging and again before rename. Linux/macOS probes
+are nonblocking and do not follow final symlinks; Unix also verifies opened-file
+identity against the metadata snapshot.
 Temp names combine pid/counter with a
 random `RandomState` suffix; exclusive creation prevents following planted names.
 

@@ -43,13 +43,71 @@ impl CsvSpool {
                         "CSV destination is read-only",
                     ));
                 }
-                let file = OpenOptions::new().write(true).open(path)?;
-                Ok(Some(file.metadata()?.permissions()))
+                Ok(Some(Self::write_probe(path, &m)?))
             }
             Ok(_) => Err(io::Error::other("CSV destination must be a regular file")),
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
             Err(e) => Err(e),
         }
+    }
+    fn write_probe(path: &Path, observed: &fs::Metadata) -> io::Result<fs::Permissions> {
+        let mut options = OpenOptions::new();
+        options.write(true); // No create/truncate: never modify target bytes.
+        #[cfg(any(target_os = "linux", target_os = "android"))]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            // Linux UAPI fcntl.h: MIPS/SPARC NONBLOCK and ARM/PPC/m68k NOFOLLOW overrides.
+            let nonblock = if cfg!(any(
+                target_arch = "mips",
+                target_arch = "mips64",
+                target_arch = "mips32r6",
+                target_arch = "mips64r6"
+            )) {
+                1 << 7
+            } else if cfg!(any(target_arch = "sparc", target_arch = "sparc64")) {
+                1 << 14
+            } else {
+                1 << 11
+            };
+            let nofollow = if cfg!(any(
+                target_arch = "arm",
+                target_arch = "aarch64",
+                target_arch = "powerpc",
+                target_arch = "powerpc64",
+                target_arch = "m68k"
+            )) {
+                1 << 15
+            } else {
+                1 << 17
+            };
+            options.custom_flags(nonblock | nofollow); // O_NONBLOCK | O_NOFOLLOW
+        }
+        #[cfg(target_vendor = "apple")]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            // Darwin bsd/sys/fcntl.h: O_NONBLOCK | O_NOFOLLOW.
+            options.custom_flags(0x0004 | 0x0100);
+        }
+        let file = options.open(path)?;
+        let opened = file.metadata()?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::MetadataExt;
+            if (observed.dev(), observed.ino()) != (opened.dev(), opened.ino()) {
+                return Err(io::Error::other(
+                    "CSV destination changed during write probe",
+                ));
+            }
+        }
+        #[cfg(not(unix))]
+        let _ = observed;
+        if !opened.is_file() || opened.permissions().readonly() {
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "CSV destination is not a writable regular file",
+            ));
+        }
+        Ok(opened.permissions())
     }
     fn create_in(directory: &Path, destination: Option<&Path>) -> io::Result<Self> {
         Self::create_mode(directory, destination, 0o600)
@@ -402,5 +460,70 @@ mod tests {
         assert_eq!(after.ino(), inode);
         assert_eq!(after.permissions().mode() & 0o777, 0o444);
         assert!(!temporary.exists());
+    }
+    #[cfg(unix)]
+    #[test]
+    fn write_probe_rejects_regular_file_and_symlink_swaps() {
+        let d = Dir::new();
+        let target = d.0.join("report.csv");
+        let saved = d.0.join("original");
+        fs::write(&target, b"original").unwrap();
+        let observed = fs::symlink_metadata(&target).unwrap();
+        fs::rename(&target, &saved).unwrap();
+        fs::write(&target, b"other inode").unwrap();
+        assert!(CsvSpool::write_probe(&target, &observed).is_err());
+        assert_eq!(fs::read(&target).unwrap(), b"other inode");
+        fs::remove_file(&target).unwrap();
+        std::os::unix::fs::symlink(&saved, &target).unwrap();
+        assert!(CsvSpool::write_probe(&target, &observed).is_err());
+        assert_eq!(fs::read(&saved).unwrap(), b"original");
+    }
+    #[cfg(any(target_os = "linux", target_vendor = "apple"))]
+    #[test]
+    fn fifo_swap_probe_is_nonblocking() {
+        if let Some(directory) = std::env::var_os("IRIGTIME_FIFO_PROBE_CHILD") {
+            let target = PathBuf::from(directory).join("report.csv");
+            fs::write(&target, b"original").unwrap();
+            let observed = fs::symlink_metadata(&target).unwrap();
+            fs::rename(&target, target.with_extension("saved")).unwrap();
+            assert!(
+                std::process::Command::new("mkfifo")
+                    .arg(&target)
+                    .status()
+                    .unwrap()
+                    .success()
+            );
+            assert!(CsvSpool::write_probe(&target, &observed).is_err());
+            return;
+        }
+        let d = Dir::new();
+        let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "csv_spool::tests::fifo_swap_probe_is_nonblocking",
+            ])
+            .env("IRIGTIME_FIFO_PROBE_CHILD", &d.0)
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        let mut completed = false;
+        for _ in 0..500 {
+            if child.try_wait().unwrap().is_some() {
+                completed = true;
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        if !completed {
+            child.kill().unwrap();
+        }
+        let output = child.wait_with_output().unwrap();
+        assert!(
+            completed && output.status.success(),
+            "probe blocked/failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        // Parent owns the directory even if it had to kill the child.
     }
 }

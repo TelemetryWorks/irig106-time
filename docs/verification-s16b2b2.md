@@ -52,3 +52,34 @@ of 20, and readonly 444 output returned 0 instead of 4. After implementation:
   readonly rename bypass; summary/jumps each collapsing jump counts. Sources
   restored, focused suite rerun green. Local fmt/CLI tests/mutants/Clippy and
   trace check only; large RSS and remaining matrix are delegated to PR CI.
+
+## PR #69 delta review — readonly recheck and probe hardening
+
+81c9f43 adds the requested tests before hardening: a Unix target is staged,
+then chmod 444, then commit must fail preserving bytes/inode/mode and removing
+the spool. The existing implementation passes; bypassing commit's permission
+recheck fails at runtime. A cfg(windows) host regression marks the destination
+readonly and requires output 4 with unchanged content/attribute/no temp. It is
+not claimed run on Linux; the owned fixture flag is reset only after observing
+the result, for cleanup.
+
+Linux/macOS write probes now use O_NONBLOCK|O_NOFOLLOW without truncation;
+Unix compares (dev,ino) from lstat to the opened handle and rejects mismatches.
+Other Unix targets retain the identity comparison. Only supported matrix
+platforms are claimed nonblocking here. Constants verified read-only against
+[Linux UAPI](https://github.com/torvalds/linux/blob/master/include/uapi/asm-generic/fcntl.h)
+and arch/{arm,arm64,powerpc,m68k,mips,sparc}/include/uapi/asm/fcntl.h overrides,
+and [Darwin](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/sys/fcntl.h).
+The ARM nofollow override was caught by the local aarch64 symlink regression;
+no assumption that generic flags work on every Linux architecture.
+
+Deterministic tests swap the lstat-observed regular file for another inode,
+a symlink to the saved original, or a FIFO. Four runtime mutants killed:
+commit check skipped; identity check ignored; NOFOLLOW omitted; NONBLOCK
+omitted. The FIFO omission is contained in an owned child, killed after a
+bounded 5s wait, with parent-owned directory cleanup. No live device mutation.
+Sources restored: 11 spool units and 13 transaction integrations pass locally;
+Windows test awaits CI. These are partial CLI-104/107 clauses only, no whole
+marker/coverage increase or Review/Design change. Local fmt, focused tests/
+mutants, Clippy and trace check; remaining matrix is CI. No new dependency,
+unsafe code or library I/O. The release gate still stays closed.
