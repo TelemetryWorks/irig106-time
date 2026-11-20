@@ -31,6 +31,11 @@ directory therefore gives 4 even when a readable input is structurally bad;
 an unreadable input gives 3 before spool creation. Exit 1 still publishes CSV.
 Other commands complete their current analysis before rendering.
 
+Finding output retains the first 20 generated messages with exact per-level
+counts and an `N more findings` line. Sampling never changes --fail-on.
+Existing read-only/non-writable CSV destinations give 4 unchanged; rename must
+not silently bypass write permissions. This check also precedes packet framing.
+
 | Code | Meaning |
 | --- | --- |
 | 0 | Success; no findings at/above the threshold |

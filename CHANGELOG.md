@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S16b2b2 bounded finding reports (partial CLI-104)
+
+- Retain 20 finding samples, exact error/warning/info counts and an omitted
+  count in every renderer. --fail-on considers all findings; jumps and query
+  findings count individually. Legacy summary Errors(N) now uses the full total.
+- Reject non-writable/read-only existing CSV destinations with output 4,
+  preserving data/inode/mode; check write access without truncation, again
+  before rename. This prevents rename from silently replacing mode 444 files.
+- Correlation/reference/jump/quality bounds and dense-F1 RSS remain pending;
+  retain the README/release gate. Evidence: docs/verification-s16b2b2.md.
+
 ### S16b2b1 CSV transaction (partial CLI-104)
 
 - Spool CSV rows to disk without retaining a packet-row vector. File output

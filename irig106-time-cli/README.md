@@ -126,8 +126,8 @@ Resolving RTC 0x00009896800 (10000000 ticks, 1000000000 ns)
 ## Interim report-memory gate (S16b)
 
 Input is buffered and CSV rows are spooled to disk, without whole-file loading
-or mmap. Reference and finding state is still retained in memory; recordings
-can exhaust that state. S16b must finish its report-state audit and qualified joining before
+or mmap. Finding samples are bounded. Correlation/reference state is still
+retained in memory; recordings can exhaust that state. S16b must finish its report-state audit and qualified joining before
 this interim warning and the CLI publication/release gate are removed.
 
 ## CSV transactions
@@ -140,7 +140,13 @@ The report temp is private (0600) while written. Before rename, existing-target
 permissions are copied; new Unix files get 0666 masked by the process umask,
 and new Windows files get platform defaults. Replacement creates a new inode:
 other hard links keep the old contents. This copies standard file permissions,
-not ownership or other inode metadata. Temp names combine pid/counter with a
+not ownership or other inode metadata. An existing destination must also be
+writable: a read-only file (including mode 444) gives exit 4 unchanged rather
+than being replaced through directory permissions. Writability is checked
+without truncation before staging and again before rename. Linux/macOS probes
+are nonblocking and do not follow final symlinks; Unix also verifies opened-file
+identity against the metadata snapshot.
+Temp names combine pid/counter with a
 random `RandomState` suffix; exclusive creation prevents following planted names.
 
 Rejecting non-regular targets (symlinks, devices including `/dev/null`, pipes,
@@ -194,6 +200,12 @@ copy and host flushes, then file permissions/atomic rename. A missing `--output`
 directory therefore gives 4 even when a readable input is structurally bad;
 an unreadable input gives 3 before spool creation. Exit 1 still publishes CSV.
 Other commands complete their current analysis before rendering.
+
+Every command reports exact error/warning/info counts and at most the first
+20 generated finding messages. A final `N more findings` line accounts for
+omitted messages. Severity thresholds consider all findings, including an
+error arriving after the sample fills. Jump/query findings count individually.
+Summary retains its legacy `Errors (N)` heading; N is the total over all levels.
 
 ### Current scanner levels
 

@@ -311,3 +311,40 @@ fn missing_output_directory_precedes_structurally_bad_input() {
     f.intact();
     assert!(!missing.parent().unwrap().exists());
 }
+
+#[cfg(unix)]
+#[test]
+fn readonly_existing_csv_is_not_replaced_by_rename() {
+    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+    let f = Files::new(&common::NO_TIME);
+    std::fs::set_permissions(&f.output, std::fs::Permissions::from_mode(0o444)).unwrap();
+    let before = std::fs::metadata(&f.output).unwrap();
+    assert_eq!(
+        run(&f.args(), &mut Vec::new(), &mut Vec::new()),
+        ExitClass::Output
+    );
+    f.intact();
+    let after = std::fs::metadata(&f.output).unwrap();
+    assert_eq!(after.ino(), before.ino());
+    assert_eq!(after.permissions().mode() & 0o777, 0o444);
+}
+
+#[cfg(windows)]
+#[test]
+fn windows_readonly_existing_csv_is_untouched() {
+    let f = Files::new(&common::NO_TIME);
+    let mut permissions = std::fs::metadata(&f.output).unwrap().permissions();
+    permissions.set_readonly(true);
+    std::fs::set_permissions(&f.output, permissions).unwrap();
+    let result = run(&f.args(), &mut Vec::new(), &mut Vec::new());
+    let after = std::fs::metadata(&f.output).unwrap().permissions();
+    let contents = std::fs::read(&f.output).unwrap();
+    // Reset only this owned fixture after recording the post-run state.
+    let mut cleanup = after.clone();
+    cleanup.set_readonly(false);
+    std::fs::set_permissions(&f.output, cleanup).unwrap();
+    assert_eq!(result, ExitClass::Output);
+    assert!(after.readonly());
+    assert_eq!(contents, b"original");
+    f.no_temps();
+}
