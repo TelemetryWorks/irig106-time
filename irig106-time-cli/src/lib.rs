@@ -91,6 +91,8 @@ struct TimeChannelInfo {
     // Last non-backward reference used for jump/gap pairs. Displayed Last
     // remains the latest arrival, including accepted late references.
     pair_baseline: Option<(Rtc, AbsoluteTime)>,
+    late: Vec<ObservedReference>,
+    segment: usize,
     min_gap_ns: Option<u64>,
     max_gap_ns: Option<u64>,
 }
@@ -110,6 +112,8 @@ impl TimeChannelInfo {
             first_rtc: None,
             last_rtc: None,
             pair_baseline: None,
+            late: Vec::new(),
+            segment: 1,
             min_gap_ns: None,
             max_gap_ns: None,
         }
@@ -135,9 +139,19 @@ type RowSink<'a> = &'a mut dyn FnMut(&ResolvedPacket) -> io::Result<()>;
 // File scanner
 // ────────────────────────────────────────────────────────────────────
 
+#[derive(Clone, Copy, Debug)]
+struct ObservedReference {
+    rtc: Rtc,
+    time: AbsoluteTime,
+    packet: usize,
+    index: usize,
+}
+
 struct Ch10TimeScanner {
     correlator: StreamingTimeCorrelator,
     query_refs: Option<target_refs::TargetReferences>,
+    pending_channels: usize,
+    reset_count: usize,
     references_seen: usize,
     jump_threshold: Option<u64>,
     jumps_seen: usize,
@@ -163,6 +177,8 @@ impl Ch10TimeScanner {
                 REFERENCE_CAP,
             ),
             query_refs: None,
+            pending_channels: 0,
+            reset_count: 0,
             references_seen: 0,
             jump_threshold: None,
             jumps_seen: 0,
@@ -295,6 +311,7 @@ impl Ch10TimeScanner {
         if self.total_packets == 0 {
             return Err(Failure::new(ExitClass::Input, "no valid Chapter 10 header"));
         }
+        self.finish_pending();
         if self.time_packets == 0 {
             self.note(Severity::Warning, "TF-001: no time packets in session");
         }
@@ -304,6 +321,16 @@ impl Ch10TimeScanner {
     // Coordinator-approved WARNING: missing retained context is not malformed
     // packet data. No new TF ID. A known target has its own retained brackets.
     fn correlate(&self, rtc: Rtc, channel: Option<u16>) -> irig106_time::Result<AbsoluteTime> {
+        if self.reset_count != 0 {
+            return Err(TimeError::NeedsContext {
+                context: "RTC reset: segment-qualified answers unavailable",
+            });
+        }
+        if self.pending_channels != 0 {
+            return Err(TimeError::NeedsContext {
+                context: "RTC reset classification pending",
+            });
+        }
         if let Some(query) = &self.query_refs {
             if query.target == rtc {
                 return query.correlate(channel);
@@ -322,28 +349,126 @@ impl Ch10TimeScanner {
     }
 
     fn observe_reference(&mut self, hdr: &PktHeader, time: AbsoluteTime) {
-        if let Some(query) = self.query_refs.as_mut() {
-            query.observe(hdr.channel_id, hdr.rtc, time);
-        }
-        let out_of_order = self
+        let point = ObservedReference {
+            rtc: hdr.rtc,
+            time,
+            packet: self.total_packets,
+            index: self.references_seen,
+        };
+        self.references_seen += 1;
+        self.cache_reference(hdr.channel_id, point);
+        let info = self
             .time_channels
-            .get(&hdr.channel_id)
-            .and_then(|c| c.pair_baseline.map(|(rtc, _)| rtc))
-            .filter(|previous| hdr.rtc < *previous);
-        if let Some(previous) = out_of_order {
-            self.note(
-                Severity::Warning,
-                format!(
-                    "Out-of-order time reference: channel {} RTC {:#X} -> {:#X} at packet {}",
-                    hdr.channel_id,
-                    previous.as_raw(),
-                    hdr.rtc.as_raw(),
-                    self.total_packets
-                ),
-            );
-            self.references_seen += 1;
-            return; // Accepted for correlation/inventory, not a jump/gap pair.
+            .entry(hdr.channel_id)
+            .or_insert_with(|| TimeChannelInfo::new(hdr.channel_id));
+        let baseline = info.pair_baseline.map(|(rtc, _)| rtc);
+        let mut late = core::mem::take(&mut info.late);
+        if !late.is_empty() {
+            self.pending_channels -= 1;
         }
+        if let Some(previous) = baseline.filter(|previous| point.rtc < *previous) {
+            if previous.as_raw() - point.rtc.as_raw() > 300_000_000 {
+                self.report_late(hdr.channel_id, late);
+                self.start_reset(hdr.channel_id, previous, point);
+                self.cache_reference(hdr.channel_id, point);
+                self.observe_pair(hdr.channel_id, point);
+            } else {
+                if late.last().is_some_and(|p| p.rtc >= point.rtc) {
+                    self.report_late(hdr.channel_id, core::mem::take(&mut late));
+                }
+                late.push(point);
+                if late.len() == 3 {
+                    if let Some(first) = late.first().copied() {
+                        self.start_reset(hdr.channel_id, previous, first);
+                    }
+                    for p in late {
+                        self.cache_reference(hdr.channel_id, p);
+                        self.observe_pair(hdr.channel_id, p);
+                    }
+                } else if let Some(info) = self.time_channels.get_mut(&hdr.channel_id) {
+                    info.late = late;
+                    self.pending_channels += 1;
+                }
+            }
+        } else {
+            self.report_late(hdr.channel_id, late);
+            self.observe_pair(hdr.channel_id, point);
+        }
+    }
+
+    fn cache_reference(&mut self, channel: u16, point: ObservedReference) {
+        self.correlator
+            .add_reference(channel, point.rtc, point.time);
+        if let Some(query) = self.query_refs.as_mut() {
+            query.observe(channel, point.rtc, point.time);
+        }
+    }
+    fn report_late(&mut self, channel: u16, late: Vec<ObservedReference>) {
+        if let Some(previous) = self
+            .time_channels
+            .get(&channel)
+            .and_then(|c| c.pair_baseline.map(|p| p.0))
+        {
+            for point in late {
+                self.note(
+                    Severity::Warning,
+                    format!(
+                        "Out-of-order time reference: channel {} RTC {:#X} -> {:#X} at packet {}",
+                        channel,
+                        previous.as_raw(),
+                        point.rtc.as_raw(),
+                        point.packet
+                    ),
+                );
+            }
+        }
+    }
+    fn finish_pending(&mut self) {
+        if self.pending_channels == 0 {
+            return;
+        }
+        let channels: Vec<_> = self
+            .time_channels
+            .iter()
+            .filter(|(_, c)| !c.late.is_empty())
+            .map(|(&ch, _)| ch)
+            .collect();
+        for channel in channels {
+            if let Some(info) = self.time_channels.get_mut(&channel) {
+                let late = core::mem::take(&mut info.late);
+                self.pending_channels -= 1;
+                self.report_late(channel, late);
+            }
+        }
+    }
+    fn start_reset(&mut self, channel: u16, previous: Rtc, first: ObservedReference) {
+        self.note(
+            Severity::Warning,
+            format!(
+                "RTC reset on channel {} at packet {}: {:#X} -> {:#X}",
+                channel,
+                first.packet,
+                previous.as_raw(),
+                first.rtc.as_raw()
+            ),
+        );
+        self.reset_count += 1;
+        self.correlator.clear_channel(channel);
+        if let Some(query) = self.query_refs.as_mut() {
+            query.clear_channel(channel);
+        }
+        if let Some(info) = self.time_channels.get_mut(&channel) {
+            info.pair_baseline = None;
+            info.segment += 1;
+        }
+    }
+    fn observe_pair(&mut self, channel: u16, point: ObservedReference) {
+        let hdr = PktHeader {
+            channel_id: channel,
+            data_type: 0,
+            rtc: point.rtc,
+        };
+        let time = point.time;
         if let Some(info) = self.time_channels.get_mut(&hdr.channel_id) {
             if let Some((previous, _)) = info.pair_baseline {
                 let gap = previous.elapsed_nanos(hdr.rtc);
@@ -365,7 +490,7 @@ impl Ch10TimeScanner {
                     self.jumps_seen += 1;
                     if self.jumps.len() < FINDING_SAMPLE_LIMIT {
                         self.jumps.push(TimeJump {
-                            index: self.references_seen,
+                            index: point.index,
                             channel_id: hdr.channel_id,
                             expected_nanos,
                             actual_nanos,
@@ -376,7 +501,7 @@ impl Ch10TimeScanner {
                         Severity::Warning,
                         format!(
                             "Time jump on channel {} at reference {}",
-                            hdr.channel_id, self.references_seen
+                            hdr.channel_id, point.index
                         ),
                     );
                 }
@@ -386,7 +511,6 @@ impl Ch10TimeScanner {
             .entry(hdr.channel_id)
             .or_insert_with(|| TimeChannelInfo::new(hdr.channel_id))
             .pair_baseline = Some((hdr.rtc, time));
-        self.references_seen += 1;
     }
 
     fn report_jump_samples(&self, out: &mut dyn Write) -> io::Result<()> {
@@ -531,10 +655,6 @@ impl Ch10TimeScanner {
             }
         };
 
-        // Add to correlator
-        self.correlator
-            .add_reference(hdr.channel_id, hdr.rtc, abs_time);
-
         self.observe_reference(hdr, abs_time);
         // Update channel info
         let info = self
@@ -597,9 +717,6 @@ impl Ch10TimeScanner {
                 return;
             }
         };
-        self.correlator
-            .add_reference(hdr.channel_id, hdr.rtc, abs_time);
-
         self.observe_reference(hdr, abs_time);
         // Update channel info
         let info = self
@@ -1113,6 +1230,14 @@ fn cmd_correlate(
     )?;
     writeln!(stdout)?;
 
+    if scanner.reset_count != 0 {
+        scanner.note(
+            Severity::Warning,
+            "RTC reset: segment-qualified answers unavailable",
+        );
+        scanner.report_findings(stderr)?;
+        return Ok(scanner.highest);
+    }
     if scanner.correlator.is_empty() {
         scanner.note(Severity::Warning, "No time reference points found in file.");
         scanner.report_findings(stderr)?;

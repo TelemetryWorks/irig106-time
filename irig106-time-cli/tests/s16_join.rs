@@ -450,8 +450,9 @@ fn doy_packet(channel: u16, rtc_seconds: u64, day: u16, seconds_of_day: u32) -> 
 }
 
 #[test]
-fn late_references_skip_jump_and_gap_pairs_inside_and_outside_window() {
-    for latest in [2, 40] {
+fn isolated_late_reference_skips_jump_and_gap_pairs() {
+    {
+        let latest = 2;
         let bytes = [
             doy_packet(1, 0, 100, 43200),
             doy_packet(1, latest, 100, 43200 + latest as u32),
@@ -485,27 +486,6 @@ fn late_references_skip_jump_and_gap_pairs_inside_and_outside_window() {
             "{text}"
         );
         assert!(!text.contains("Delta:"));
-        if latest == 40 {
-            let mut err = Vec::new();
-            assert_eq!(
-                run(
-                    &[
-                        "timeline",
-                        input.0.to_str().unwrap(),
-                        "--fail-on",
-                        "warning"
-                    ],
-                    &mut Vec::new(),
-                    &mut err
-                ),
-                ExitClass::Findings
-            );
-            assert!(
-                String::from_utf8(err).unwrap().contains(
-                    "Warning: Correlation query: query precedes retained reference window"
-                )
-            );
-        }
     }
 }
 
@@ -711,6 +691,7 @@ fn rtc_reset_single_step_and_three_reference_run_keep_real_jump_only() {
             assert!(text.contains("warning=2"), "{text}");
             if command == "summary" {
                 assert!(text.contains("max=1000000000 ns"), "{text}");
+                assert!(text.contains("Correlation Refs   : 4"), "{text}");
             }
         }
     }

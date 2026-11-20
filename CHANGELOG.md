@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S16b2b3c1 reset classification and channel isolation (partial CLI-104)
+
+- Treat backward RTC steps >30s, or three increasing references behind the
+  baseline, as a channel reset at the first reset packet. One WARNING replaces
+  the run's out-of-order warnings; replay it with a fresh jump/gap baseline.
+  One/two late points stay out-of-order at EOF; lookahead is bounded to two.
+- Add StreamingTimeCorrelator::clear_channel for explicit caller segment
+  boundaries; free that channel's entries and recompute the cache age origin.
+- Interim limitation: live answers pending classification, and answers after a
+  confirmed reset, stay counter-only with needs-context WARNING. Historical
+  labelled/ambiguous segment answers follow in S16b2b3c2; no mixed silent pick.
+  Dense-F1 RSS and README/publication gates remain. See verification-s16b2b3c1.md.
+
 ### S16b2b3b CLI bounded correlation and online reports (partial CLI-104)
 
 - Replace file-wide TimeCorrelator with StreamingTimeCorrelator: 1,024 global

@@ -196,7 +196,7 @@ fn late_ptp_still_qualifies_query_before_live_eviction() {
         10_000_000,
     )));
     scanner.jump_threshold = Some(1_000_000_000);
-    for seconds in [0u32, 40, 1] {
+    for seconds in [0u32, 20, 1] {
         // Fig11-15/17: NTF1, TS1; TAI 2017-01-02 = UTC 1483315200 +37.
         let mut body = [0; 12];
         body[0] = 0x11;
@@ -211,16 +211,12 @@ fn late_ptp_still_qualifies_query_before_live_eviction() {
         );
         scanner.total_packets += 1;
     }
+    scanner.finish_pending();
     assert_eq!(scanner.references_seen, 3);
     assert_eq!(scanner.jumps_seen, 0);
     assert_eq!(scanner.finding_counts, [0, 1, 0]);
-    assert_eq!(scanner.time_channels[&1].max_gap_ns, Some(40_000_000_000));
-    assert!(matches!(
-        scanner
-            .correlator
-            .correlate(Rtc::from_raw(10_000_000), None),
-        Err(TimeError::QueryBeforeRetainedWindow)
-    ));
+    assert_eq!(scanner.time_channels[&1].max_gap_ns, Some(20_000_000_000));
+    assert_eq!(scanner.reset_count, 0);
     let time = scanner.resolve(Rtc::from_raw(10_000_000), None).unwrap();
     assert_eq!(
         (time.year(), time.day_of_year(), time.seconds()),
@@ -284,6 +280,7 @@ fn late_arrival_preserves_pair_baseline_but_updates_inventory_and_query() {
             }
             scanner.total_packets += 1;
         }
+        scanner.finish_pending();
         let info = &scanner.time_channels[&1];
         assert_eq!(info.packet_count, 22);
         assert_eq!(info.last_rtc, Some(Rtc::from_raw(80_000_000)));
@@ -305,4 +302,87 @@ fn late_arrival_preserves_pair_baseline_but_updates_inventory_and_query() {
             5
         );
     }
+}
+
+#[test]
+fn reset_pending_run_is_strictly_increasing_bounded_and_flushed_at_eof() {
+    for sequence in [
+        vec![15, 3, 4],
+        vec![15, 3, 3, 4],
+        vec![15, 3, 2, 4],
+        vec![15, 3, 4, 15],
+        vec![31, 1],
+    ] {
+        let mut s = Ch10TimeScanner::new();
+        for (packet, &seconds) in sequence.iter().enumerate() {
+            s.total_packets = packet;
+            s.observe_reference(
+                &PktHeader {
+                    channel_id: 1,
+                    data_type: 0x11,
+                    rtc: Rtc::from_raw(u64::from(seconds) * 10_000_000),
+                },
+                AbsoluteTime::new(100, 12, 0, seconds, 0).unwrap(),
+            );
+            assert!(s.time_channels.values().all(|c| c.late.len() <= 2));
+            if s.pending_channels != 0 {
+                assert!(matches!(
+                    s.correlate(Rtc::from_raw(150_000_000), None),
+                    Err(TimeError::NeedsContext { .. })
+                ));
+            }
+        }
+        s.finish_pending();
+        assert_eq!(s.reset_count, 0);
+        assert_eq!(s.pending_channels, 0);
+        let late = sequence
+            .iter()
+            .skip(1)
+            .filter(|&&sec| sec < sequence[0])
+            .count();
+        assert_eq!(s.finding_counts, [0, late as u64, 0]);
+    }
+}
+
+#[test]
+fn reset_discards_only_its_channel_cache_and_suppresses_mixed_answers() {
+    let mut s = Ch10TimeScanner::new();
+    s.query_refs = Some(target_refs::TargetReferences::new(Rtc::from_raw(
+        400_000_000,
+    )));
+    let old = AbsoluteTime::new(100, 12, 0, 40, 0).unwrap();
+    for ch in [1, 2] {
+        s.observe_reference(
+            &PktHeader {
+                channel_id: ch,
+                data_type: 0x11,
+                rtc: Rtc::from_raw(400_000_000),
+            },
+            old,
+        );
+    }
+    let new = AbsoluteTime::new(100, 13, 0, 1, 0).unwrap();
+    s.observe_reference(
+        &PktHeader {
+            channel_id: 1,
+            data_type: 0x11,
+            rtc: Rtc::from_raw(10_000_000),
+        },
+        new,
+    );
+    assert_eq!(s.time_channels[&1].segment, 2);
+    assert_eq!(s.time_channels[&2].segment, 1);
+    assert_eq!(s.correlator.channel_ids(), [2]);
+    assert_eq!(
+        s.correlator.correlate(Rtc::from_raw(400_000_000), Some(2)),
+        Ok(old)
+    );
+    assert_eq!(
+        s.query_refs.as_ref().unwrap().correlate(Some(1)),
+        new.add_nanos(39_000_000_000)
+    );
+    assert!(matches!(
+        s.correlate(Rtc::from_raw(400_000_000), None),
+        Err(TimeError::NeedsContext { .. })
+    ));
 }
