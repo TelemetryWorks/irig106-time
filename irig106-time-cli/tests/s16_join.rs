@@ -348,10 +348,7 @@ fn retained_reference_count_and_old_query_finding() {
         retained, 31,
         "30-second inclusive window within the 1024 cap"
     );
-    for (level, exit) in [
-        ("error", ExitClass::Success),
-        ("warning", ExitClass::Findings),
-    ] {
+    for level in ["error", "warning"] {
         let (mut out, mut err) = (Vec::new(), Vec::new());
         assert_eq!(
             run(
@@ -365,13 +362,10 @@ fn retained_reference_count_and_old_query_finding() {
                 &mut out,
                 &mut err
             ),
-            exit
+            ExitClass::Success
         );
-        let text = String::from_utf8(err).unwrap();
-        assert!(
-            text.contains("Warning: Correlation query: query precedes retained reference window"),
-            "{text}"
-        );
+        assert!(String::from_utf8(out).unwrap().contains("13:45:27.350.000"));
+        assert!(err.is_empty());
     }
 }
 
@@ -406,7 +400,7 @@ fn jump_details_are_sampled_but_counts_remain_exact() {
 }
 
 #[test]
-fn counter_only_row_is_a_proposed_warning_not_a_decode_error() {
+fn counter_only_row_is_an_approved_warning_not_a_decode_error() {
     let input = Input::new(&common::NO_TIME);
     for command in ["csv", "timeline"] {
         for (level, exit) in [
@@ -429,5 +423,120 @@ fn counter_only_row_is_a_proposed_warning_not_a_decode_error() {
             );
             assert!(text.contains("error=0, warning=2"), "{text}"); // row + TF-001
         }
+    }
+}
+
+fn doy_packet(channel: u16, rtc_seconds: u64, day: u16, seconds_of_day: u32) -> Vec<u8> {
+    // Fig11-13 (§11.2.3.2): fractions, seconds, minutes, hours, BCD DOY.
+    // 10 data bytes; the last two bytes are filler and must not be decoded.
+    let bcd = |n: u32| ((n / 10) << 4 | (n % 10)) as u8;
+    let mut p = reference(false);
+    p[2..4].copy_from_slice(&channel.to_le_bytes());
+    p[8..12].copy_from_slice(&10u32.to_le_bytes());
+    p[16..22].copy_from_slice(&(rtc_seconds * 10_000_000).to_le_bytes()[..6]);
+    p[24..].fill(0);
+    p[29] = bcd(seconds_of_day % 60);
+    p[30] = bcd(seconds_of_day / 60 % 60);
+    p[31] = bcd(seconds_of_day / 3600);
+    p[32] = bcd(u32::from(day % 100));
+    p[33] = (day / 100) as u8;
+    p[34..].fill(0xDD);
+    let sum = p[..22]
+        .chunks_exact(2)
+        .map(|w| u16::from_le_bytes([w[0], w[1]]))
+        .fold(0u16, u16::wrapping_add);
+    p[22..24].copy_from_slice(&sum.to_le_bytes());
+    p
+}
+
+#[test]
+fn late_references_skip_jump_and_gap_pairs_inside_and_outside_window() {
+    for latest in [2, 40] {
+        let bytes = [
+            doy_packet(1, 0, 100, 43200),
+            doy_packet(1, latest, 100, 43200 + latest as u32),
+            doy_packet(1, 1, 100, 43201),
+        ]
+        .concat();
+        let input = Input::new(&bytes);
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        assert_eq!(
+            run(
+                &["summary", input.0.to_str().unwrap(), "--fail-on", "warning"],
+                &mut out,
+                &mut err
+            ),
+            ExitClass::Findings
+        );
+        let text = String::from_utf8(out).unwrap();
+        assert!(text.contains("None detected"), "{text}");
+        assert!(text.contains("warning=1"), "{text}");
+        assert!(
+            text.contains(&format!("max={} ns", latest * 1_000_000_000)),
+            "{text}"
+        );
+        assert!(
+            text.contains(&format!(
+                "Out-of-order time reference: channel 1 RTC {:#X} -> {:#X} at packet 2",
+                latest * 10_000_000,
+                10_000_000
+            )),
+            "{text}"
+        );
+        assert!(!text.contains("Delta:"));
+    }
+}
+
+#[test]
+fn old_target_at_five_seconds_matches_main_on_one_and_two_channels() {
+    for channels in [1, 2] {
+        let mut bytes = Vec::new();
+        for second in 1..=120 {
+            for channel in 1..=channels {
+                bytes.extend(doy_packet(channel, second, 100, 43200 + second as u32 - 1));
+            }
+        }
+        let input = Input::new(&bytes);
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        assert_eq!(
+            run(
+                &[
+                    "correlate",
+                    input.0.to_str().unwrap(),
+                    "2FAF080",
+                    "--fail-on",
+                    "warning"
+                ],
+                &mut out,
+                &mut err
+            ),
+            ExitClass::Success
+        );
+        let text = String::from_utf8(out).unwrap();
+        assert_eq!(
+            text.matches("Day 100 12:00:04.000.000").count(),
+            usize::from(channels + 1),
+            "{text}"
+        );
+        assert!(err.is_empty(), "{}", String::from_utf8_lossy(&err));
+    }
+}
+
+#[test]
+fn midnight_crossing_is_not_a_negative_day_jump() {
+    let bytes = [doy_packet(1, 0, 100, 86399), doy_packet(1, 1, 101, 0)].concat();
+    let input = Input::new(&bytes);
+    for command in ["summary", "jumps"] {
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        assert_eq!(
+            run(
+                &[command, input.0.to_str().unwrap(), "--fail-on", "warning"],
+                &mut out,
+                &mut err
+            ),
+            ExitClass::Success
+        );
+        assert!(!String::from_utf8(out).unwrap().contains("Delta:"));
+        assert!(err.is_empty());
     }
 }
