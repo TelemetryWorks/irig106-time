@@ -204,3 +204,112 @@ fn timeline_limit_one_on_two_time_packets_emits_exactly_one_row() {
     assert_eq!(rows, [0], "{report}");
     assert!(report.contains("showing first 1 of 2 packets"), "{report}");
 }
+
+// Literal Fig11-14 body plus TF-005 and malformed-digit variants; partial
+// CLI-104/107 only. Header checksum is unchanged by body mutations.
+#[test]
+fn every_command_caps_samples_without_losing_counts_or_late_error_threshold() {
+    let mut warning = reference(false);
+    warning[29] |= 0x80; // Reserved bit15 in first BCD word: TF-005 warning.
+    let mut error = reference(false);
+    error[28] = 0xFA; // Decimal digit A: malformed, error.
+    let bytes = [reference(false), warning.repeat(1003), error, vec![0; 40]].concat();
+    let input = Input::new(&bytes);
+    for command in [
+        "summary",
+        "channels",
+        "jumps",
+        "timeline",
+        "csv",
+        "correlate",
+    ] {
+        for (level, expected) in [
+            ("error", ExitClass::Findings),
+            ("never", ExitClass::Success),
+        ] {
+            let mut args = vec![command, input.0.to_str().unwrap()];
+            if command == "correlate" {
+                args.push("0");
+            }
+            args.extend(["--fail-on", level]);
+            let (mut out, mut err) = (Vec::new(), Vec::new());
+            assert_eq!(
+                run(&args, &mut out, &mut err),
+                expected,
+                "{command} {level}"
+            );
+            let (out, err) = (
+                String::from_utf8(out).unwrap(),
+                String::from_utf8(err).unwrap(),
+            );
+            let diagnostics = if command == "summary" {
+                out.rsplit_once("Errors (").unwrap().1
+            } else {
+                &err
+            };
+            assert!(
+                diagnostics.contains("Findings: error=1, warning=1003, info=1 (total=1005)"),
+                "{command}: {diagnostics}"
+            );
+            assert!(
+                diagnostics.contains("985 more findings"),
+                "{command}: {diagnostics}"
+            );
+            assert!(
+                diagnostics.lines().count() <= 24,
+                "{command}: {} lines",
+                diagnostics.lines().count()
+            );
+            assert!(!diagnostics.contains("invalid BCD digit")); // late error is not sampled
+        }
+    }
+}
+
+#[test]
+fn jump_findings_are_counted_individually_not_as_an_aggregate_flag() {
+    let mut next = reference(false);
+    next[29] = 0x30; // +3 seconds at the same RTC: first jump.
+    let mut last = reference(false);
+    last[29] = 0x33; // +3 seconds again: second jump.
+    let input = Input::new(&[reference(false), next, last].concat());
+    for command in ["summary", "jumps"] {
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        assert_eq!(
+            run(
+                &[command, input.0.to_str().unwrap(), "--fail-on", "warning"],
+                &mut out,
+                &mut err
+            ),
+            ExitClass::Findings
+        );
+        let text = format!(
+            "{}{}",
+            String::from_utf8(out).unwrap(),
+            String::from_utf8(err).unwrap()
+        );
+        assert!(
+            text.contains("Findings: error=0, warning=2, info=0 (total=2)"),
+            "{command}: {text}"
+        );
+    }
+}
+
+#[test]
+fn query_context_finding_is_included_in_the_final_counts() {
+    let input = Input::new(&common::NO_TIME);
+    let mut err = Vec::new();
+    assert_eq!(
+        run(
+            &["correlate", input.0.to_str().unwrap(), "0"],
+            &mut Vec::new(),
+            &mut err
+        ),
+        ExitClass::Success
+    );
+    let text = String::from_utf8(err).unwrap();
+    assert!(
+        text.contains("Findings: error=0, warning=2, info=0 (total=2)"),
+        "{text}"
+    );
+    assert!(text.contains("TF-001") && text.contains("No time reference points"));
+}

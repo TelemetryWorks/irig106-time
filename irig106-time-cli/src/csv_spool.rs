@@ -20,13 +20,7 @@ pub(crate) struct CsvSpool {
 impl CsvSpool {
     pub(crate) fn new(destination: Option<&Path>) -> io::Result<Self> {
         if let Some(path) = destination {
-            match fs::symlink_metadata(path) {
-                Ok(m) if !m.is_file() => {
-                    return Err(io::Error::other("CSV destination must be a regular file"));
-                }
-                Err(e) if e.kind() != io::ErrorKind::NotFound => return Err(e),
-                _ => (),
-            }
+            Self::existing_permissions(path)?;
         }
         let directory = destination
             .map(|p| {
@@ -37,6 +31,25 @@ impl CsvSpool {
             })
             .unwrap_or_else(std::env::temp_dir);
         Self::create_in(&directory, destination)
+    }
+    fn existing_permissions(path: &Path) -> io::Result<Option<fs::Permissions>> {
+        match fs::symlink_metadata(path) {
+            Ok(m) if m.is_file() => {
+                // Honor explicit readonly even for privileged callers. The OS
+                // also checks the effective user's rights/ACLs, without truncation.
+                if m.permissions().readonly() {
+                    return Err(io::Error::new(
+                        io::ErrorKind::PermissionDenied,
+                        "CSV destination is read-only",
+                    ));
+                }
+                let file = OpenOptions::new().write(true).open(path)?;
+                Ok(Some(file.metadata()?.permissions()))
+            }
+            Ok(_) => Err(io::Error::other("CSV destination must be a regular file")),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(e),
+        }
     }
     fn create_in(directory: &Path, destination: Option<&Path>) -> io::Result<Self> {
         Self::create_mode(directory, destination, 0o600)
@@ -122,11 +135,9 @@ impl CsvSpool {
             .destination
             .clone()
             .ok_or_else(|| io::Error::other("CSV has no destination"))?;
-        let permissions = match fs::symlink_metadata(&target) {
-            Ok(m) if m.is_file() => m.permissions(),
-            Ok(_) => return Err(io::Error::other("CSV destination must be a regular file")),
-            Err(e) if e.kind() == io::ErrorKind::NotFound => self.new_file_permissions()?,
-            Err(e) => return Err(e),
+        let permissions = match Self::existing_permissions(&target)? {
+            Some(p) => p,
+            None => self.new_file_permissions()?,
         };
         self.writer()?.get_ref().set_permissions(permissions)?;
         drop(self.writer.take()); // Close before rename, including on Windows.

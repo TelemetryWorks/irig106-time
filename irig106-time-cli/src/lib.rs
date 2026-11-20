@@ -51,6 +51,7 @@ pub mod input;
 
 const DATA_TYPE_TIME_F1: u8 = 0x11;
 const DATA_TYPE_TIME_F2: u8 = 0x12;
+const FINDING_SAMPLE_LIMIT: usize = 20;
 const PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // ────────────────────────────────────────────────────────────────────
@@ -131,6 +132,7 @@ struct Ch10TimeScanner {
     last_rtc: Option<Rtc>,
     resolved: Vec<ResolvedPacket>,
     errors: Vec<String>,
+    finding_counts: [u64; 3],
     highest: Option<Severity>,
 }
 
@@ -147,6 +149,7 @@ impl Ch10TimeScanner {
             last_rtc: None,
             resolved: Vec::new(),
             errors: Vec::new(),
+            finding_counts: [0; 3],
             highest: None,
         }
     }
@@ -273,7 +276,12 @@ impl Ch10TimeScanner {
 
     fn note(&mut self, level: Severity, message: impl Into<String>) {
         self.observe(level);
-        self.errors.push(format!("{level:?}: {}", message.into()));
+        // <=3 facts per complete packet plus terminal/query facts. Checked
+        // u64 byte offsets and >=24-byte frames bound these counts below u64::MAX.
+        self.finding_counts[usize::from(rank(level))] += 1;
+        if self.errors.len() < FINDING_SAMPLE_LIMIT {
+            self.errors.push(format!("{level:?}: {}", message.into()));
+        }
     }
 
     fn observe(&mut self, level: Severity) {
@@ -282,9 +290,35 @@ impl Ch10TimeScanner {
         }
     }
 
+    fn finding_total(&self) -> u64 {
+        self.finding_counts.iter().sum()
+    }
+    fn omitted_findings(&self) -> u64 {
+        self.finding_total() - self.errors.len() as u64
+    }
+    fn report_finding_counts(&self, out: &mut dyn Write) -> io::Result<()> {
+        writeln!(
+            out,
+            "Findings: error={}, warning={}, info={} (total={})",
+            self.finding_counts[2],
+            self.finding_counts[1],
+            self.finding_counts[0],
+            self.finding_total()
+        )
+    }
     fn report_findings(&self, stderr: &mut dyn Write) -> Result<(), Failure> {
+        if self.finding_total() != 0 {
+            self.report_finding_counts(stderr)?;
+        }
         for error in &self.errors {
             writeln!(stderr, "Finding: {error}")?;
+        }
+        if self.omitted_findings() != 0 {
+            writeln!(
+                stderr,
+                "Finding: ... and {} more findings",
+                self.omitted_findings()
+            )?;
         }
         Ok(())
     }
@@ -656,6 +690,13 @@ fn cmd_summary(
                 any_jumps = true;
             }
             for j in &jumps {
+                scanner.note(
+                    Severity::Warning,
+                    format!(
+                        "Time jump on channel {} at reference {}",
+                        j.channel_id, j.index
+                    ),
+                );
                 let delta_ms = j.delta_nanos as f64 / 1_000_000.0;
                 writeln!(
                     stdout,
@@ -671,9 +712,6 @@ fn cmd_summary(
                 )?;
             }
         }
-    }
-    if any_jumps {
-        scanner.observe(Severity::Warning);
     }
     if !any_jumps && !all_channels.is_empty() {
         writeln!(
@@ -697,14 +735,19 @@ fn cmd_summary(
     }
     writeln!(stdout)?;
 
-    if !scanner.errors.is_empty() {
-        writeln!(stdout, "Errors ({})", scanner.errors.len())?;
+    if scanner.finding_total() != 0 {
+        writeln!(stdout, "Errors ({})", scanner.finding_total())?;
+        scanner.report_finding_counts(stdout)?;
         writeln!(stdout, "──────")?;
-        for (i, e) in scanner.errors.iter().enumerate().take(20) {
+        for (i, e) in scanner.errors.iter().enumerate() {
             writeln!(stdout, "  {}. {}", i + 1, e)?;
         }
-        if scanner.errors.len() > 20 {
-            writeln!(stdout, "  ... and {} more", scanner.errors.len() - 20)?;
+        if scanner.omitted_findings() != 0 {
+            writeln!(
+                stdout,
+                "  ... and {} more findings",
+                scanner.omitted_findings()
+            )?;
         }
     }
     Ok(scanner.highest)
@@ -780,7 +823,6 @@ fn cmd_jumps(
 ) -> Result<Option<Severity>, Failure> {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(input, false, None)?;
-    scanner.report_findings(stderr)?;
 
     let threshold_ns = threshold_ms.checked_mul(1_000_000).ok_or_else(|| {
         Failure::new(
@@ -806,6 +848,13 @@ fn cmd_jumps(
             writeln!(stdout)?;
             writeln!(stdout, "Channel {} — {} jump(s):", ch, jumps.len())?;
             for j in &jumps {
+                scanner.note(
+                    Severity::Warning,
+                    format!(
+                        "Time jump on channel {} at reference {}",
+                        j.channel_id, j.index
+                    ),
+                );
                 let delta_ms = j.delta_nanos as f64 / 1_000_000.0;
                 writeln!(
                     stdout,
@@ -817,9 +866,6 @@ fn cmd_jumps(
         }
     }
 
-    if total_jumps > 0 {
-        scanner.observe(Severity::Warning);
-    }
     if total_jumps == 0 {
         writeln!(stdout)?;
         writeln!(
@@ -836,6 +882,7 @@ fn cmd_jumps(
             channels.len()
         )?;
     }
+    scanner.report_findings(stderr)?;
     Ok(scanner.highest)
 }
 
@@ -959,7 +1006,6 @@ fn cmd_correlate(
 ) -> Result<Option<Severity>, Failure> {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(input, false, None)?;
-    scanner.report_findings(stderr)?;
 
     writeln!(
         stdout,
@@ -971,8 +1017,8 @@ fn cmd_correlate(
     writeln!(stdout)?;
 
     if scanner.correlator.is_empty() {
-        writeln!(stderr, "Warning: No time reference points found in file.")?;
-        scanner.observe(Severity::Warning);
+        scanner.note(Severity::Warning, "No time reference points found in file.");
+        scanner.report_findings(stderr)?;
         return Ok(scanner.highest);
     }
 
@@ -982,7 +1028,7 @@ fn cmd_correlate(
         Err(e) => {
             let level = decode_level(&e);
             writeln!(stdout, "  Any channel  → {level:?}: {e}")?;
-            scanner.observe(level);
+            scanner.note(level, format!("Correlation query: {e}"));
         }
     }
 
@@ -992,6 +1038,7 @@ fn cmd_correlate(
             writeln!(stdout, "  Channel {:>3}  → {}", ch, fmt_abs_time(&t))?;
         }
     }
+    scanner.report_findings(stderr)?;
     Ok(scanner.highest)
 }
 
