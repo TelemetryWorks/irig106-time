@@ -77,3 +77,24 @@ baseline; not replaying the first point; retaining old channel cache; missing
 EOF flush; missing mixed-answer guard; missing provisional-answer guard;
 clearing other channels too; and failing to recompute the cache age origin.
 All compiled and failed assertions; sources restored before focused rerun.
+
+## PR #73 review — channel-clear loss history and c2 isolation
+
+Library test only: clear is the sole loss source (two old references, no prior
+age/count evictions). Assert removed/evicted counts are two, add two low-RTC
+references, and require the per-channel query one tick before the new oldest
+to return QueryBeforeRetainedWindow; the exact oldest still resolves. The
+reviewed implementation already passes, not claimed failing first. Removing
+only clear_channel's evicted_channels insertion compiles and fails the new
+test at runtime (silent extrapolation); source restored and test rerun green.
+Local fmt, focused test/mutant, library Clippy and trace check only; full CI
+is delegated. No production changes or whole-requirement coverage claim.
+
+Coordinator accepts c1's GLOBAL withholding only until c2. C2 MUST isolate
+channels: add a channel7-reset/channel8-continuous fixture and verify channel8
+keeps answering exactly as main, both timeline rows and correlate at RTC5s.
+A reset elsewhere must not force unaffected-channel answers to N/A. Minimise
+rows withheld while another late reference awaits classification; preserve
+no mixed-segment answers and bounded memory. This is required c2 work, not a
+claim implemented here. Historical segment labels/ambiguity and dense-F1 RSS
+remain outstanding; publication and README gates stay.
