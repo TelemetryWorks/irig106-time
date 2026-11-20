@@ -60,7 +60,11 @@ Additional implementation-time tests cover 5,000 frozen-RTC references (cap
 extrema 1/3 seconds, strict threshold +/-1s versus +2s, and NoReferencePoint
 rows under error/warning thresholds. They are not claimed failing first.
 Local checks: fmt, touched CLI suite and Clippy, focused mutations, matrix.
-Full matrix, platform and existing sparse-file RSS run in PR CI.
+Full matrix, platform and existing sparse-file RSS run in PR CI. That sparse
+probe now asserts exact warning totals rather than TF-001 sample text: CSV
+produces 24,576 unresolved rows + TF-001, timeline 50 + TF-001, correlate two,
+other commands one. TF-001 after the sample cap still counts but is not printed.
+No local large-file generation or RSS rerun.
 
 ## Remaining gate / honest limitations
 

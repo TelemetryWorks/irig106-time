@@ -53,7 +53,13 @@ with tempfile.TemporaryDirectory(prefix="irigtime-reader-rss-") as tmp:
             prefix = log.read(8192)  # Never load a CSV report into probe memory.
             assert proc.returncode == 0, (name, proc.returncode, prefix)
             if name != "transport":
-                assert "TF-001" in prefix, (name, prefix)
+                # CSV/timeline attempt counter-only row answers. TF-001 still
+                # counts, but arrives after the first 20 diagnostic samples.
+                warnings = {"csv": size // len(packet) + 1,
+                            "timeline": 51, "correlate": 2}.get(name, 1)
+                counts = (f"Findings: error=0, warning={warnings}, info=0 "
+                          f"(total={warnings})")
+                assert counts in prefix, (name, counts, prefix)
             if name == "summary":
                 assert "Total Packets      : 24,576" in prefix, prefix
             if name == "transport":
