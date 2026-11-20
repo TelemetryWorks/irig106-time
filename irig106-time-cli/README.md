@@ -241,11 +241,14 @@ Help/version also accept the option, e.g. `irigtime --version --fail-on info`.
 The live compatibility correlator retains at most 1,024 references globally
 and 30 seconds of RTC history. These are CLI resource policies, not IRIG limits.
 A quiet channel can lose every reference; no anchor per channel is reserved.
-`correlate` queries older than retained history cannot recover an offline answer:
-they report `QueryBeforeRetainedWindow`; an empty channel reports
-`NoReferencePoint`. CSV/timeline leave an unavailable absolute field empty and
-report the finding. Proposed level for both errors: **warning**, pending
-coordinator confirmation (readable counter, unavailable absolute context).
+The `correlate` target is known before the scan: retain its nearest bracketing
+RTC brackets (at most six values per channel, including duplicate boundaries) independently of cache eviction, including late
+references. Use the library's nearest/tie/checked arithmetic for the answer;
+channel count bounds the retained candidates and temporary query index.
+Unanswered live CSV/timeline queries report `QueryBeforeRetainedWindow` or
+`NoReferencePoint`, leave the absolute field empty and count the finding.
+Coordinator-approved level for both errors: **warning** (readable counter,
+unavailable absolute context).
 Default `--fail-on error` keeps exit 0; `--fail-on warning` makes it exit 1.
 No TF register level is changed or new TF ID invented.
 
@@ -256,4 +259,7 @@ above the threshold. The first 20 jump details are shown with an omitted-detail
 count and exact total/finding counts. Per-channel first/last/count and observed
 modular-RTC gap extrema require constant state per u16 channel, not all time
 packets. These compatibility diagnostics are not qualified session/scale-aware
-library quality reports. Earlier arbitrary queries may need a separate replay.
+library quality reports. A backward RTC is an out-of-order warning with channel,
+both RTCs and zero-based packet index, not an invented jump magnitude. Skip that
+jump/gap pair; the late reference remains accepted for queries and subsequent
+pairs. Known old correlate targets remain answerable.

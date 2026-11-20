@@ -163,3 +163,94 @@ fn online_gap_extrema_use_previous_reference_and_jump_threshold_is_strict() {
     assert_eq!(scanner.jumps[0].delta_nanos, 2_000_000_000);
     assert_eq!(scanner.jumps[0].index, 3);
 }
+
+#[test]
+fn target_brackets_match_full_library_for_interleaved_channels() {
+    for target in [0, 5, 50, 55, 1000, 1205, 1300] {
+        let rtc = Rtc::from_raw(target);
+        let mut query = target_refs::TargetReferences::new(rtc);
+        let mut full = TimeCorrelator::new();
+        for n in (1..=120).rev() {
+            // Late observations; two different channel clocks.
+            for ch in [1, 2] {
+                let r = Rtc::from_raw(n * 10);
+                let t = AbsoluteTime::new(100, 12 + ch as u8, 0, 0, (n * n * 1000) as u32).unwrap();
+                query.observe(ch, r, t);
+                full.add_reference(ch, r, t);
+            }
+        }
+        for ch in [None, Some(1), Some(2), Some(3)] {
+            assert_eq!(
+                query.correlate(ch),
+                full.correlate(rtc, ch),
+                "target {target} channel {ch:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn late_ptp_still_qualifies_query_before_live_eviction() {
+    let mut scanner = Ch10TimeScanner::new();
+    scanner.query_refs = Some(target_refs::TargetReferences::new(Rtc::from_raw(
+        10_000_000,
+    )));
+    scanner.jump_threshold = Some(1_000_000_000);
+    for seconds in [0u32, 40, 1] {
+        // Fig11-15/17: NTF1, TS1; TAI 2017-01-02 = UTC 1483315200 +37.
+        let mut body = [0; 12];
+        body[0] = 0x11;
+        body[4..8].copy_from_slice(&(1_483_315_237 + seconds).to_le_bytes());
+        scanner.process_time_f2_packet(
+            &body,
+            &PktHeader {
+                channel_id: 1,
+                data_type: 0x12,
+                rtc: Rtc::from_raw(u64::from(seconds) * 10_000_000),
+            },
+        );
+        scanner.total_packets += 1;
+    }
+    assert_eq!(scanner.references_seen, 3);
+    assert_eq!(scanner.jumps_seen, 0);
+    assert_eq!(scanner.finding_counts, [0, 1, 0]);
+    assert_eq!(scanner.time_channels[&1].max_gap_ns, Some(40_000_000_000));
+    assert!(matches!(
+        scanner
+            .correlator
+            .correlate(Rtc::from_raw(10_000_000), None),
+        Err(TimeError::QueryBeforeRetainedWindow)
+    ));
+    let time = scanner.resolve(Rtc::from_raw(10_000_000), None).unwrap();
+    assert_eq!(
+        (time.year(), time.day_of_year(), time.seconds()),
+        (Some(2017), 2, 1)
+    );
+}
+
+#[test]
+fn target_brackets_preserve_main_duplicate_rtc_boundary_answers() {
+    for duplicates in [1, 2, 3, 9, 32] {
+        for target in [0, 10, 15, 20, 25] {
+            let rtc = Rtc::from_raw(target);
+            let mut query = target_refs::TargetReferences::new(rtc);
+            let mut full = TimeCorrelator::new();
+            for ticks in [10, 20] {
+                for second in 0..duplicates {
+                    for ch in [1, 2] {
+                        let time = AbsoluteTime::new(100, 12 + ch as u8, 0, second, 0).unwrap();
+                        query.observe(ch, Rtc::from_raw(ticks), time);
+                        full.add_reference(ch, Rtc::from_raw(ticks), time);
+                    }
+                }
+            }
+            for ch in [None, Some(1), Some(2)] {
+                assert_eq!(
+                    query.correlate(ch),
+                    full.correlate(rtc, ch),
+                    "target {target} channel {ch:?}"
+                );
+            }
+        }
+    }
+}

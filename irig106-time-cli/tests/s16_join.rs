@@ -455,6 +455,7 @@ fn late_references_skip_jump_and_gap_pairs_inside_and_outside_window() {
         let bytes = [
             doy_packet(1, 0, 100, 43200),
             doy_packet(1, latest, 100, 43200 + latest as u32),
+            common::NO_TIME.to_vec(),
             doy_packet(1, 1, 100, 43201),
         ]
         .concat();
@@ -477,13 +478,34 @@ fn late_references_skip_jump_and_gap_pairs_inside_and_outside_window() {
         );
         assert!(
             text.contains(&format!(
-                "Out-of-order time reference: channel 1 RTC {:#X} -> {:#X} at packet 2",
+                "Out-of-order time reference: channel 1 RTC {:#X} -> {:#X} at packet 3",
                 latest * 10_000_000,
                 10_000_000
             )),
             "{text}"
         );
         assert!(!text.contains("Delta:"));
+        if latest == 40 {
+            let mut err = Vec::new();
+            assert_eq!(
+                run(
+                    &[
+                        "timeline",
+                        input.0.to_str().unwrap(),
+                        "--fail-on",
+                        "warning"
+                    ],
+                    &mut Vec::new(),
+                    &mut err
+                ),
+                ExitClass::Findings
+            );
+            assert!(
+                String::from_utf8(err).unwrap().contains(
+                    "Warning: Correlation query: query precedes retained reference window"
+                )
+            );
+        }
     }
 }
 

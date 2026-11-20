@@ -44,6 +44,7 @@ pub mod args;
 mod csv_spool;
 /// Bounded raw packet transport; command integration follows in S16b.
 pub mod input;
+mod target_refs;
 
 // ────────────────────────────────────────────────────────────────────
 // Constants
@@ -132,6 +133,7 @@ type RowSink<'a> = &'a mut dyn FnMut(&ResolvedPacket) -> io::Result<()>;
 
 struct Ch10TimeScanner {
     correlator: StreamingTimeCorrelator,
+    query_refs: Option<target_refs::TargetReferences>,
     references_seen: usize,
     jump_threshold: Option<u64>,
     jumps_seen: usize,
@@ -156,6 +158,7 @@ impl Ch10TimeScanner {
                 NanosDuration::new(30_000_000_000),
                 REFERENCE_CAP,
             ),
+            query_refs: None,
             references_seen: 0,
             jump_threshold: None,
             jumps_seen: 0,
@@ -294,10 +297,18 @@ impl Ch10TimeScanner {
         Ok(())
     }
 
-    // WARNING is a proposed CLI policy level pending coordinator confirmation;
-    // missing retained context is not malformed packet data. No new TF ID.
+    // Coordinator-approved WARNING: missing retained context is not malformed
+    // packet data. No new TF ID. A known target has its own retained brackets.
+    fn correlate(&self, rtc: Rtc, channel: Option<u16>) -> irig106_time::Result<AbsoluteTime> {
+        if let Some(query) = &self.query_refs {
+            if query.target == rtc {
+                return query.correlate(channel);
+            }
+        }
+        self.correlator.correlate(rtc, channel)
+    }
     fn resolve(&mut self, rtc: Rtc, channel: Option<u16>) -> Option<AbsoluteTime> {
-        match self.correlator.correlate(rtc, channel) {
+        match self.correlate(rtc, channel) {
             Ok(t) => Some(t),
             Err(e) => {
                 self.note(decode_level(&e), format!("Correlation query: {e}"));
@@ -307,6 +318,28 @@ impl Ch10TimeScanner {
     }
 
     fn observe_reference(&mut self, hdr: &PktHeader, time: AbsoluteTime) {
+        if let Some(query) = self.query_refs.as_mut() {
+            query.observe(hdr.channel_id, hdr.rtc, time);
+        }
+        let out_of_order = self
+            .time_channels
+            .get(&hdr.channel_id)
+            .and_then(|c| c.last_rtc)
+            .filter(|previous| hdr.rtc < *previous);
+        if let Some(previous) = out_of_order {
+            self.note(
+                Severity::Warning,
+                format!(
+                    "Out-of-order time reference: channel {} RTC {:#X} -> {:#X} at packet {}",
+                    hdr.channel_id,
+                    previous.as_raw(),
+                    hdr.rtc.as_raw(),
+                    self.total_packets
+                ),
+            );
+            self.references_seen += 1;
+            return; // Accepted for correlation/inventory, not a jump/gap pair.
+        }
         if let Some(info) = self.time_channels.get_mut(&hdr.channel_id) {
             if let Some(previous) = info.last_rtc {
                 let gap = previous.elapsed_nanos(hdr.rtc);
@@ -525,33 +558,39 @@ impl Ch10TimeScanner {
             }
         };
 
-        // Use the library's add_reference_f2 which handles NTP/PTP→AbsoluteTime
-        // conversion and leap-second offset application internally.
-        if let Err(e) = self.correlator.add_reference_f2(
-            hdr.channel_id,
-            hdr.rtc,
-            &network_time,
-            &self.leap_table,
-        ) {
-            self.note(
-                decode_level(&e),
-                format!(
-                    "Time F2 packet ch={}: correlation error: {}",
-                    hdr.channel_id, e
-                ),
-            );
-            return;
-        }
-
-        // Retrieve the resolved absolute time for channel info tracking.
-        // We just inserted a reference at this exact RTC, so correlate is an exact match.
-        let abs_time = match self.correlator.correlate(hdr.rtc, Some(hdr.channel_id)) {
+        // Same compatibility conversion as StreamingTimeCorrelator, performed
+        // before eviction so late PTP references can still bracket a known query.
+        let converted = match network_time {
+            irig106_time::network_time::NetworkTime::Ntp(_) => Err(TimeError::NeedsContext {
+                context: "NTP era/basis required; use ntp::convert_ntp",
+            }),
+            irig106_time::network_time::NetworkTime::Ptp(ptp) => {
+                self.leap_table.convert_ptp(ptp).and_then(|result| {
+                    result
+                        .utc()
+                        .ok_or(TimeError::NeedsContext {
+                            context: "no known applicable TAI-UTC offset",
+                        })?
+                        .to_absolute()
+                        .map(|t| t.value)
+                })
+            }
+        };
+        let abs_time = match converted {
             Ok(t) => t,
             Err(e) => {
-                self.note(decode_level(&e), format!("Correlation query: {e}"));
+                self.note(
+                    decode_level(&e),
+                    format!(
+                        "Time F2 packet ch={}: correlation error: {}",
+                        hdr.channel_id, e
+                    ),
+                );
                 return;
             }
         };
+        self.correlator
+            .add_reference(hdr.channel_id, hdr.rtc, abs_time);
 
         self.observe_reference(hdr, abs_time);
         // Update channel info
@@ -1054,6 +1093,7 @@ fn cmd_correlate(
     stderr: &mut dyn Write,
 ) -> Result<Option<Severity>, Failure> {
     let mut scanner = Ch10TimeScanner::new();
+    scanner.query_refs = Some(target_refs::TargetReferences::new(target));
     scanner.scan(input, false, None)?;
 
     writeln!(
@@ -1072,7 +1112,7 @@ fn cmd_correlate(
     }
 
     // Correlate with all channels
-    match scanner.correlator.correlate(target, None) {
+    match scanner.correlate(target, None) {
         Ok(t) => writeln!(stdout, "  Any channel  → {}", fmt_abs_time(&t))?,
         Err(e) => {
             let level = decode_level(&e);
@@ -1159,7 +1199,7 @@ fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
     )?;
     writeln!(
         stdout,
-        "Correlation: 1024 references globally / 30 seconds RTC; old/empty-window answers: warning (proposed, pending coordinator confirmation)."
+        "Correlation: 1024 references globally / 30 seconds RTC; old/empty-window answers: warning (coordinator-approved)."
     )?;
     writeln!(stdout, "Examples:")?;
     writeln!(stdout, "  irigtime summary flight_042.ch10")?;
@@ -1270,7 +1310,7 @@ fn decode_level(error: &TimeError) -> Severity {
         | TimeError::NeedsContext { .. }
         | TimeError::InvalidTimeStatus { .. }
         | TimeError::ReservedNetworkTimeFormat { .. }
-        // Proposed WARNING for unavailable retained context (not a TF level change).
+        // Coordinator-approved WARNING for unavailable retained context (no TF level change).
         | TimeError::QueryBeforeRetainedWindow
         | TimeError::NoReferencePoint => Severity::Warning,
         _ => Severity::Error,

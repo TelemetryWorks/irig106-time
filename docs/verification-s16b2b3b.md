@@ -10,15 +10,17 @@ Every command now uses the library StreamingTimeCorrelator with eviction:
 1,024 global references plus a 30-second raw-RTC window, inclusive at the old
 edge. These are documented resource policies, not IRIG-mandated numbers.
 Duplicate/frozen counters still obey the count cap. A quiet channel can lose
-all anchors. No command retains all references; arbitrary old queries may
-therefore require replay instead of extrapolation. Summary shows retained,
+all anchors. No command retains all references. Correlate retains its known
+target's two RTC bracketing groups (at most six values/channel) independently of cache eviction;
+old targets remain answerable. Summary shows retained,
 accepted and evicted counts separately. No host clock or session inference.
 
 One previous accepted time/RTC per channel drives online jumps. Count every
 jump, retain first 20 details globally, then show N more with exact total.
 Summary uses 1 second, jumps uses its validated threshold; comparison is >.
 Indices now mean accepted-observation order. Unlike the old batch detector,
-late references are adjacent in observation order, not re-sorted by RTC.
+backward-RTC references warn and skip that jump/gap pair; they remain accepted
+for correlation and as the next pair's predecessor, not re-sorted by RTC.
 The arithmetic uses nominal day-of-year nanoseconds (including whole days),
 not only time of day. This is a compatibility diagnostic, not the qualified
 session/year/scale-aware timeline engine; no COR/QUA coverage is claimed.
@@ -33,10 +35,10 @@ strings and jump samples have cap 20 each. Timeline retains only caller-limited
 rows (default 100); CSV rows use the existing disk spool. Output can grow on
 disk, not in a packet-row vector. No process-RSS bound is claimed yet.
 
-## Explicit severity proposal
+## Approved severity decision
 
-QueryBeforeRetainedWindow and NoReferencePoint -> WARNING, proposed pending
-coordinator confirmation. Reason: the counter/packet remains readable but
+QueryBeforeRetainedWindow and NoReferencePoint -> WARNING, approved by the
+coordinator in the PR #71 acknowledgement. Reason: the counter/packet remains readable but
 absolute context is unavailable, analogous to needs-context. No TF ID is
 invented and no accepted TF severity is changed. Surface the finding for each
 actual attempted answer, including CSV/timeline rows and per-channel queries.
@@ -49,8 +51,9 @@ Tests-first e07be99 adds two integration tests; both fail at base main at
 runtime: summary retains 1,100 references, and the jump-detail output exceeds
 20 samples. No exact baseline jump count was asserted.
 After the fix, the 1,100-reference/1 Hz fixture retains 31 at the inclusive
-30-second edge; RTC-zero queries report the typed old-window warning, with
-threshold-dependent exits. The other fixture counts 200 jumps but samples 20.
+30-second edge. The initial implementation returned an old-window warning for
+RTC-zero queries; the review decision below replaces this with preserved target
+brackets, so old correlate answers succeed. The other fixture counts 200 jumps but samples 20.
 Wire fields derive from Chapter 11 Fig11-14 (§11.2.3.2) as existing reference()
 fixtures: literal BCD seconds toggle 20/25; header RTC changes recompute the
 §11.2.1.1 primary checksum. These are resource-policy/report tests, not new
@@ -88,3 +91,56 @@ CI run 44828819381 caught a probe assertion error, not a CLI failure: the new
 RSS expectation assumed default timeline limit 50, but args defaults to 100,
 so 101 warnings were correctly reported. Pin the probe to explicit --limit 50;
 production defaults and argument semantics are unchanged. No local RSS rerun.
+
+
+## PR #71 requested delta — late pairs and known-target retention
+
+Tests-first 53b294e: three runtime failures at frozen 6ddd75e (the late pair,
+120-second old-target probe and revised existing old-query test). Midnight
+crossing already passed; it is not claimed failing first. Late fixtures use
+literal Fig11-13 DOY fields and valid primary checksums, with non-time input
+also proving packet index rather than reference index. The late pair is tested
+inside (0,2,1 seconds) and outside (0,40,1) the live window. Both give zero
+jumps, exactly one out-of-order warning, and max gap 2/40 seconds respectively.
+Outside-window timeline resolution additionally reports the approved live-window
+warning; it never invents an absolute time from a discarded reference.
+
+For correlate only, keep two RTC groups per u16 channel: closest <=target and
+closest >target, with arrival provenance. Keep the first, second and latest arrivals in each
+chosen group to preserve the full library's duplicate-boundary answers: at
+most six values per channel, even under unlimited frozen-RTC duplicates. There is no global all-reference
+list. At render, bounded candidate sets reuse TimeCorrelator's nearest/tie and
+checked calendar shift; cross-channel duplicate RTC candidates keep original
+arrival order. Per-channel render uses at most six points; any-channel render
+uses at most six times the channel count plus O(channels) scratch/index storage.
+The target is parsed before input opens; no extra input pass or host-clock use.
+An interleaved-channel differential checks seven targets (before/inside/after,
+exact/midpoint) against the full library correlator for any/channel1/channel2/
+missing-channel answers, with nonlinear clocks and reverse observation order.
+The first simpler global-bracket implementation failed that differential and
+was corrected before pushing; no released behavior is claimed there. A further
+75 comparisons cover conflicting duplicate RTC runs (1/2/3/9/32 arrivals/RTC/channel)
+and pin before/exact/midpoint/after boundary answers to the full library. A
+single-value group failed that probe and was replaced by bounded boundary values.
+
+The requested 120-second file at target RTC 5s returns Day100 12:00:04.000.000
+on one and two channels, with warning threshold success. A late PTP reference
+outside the window is converted before live-cache eviction, captured for the
+known query and dates correctly (2017-01-02, +1s). Its raw seconds fixture is
+Fig11-15/17 NTF1/TS1 and TAI 1483315200+37, not a decoder round trip.
+The former old-query warning test now verifies the preserved old answer;
+live-window warning tests remain separate. Severity proposal wording is removed
+from code/help/docs: both errors are approved WARNING, no new TF ID.
+
+S17a handoff only: render Expected/Actual as day-of-year plus time of day in
+human text, keeping raw nanoseconds in machine formats. No formatting/API
+change for that deferred note here. No full CLI-104 marker or gate lift.
+
+
+Review delta: 20 CLI unit tests plus 18 join integration tests pass. Eleven
+focused runtime mutants are killed: missing late guard; jump/gap fall-through;
+late level changed to info; reference index substituted for packet index;
+unconfigured target cache; wrong preceding/following brackets; reversed
+cross-channel arrival order; dropped latest/second duplicate representatives;
+and day-of-year basis replaced by time-of-day basis. Sources restored before
+focused rerun/Clippy. Other platform/full checks are delegated to CI.
