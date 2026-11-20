@@ -58,3 +58,25 @@ fn t12_cli_accepts_eight_byte_calendar_body_at_end() {
         assert_eq!(short.correlator.len(), 0);
     }
 }
+
+// CLI-104 CSV row-retention clause only; qualified joining remains incomplete.
+#[test]
+fn csv_row_sink_does_not_retain_packet_rows() {
+    // §11.2.1.1: EB25 + 0018 + 0900 = F43D, non-time packet, Data Length0.
+    let packet = [
+        0x25, 0xEB, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0x3D, 0xF4,
+    ];
+    let bytes = packet.repeat(64);
+    let mut scanner = Ch10TimeScanner::new();
+    let mut count = 0;
+    let mut emit = |_: &ResolvedPacket| {
+        count += 1;
+        Ok(())
+    };
+    scanner
+        .scan_to(&bytes[..], true, None, Some(&mut emit))
+        .map_err(|e| e.message)
+        .unwrap();
+    assert_eq!(count, 64);
+    assert!(scanner.resolved.is_empty());
+}

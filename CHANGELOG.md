@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S16b2b1 CSV transaction (partial CLI-104)
+
+- Spool CSV rows to disk without retaining a packet-row vector. File output
+  atomically replaces from the same directory on exits 0 and 1; exits 2–4 leave
+  an existing destination untouched. Stdout copies after analysis succeeds.
+- Flush host writers before publication; clean up on errors. File targets must
+  be regular files (symlink/device rejection is intentional). Temps stay private;
+  publication copies existing permissions or normal umask-derived defaults.
+  A new inode replaces the destination; other hard links retain old contents.
+  Add a RandomState suffix to pid/counter names, retaining exclusive creation. Reference/finding bounds and dense-F1 RSS remain
+  pending; no release-gate lift. Evidence: docs/verification-s16b2b1.md.
+
 ### S16b2a command input integration (partial CLI-104)
 
 - All six commands use the bounded reader and one Data-Length-bounded scan

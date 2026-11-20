@@ -41,6 +41,7 @@ use irig106_time::network_time::{LeapSecondTable, NetworkTimeProtocol, parse_tim
 use irig106_time::*;
 /// Strict, filesystem-free argument parsing.
 pub mod args;
+mod csv_spool;
 /// Bounded raw packet transport; command integration follows in S16b.
 pub mod input;
 
@@ -113,6 +114,8 @@ struct ResolvedPacket {
     abs_time: Option<AbsoluteTime>,
 }
 
+type RowSink<'a> = &'a mut dyn FnMut(&ResolvedPacket) -> io::Result<()>;
+
 // ────────────────────────────────────────────────────────────────────
 // File scanner
 // ────────────────────────────────────────────────────────────────────
@@ -148,12 +151,21 @@ impl Ch10TimeScanner {
         }
     }
 
-    // Partial CLI-104: one transport/dispatch loop for every renderer.
     fn scan(
         &mut self,
         source: impl io::Read,
         resolve_all: bool,
         limit: Option<usize>,
+    ) -> Result<(), Failure> {
+        self.scan_to(source, resolve_all, limit, None)
+    }
+    // Partial CLI-104: one transport/dispatch loop for every renderer.
+    fn scan_to(
+        &mut self,
+        source: impl io::Read,
+        resolve_all: bool,
+        limit: Option<usize>,
+        mut emit: Option<RowSink<'_>>,
     ) -> Result<(), Failure> {
         use input::{Event, PacketReader, ReaderLimits, TailKind};
         let mut reader = PacketReader::new(source, ReaderLimits::default())
@@ -234,14 +246,19 @@ impl Ch10TimeScanner {
                 self.process_time_f2_packet(&packet.body_prefix, &hdr);
             }
             if resolve_all && limit.is_none_or(|n| self.total_packets < n) {
-                self.resolved.push(ResolvedPacket {
+                let row = ResolvedPacket {
                     packet_num: self.total_packets,
                     offset: packet.offset,
                     channel_id: hdr.channel_id,
                     data_type: hdr.data_type,
                     rtc: hdr.rtc,
                     abs_time: self.correlator.correlate(hdr.rtc, None).ok(),
-                });
+                };
+                if let Some(write_row) = emit.as_mut() {
+                    write_row(&row)?;
+                } else {
+                    self.resolved.push(row);
+                }
             }
             self.total_packets += 1;
         }
@@ -870,71 +887,68 @@ fn cmd_csv(
     output_path: Option<&Path>,
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
+    pending: &mut Option<csv_spool::CsvSpool>,
 ) -> Result<Option<Severity>, Failure> {
-    let mut scanner = Ch10TimeScanner::new();
-    scanner.scan(input, true, None)?;
-    scanner.report_findings(stderr)?;
-
-    let mut out: Box<dyn Write + '_> = match output_path {
-        Some(path) => {
-            let f = std::fs::File::create(path)?;
-            Box::new(std::io::BufWriter::new(f))
-        }
-        None => Box::new(stdout),
-    };
-
+    let mut spool = csv_spool::CsvSpool::new(output_path)?;
     writeln!(
-        out,
+        spool,
         "packet_num,offset_hex,channel_id,data_type_hex,data_type_name,rtc_raw,rtc_nanos,day_of_year,hours,minutes,seconds,nanoseconds,year,month,day"
     )?;
-
-    for r in &scanner.resolved {
-        match &r.abs_time {
-            Some(t) => {
-                writeln!(
-                    out,
-                    "{},{:#X},{},0x{:02X},{},{},{},{},{},{},{},{},{},,",
-                    r.packet_num,
-                    r.offset,
-                    r.channel_id,
-                    r.data_type,
-                    fmt_data_type_short(r.data_type),
-                    r.rtc.as_raw(),
-                    r.rtc.to_nanos(),
-                    t.day_of_year(),
-                    t.hours(),
-                    t.minutes(),
-                    t.seconds(),
-                    t.nanoseconds(),
-                    t.year().map(|y| y.to_string()).unwrap_or_default(),
-                )?;
-            }
-            None => {
-                writeln!(
-                    out,
-                    "{},{:#X},{},0x{:02X},{},{},{},,,,,,,",
-                    r.packet_num,
-                    r.offset,
-                    r.channel_id,
-                    r.data_type,
-                    fmt_data_type_short(r.data_type),
-                    r.rtc.as_raw(),
-                    r.rtc.to_nanos(),
-                )?;
-            }
-        }
-    }
-
-    out.flush()?;
+    let mut scanner = Ch10TimeScanner::new();
+    let mut emit = |row: &ResolvedPacket| write_csv_row(&mut spool, row);
+    scanner.scan_to(input, true, None, Some(&mut emit))?;
+    spool.flush()?;
+    scanner.report_findings(stderr)?;
     if let Some(path) = output_path {
         writeln!(
             stderr,
-            "Wrote {} rows to {}",
-            scanner.resolved.len(),
+            "Prepared {} rows for {}; file is replaced on exit 0 or 1.",
+            scanner.total_packets,
             path.display()
         )?;
+        *pending = Some(spool);
+    } else {
+        spool.copy_stdout(stdout)?;
     }
     Ok(scanner.highest)
+}
+
+fn write_csv_row(out: &mut dyn Write, r: &ResolvedPacket) -> io::Result<()> {
+    match &r.abs_time {
+        Some(t) => {
+            writeln!(
+                out,
+                "{},{:#X},{},0x{:02X},{},{},{},{},{},{},{},{},{},,",
+                r.packet_num,
+                r.offset,
+                r.channel_id,
+                r.data_type,
+                fmt_data_type_short(r.data_type),
+                r.rtc.as_raw(),
+                r.rtc.to_nanos(),
+                t.day_of_year(),
+                t.hours(),
+                t.minutes(),
+                t.seconds(),
+                t.nanoseconds(),
+                t.year().map(|y| y.to_string()).unwrap_or_default(),
+            )?;
+        }
+        None => {
+            writeln!(
+                out,
+                "{},{:#X},{},0x{:02X},{},{},{},,,,,,,",
+                r.packet_num,
+                r.offset,
+                r.channel_id,
+                r.data_type,
+                fmt_data_type_short(r.data_type),
+                r.rtc.as_raw(),
+                r.rtc.to_nanos(),
+            )?;
+        }
+    }
+    Ok(())
 }
 
 fn cmd_correlate(
@@ -1100,7 +1114,7 @@ impl From<io::Error> for Failure {
 /// All output uses these writers; no global stdout/stderr or process exit.
 /// All syntax is validated before input opens; input/output failures precede
 /// finding thresholds. The default failure threshold is error (shared irig106 CLI convention).
-/// Input still uses the S15b whole-file snapshot until S16b bounded streaming.
+/// Input is buffered; remaining report/reference bounds belong to S16b.
 /// Traces: L3-CLI-101 <- L2-CLI-101 <- L1-CLI-001;
 /// L3-CLI-102 <- L2-CLI-102 <- L1-CLI-002 (host/writer clauses only).
 /// Traces: L3-CLI-107 <- L2-CLI-107 <- L1-CLI-007.
@@ -1109,6 +1123,7 @@ pub fn run<S: AsRef<OsStr>>(
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
 ) -> ExitClass {
+    let mut pending = None;
     let result = args::parse(raw)
         .map_err(|e| Failure::new(ExitClass::Usage, e))
         .and_then(|request| {
@@ -1116,19 +1131,21 @@ pub fn run<S: AsRef<OsStr>>(
                 args::Request::File(a) => a.fail_on,
                 _ => None,
             };
-            let highest = dispatch(request, stdout, stderr)?;
+            let highest = dispatch(request, stdout, stderr, &mut pending)?;
             stdout.flush()?;
             stderr.flush()?;
-            Ok(
-                if highest
-                    .zip(fail_on)
-                    .is_some_and(|(level, threshold)| rank(level) >= rank(threshold))
-                {
-                    ExitClass::Findings
-                } else {
-                    ExitClass::Success
-                },
-            )
+            let class = if highest
+                .zip(fail_on)
+                .is_some_and(|(level, threshold)| rank(level) >= rank(threshold))
+            {
+                ExitClass::Findings
+            } else {
+                ExitClass::Success
+            };
+            if let Some(spool) = pending.as_mut() {
+                spool.commit()?;
+            }
+            Ok(class)
         });
     match result {
         Ok(class) => class,
@@ -1159,6 +1176,7 @@ fn dispatch(
     request: args::Request,
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
+    pending: &mut Option<csv_spool::CsvSpool>,
 ) -> Result<Option<Severity>, Failure> {
     let args = match request {
         args::Request::Help => {
@@ -1186,7 +1204,7 @@ fn dispatch(
         "channels" => cmd_channels(input, stdout, stderr),
         "jumps" => cmd_jumps(input, args.threshold_ms, stdout, stderr),
         "timeline" => cmd_timeline(input, args.limit, stdout, stderr),
-        "csv" => cmd_csv(input, args.output.as_deref(), stdout, stderr),
+        "csv" => cmd_csv(input, args.output.as_deref(), stdout, stderr, pending),
         "correlate" => cmd_correlate(input, args.rtc, stdout, stderr),
         _ => Err(Failure::new(ExitClass::Usage, "unknown command")),
     }
