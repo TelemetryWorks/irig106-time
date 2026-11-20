@@ -313,3 +313,91 @@ fn query_context_finding_is_included_in_the_final_counts() {
     );
     assert!(text.contains("TF-001") && text.contains("No time reference points"));
 }
+
+#[test]
+fn retained_reference_count_and_old_query_finding() {
+    let mut bytes = Vec::new();
+    for i in 0..1100u64 {
+        let mut p = reference(false);
+        p[16..22].copy_from_slice(&(i * 10_000_000).to_le_bytes()[..6]);
+        let sum = p[..22]
+            .chunks_exact(2)
+            .map(|w| u16::from_le_bytes([w[0], w[1]]))
+            .fold(0u16, u16::wrapping_add);
+        p[22..24].copy_from_slice(&sum.to_le_bytes());
+        bytes.extend(p);
+    }
+    let input = Input::new(&bytes);
+    let mut out = Vec::new();
+    assert_eq!(
+        run(
+            &["summary", input.0.to_str().unwrap()],
+            &mut out,
+            &mut Vec::new()
+        ),
+        ExitClass::Success
+    );
+    let text = String::from_utf8(out).unwrap();
+    let retained: usize = text
+        .lines()
+        .find_map(|l| l.strip_prefix("Correlation Refs   : "))
+        .unwrap()
+        .parse()
+        .unwrap();
+    assert!(retained <= 1024, "retained {retained}");
+    for (level, exit) in [
+        ("error", ExitClass::Success),
+        ("warning", ExitClass::Findings),
+    ] {
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        assert_eq!(
+            run(
+                &[
+                    "correlate",
+                    input.0.to_str().unwrap(),
+                    "0",
+                    "--fail-on",
+                    level
+                ],
+                &mut out,
+                &mut err
+            ),
+            exit
+        );
+        let text = String::from_utf8(err).unwrap();
+        assert!(
+            text.contains("Warning: Correlation query: query precedes retained reference window"),
+            "{text}"
+        );
+    }
+}
+
+#[test]
+fn jump_details_are_sampled_but_counts_remain_exact() {
+    let mut bytes = Vec::new();
+    for i in 0..201 {
+        let mut p = reference(false);
+        p[29] = if i % 2 == 0 { 0x20 } else { 0x25 }; // Fig11-14 seconds BCD, +/-5s.
+        bytes.extend(p);
+    }
+    let input = Input::new(&bytes);
+    for command in ["summary", "jumps"] {
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        assert_eq!(
+            run(
+                &[command, input.0.to_str().unwrap(), "--fail-on", "warning"],
+                &mut out,
+                &mut err
+            ),
+            ExitClass::Findings
+        );
+        let text = String::from_utf8(out).unwrap();
+        assert!(
+            text.lines().filter(|l| l.contains("Delta:")).count() <= 20,
+            "{command}"
+        );
+        assert!(text.contains("180 more jump details"), "{text}");
+        let diagnostics = format!("{text}{}", String::from_utf8(err).unwrap());
+        assert!(diagnostics.contains("warning=200"), "{diagnostics}");
+    }
+}
