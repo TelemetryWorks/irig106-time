@@ -39,12 +39,13 @@ remains readable. No new TF ID. The correlate target is known before scanning:
 retain its nearest RTC brackets per channel (at most six values/channel), so old RTCs
 remain answerable without retaining a whole-file index.
 CSV/timeline leave the corresponding absolute field empty. Summary/jumps count
-all adjacent-observation jumps online, display the first 20 details and an
+all non-backward-reference jumps online, display the first 20 details and an
 omitted count. Indices are accepted-observation order, not file-wide RTC sort.
 First/last/count and gap extrema are fixed-size per-channel statistics.
 Backward RTCs emit an out-of-order warning with channel, previous/current RTCs
 and zero-based packet index; skip the jump/gap update for that pair, retaining
-the late reference for correlation. Subsequent pairs use that accepted reference.
+the late reference for correlation. Jump/gap pairs retain their last non-backward
+baseline; Last remains the latest arrival.
 
 Finding output retains the first 20 generated messages with exact per-level
 counts and an `N more findings` line. Sampling never changes --fail-on.

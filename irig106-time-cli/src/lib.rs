@@ -88,6 +88,9 @@ struct TimeChannelInfo {
     last_time: Option<AbsoluteTime>,
     first_rtc: Option<Rtc>,
     last_rtc: Option<Rtc>,
+    // Last non-backward reference used for jump/gap pairs. Displayed Last
+    // remains the latest arrival, including accepted late references.
+    pair_baseline: Option<(Rtc, AbsoluteTime)>,
     min_gap_ns: Option<u64>,
     max_gap_ns: Option<u64>,
 }
@@ -106,6 +109,7 @@ impl TimeChannelInfo {
             last_time: None,
             first_rtc: None,
             last_rtc: None,
+            pair_baseline: None,
             min_gap_ns: None,
             max_gap_ns: None,
         }
@@ -324,7 +328,7 @@ impl Ch10TimeScanner {
         let out_of_order = self
             .time_channels
             .get(&hdr.channel_id)
-            .and_then(|c| c.last_rtc)
+            .and_then(|c| c.pair_baseline.map(|(rtc, _)| rtc))
             .filter(|previous| hdr.rtc < *previous);
         if let Some(previous) = out_of_order {
             self.note(
@@ -341,7 +345,7 @@ impl Ch10TimeScanner {
             return; // Accepted for correlation/inventory, not a jump/gap pair.
         }
         if let Some(info) = self.time_channels.get_mut(&hdr.channel_id) {
-            if let Some(previous) = info.last_rtc {
+            if let Some((previous, _)) = info.pair_baseline {
                 let gap = previous.elapsed_nanos(hdr.rtc);
                 info.min_gap_ns = Some(info.min_gap_ns.map_or(gap, |old| old.min(gap)));
                 info.max_gap_ns = Some(info.max_gap_ns.map_or(gap, |old| old.max(gap)));
@@ -351,9 +355,9 @@ impl Ch10TimeScanner {
             if let Some((rtc, previous)) = self
                 .time_channels
                 .get(&hdr.channel_id)
-                .and_then(|c| c.last_rtc.zip(c.last_time))
+                .and_then(|c| c.pair_baseline)
             {
-                // Adjacent observations only: online state never sorts a file.
+                // Adjacent non-backward observations: online state never sorts a file.
                 let expected_nanos = previous.as_total_ns() + rtc.elapsed_nanos(hdr.rtc);
                 let actual_nanos = time.as_total_ns();
                 let delta_nanos = actual_nanos as i64 - expected_nanos as i64;
@@ -378,6 +382,10 @@ impl Ch10TimeScanner {
                 }
             }
         }
+        self.time_channels
+            .entry(hdr.channel_id)
+            .or_insert_with(|| TimeChannelInfo::new(hdr.channel_id))
+            .pair_baseline = Some((hdr.rtc, time));
         self.references_seen += 1;
     }
 

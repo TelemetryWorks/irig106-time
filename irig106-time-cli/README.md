@@ -252,7 +252,7 @@ unavailable absolute context).
 Default `--fail-on error` keeps exit 0; `--fail-on warning` makes it exit 1.
 No TF register level is changed or new TF ID invented.
 
-Jump detection compares adjacent accepted observations per channel, not a
+Jump detection compares consecutive non-backward references per channel, not a
 file-wide RTC sort; reference indices are accepted-observation order. Summary
 uses 1 second; `jumps` uses `--threshold-ms`; the comparison remains strictly
 above the threshold. The first 20 jump details are shown with an omitted-detail
@@ -261,5 +261,5 @@ modular-RTC gap extrema require constant state per u16 channel, not all time
 packets. These compatibility diagnostics are not qualified session/scale-aware
 library quality reports. A backward RTC is an out-of-order warning with channel,
 both RTCs and zero-based packet index, not an invented jump magnitude. Skip that
-jump/gap pair; the late reference remains accepted for queries and subsequent
-pairs. Known old correlate targets remain answerable.
+jump/gap pair and preserve its baseline; the late reference remains accepted
+for queries and the displayed Last arrival. Known old correlate targets remain answerable.

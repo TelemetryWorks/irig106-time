@@ -254,3 +254,55 @@ fn target_brackets_preserve_main_duplicate_rtc_boundary_answers() {
         }
     }
 }
+
+#[test]
+fn late_arrival_preserves_pair_baseline_but_updates_inventory_and_query() {
+    for network in [false, true] {
+        let mut scanner = Ch10TimeScanner::new();
+        scanner.jump_threshold = Some(1_000_000_000);
+        scanner.query_refs = Some(target_refs::TargetReferences::new(Rtc::from_raw(
+            80_000_000,
+        )));
+        for seconds in (0..=20).chain(core::iter::once(8u32)) {
+            let clock = seconds + if scanner.total_packets == 21 { 300 } else { 0 };
+            let hdr = PktHeader {
+                channel_id: 1,
+                data_type: if network { 0x12 } else { 0x11 },
+                rtc: Rtc::from_raw(u64::from(seconds) * 10_000_000),
+            };
+            if network {
+                // Fig11-15/17: NTF1/TS1, 2017-01-02 UTC epoch +37 TAI.
+                let mut body = [0; 12];
+                body[0] = 0x11;
+                body[4..8].copy_from_slice(&(1_483_315_237 + clock).to_le_bytes());
+                scanner.process_time_f2_packet(&body, &hdr);
+            } else {
+                // Fig11-13: day1, 12:00:SS, or late 12:05:08.
+                let bcd = |n: u32| (((n / 10) << 4) | (n % 10)) as u8;
+                let body = [0, 0, 0, 0, 0, bcd(clock % 60), bcd(clock / 60), 0x12, 1, 0];
+                scanner.process_time_packet(&body, &hdr);
+            }
+            scanner.total_packets += 1;
+        }
+        let info = &scanner.time_channels[&1];
+        assert_eq!(info.packet_count, 22);
+        assert_eq!(info.last_rtc, Some(Rtc::from_raw(80_000_000)));
+        assert_eq!(info.last_time.unwrap().minutes(), 5);
+        let (baseline_rtc, baseline_time) = info.pair_baseline.unwrap();
+        assert_eq!(baseline_rtc, Rtc::from_raw(200_000_000));
+        assert_eq!((baseline_time.minutes(), baseline_time.seconds()), (0, 20));
+        assert_eq!(
+            (info.min_gap_ns, info.max_gap_ns),
+            (Some(1_000_000_000), Some(1_000_000_000))
+        );
+        assert_eq!(scanner.finding_counts, [0, 1, 0]);
+        assert_eq!(scanner.jumps_seen, 0);
+        assert_eq!(
+            scanner
+                .correlate(Rtc::from_raw(80_000_000), Some(1))
+                .unwrap()
+                .minutes(),
+            5
+        );
+    }
+}

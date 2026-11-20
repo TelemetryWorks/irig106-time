@@ -15,12 +15,13 @@ target's two RTC bracketing groups (at most six values/channel) independently of
 old targets remain answerable. Summary shows retained,
 accepted and evicted counts separately. No host clock or session inference.
 
-One previous accepted time/RTC per channel drives online jumps. Count every
+One previous non-backward time/RTC per channel drives online jumps. Count every
 jump, retain first 20 details globally, then show N more with exact total.
 Summary uses 1 second, jumps uses its validated threshold; comparison is >.
 Indices now mean accepted-observation order. Unlike the old batch detector,
 backward-RTC references warn and skip that jump/gap pair; they remain accepted
-for correlation and as the next pair's predecessor, not re-sorted by RTC.
+for correlation and displayed inventory but do not advance the pair baseline;
+references are not re-sorted by RTC.
 The arithmetic uses nominal day-of-year nanoseconds (including whole days),
 not only time of day. This is a compatibility diagnostic, not the qualified
 session/year/scale-aware timeline engine; no COR/QUA coverage is claimed.
@@ -144,3 +145,27 @@ unconfigured target cache; wrong preceding/following brackets; reversed
 cross-channel arrival order; dropped latest/second duplicate representatives;
 and day-of-year basis replaced by time-of-day basis. Sources restored before
 focused rerun/Clippy. Other platform/full checks are delegated to CI.
+
+
+## PR #71 follow-up — preserve the in-order pair baseline
+
+Tests-first 6caf9cf: both new regressions fail at reviewed head 96176f1.
+For 1 Hz references 0..20, late RTC8, then RTC21, max gap was wrongly 13s.
+When the late RTC8 clock label is five minutes inconsistent, RTC21 wrongly
+becomes a jump. Both now retain a 1s max gap, zero jumps and one out-of-order
+warning. Summary and jumps preserve finding thresholds/counts.
+
+TimeChannelInfo now keeps a separate (RTC, time) pair baseline. The late
+branch leaves it unchanged; ordinary/equal-RTC observations advance it after
+pair processing. Displayed Last/time-channel inventory still reflect the
+latest arrival, and known-target candidates still capture the late reference.
+This is one fixed-size pair per u16 channel, not additional recording history.
+An implementation-time unit test verifies both Format 1 and PTP paths: last
+arrival RTC8/clock+300s remains visible and queryable, while pair baseline is
+RTC20, gaps stay 1s and warning count stays one. No claim it failed first.
+
+Four focused runtime mutants are killed: gap uses displayed Last RTC; jump
+uses displayed Last RTC/time; late branch advances the pair baseline; display
+Last stops reflecting late arrivals. Sources restored. Focused CLI tests, fmt,
+Clippy and trace check pass; full platform/feature/RSS checks delegated to CI.
+No new whole-requirement markers, coverage increase or release-gate lift.
