@@ -46,7 +46,8 @@ returns 1. Operational failures retain precedence and CSV transaction rules.
 ## Honest executed evidence
 
 Tests-first e07be99 adds two integration tests; both fail at base main at
-runtime: summary retains 1,100 references, and 200 jump details are unbounded.
+runtime: summary retains 1,100 references, and the jump-detail output exceeds
+20 samples. No exact baseline jump count was asserted.
 After the fix, the 1,100-reference/1 Hz fixture retains 31 at the inclusive
 30-second edge; RTC-zero queries report the typed old-window warning, with
 threshold-dependent exits. The other fixture counts 200 jumps but samples 20.
