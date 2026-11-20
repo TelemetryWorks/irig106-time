@@ -193,3 +193,124 @@ fn broken_stdout_pipe_cleans_the_system_temp_spool() {
     assert_eq!(result.status.code(), Some(4));
     assert_eq!(std::fs::read_dir(&temp).unwrap().count(), 0);
 }
+
+#[test]
+fn csv_publishes_findings_exit_one_just_like_stdout() {
+    let f = Files::new(&common::NO_TIME);
+    let mut args = f.args();
+    args.extend(["--fail-on", "warning"]);
+    assert_eq!(
+        run(&args, &mut Vec::new(), &mut Vec::new()),
+        ExitClass::Findings
+    );
+    assert!(
+        std::fs::read_to_string(&f.output)
+            .unwrap()
+            .starts_with("packet_num,")
+    );
+    f.no_temps();
+}
+
+#[cfg(unix)]
+#[test]
+fn new_csv_permissions_follow_child_umask() {
+    use std::os::unix::fs::PermissionsExt;
+    let f = Files::new(&common::NO_TIME);
+    std::fs::remove_file(&f.output).unwrap();
+    let result = Command::new("sh")
+        .args([
+            "-c",
+            "umask 027; exec \"$1\" csv \"$2\" --output \"$3\"",
+            "sh",
+        ])
+        .arg(env!("CARGO_BIN_EXE_irigtime"))
+        .arg(&f.input)
+        .arg(&f.output)
+        .output()
+        .unwrap();
+    assert_eq!(
+        result.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    assert_eq!(
+        std::fs::metadata(&f.output).unwrap().permissions().mode() & 0o777,
+        0o640
+    );
+    f.no_temps();
+}
+
+#[cfg(unix)]
+#[test]
+fn existing_csv_permissions_are_preserved() {
+    use std::os::unix::fs::PermissionsExt;
+    let f = Files::new(&common::NO_TIME);
+    std::fs::set_permissions(&f.output, std::fs::Permissions::from_mode(0o604)).unwrap();
+    assert_eq!(
+        run(&f.args(), &mut Vec::new(), &mut Vec::new()),
+        ExitClass::Success
+    );
+    assert_eq!(
+        std::fs::metadata(&f.output).unwrap().permissions().mode() & 0o777,
+        0o604
+    );
+    f.no_temps();
+}
+
+#[cfg(unix)]
+#[test]
+fn symlink_and_dev_null_destinations_are_untouched() {
+    use std::os::unix::fs::{FileTypeExt, MetadataExt, symlink};
+    let target = Files::new(&common::NO_TIME);
+    let f = Files::new(&common::NO_TIME);
+    std::fs::remove_file(&f.output).unwrap();
+    symlink(&target.output, &f.output).unwrap();
+    assert_eq!(
+        run(&f.args(), &mut Vec::new(), &mut Vec::new()),
+        ExitClass::Output
+    );
+    assert!(
+        std::fs::symlink_metadata(&f.output)
+            .unwrap()
+            .file_type()
+            .is_symlink()
+    );
+    target.intact();
+    f.no_temps();
+    let before = std::fs::symlink_metadata("/dev/null").unwrap();
+    assert_eq!(
+        run(
+            &["csv", f.input.to_str().unwrap(), "--output", "/dev/null"],
+            &mut Vec::new(),
+            &mut Vec::new()
+        ),
+        ExitClass::Output
+    );
+    let after = std::fs::symlink_metadata("/dev/null").unwrap();
+    assert!(after.file_type().is_char_device());
+    assert_eq!((after.ino(), after.rdev()), (before.ino(), before.rdev()));
+    target.intact();
+    f.no_temps();
+}
+
+#[test]
+fn missing_output_directory_precedes_structurally_bad_input() {
+    let f = Files::new(&[0; 24]);
+    let missing = f.dir.join("missing/report.csv");
+    assert_eq!(
+        run(
+            &[
+                "csv",
+                f.input.to_str().unwrap(),
+                "--output",
+                missing.to_str().unwrap()
+            ],
+            &mut Vec::new(),
+            &mut Vec::new()
+        ),
+        ExitClass::Output
+    );
+    f.intact();
+    assert!(!missing.parent().unwrap().exists());
+}
