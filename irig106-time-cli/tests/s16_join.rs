@@ -700,3 +700,119 @@ fn rtc_reset_single_step_and_three_reference_run_keep_real_jump_only() {
         }
     }
 }
+
+fn without_channel7_time(bytes: &[u8]) -> Vec<u8> {
+    let mut result = bytes.to_vec();
+    for p in result.chunks_exact_mut(36) {
+        if p[2..4] == 7u16.to_le_bytes() {
+            p[15] = 9; // Same framing/offsets, no channel7 time source in control.
+            let sum = p[..22]
+                .chunks_exact(2)
+                .map(|w| u16::from_le_bytes([w[0], w[1]]))
+                .fold(0u16, u16::wrapping_add);
+            p[22..24].copy_from_slice(&sum.to_le_bytes());
+        }
+    }
+    result
+}
+fn cli_text(command: &str, bytes: &[u8], extra: &[&str]) -> (String, String) {
+    let input = Input::new(bytes);
+    let mut args = vec![command, input.0.to_str().unwrap()];
+    args.extend_from_slice(extra);
+    args.extend(["--fail-on", "never"]);
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+    assert_eq!(run(&args, &mut out, &mut err), ExitClass::Success);
+    (
+        String::from_utf8(out).unwrap(),
+        String::from_utf8(err).unwrap(),
+    )
+}
+
+#[test]
+fn reset_channel7_does_not_withhold_channel8_timeline_or_old_query() {
+    let mut bytes = Vec::new();
+    for sec in 0..=40 {
+        for ch in [7, 8] {
+            bytes.extend(doy_packet(ch, sec, 100, 43200 + sec as u32));
+        }
+    }
+    for sec in 1..=4 {
+        bytes.extend(doy_packet(7, sec, 100, 43300 + sec as u32));
+        bytes.extend(doy_packet(8, 40 + sec, 100, 43240 + sec as u32));
+    }
+    let control = without_channel7_time(&bytes);
+    let (expected, _) = cli_text("timeline", &control, &[]);
+    let (actual, _) = cli_text("timeline", &bytes, &[]);
+    let rows = |text: &str| {
+        text.lines()
+            .filter(|l| l.split_whitespace().nth(2) == Some("8"))
+            .map(str::to_owned)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(rows(&actual), rows(&expected));
+    let (expected, _) = cli_text("correlate", &control, &["2FAF080"]); // 5s.
+    let (actual, _) = cli_text("correlate", &bytes, &["2FAF080"]);
+    let line = |text: &str| {
+        text.lines()
+            .find(|l| l.contains("Channel   8  →"))
+            .map(str::to_owned)
+    };
+    assert!(line(&expected).is_some());
+    assert_eq!(line(&actual), line(&expected));
+}
+
+#[test]
+fn overlapping_reset_segments_are_labelled_and_warn_once() {
+    let mut bytes = Vec::new();
+    for sec in 0..=40 {
+        bytes.extend(doy_packet(7, sec, 100, 43200 + sec as u32));
+    }
+    for sec in 1..=8 {
+        bytes.extend(doy_packet(7, sec, 100, 43300 + sec as u32));
+    }
+    let (out, err) = cli_text("correlate", &bytes, &["2FAF080"]);
+    assert!(
+        out.contains("Channel   7 Segment   1  → Day 100 12:00:05.000.000"),
+        "{out}"
+    );
+    assert!(
+        out.contains("Channel   7 Segment   2  → Day 100 12:01:45.000.000"),
+        "{out}"
+    );
+    assert_eq!(
+        err.matches("ambiguous across reset segments").count(),
+        1,
+        "{err}"
+    );
+    assert!(!out.contains("Any channel"));
+}
+
+#[test]
+fn provisional_reset_run_cannot_contaminate_old_segment_range() {
+    let mut bytes = Vec::new();
+    for sec in 10..=20 {
+        bytes.extend(doy_packet(7, sec, 100, 43200 + sec as u32));
+    }
+    for sec in 1..=8 {
+        bytes.extend(doy_packet(7, sec, 100, 43300 + sec as u32));
+    }
+    let (out, err) = cli_text("correlate", &bytes, &["2FAF080"]);
+    assert!(
+        out.contains("Channel   7 Segment   2  → Day 100 12:01:45.000.000"),
+        "{out}"
+    );
+    assert!(!out.contains("Segment   1"), "{out}");
+    assert!(!err.contains("ambiguous"), "{err}");
+}
+
+#[test]
+fn pending_late_channel_does_not_withhold_observed_times_or_other_channel() {
+    let bytes = [(7, 15), (8, 20), (7, 3), (8, 21), (7, 4), (8, 22)]
+        .into_iter()
+        .flat_map(|(ch, sec)| doy_packet(ch, sec, 100, 43200 + sec as u32))
+        .collect::<Vec<_>>();
+    let (out, err) = cli_text("timeline", &bytes, &[]);
+    assert!(!out.contains("N/A"), "{out}");
+    assert!(!err.contains("classification pending"), "{err}");
+    assert_eq!(err.matches("Out-of-order").count(), 2);
+}

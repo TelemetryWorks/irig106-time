@@ -496,3 +496,22 @@ fn clear_channel_keeps_loss_guard_for_new_low_rtc_window() {
     );
     assert_eq!(s.correlate(Rtc::from_raw(10_000_000), Some(7)), Ok(time));
 }
+
+#[test]
+fn discard_reference_removes_exact_rtc_and_preserves_loss_guard() {
+    let mut s = StreamingTimeCorrelator::new(NanosDuration::new(u64::MAX));
+    let time = AbsoluteTime::new(100, 12, 0, 0, 0).unwrap();
+    s.add_reference(7, Rtc::from_raw(30), time);
+    s.add_reference(7, Rtc::from_raw(10), time);
+    s.add_reference(8, Rtc::from_raw(20), time);
+    assert!(s.discard_reference(7, Rtc::from_raw(30)));
+    assert!(!s.discard_reference(7, Rtc::from_raw(30)));
+    assert_eq!(s.len(), 2);
+    assert_eq!(s.total_evicted(), 1);
+    assert_eq!(s.correlate(Rtc::from_raw(10), Some(7)), Ok(time));
+    assert_eq!(
+        s.correlate(Rtc::from_raw(9), Some(7)),
+        Err(TimeError::QueryBeforeRetainedWindow)
+    );
+    assert_eq!(s.correlate(Rtc::from_raw(20), Some(8)), Ok(time));
+}
