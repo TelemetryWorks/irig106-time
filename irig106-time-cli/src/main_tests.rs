@@ -80,3 +80,29 @@ fn csv_row_sink_does_not_retain_packet_rows() {
     assert_eq!(count, 64);
     assert!(scanner.resolved.is_empty());
 }
+
+// Partial CLI-104/107: sample bounds must never cap factual counts or severity.
+#[test]
+fn finding_samples_are_bounded_and_levels_remain_exact() {
+    let mut s = Ch10TimeScanner::new();
+    for i in 0..30 {
+        s.note(Severity::Warning, format!("sample {i}"));
+    }
+    for i in 0..7 {
+        s.note(Severity::Information, format!("info {i}"));
+    }
+    s.note(Severity::Error, "late error");
+    assert_eq!(s.errors.len(), 20);
+    assert_eq!(s.highest, Some(Severity::Error));
+    let mut out = Vec::new();
+    s.report_findings(&mut out).map_err(|e| e.message).unwrap();
+    let text = String::from_utf8(out).unwrap();
+    assert!(
+        text.contains("Findings: error=1, warning=30, info=7 (total=38)"),
+        "{text}"
+    );
+    assert!(text.contains("18 more findings"), "{text}");
+    assert!(text.contains("Warning: sample 19"));
+    assert!(!text.contains("sample 20"));
+    assert!(!text.contains("late error"));
+}

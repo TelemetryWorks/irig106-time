@@ -311,3 +311,20 @@ fn missing_output_directory_precedes_structurally_bad_input() {
     f.intact();
     assert!(!missing.parent().unwrap().exists());
 }
+
+#[cfg(unix)]
+#[test]
+fn readonly_existing_csv_is_not_replaced_by_rename() {
+    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+    let f = Files::new(&common::NO_TIME);
+    std::fs::set_permissions(&f.output, std::fs::Permissions::from_mode(0o444)).unwrap();
+    let before = std::fs::metadata(&f.output).unwrap();
+    assert_eq!(
+        run(&f.args(), &mut Vec::new(), &mut Vec::new()),
+        ExitClass::Output
+    );
+    f.intact();
+    let after = std::fs::metadata(&f.output).unwrap();
+    assert_eq!(after.ino(), before.ino());
+    assert_eq!(after.permissions().mode() & 0o777, 0o444);
+}
