@@ -459,3 +459,22 @@ fn loss_history_survives_empty_channel_and_does_not_taint_other_channels() {
     );
     assert!(s.correlate(Rtc::from_raw(30), Some(1)).is_ok());
 }
+
+#[test]
+fn clear_channel_discards_only_its_epoch_and_restarts_latest_when_empty() {
+    let mut s = StreamingTimeCorrelator::new(NanosDuration::new(30_000_000_000));
+    let time = AbsoluteTime::new(100, 12, 0, 0, 0).unwrap();
+    s.add_reference(1, Rtc::from_raw(400_000_000), time);
+    s.add_reference(2, Rtc::from_raw(400_000_000), time);
+    assert_eq!(s.clear_channel(1), 1);
+    assert_eq!(s.channel_ids(), [2]);
+    assert_eq!(s.correlate(Rtc::from_raw(400_000_000), Some(2)), Ok(time));
+    assert_eq!(s.clear_channel(1), 0);
+    assert_eq!(s.clear_channel(2), 1);
+    assert_eq!(s.latest_rtc(), None);
+    s.add_reference(1, Rtc::from_raw(10_000_000), time);
+    assert_eq!(s.latest_rtc(), Some(Rtc::from_raw(10_000_000)));
+    assert_eq!(s.len(), 1);
+    assert_eq!(s.total_evicted(), 2);
+    assert_eq!(s.correlate(Rtc::from_raw(10_000_000), Some(1)), Ok(time));
+}

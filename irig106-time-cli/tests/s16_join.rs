@@ -662,3 +662,56 @@ fn consecutive_late_references_compare_against_pair_baseline() {
         }
     }
 }
+
+#[test]
+fn rtc_reset_single_step_and_three_reference_run_keep_real_jump_only() {
+    for last in [20u64, 40] {
+        let mut bytes = Vec::new();
+        for seconds in 0..=last {
+            bytes.extend(doy_packet(1, seconds, 100, 43200 + seconds as u32));
+        }
+        for seconds in 1..=4 {
+            // New epoch clock starts +100s; only its RTC4 point adds a +5s step.
+            bytes.extend(doy_packet(
+                1,
+                seconds,
+                100,
+                43300 + seconds as u32 + if seconds == 4 { 5 } else { 0 },
+            ));
+        }
+        let input = Input::new(&bytes);
+        for command in ["summary", "jumps"] {
+            let (mut out, mut err) = (Vec::new(), Vec::new());
+            assert_eq!(
+                run(
+                    &[command, input.0.to_str().unwrap(), "--fail-on", "warning"],
+                    &mut out,
+                    &mut err
+                ),
+                ExitClass::Findings
+            );
+            let text = format!(
+                "{}{}",
+                String::from_utf8(out).unwrap(),
+                String::from_utf8(err).unwrap()
+            );
+            assert_eq!(text.matches("RTC reset on channel 1").count(), 1, "{text}");
+            assert!(
+                text.contains(&format!(
+                    "at packet {}: {:#X} -> {:#X}",
+                    last + 1,
+                    last * 10_000_000,
+                    10_000_000
+                )),
+                "{text}"
+            );
+            assert!(!text.contains("Out-of-order"), "{text}");
+            assert_eq!(text.matches("Delta:").count(), 1, "{text}");
+            assert!(text.contains("Delta: +5000.000 ms"), "{text}");
+            assert!(text.contains("warning=2"), "{text}");
+            if command == "summary" {
+                assert!(text.contains("max=1000000000 ns"), "{text}");
+            }
+        }
+    }
+}
