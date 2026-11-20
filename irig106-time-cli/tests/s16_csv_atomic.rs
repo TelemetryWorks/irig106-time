@@ -82,22 +82,14 @@ fn csv_replaces_existing_file_only_after_success() {
     f.no_temps();
 }
 #[test]
-fn csv_failure_classes_leave_existing_destination_and_no_temp() {
-    for class in [
-        ExitClass::Findings,
-        ExitClass::Usage,
-        ExitClass::Input,
-        ExitClass::Output,
-    ] {
+fn csv_operational_failure_classes_leave_existing_destination_and_no_temp() {
+    for class in [ExitClass::Usage, ExitClass::Input, ExitClass::Output] {
         let f = Files::new(if class == ExitClass::Input {
             &[0; 24]
         } else {
             &common::NO_TIME
         });
         let mut args = f.args();
-        if class == ExitClass::Findings {
-            args.extend(["--fail-on", "warning"]);
-        }
         if class == ExitClass::Usage {
             args.extend(["--fail-on", "bogus"]);
         }
@@ -260,8 +252,8 @@ fn existing_csv_permissions_are_preserved() {
 
 #[cfg(unix)]
 #[test]
-fn symlink_and_dev_null_destinations_are_untouched() {
-    use std::os::unix::fs::{FileTypeExt, MetadataExt, symlink};
+fn symlink_destination_is_untouched() {
+    use std::os::unix::fs::symlink;
     let target = Files::new(&common::NO_TIME);
     let f = Files::new(&common::NO_TIME);
     std::fs::remove_file(&f.output).unwrap();
@@ -278,6 +270,12 @@ fn symlink_and_dev_null_destinations_are_untouched() {
     );
     target.intact();
     f.no_temps();
+}
+#[cfg(unix)]
+#[test]
+fn dev_null_destination_is_untouched() {
+    use std::os::unix::fs::{FileTypeExt, MetadataExt};
+    let f = Files::new(&common::NO_TIME);
     let before = std::fs::symlink_metadata("/dev/null").unwrap();
     assert_eq!(
         run(
@@ -290,7 +288,6 @@ fn symlink_and_dev_null_destinations_are_untouched() {
     let after = std::fs::symlink_metadata("/dev/null").unwrap();
     assert!(after.file_type().is_char_device());
     assert_eq!((after.ino(), after.rdev()), (before.ino(), before.rdev()));
-    target.intact();
     f.no_temps();
 }
 

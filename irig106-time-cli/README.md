@@ -133,18 +133,23 @@ this interim warning and the CLI publication/release gate are removed.
 ## CSV transactions
 
 For `csv --output report.csv`, rows are spooled in the destination directory.
-Only exit 0 atomically replaces the destination. Exits 1–4 preserve an existing
-file and remove the temporary report. Use `--fail-on never` to export despite
-findings while retaining operational error handling. File output requires a
-regular-file target, not a symlink, directory, pipe or device.
+Exits 0 and 1 atomically replace the destination: findings are not a publication
+failure. Exits 2, 3 and 4 preserve an existing file and clean up the temp.
 
-Without `--output`, the spool uses the system temp directory. After analysis
-succeeds it is copied to stdout, including reports returning findings exit 1.
-A temporary-storage or copy failure is output 4. Temporary creation/writes can
-precede later input analysis; the first fatal operational failure still wins.
-Temporary files are exclusive and private on Unix (0600, also after replacement).
-The runner flushes both host writers before file publication; rename is its
-last fallible operation. No report is published on a later host-flush failure.
+The report temp is private (0600) while written. Before rename, existing-target
+permissions are copied; new Unix files get 0666 masked by the process umask,
+and new Windows files get platform defaults. Replacement creates a new inode:
+other hard links keep the old contents. This copies standard file permissions,
+not ownership or other inode metadata. Temp names combine pid/counter with a
+random `RandomState` suffix; exclusive creation prevents following planted names.
+
+Rejecting non-regular targets (symlinks, devices including `/dev/null`, pipes,
+and directories) with exit 4 is intentional. Their targets remain untouched;
+use stdout for streams. Without `--output`, system-temp staging is copied to
+stdout after analysis succeeds, including reports with findings exit 1.
+The runner flushes both host writers before file publication; rename remains
+the last fallible operation. Temporary-storage/copy/permission failures are
+output 4 and trigger cleanup.
 
 ## Dependencies
 
@@ -182,9 +187,13 @@ where a valid option has no effect. Unknown values and duplicates are usage2.
 Precedence is usage2 first, then the first fatal input3/output4, then findings1,
 then success0. Validate all usage before opening input; finish output and both
 flushes before selecting a finding-only result. Diagnostics after fatal errors
-are attempted where possible and cannot replace that first fatal class. Here
-input/analysis completes before rendering, so a later input failure after an
-output failure cannot occur; S16b's reader must preserve the same precedence.
+are attempted where possible and cannot replace that first fatal class.
+CSV temp creation and row writes interleave with input analysis. Order is usage
+validation, input open, spool creation, packet reads/spool writes, destination
+copy and host flushes, then file permissions/atomic rename. A missing `--output`
+directory therefore gives 4 even when a readable input is structurally bad;
+an unreadable input gives 3 before spool creation. Exit 1 still publishes CSV.
+Other commands complete their current analysis before rendering.
 
 ### Current scanner levels
 

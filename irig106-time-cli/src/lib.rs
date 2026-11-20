@@ -902,7 +902,7 @@ fn cmd_csv(
     if let Some(path) = output_path {
         writeln!(
             stderr,
-            "Prepared {} rows for {}; file is replaced only on exit 0.",
+            "Prepared {} rows for {}; file is replaced on exit 0 or 1.",
             scanner.total_packets,
             path.display()
         )?;
@@ -1142,10 +1142,8 @@ pub fn run<S: AsRef<OsStr>>(
             } else {
                 ExitClass::Success
             };
-            if class == ExitClass::Success {
-                if let Some(spool) = pending.as_mut() {
-                    spool.commit()?;
-                }
+            if let Some(spool) = pending.as_mut() {
+                spool.commit()?;
             }
             Ok(class)
         });

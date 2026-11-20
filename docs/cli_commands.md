@@ -23,9 +23,13 @@ where a valid option has no effect. Unknown values and duplicates are usage2.
 Precedence is usage2 first, then the first fatal input3/output4, then findings1,
 then success0. Validate all usage before opening input; finish output and both
 flushes before selecting a finding-only result. Diagnostics after fatal errors
-are attempted where possible and cannot replace that first fatal class. Here
-input/analysis completes before rendering, so a later input failure after an
-output failure cannot occur; S16b's reader must preserve the same precedence.
+are attempted where possible and cannot replace that first fatal class.
+CSV temp creation and row writes interleave with input analysis. Order is usage
+validation, input open, spool creation, packet reads/spool writes, destination
+copy and host flushes, then file permissions/atomic rename. A missing `--output`
+directory therefore gives 4 even when a readable input is structurally bad;
+an unreadable input gives 3 before spool creation. Exit 1 still publishes CSV.
+Other commands complete their current analysis before rendering.
 
 | Code | Meaning |
 | --- | --- |
