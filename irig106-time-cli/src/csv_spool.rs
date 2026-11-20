@@ -145,6 +145,18 @@ impl Write for CsvSpool {
 }
 impl Drop for CsvSpool {
     fn drop(&mut self) {
+        #[cfg(windows)]
+        if !self.published {
+            // A copied readonly flag must not strand our failed temporary.
+            // Never follow a link or change the destination's permissions.
+            if let Ok(m) = fs::symlink_metadata(&self.path) {
+                if m.is_file() && m.permissions().readonly() {
+                    let mut permissions = m.permissions();
+                    permissions.set_readonly(false);
+                    let _ = fs::set_permissions(&self.path, permissions);
+                }
+            }
+        }
         drop(self.writer.take());
         if !self.published {
             let _ = fs::remove_file(&self.path);
@@ -335,4 +347,18 @@ mod tests {
         assert!(a.chars().all(|c| c.is_ascii_hexdigit()));
         assert_ne!(a, b);
     }
+    #[cfg(windows)]
+    #[test]
+    fn readonly_failed_temporary_is_cleaned_up() {
+        let d = Dir::new();
+        let mut spool = CsvSpool::create_in(&d.0, None).unwrap();
+        let temporary = spool.path.clone();
+        spool.write_all(b"complete report").unwrap(); spool.flush().unwrap();
+        let mut permissions = spool.writer().unwrap().get_ref().metadata().unwrap().permissions();
+        permissions.set_readonly(true);
+        spool.writer().unwrap().get_ref().set_permissions(permissions).unwrap();
+        drop(spool);
+        assert!(!temporary.exists());
+    }
+
 }

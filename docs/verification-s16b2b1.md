@@ -90,3 +90,7 @@ implementation; no failing-first claim for them. No whole requirement markers.
 README and cli_commands now document CSV's interleaved staging/analysis order.
 Dense-F1 RSS and bounded findings/reference/jump/quality state remain later
 slices; interim warning and publication gate stay. No Review field changes.
+
+Windows additionally clears a copied readonly flag on an owned, unpublished
+regular-file temp before cleanup (not on the destination or a link). Its
+Windows-only regression is delegated to platform CI, not claimed run locally.
