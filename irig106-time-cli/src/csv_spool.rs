@@ -353,12 +353,23 @@ mod tests {
         let d = Dir::new();
         let mut spool = CsvSpool::create_in(&d.0, None).unwrap();
         let temporary = spool.path.clone();
-        spool.write_all(b"complete report").unwrap(); spool.flush().unwrap();
-        let mut permissions = spool.writer().unwrap().get_ref().metadata().unwrap().permissions();
+        spool.write_all(b"complete report").unwrap();
+        spool.flush().unwrap();
+        let mut permissions = spool
+            .writer()
+            .unwrap()
+            .get_ref()
+            .metadata()
+            .unwrap()
+            .permissions();
         permissions.set_readonly(true);
-        spool.writer().unwrap().get_ref().set_permissions(permissions).unwrap();
+        spool
+            .writer()
+            .unwrap()
+            .get_ref()
+            .set_permissions(permissions)
+            .unwrap();
         drop(spool);
         assert!(!temporary.exists());
     }
-
 }
