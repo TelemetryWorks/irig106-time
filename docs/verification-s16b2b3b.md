@@ -30,7 +30,7 @@ jump/reference vectors feed quality. u16 channels bound inventory/statistics
 at 65,536 entries; data-type counts have at most 256. Live references have cap
 plus one transient entry, with deque storage reclamation from #70. Diagnostic
 strings and jump samples have cap 20 each. Timeline retains only caller-limited
-rows (default 50); CSV rows use the existing disk spool. Output can grow on
+rows (default 100); CSV rows use the existing disk spool. Output can grow on
 disk, not in a packet-row vector. No process-RSS bound is claimed yet.
 
 ## Explicit severity proposal
@@ -62,7 +62,7 @@ rows under error/warning thresholds. They are not claimed failing first.
 Local checks: fmt, touched CLI suite and Clippy, focused mutations, matrix.
 Full matrix, platform and existing sparse-file RSS run in PR CI. That sparse
 probe now asserts exact warning totals rather than TF-001 sample text: CSV
-produces 24,576 unresolved rows + TF-001, timeline 50 + TF-001, correlate two,
+produces 24,576 unresolved rows + TF-001, timeline (explicit --limit 50) 50 + TF-001, correlate two,
 other commands one. TF-001 after the sample cap still counts but is not printed.
 No local large-file generation or RSS rerun.
 
@@ -81,3 +81,9 @@ disabled age bound; unbounded jump samples; counting sampled jumps only;
 threshold >= instead of >; reversed residual sign; old-window level made error;
 empty-window level made error; silenced unresolved row; min gap computed as max.
 Sources restored and focused tests rerun. No compile failures count as kills.
+
+
+CI run 44828819381 caught a probe assertion error, not a CLI failure: the new
+RSS expectation assumed default timeline limit 50, but args defaults to 100,
+so 101 warnings were correctly reported. Pin the probe to explicit --limit 50;
+production defaults and argument semantics are unchanged. No local RSS rerun.

@@ -42,6 +42,8 @@ with tempfile.TemporaryDirectory(prefix="irigtime-reader-rss-") as tmp:
         argv = [str(binary), command, str(path)]
         if command == "correlate":
             argv.append("0")
+        if command == "timeline":
+            argv.extend(["--limit", "50"])  # Pin the probe, not the CLI default.
         cases.append((command, argv))
     for name, argv in cases:
         with (Path(tmp) / f"{name}.log").open("w+") as log:
