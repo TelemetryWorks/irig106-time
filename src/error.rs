@@ -154,6 +154,9 @@ pub enum TimeError {
     /// No reference point available for RTC-to-absolute-time correlation.
     NoReferencePoint,
 
+    /// References were evicted and the query precedes the retained window.
+    QueryBeforeRetainedWindow,
+
     /// Input buffer was shorter than required.
     BufferTooShort {
         /// Number of bytes required.
@@ -258,6 +261,9 @@ impl fmt::Display for TimeError {
             TimeError::NeedsContext { context } => write!(f, "time needs context: {context}"),
             TimeError::InvalidTimeStatus { status } => {
                 write!(f, "network time status is not valid: {status:#x}")
+            }
+            TimeError::QueryBeforeRetainedWindow => {
+                write!(f, "query precedes retained reference window")
             }
             TimeError::NoReferencePoint => {
                 write!(f, "no time reference point available for correlation")

@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking fix: honest streaming reference windows
+
+- Both age-only and count-limited StreamingTimeCorrelator now return the typed
+  `TimeError::QueryBeforeRetainedWindow` for queries older than the retained
+  window after eviction in that query's channel/set, instead of extrapolating
+  across discarded clock steps. Fully evicted channels return NoReferencePoint;
+  no per-channel anchor is reserved. Callers must handle the new error variant.
+- Exact duplicate-RTC queries now choose the latest arrival in both modes.
+  Per-channel VecDeque storage removes front-shifting on eviction; loss history
+  retains only channel IDs (bounded by the u16 domain), not reference anchors.
+
+### S16b2b3a bounded correlation storage prerequisite (partial CLI-104)
+
+- Add opt-in `StreamingTimeCorrelator::with_reference_limit`: a global count
+  cap alongside age eviction, including duplicate/frozen RTCs. Reclaim empty
+  channels and oversized vector backing storage after eviction. The existing
+  constructor remains age-only; the compatibility API still lacks recording
+  session/scale/basis semantics.
+- CLI wiring, online jump/quality state and dense-F1 RSS evidence follow in
+  separate slices. No coverage increase or release-gate lift; retain the README
+  warning. Evidence: docs/verification-s16b2b3a.md.
+
 ### S16b2b2 bounded finding reports (partial CLI-104)
 
 - Retain 20 finding samples, exact error/warning/info counts and an omitted
