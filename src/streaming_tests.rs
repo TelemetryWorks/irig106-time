@@ -314,3 +314,35 @@ fn age_eviction_releases_empty_channel_storage_without_a_count_limit() {
     assert_eq!(s.channel_refs.len(), 1);
     assert_eq!(s.total_evicted(), 63);
 }
+
+#[test]
+fn a_single_slot_retains_the_latest_equal_rtc_arrival() {
+    let mut s = StreamingTimeCorrelator::with_reference_limit(
+        NanosDuration::new(u64::MAX),
+        core::num::NonZeroUsize::MIN,
+    );
+    s.add_reference(
+        1,
+        Rtc::from_raw(0),
+        AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(),
+    );
+    let newer = AbsoluteTime::new(100, 12, 0, 5, 0).unwrap();
+    s.add_reference(1, Rtc::from_raw(0), newer);
+    assert_eq!(s.len(), 1);
+    assert_eq!(s.total_evicted(), 1);
+    assert_eq!(s.correlate(Rtc::from_raw(0), Some(1)).unwrap(), newer);
+}
+
+#[test]
+fn count_eviction_uses_oldest_rtc_not_channel_or_arrival_order() {
+    let mut s = StreamingTimeCorrelator::with_reference_limit(
+        NanosDuration::new(u64::MAX),
+        core::num::NonZeroUsize::new(2).unwrap(),
+    );
+    let time = AbsoluteTime::new(100, 12, 0, 0, 0).unwrap();
+    for (channel, raw) in [(1, 20), (2, 10), (3, 30)] {
+        s.add_reference(channel, Rtc::from_raw(raw), time);
+    }
+    assert_eq!(s.channel_ids(), [1, 3]);
+    assert_eq!(s.total_evicted(), 1);
+}

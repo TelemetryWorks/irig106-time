@@ -12,7 +12,8 @@
 //! # Design
 //!
 //! - **Sliding window:** Reference points older than `max_age_ns` are evicted
-//!   on each insert, keeping memory bounded.
+//!   on each insert. Age alone does not cap frozen-counter duplicates; use
+//!   `with_reference_limit` for a global count/storage bound.
 //! - **Arrival-order insert:** Does not assume packets arrive in RTC order.
 //!   Maintains RTC-sorted per-channel vecs via binary search insert.
 //! - **Per-channel indexing:** Same O(log n) channel-filtered lookup as the
@@ -27,6 +28,7 @@
 extern crate alloc;
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
+use core::num::NonZeroUsize;
 
 use crate::absolute::AbsoluteTime;
 use crate::error::{Result, TimeError};
@@ -36,6 +38,7 @@ use irig106_types::NanosDuration;
 /// A streaming correlator that maintains a bounded sliding window of
 /// reference points for live UDP/network telemetry processing.
 ///
+/// `new` limits age only; `with_reference_limit` also caps count and storage.
 /// Reference points older than `max_age_ns` (measured in RTC nanoseconds
 /// from the latest reference) are automatically evicted on each insert.
 ///
@@ -61,6 +64,8 @@ pub struct StreamingTimeCorrelator {
     /// Maximum age in nanoseconds. References older than
     /// `latest_rtc - max_age_ns` are evicted.
     max_age_ns: u64,
+    /// Optional global count limit, including equal-RTC references.
+    max_references: Option<NonZeroUsize>,
     /// The highest RTC seen so far (for eviction).
     latest_rtc: Option<Rtc>,
     /// Total reference points across all channels.
@@ -86,16 +91,36 @@ impl StreamingTimeCorrelator {
     /// Reference points whose RTC is more than `max_age` behind the
     /// latest-seen RTC are evicted on the next insert.
     ///
+    /// This constructor has no count limit: equal-RTC input can grow without
+    /// bound. Use [`Self::with_reference_limit`] for a hard resource cap.
+    ///
     /// A typical value for 1 Hz time packets with 30 seconds of lookback:
     /// `NanosDuration::from_secs(30)` (checked, returning Option).
     pub fn new(max_age: NanosDuration) -> Self {
         Self {
             channel_refs: BTreeMap::new(),
             max_age_ns: max_age.get(),
+            max_references: None,
             latest_rtc: None,
             total_refs: 0,
             total_evicted: 0,
         }
+    }
+
+    /// Limit both RTC age and the global retained reference count.
+    ///
+    /// Age alone does not bound duplicate/frozen-counter input. This opt-in
+    /// count bound evicts the smallest raw RTC first, then the smallest channel
+    /// ID on a tie; equal-RTC entries on one channel evict in arrival order.
+    /// Empty channels and excess vector storage are reclaimed. Insertion can
+    /// temporarily hold one extra reference before eviction.
+    ///
+    /// This compatibility API still has no session/scale/basis semantics;
+    /// recording answers should use `stream`/`timeline` with shared policy.
+    pub fn with_reference_limit(max_age: NanosDuration, max_references: NonZeroUsize) -> Self {
+        let mut this = Self::new(max_age);
+        this.max_references = Some(max_references);
+        this
     }
 
     /// Insert a reference point and evict stale entries.
@@ -113,9 +138,12 @@ impl StreamingTimeCorrelator {
 
         // Insert into per-channel sorted vec
         let refs = self.channel_refs.entry(channel_id).or_default();
-        let pos = refs
-            .binary_search_by_key(&rtc, |r| r.rtc)
-            .unwrap_or_else(|e| e);
+        let pos = if self.max_references.is_some() {
+            refs.partition_point(|r| r.rtc <= rtc)
+        } else {
+            refs.binary_search_by_key(&rtc, |r| r.rtc)
+                .unwrap_or_else(|e| e)
+        };
         refs.insert(
             pos,
             StreamingRef {
@@ -271,6 +299,38 @@ impl StreamingTimeCorrelator {
             let evicted = before - refs.len();
             self.total_refs -= evicted;
             self.total_evicted += evicted;
+            if evicted != 0 {
+                Self::compact(refs);
+            }
+        }
+        self.channel_refs.retain(|_, refs| !refs.is_empty());
+        if let Some(limit) = self.max_references {
+            while self.total_refs > limit.get() {
+                let oldest = self
+                    .channel_refs
+                    .iter()
+                    .filter_map(|(&ch, refs)| refs.first().map(|r| (r.rtc, ch)))
+                    .min();
+                let Some((_, channel)) = oldest else { break };
+                if let Some(refs) = self.channel_refs.get_mut(&channel) {
+                    // The selected entry is nonempty, with exclusive access.
+                    if !refs.is_empty() {
+                        refs.remove(0);
+                        self.total_refs -= 1;
+                        self.total_evicted += 1;
+                        Self::compact(refs);
+                    }
+                }
+                self.channel_refs.retain(|_, refs| !refs.is_empty());
+            }
+        }
+    }
+
+    fn compact(refs: &mut Vec<StreamingRef>) {
+        if refs.capacity() > 4 && refs.len() < refs.capacity() / 2 {
+            // A fresh allocation releases an old large backing store even if
+            // one anchor remains. Empty vectors are removed from the map.
+            *refs = refs.to_vec();
         }
     }
 
