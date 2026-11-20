@@ -1,6 +1,7 @@
 use super::*;
 use crate::absolute::AbsoluteTime;
 use crate::rtc::Rtc;
+use alloc::string::ToString;
 use irig106_types::NanosDuration;
 
 #[test]
@@ -345,4 +346,87 @@ fn count_eviction_uses_oldest_rtc_not_channel_or_arrival_order() {
     }
     assert_eq!(s.channel_ids(), [1, 3]);
     assert_eq!(s.total_evicted(), 1);
+}
+
+#[test]
+fn evicted_step_queries_are_honest_in_both_modes() {
+    for count_limited in [false, true] {
+        let mut s = if count_limited {
+            StreamingTimeCorrelator::with_reference_limit(
+                NanosDuration::new(u64::MAX),
+                core::num::NonZeroUsize::new(2).unwrap(),
+            )
+        } else {
+            StreamingTimeCorrelator::new(NanosDuration::new(1000))
+        };
+        let old = AbsoluteTime::new(100, 12, 0, 0, 0).unwrap();
+        let stepped = AbsoluteTime::new(100, 13, 0, 0, 0).unwrap();
+        s.add_reference(1, Rtc::from_raw(0), old);
+        s.add_reference(1, Rtc::from_raw(10), stepped);
+        s.add_reference(1, Rtc::from_raw(20), stepped);
+        for ch in [Some(1), None] {
+            let error = s.correlate(Rtc::from_raw(0), ch).unwrap_err();
+            assert_eq!(
+                error.to_string(),
+                "query precedes retained reference window"
+            );
+        }
+        // No loss on channel 2: pre-reference extrapolation is still allowed.
+        s.add_reference(2, Rtc::from_raw(20), old);
+        assert!(s.correlate(Rtc::from_raw(19), Some(2)).is_ok());
+    }
+}
+
+#[test]
+fn duplicate_rtc_uses_latest_arrival_in_both_modes() {
+    for count_limited in [false, true] {
+        let mut s = if count_limited {
+            StreamingTimeCorrelator::with_reference_limit(
+                NanosDuration::new(u64::MAX),
+                core::num::NonZeroUsize::new(8).unwrap(),
+            )
+        } else {
+            StreamingTimeCorrelator::new(NanosDuration::new(u64::MAX))
+        };
+        for second in 0..5 {
+            s.add_reference(
+                1,
+                Rtc::from_raw(10),
+                AbsoluteTime::new(100, 12, 0, second, 0).unwrap(),
+            );
+        }
+        for ch in [None, Some(1)] {
+            assert_eq!(s.correlate(Rtc::from_raw(10), ch).unwrap().seconds(), 4);
+        }
+    }
+}
+
+#[test]
+fn seeded_retained_window_differential() {
+    let mut full = StreamingTimeCorrelator::new(NanosDuration::new(u64::MAX));
+    let mut bounded = StreamingTimeCorrelator::with_reference_limit(
+        NanosDuration::new(u64::MAX),
+        core::num::NonZeroUsize::new(8).unwrap(),
+    );
+    let mut seed = 0x106u32;
+    let mut rtc = 0u64;
+    let base = AbsoluteTime::new(100, 12, 0, 0, 0).unwrap();
+    for i in 0..100 {
+        seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
+        rtc += 1 + u64::from(seed % 100);
+        let t = base.add_nanos(i * 1_000_000_000).unwrap();
+        full.add_reference(1, Rtc::from_raw(rtc), t);
+        bounded.add_reference(1, Rtc::from_raw(rtc), t);
+        let oldest = bounded.channel_refs[&1][0].rtc.as_raw();
+        for _ in 0..12 {
+            seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
+            let q = Rtc::from_raw(oldest + u64::from(seed) % (rtc - oldest + 10));
+            for ch in [None, Some(1)] {
+                assert_eq!(bounded.correlate(q, ch), full.correlate(q, ch));
+            }
+        }
+        if i >= 8 {
+            assert!(bounded.correlate(Rtc::from_raw(oldest - 1), None).is_err());
+        }
+    }
 }
