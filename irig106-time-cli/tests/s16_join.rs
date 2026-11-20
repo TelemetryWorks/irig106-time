@@ -344,7 +344,10 @@ fn retained_reference_count_and_old_query_finding() {
         .unwrap()
         .parse()
         .unwrap();
-    assert!(retained <= 1024, "retained {retained}");
+    assert_eq!(
+        retained, 31,
+        "30-second inclusive window within the 1024 cap"
+    );
     for (level, exit) in [
         ("error", ExitClass::Success),
         ("warning", ExitClass::Findings),
@@ -399,5 +402,32 @@ fn jump_details_are_sampled_but_counts_remain_exact() {
         assert!(text.contains("180 more jump details"), "{text}");
         let diagnostics = format!("{text}{}", String::from_utf8(err).unwrap());
         assert!(diagnostics.contains("warning=200"), "{diagnostics}");
+    }
+}
+
+#[test]
+fn counter_only_row_is_a_proposed_warning_not_a_decode_error() {
+    let input = Input::new(&common::NO_TIME);
+    for command in ["csv", "timeline"] {
+        for (level, exit) in [
+            ("error", ExitClass::Success),
+            ("warning", ExitClass::Findings),
+        ] {
+            let (mut out, mut err) = (Vec::new(), Vec::new());
+            assert_eq!(
+                run(
+                    &[command, input.0.to_str().unwrap(), "--fail-on", level],
+                    &mut out,
+                    &mut err
+                ),
+                exit
+            );
+            let text = String::from_utf8(err).unwrap();
+            assert!(
+                text.contains("Warning: Correlation query: no time reference point"),
+                "{text}"
+            );
+            assert!(text.contains("error=0, warning=2"), "{text}"); // row + TF-001
+        }
     }
 }

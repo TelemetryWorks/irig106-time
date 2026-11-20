@@ -106,3 +106,60 @@ fn finding_samples_are_bounded_and_levels_remain_exact() {
     assert!(!text.contains("sample 20"));
     assert!(!text.contains("late error"));
 }
+
+// Partial CLI-104: bounded online state, not complete qualified report coverage.
+#[test]
+fn online_reference_jump_and_gap_state_is_bounded_and_exact() {
+    let mut scanner = Ch10TimeScanner::new();
+    scanner.jump_threshold = Some(1_000_000_000);
+    for i in 0..5000 {
+        // Fig11-13 DOY wire fields, 00:00:00 / 00:00:05, same RTC.
+        let body = [0, 0, 0, 0, 0, if i % 2 == 0 { 0 } else { 5 }, 0, 0, 1, 0];
+        scanner.process_time_packet(
+            &body,
+            &PktHeader {
+                channel_id: 1,
+                data_type: 0x11,
+                rtc: Rtc::from_raw(0),
+            },
+        );
+    }
+    assert_eq!(scanner.correlator.len(), 1024);
+    assert_eq!(scanner.correlator.total_evicted(), 3976);
+    assert_eq!(scanner.references_seen, 5000);
+    assert_eq!(scanner.jumps_seen, 4999);
+    assert_eq!(scanner.jumps.len(), 20);
+    assert_eq!(scanner.finding_counts, [0, 4999, 0]);
+    assert_eq!(scanner.errors.len(), 20);
+    assert_eq!(scanner.time_channels.len(), 1);
+    let info = &scanner.time_channels[&1];
+    assert_eq!(info.packet_count, 5000);
+    assert_eq!(info.min_gap_ns, Some(0));
+    assert_eq!(info.max_gap_ns, Some(0));
+    assert_eq!(info.last_time.unwrap().seconds(), 5);
+    assert_eq!(scanner.jumps[0].delta_nanos, 5_000_000_000);
+    assert_eq!(scanner.jumps[1].delta_nanos, -5_000_000_000);
+}
+
+#[test]
+fn online_gap_extrema_use_previous_reference_and_jump_threshold_is_strict() {
+    let mut scanner = Ch10TimeScanner::new();
+    scanner.jump_threshold = Some(1_000_000_000);
+    for (ticks, seconds) in [(0, 0), (10_000_000, 2), (30_000_000, 3), (60_000_000, 8)] {
+        let body = [0, 0, 0, 0, 0, seconds, 0, 0, 1, 0];
+        scanner.process_time_packet(
+            &body,
+            &PktHeader {
+                channel_id: 1,
+                data_type: 0x11,
+                rtc: Rtc::from_raw(ticks),
+            },
+        );
+    }
+    let info = &scanner.time_channels[&1];
+    assert_eq!(info.min_gap_ns, Some(1_000_000_000));
+    assert_eq!(info.max_gap_ns, Some(3_000_000_000));
+    assert_eq!(scanner.jumps_seen, 1); // +/-1 s equality is not >1s; +2s is.
+    assert_eq!(scanner.jumps[0].delta_nanos, 2_000_000_000);
+    assert_eq!(scanner.jumps[0].index, 3);
+}

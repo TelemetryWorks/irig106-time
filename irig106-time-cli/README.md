@@ -126,9 +126,10 @@ Resolving RTC 0x00009896800 (10000000 ticks, 1000000000 ns)
 ## Interim report-memory gate (S16b)
 
 Input is buffered and CSV rows are spooled to disk, without whole-file loading
-or mmap. Finding samples are bounded. Correlation/reference state is still
-retained in memory; recordings can exhaust that state. S16b must finish its report-state audit and qualified joining before
-this interim warning and the CLI publication/release gate are removed.
+or mmap. Finding samples and correlation storage are bounded, and jump/gap
+statistics are accumulated online. The dense-F1 all-command RSS gate is still
+pending; retain this interim warning and the CLI publication/release gate.
+Qualified joining remains incomplete (see the slice verification record).
 
 ## CSV transactions
 
@@ -233,3 +234,26 @@ its diagnostic and does not claim the qualified value-retention rebuild.
 Examples: `irigtime summary flight.ch10 --fail-on warning` fails on warnings;
 `--fail-on never` retains diagnostics while disabling only the finding exit.
 Help/version also accept the option, e.g. `irigtime --version --fail-on info`.
+
+
+## Bounded correlation and online diagnostics (S16b)
+
+The live compatibility correlator retains at most 1,024 references globally
+and 30 seconds of RTC history. These are CLI resource policies, not IRIG limits.
+A quiet channel can lose every reference; no anchor per channel is reserved.
+`correlate` queries older than retained history cannot recover an offline answer:
+they report `QueryBeforeRetainedWindow`; an empty channel reports
+`NoReferencePoint`. CSV/timeline leave an unavailable absolute field empty and
+report the finding. Proposed level for both errors: **warning**, pending
+coordinator confirmation (readable counter, unavailable absolute context).
+Default `--fail-on error` keeps exit 0; `--fail-on warning` makes it exit 1.
+No TF register level is changed or new TF ID invented.
+
+Jump detection compares adjacent accepted observations per channel, not a
+file-wide RTC sort; reference indices are accepted-observation order. Summary
+uses 1 second; `jumps` uses `--threshold-ms`; the comparison remains strictly
+above the threshold. The first 20 jump details are shown with an omitted-detail
+count and exact total/finding counts. Per-channel first/last/count and observed
+modular-RTC gap extrema require constant state per u16 channel, not all time
+packets. These compatibility diagnostics are not qualified session/scale-aware
+library quality reports. Earlier arbitrary queries may need a separate replay.
