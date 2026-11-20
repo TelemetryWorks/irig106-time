@@ -94,6 +94,9 @@ impl TargetReferences {
             .or_default()
             .observe(self.target, candidate);
     }
+    pub(super) fn clear_channel(&mut self, channel: u16) {
+        self.channels.remove(&channel);
+    }
     pub(super) fn correlate(&self, channel: Option<u16>) -> Result<AbsoluteTime, TimeError> {
         let mut candidates: Vec<_> = match channel {
             Some(id) => self

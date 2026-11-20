@@ -354,6 +354,27 @@ impl StreamingTimeCorrelator {
         }
     }
 
+    /// Discard one channel's retained references, returning the removed count.
+    /// Other channels survive; the age high-water mark is recomputed from them.
+    /// An empty cache can therefore accept a lower-RTC epoch. This is a resource
+    /// operation, not reset inference: callers must qualify segments themselves.
+    /// Removed entries count as evictions; pre-window loss guards remain active.
+    pub fn clear_channel(&mut self, channel_id: u16) -> usize {
+        let removed = self.channel_refs.remove(&channel_id).map_or(0, |r| r.len());
+        if removed != 0 {
+            self.total_refs -= removed;
+            self.total_evicted += removed;
+            self.evicted_channels.insert(channel_id);
+        }
+        self.latest_rtc = self
+            .channel_refs
+            .values()
+            .filter_map(|r| r.back())
+            .map(|r| r.rtc)
+            .max();
+        removed
+    }
+
     /// Total number of reference points currently in the window.
     pub fn len(&self) -> usize {
         self.total_refs

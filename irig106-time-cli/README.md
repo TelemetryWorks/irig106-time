@@ -263,3 +263,22 @@ library quality reports. A backward RTC is an out-of-order warning with channel,
 both RTCs and zero-based packet index, not an invented jump magnitude. Skip that
 jump/gap pair and preserve its baseline; the late reference remains accepted
 for queries and the displayed Last arrival. Known old correlate targets remain answerable.
+
+
+## RTC reset segments (S16b2b3c1, partial)
+
+A backward step >30 seconds is an immediate reset on that channel. Three
+consecutive references behind the baseline, strictly increasing among
+themselves, confirm a short reset starting at the first of those packets.
+Report one reset WARNING with channel, first packet index and both RTCs,
+instead of the run's out-of-order warnings. One or two late references are
+reported as out-of-order when resolved or at EOF. Lookahead holds at most two
+references per channel; message generation can therefore be delayed. Confirmed
+runs replay against a fresh baseline, so genuine post-reset jumps remain visible.
+Channel cache/query candidates are discarded at the reset; other channels stay.
+
+Interim: pending-classification live answers, and all answers after a confirmed
+reset, return needs-context WARNING instead of a mixed absolute value.
+S16b2b3c2 will add labelled per-segment historical answers and warnings for
+RTC targets lying in multiple segment ranges. This is not complete reset-aware
+reporting. The dense-F1 gate/interim warning and publish=false remain.

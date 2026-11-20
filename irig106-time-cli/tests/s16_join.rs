@@ -450,8 +450,9 @@ fn doy_packet(channel: u16, rtc_seconds: u64, day: u16, seconds_of_day: u32) -> 
 }
 
 #[test]
-fn late_references_skip_jump_and_gap_pairs_inside_and_outside_window() {
-    for latest in [2, 40] {
+fn isolated_late_reference_skips_jump_and_gap_pairs() {
+    {
+        let latest = 2;
         let bytes = [
             doy_packet(1, 0, 100, 43200),
             doy_packet(1, latest, 100, 43200 + latest as u32),
@@ -485,27 +486,6 @@ fn late_references_skip_jump_and_gap_pairs_inside_and_outside_window() {
             "{text}"
         );
         assert!(!text.contains("Delta:"));
-        if latest == 40 {
-            let mut err = Vec::new();
-            assert_eq!(
-                run(
-                    &[
-                        "timeline",
-                        input.0.to_str().unwrap(),
-                        "--fail-on",
-                        "warning"
-                    ],
-                    &mut Vec::new(),
-                    &mut err
-                ),
-                ExitClass::Findings
-            );
-            assert!(
-                String::from_utf8(err).unwrap().contains(
-                    "Warning: Correlation query: query precedes retained reference window"
-                )
-            );
-        }
     }
 }
 
@@ -659,6 +639,64 @@ fn consecutive_late_references_compare_against_pair_baseline() {
                 text.contains("Observed RTC gaps: min=1000000000 ns max=1000000000 ns"),
                 "{text}"
             );
+        }
+    }
+}
+
+#[test]
+fn rtc_reset_single_step_and_three_reference_run_keep_real_jump_only() {
+    for last in [20u64, 40] {
+        let mut bytes = Vec::new();
+        for seconds in 0..=last {
+            bytes.extend(doy_packet(1, seconds, 100, 43200 + seconds as u32));
+        }
+        for seconds in 1..=4 {
+            // New epoch clock starts +100s; only its RTC4 point adds a +5s step.
+            bytes.extend(doy_packet(
+                1,
+                seconds,
+                100,
+                43300 + seconds as u32 + if seconds == 4 { 5 } else { 0 },
+            ));
+        }
+        let input = Input::new(&bytes);
+        for command in ["summary", "jumps"] {
+            let (mut out, mut err) = (Vec::new(), Vec::new());
+            assert_eq!(
+                run(
+                    &[command, input.0.to_str().unwrap(), "--fail-on", "warning"],
+                    &mut out,
+                    &mut err
+                ),
+                ExitClass::Findings
+            );
+            let text = format!(
+                "{}{}",
+                String::from_utf8(out).unwrap(),
+                String::from_utf8(err).unwrap()
+            );
+            assert_eq!(text.matches("RTC reset on channel 1").count(), 1, "{text}");
+            assert!(
+                text.contains(&format!(
+                    "at packet {}: {:#X} -> {:#X}",
+                    last + 1,
+                    last * 10_000_000,
+                    10_000_000
+                )),
+                "{text}"
+            );
+            assert!(!text.contains("Out-of-order"), "{text}");
+            assert_eq!(text.matches("Delta:").count(), 1, "{text}");
+            assert!(text.contains("Delta: +5000.000 ms"), "{text}");
+            assert!(text.contains("warning=2"), "{text}");
+            if command == "summary" {
+                assert!(text.contains("max=1000000000 ns"), "{text}");
+                assert!(text.contains("Correlation Refs   : 4"), "{text}");
+                assert!(
+                    text.contains("RTC Duration       : unavailable across reset segments"),
+                    "{text}"
+                );
+            }
         }
     }
 }
