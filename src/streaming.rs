@@ -15,7 +15,7 @@
 //!   on each insert. Age alone does not cap frozen-counter duplicates; use
 //!   `with_reference_limit` for a global count/storage bound.
 //! - **Arrival-order insert:** Does not assume packets arrive in RTC order.
-//!   Maintains RTC-sorted per-channel vecs via binary search insert.
+//!   Maintains RTC-sorted per-channel deques via partition-point insert.
 //! - **Per-channel indexing:** Same O(log n) channel-filtered lookup as the
 //!   batch correlator.
 //!
@@ -26,7 +26,7 @@
 //! | P5-02       | Streaming correlator with sliding window |
 
 extern crate alloc;
-use alloc::collections::BTreeMap;
+use alloc::collections::{BTreeMap, BTreeSet, VecDeque};
 use alloc::vec::Vec;
 use core::num::NonZeroUsize;
 
@@ -59,11 +59,13 @@ use irig106_types::NanosDuration;
 ///
 /// **Traces:** P5-02
 pub struct StreamingTimeCorrelator {
-    /// Per-channel reference points, each vec sorted by RTC.
-    channel_refs: BTreeMap<u16, Vec<StreamingRef>>,
+    /// Per-channel reference points, each deque sorted by RTC.
+    channel_refs: BTreeMap<u16, VecDeque<StreamingRef>>,
     /// Maximum age in nanoseconds. References older than
     /// `latest_rtc - max_age_ns` are evicted.
     max_age_ns: u64,
+    /// Loss history, bounded by the u16 channel domain; contains no anchors.
+    evicted_channels: BTreeSet<u16>,
     /// Optional global count limit, including equal-RTC references.
     max_references: Option<NonZeroUsize>,
     /// The highest RTC seen so far (for eviction).
@@ -100,6 +102,7 @@ impl StreamingTimeCorrelator {
         Self {
             channel_refs: BTreeMap::new(),
             max_age_ns: max_age.get(),
+            evicted_channels: BTreeSet::new(),
             max_references: None,
             latest_rtc: None,
             total_refs: 0,
@@ -112,7 +115,9 @@ impl StreamingTimeCorrelator {
     /// Age alone does not bound duplicate/frozen-counter input. This opt-in
     /// count bound evicts the smallest raw RTC first, then the smallest channel
     /// ID on a tie; equal-RTC entries on one channel evict in arrival order.
-    /// Empty channels and excess vector storage are reclaimed. Insertion can
+    /// A quiet channel can lose all references: no per-channel anchor is kept.
+    /// Such queries return NoReferencePoint. Empty channels and excess deque
+    /// storage are reclaimed. Insertion can
     /// temporarily hold one extra reference before eviction.
     ///
     /// This compatibility API still has no session/scale/basis semantics;
@@ -125,7 +130,7 @@ impl StreamingTimeCorrelator {
 
     /// Insert a reference point and evict stale entries.
     ///
-    /// The reference is inserted into the per-channel sorted vec. Then,
+    /// The reference is inserted into the per-channel sorted deque. Then,
     /// any references on any channel whose RTC is older than
     /// `latest_rtc - max_age_ns` are removed.
     pub fn add_reference(&mut self, channel_id: u16, rtc: Rtc, time: AbsoluteTime) {
@@ -136,14 +141,9 @@ impl StreamingTimeCorrelator {
             _ => {}
         }
 
-        // Insert into per-channel sorted vec
+        // Insert after equal RTCs in arrival order.
         let refs = self.channel_refs.entry(channel_id).or_default();
-        let pos = if self.max_references.is_some() {
-            refs.partition_point(|r| r.rtc <= rtc)
-        } else {
-            refs.binary_search_by_key(&rtc, |r| r.rtc)
-                .unwrap_or_else(|e| e)
-        };
+        let pos = refs.partition_point(|r| r.rtc <= rtc);
         refs.insert(
             pos,
             StreamingRef {
@@ -200,8 +200,28 @@ impl StreamingTimeCorrelator {
     /// in the sliding window.
     ///
     /// If `channel_id` is `Some(id)`, only references from that channel
-    /// are considered.
+    /// are considered. After any eviction in that set, a target older than its
+    /// oldest retained reference returns QueryBeforeRetainedWindow. A channel
+    /// with no remaining references returns NoReferencePoint. Before any loss,
+    /// pre-reference extrapolation remains available. Duplicate RTCs choose the
+    /// latest arrival on that channel for exact matches in both constructor modes.
     pub fn correlate(&self, target_rtc: Rtc, channel_id: Option<u16>) -> Result<AbsoluteTime> {
+        let oldest = match channel_id {
+            Some(id) => self.channel_refs.get(&id).and_then(|r| r.front()),
+            None => self
+                .channel_refs
+                .values()
+                .filter_map(|r| r.front())
+                .min_by_key(|r| r.rtc),
+        }
+        .ok_or(TimeError::NoReferencePoint)?;
+        let lost = match channel_id {
+            Some(id) => self.evicted_channels.contains(&id),
+            None => self.total_evicted != 0,
+        };
+        if lost && target_rtc < oldest.rtc {
+            return Err(TimeError::QueryBeforeRetainedWindow);
+        }
         let nearest = match channel_id {
             Some(id) => self.nearest_for_channel(target_rtc, id)?,
             None => self.nearest_any(target_rtc)?,
@@ -225,9 +245,7 @@ impl StreamingTimeCorrelator {
             if refs.is_empty() {
                 continue;
             }
-            let idx = refs
-                .binary_search_by_key(&target, |r| r.rtc)
-                .unwrap_or_else(|e| e);
+            let idx = refs.partition_point(|r| r.rtc <= target);
 
             // Check idx and idx-1 for closest
             for &check_idx in &[idx.saturating_sub(1), idx.min(refs.len() - 1)] {
@@ -258,9 +276,7 @@ impl StreamingTimeCorrelator {
             return Err(TimeError::NoReferencePoint);
         }
 
-        let idx = refs
-            .binary_search_by_key(&target, |r| r.rtc)
-            .unwrap_or_else(|e| e);
+        let idx = refs.partition_point(|r| r.rtc <= target);
 
         if idx == 0 {
             Ok(&refs[0])
@@ -293,13 +309,16 @@ impl StreamingTimeCorrelator {
         let cutoff_ticks = self.max_age_ns / 100; // ns → ticks (100 ns/tick)
         let cutoff_raw = latest.as_raw().saturating_sub(cutoff_ticks);
 
-        for refs in self.channel_refs.values_mut() {
+        for (&channel, refs) in &mut self.channel_refs {
             let before = refs.len();
-            refs.retain(|r| r.rtc.as_raw() >= cutoff_raw);
+            while refs.front().is_some_and(|r| r.rtc.as_raw() < cutoff_raw) {
+                refs.pop_front();
+            }
             let evicted = before - refs.len();
             self.total_refs -= evicted;
             self.total_evicted += evicted;
             if evicted != 0 {
+                self.evicted_channels.insert(channel);
                 Self::compact(refs);
             }
         }
@@ -309,13 +328,14 @@ impl StreamingTimeCorrelator {
                 let oldest = self
                     .channel_refs
                     .iter()
-                    .filter_map(|(&ch, refs)| refs.first().map(|r| (r.rtc, ch)))
+                    .filter_map(|(&ch, refs)| refs.front().map(|r| (r.rtc, ch)))
                     .min();
                 let Some((_, channel)) = oldest else { break };
                 if let Some(refs) = self.channel_refs.get_mut(&channel) {
                     // The selected entry is nonempty, with exclusive access.
                     if !refs.is_empty() {
-                        refs.remove(0);
+                        refs.pop_front();
+                        self.evicted_channels.insert(channel);
                         self.total_refs -= 1;
                         self.total_evicted += 1;
                         Self::compact(refs);
@@ -326,11 +346,11 @@ impl StreamingTimeCorrelator {
         }
     }
 
-    fn compact(refs: &mut Vec<StreamingRef>) {
+    fn compact(refs: &mut VecDeque<StreamingRef>) {
         if refs.capacity() > 4 && refs.len() < refs.capacity() / 2 {
             // A fresh allocation releases an old large backing store even if
-            // one anchor remains. Empty vectors are removed from the map.
-            *refs = refs.to_vec();
+            // one anchor remains. Empty deques are removed from the map.
+            *refs = refs.iter().copied().collect();
         }
     }
 

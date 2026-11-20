@@ -296,7 +296,7 @@ fn evicted_channel_vectors_cannot_retain_unbounded_heap_capacity() {
         s.add_reference(channel, Rtc::from_raw(1000 + u64::from(channel)), time);
         assert!(s.len() <= cap);
         assert!(s.channel_refs.len() <= cap);
-        let allocated: usize = s.channel_refs.values().map(Vec::capacity).sum();
+        let allocated: usize = s.channel_refs.values().map(VecDeque::capacity).sum();
         assert!(
             allocated <= 4 * cap,
             "{allocated} reference slots for cap {cap}"
@@ -366,6 +366,7 @@ fn evicted_step_queries_are_honest_in_both_modes() {
         s.add_reference(1, Rtc::from_raw(20), stepped);
         for ch in [Some(1), None] {
             let error = s.correlate(Rtc::from_raw(0), ch).unwrap_err();
+            assert_eq!(error, TimeError::QueryBeforeRetainedWindow);
             assert_eq!(
                 error.to_string(),
                 "query precedes retained reference window"
@@ -429,4 +430,32 @@ fn seeded_retained_window_differential() {
             assert!(bounded.correlate(Rtc::from_raw(oldest - 1), None).is_err());
         }
     }
+}
+
+#[test]
+fn loss_history_survives_empty_channel_and_does_not_taint_other_channels() {
+    let mut s = StreamingTimeCorrelator::with_reference_limit(
+        NanosDuration::new(u64::MAX),
+        core::num::NonZeroUsize::new(2).unwrap(),
+    );
+    let t = AbsoluteTime::new(100, 12, 0, 0, 0).unwrap();
+    s.add_reference(1, Rtc::from_raw(0), t);
+    s.add_reference(2, Rtc::from_raw(10), t);
+    s.add_reference(2, Rtc::from_raw(20), t);
+    assert_eq!(
+        s.correlate(Rtc::from_raw(0), Some(1)),
+        Err(TimeError::NoReferencePoint)
+    );
+    assert!(s.correlate(Rtc::from_raw(9), Some(2)).is_ok());
+    assert_eq!(
+        s.correlate(Rtc::from_raw(9), None),
+        Err(TimeError::QueryBeforeRetainedWindow)
+    );
+    // Reappearing channel does not forget its earlier loss.
+    s.add_reference(1, Rtc::from_raw(30), t);
+    assert_eq!(
+        s.correlate(Rtc::from_raw(29), Some(1)),
+        Err(TimeError::QueryBeforeRetainedWindow)
+    );
+    assert!(s.correlate(Rtc::from_raw(30), Some(1)).is_ok());
 }
