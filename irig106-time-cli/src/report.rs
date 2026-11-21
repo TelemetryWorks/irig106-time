@@ -165,21 +165,25 @@ pub(super) fn known_year_days(previous: AbsoluteTime, leap: Option<bool>) -> Opt
 }
 pub(super) fn f1_basis(format: TimeFormat) -> &'static str {
     match format {
+        TimeFormat::IrigA | TimeFormat::IrigB | TimeFormat::IrigG => "UTC (assumed, RDG-009)",
         TimeFormat::Gps => "GPS (stated FMT)",
         TimeFormat::Utc => "UTC (stated FMT)",
         _ => "scale unknown",
     }
 }
-fn display_clock(time: AbsoluteTime, basis: Option<&str>, years: usize) -> String {
+pub(super) fn clock_value(time: &AbsoluteTime) -> String {
     let year = time.year().map_or(String::new(), |y| format!("{y:04} "));
+    format!("{year}{}", clock_count(time.as_total_ns(), 0))
+}
+fn display_clock(time: AbsoluteTime, basis: Option<&str>, years: usize) -> String {
     let offset = if years == 0 {
         String::new()
     } else {
         format!(" (+{years} year{})", if years == 1 { "" } else { "s" })
     };
     format!(
-        "{year}{}{offset} {}",
-        clock_count(time.as_total_ns(), 0),
+        "{}{offset} {}",
+        clock_value(&time),
         basis.unwrap_or("scale unknown")
     )
 }
@@ -213,6 +217,7 @@ pub(super) fn columns(info: &TimeChannelInfo) -> (String, String, &'static str) 
             "—".into(),
             "—".into(),
             match info.format {
+                Some(TimeFormat::IrigA | TimeFormat::IrigB | TimeFormat::IrigG) => "UTC*",
                 Some(TimeFormat::Gps) => "GPS",
                 Some(TimeFormat::Utc) => "UTC",
                 _ => "unknown",

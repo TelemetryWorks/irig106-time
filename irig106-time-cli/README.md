@@ -59,19 +59,20 @@ RTC Duration       : 3612.000 seconds (60.2 minutes)
 
 Time Channels
 ─────────────
-  Channel   3  │  Source: GPS           Format: IRIG-B   Date: DOY   Leap: No   Packets: 1,806
-                │  First: Day 100 12:30:25.340.000
-                │  Last:  Day 100 13:00:37.340.000
+  Channel   3  │  Source: External      Format: IRIG-B   Date: DOY   Leap: No   Packets: 1,806
+                │  First: 100:12:30:25.340000000 UTC (assumed, RDG-009)
+                │  Last:  100:13:00:37.340000000 UTC (assumed, RDG-009)
   Channel   7  │  Source: External      Format: UTC      Date: DOY   Leap: No   Packets: 1,806
-                │  First: Day 100 12:30:28.840.000
-                │  Last:  Day 100 13:00:40.840.000
+                │  First: 100:12:30:28.840000000 UTC (stated FMT)
+                │  Last:  100:13:00:40.840000000 UTC (stated FMT)
 
 Time Jumps         : None detected (threshold: 1 second)
 ```
 
 ### channels
 
-Per-channel time source inventory as a table.
+Per-channel time source inventory as a table. UTC* means UTC by assumption
+for IRIG-A/B/G (RDG-009); RTC is unknown scale. FMT4 UTC and FMT5 GPS are stated.
 
 ```sh
 irigtime channels flight_042.ch10
@@ -118,9 +119,9 @@ irigtime correlate flight_042.ch10 0x00009896800
 ```
 Resolving RTC 0x00009896800 (10000000 ticks, 1000000000 ns)
 
-  Any channel  → Day 100 12:30:25.340.000
-  Channel   3  → Day 100 12:30:25.340.000
-  Channel   7  → Day 100 12:30:28.840.000
+  Any channel  → 100:12:30:25.340000000
+  Channel   3  → 100:12:30:25.340000000
+  Channel   7  → 100:12:30:28.840000000
 ```
 
 ## Bounded input and report memory

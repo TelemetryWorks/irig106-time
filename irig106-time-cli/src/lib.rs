@@ -837,33 +837,7 @@ impl Ch10TimeScanner {
 // ────────────────────────────────────────────────────────────────────
 
 fn fmt_abs_time(t: &AbsoluteTime) -> String {
-    let ms = t.nanoseconds() / 1_000_000;
-    let us = (t.nanoseconds() % 1_000_000) / 1_000;
-    match t.year() {
-        Some(y) => {
-            format!(
-                "{:04} Day {:03} {:02}:{:02}:{:02}.{:03}.{:03}",
-                y,
-                t.day_of_year(),
-                t.hours(),
-                t.minutes(),
-                t.seconds(),
-                ms,
-                us
-            )
-        }
-        None => {
-            format!(
-                "Day {:03} {:02}:{:02}:{:02}.{:03}.{:03}",
-                t.day_of_year(),
-                t.hours(),
-                t.minutes(),
-                t.seconds(),
-                ms,
-                us
-            )
-        }
-    }
+    report::clock_value(t)
 }
 
 fn fmt_time_source(src: &TimeSource) -> &'static str {

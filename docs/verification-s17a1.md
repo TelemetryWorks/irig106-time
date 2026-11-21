@@ -70,8 +70,8 @@ Columns have fixed widths for Source/Format/Date/Leap, short Proto/Status/Scale,
 counts and First clock. Last is the final column. The mixed golden is derived
 from explicit human cell values, not captured CLI output: F1, NTP, PTP2008,
 RSVD3. First/Last independently retain their basis, including UTC (from TAI via
-leap table) across a later F2->F1 change. Unknown F1 scale is labelled unknown;
-FMT4/5 are stated UTC/GPS. Nine fractional digits are retained.
+leap table) across a later F2->F1 change. IRIG-A/B/G are UTC by assumption (RDG-009), marked UTC* in the table;
+RTC is unknown scale, while FMT4/5 are stated UTC/GPS. Nine fractional digits are retained.
 
 Coordinator's year-boundary decision is reader/report policy: for forward,
 nonzero RTC and end-day365/366 ->day1, choose the cyclic explanation only if
@@ -95,3 +95,19 @@ boundary jumps. Each source edit was restored; no mutation is committed. Local
 focused tests/Clippy/fmt/trace checks only; CI carries the matrix and32MiB gate.
 No serde_json edge, no Review/Design change, no whole coverage gain. #77 remains
 frozen and was not changed by this review fix.
+
+## PR76 second delta: RDG-009 and shared correlate clocks
+
+Tests-first25edd30: FMT0..5 basis/column table and correlate formatting fail at
+3fdd415; the new LY1/day365->1 test already passes. It pins a real +86400s
+residual: the known leap year requires86401s, not1s. No production rollover
+change was needed. Disabling the known-year/LY constraint now fails this test.
+
+IRIG-B/A/G (FMT0/1/2) display UTC (assumed, RDG-009) and UTC*; RTC(FMT3)
+remains unknown, FMT4UTC and FMT5GPS stated. No UTC conversion is inferred for
+RTC. First/Last and correlate/timeline/reset-segment text share the same
+nanosecond clock formatter; existing S16 correlate goldens change presentation
+only. CSV numeric/machine columns are untouched. Twelve focused report tests
+pass. Six runtime mutants killed: each of the three missing IRIG assumptions,
+unknown assumed-UTC column, ignored known leap-year constraint and old correlate
+presentation. All source edits restored. No serde_json or #77 changes.

@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### S17a1 shared bounded report view (partial CLI-105/106)
 
+- RDG-009 correction: IRIG-A/B/G are labelled UTC (assumed, RDG-009),
+  UTC* in the scale column; only RTC among FMT0..5 remains unknown. Pin the
+  leap-year day365->1 +86400s jump. Correlate/timeline/reset answers now use
+  the same DOY/time-of-day/nine-digit clock format as other text reports.
+
 - Summary, channels and jumps render one immutable projection of bounded
   scanner state, without copying packet/reference history. Preserve exact
   finding totals, bounded samples and deterministic channel ordering.
