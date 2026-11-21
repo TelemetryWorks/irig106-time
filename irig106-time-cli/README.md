@@ -305,10 +305,10 @@ passed; `publish = false` remains until the owner’s S20 decision.
 Summary/channels/jumps accept `--format json` (default text), over the same report
 model as text. See the [stable producer schema](../docs/schema/irigtime-report-v1.schema.json)
 and [compatibility, units and provenance rules](../docs/cli-report-schema.md).
-The shared envelope is `telemetryworks/irigtime-report`, v1 revision2. JSON is
+The shared envelope is `telemetryworks/irigtime-report`, stable v1, revision 2. JSON is
 ASCII-only; 64/128-bit quantities are decimal strings. Every defined key is
 present; null meanings are field-specific. Consumers ignore unknown fields;
-producer validation stays strict. Schema is frozen after the #78 review and #80 metadata transition.
+producer validation stays strict. The schema is frozen after review.
 
 Findings are command-specific, structured, and top-level. `channels` does not
 evaluate jumps, so its jumps/threshold are null. File-wide channel observations
