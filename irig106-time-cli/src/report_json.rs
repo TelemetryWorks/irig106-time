@@ -151,4 +151,116 @@ mod tests {
         assert_eq!(row["first"]["year_offset"], "0");
         assert_eq!(row["last"]["year_offset"], "1");
     }
+    #[test]
+    fn review_projection_pins_every_observed_field_and_command_null() {
+        // Projection fixture: independent report facts, not a wire-decoder test.
+        // RTC ticks are 100 ns (§11.2.1.1); 1100 references exceed the cap.
+        let mut s = Ch10TimeScanner::new();
+        for n in 0..1100 {
+            s.correlator.add_reference(
+                7,
+                Rtc::from_raw(n * 10_000_000),
+                AbsoluteTime::new(100, 12, 0, 0, 123).unwrap(),
+            );
+        }
+        s.references_seen = 1100;
+        s.reset_count = 2;
+        s.jump_threshold = Some(17_000_000);
+        s.first_rtc = Some(Rtc::from_raw(11));
+        s.last_rtc = Some(Rtc::from_raw(99));
+        s.note(Severity::Error, "TF-004: malformed fixture");
+        s.note(Severity::Information, "info one");
+        s.note(Severity::Information, "info two");
+        for _ in 0..25 {
+            s.note(Severity::Warning, "warning fixture");
+        }
+        s.jumps_seen = 21;
+        s.jumps.push(TimeJump {
+            index: 9,
+            channel_id: 7,
+            expected_nanos: 100,
+            actual_nanos: 123,
+            delta_nanos: 23,
+        });
+        let mut a = TimeChannelInfo::new(7);
+        a.source = Some(TimeSource::InternalFromRmm);
+        a.format = Some(TimeFormat::IrigB);
+        a.date_format = Some(DateFormat::DayOfYear);
+        a.is_leap_year = Some(false);
+        a.first_rtc = Some(Rtc::from_raw(11));
+        a.last_rtc = Some(Rtc::from_raw(99));
+        a.segment = 3;
+        a.min_gap_ns = Some(100);
+        a.max_gap_ns = Some(300);
+        s.time_channels.insert(7, a);
+        let mut b = TimeChannelInfo::new(8);
+        b.source = Some(TimeSource::None);
+        s.time_channels.insert(8, b);
+        let mut c = TimeChannelInfo::new(9);
+        // Figure 11-15: NTF=0 NTP, TS=3 reserved.
+        c.network_word = Some(TimeF2Csdw::from_le_bytes([3, 0, 0, 0]));
+        s.time_channels.insert(9, c);
+        let args::Request::File(mut a) = args::parse(&[
+            "jumps",
+            "café.ch10",
+            "--format",
+            "json",
+            "--fail-on",
+            "info",
+        ])
+        .unwrap() else {
+            panic!("file args")
+        };
+        #[cfg(unix)]
+        {
+            use std::os::unix::ffi::OsStringExt;
+            a.input = std::ffi::OsString::from_vec(b"caf\xc3\xa9-\xff.ch10".to_vec()).into();
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::ffi::OsStringExt;
+            a.input = std::ffi::OsString::from_wide(&[0x63, 0x61, 0x66, 0xe9, 0xd800]).into();
+        }
+        let mut out = Vec::new();
+        write(&Report::from(&s), &a, 123, &mut out).unwrap();
+        assert!(out.is_ascii());
+        let v: Value = serde_json::from_slice(&out).unwrap();
+        assert_eq!(v["schema"], "telemetryworks/irigtime-report");
+        assert_eq!(v["schema_revision"], 1);
+        assert_eq!(v["highest_level"], "error");
+        assert_eq!(v["findings"]["error"], "1");
+        assert_eq!(v["findings"]["info"], "2");
+        assert_eq!(v["findings"]["omitted"], "8");
+        assert_eq!(v["findings"]["samples"][1]["level"], "info");
+        assert_eq!(v["findings"]["samples"][0]["code"], "TF-004");
+        assert_eq!(v["options"]["fail_on"], "info");
+        assert_eq!(v["options"]["threshold_ms"], "17");
+        assert_eq!(v["input"]["name_lossy"], true);
+        let r = &v["report"];
+        assert_eq!(
+            r["references_evicted"],
+            s.correlator.total_evicted().to_string()
+        );
+        assert_ne!(r["references_evicted"], "0");
+        assert_eq!(r["reset_count"], "2");
+        assert_eq!(r["jumps"]["omitted"], "20");
+        assert_eq!(r["first_rtc"], "11");
+        let c = &r["channels"];
+        assert_eq!(c[0]["format1_low_nibble"], 2);
+        assert_eq!(c[1]["format1_low_nibble"], 15);
+        assert_eq!(c[0]["segment_count"], "3");
+        assert_eq!(c[0]["first_rtc"], "11");
+        assert_eq!(c[0]["min_gap_ns"], "100");
+        assert_eq!(c[0]["max_gap_ns"], "300");
+        assert_eq!(c[0]["date_format"], "doy");
+        assert_eq!(c[0]["leap_year"], false);
+        assert_eq!(c[2]["status"], "reserved");
+        assert_eq!(c[2]["format2_word"], 3);
+        assert_eq!(c[2]["status_raw"], 3);
+        a.command = "channels".into();
+        s.jump_threshold = None;
+        let v = document(&Report::from(&s), &a, 123);
+        assert!(v["report"]["jumps"].is_null());
+        assert!(v["options"]["threshold_ms"].is_null());
+    }
 }
