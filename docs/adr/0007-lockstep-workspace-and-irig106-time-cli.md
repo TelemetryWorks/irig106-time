@@ -49,17 +49,22 @@ Chosen option: **one workspace, two crates in lockstep**, as
 * **`irig106-cli` mounts it as `irig106 time …`**, through `run` or the
   individual commands and renderers.
 
-### Subsequent owner clarification — S16a
+### Current layout — owner 2026-11-21, ADR-0022
 
-Use the shipped `irig106-tmats` layout: a root library package and the sibling
-`irig106-time-cli/`, with `[workspace] members = [".", "irig106-time-cli"]`
-and `exclude = ["fuzz"]`. Do not move into `crates/`. This supersedes the
-previous reference to TMATS's proposed virtual-workspace layout. Declare the
-version in `[workspace.package]`; both packages inherit it, and the CLI keeps
-the exact `=X.Y.Z` path dependency. The public TMATS pattern is documented in
-[docs/RELEASING.md at 18b34e6](https://github.com/TelemetryWorks/irig106-tmats/blob/18b34e66b276cfc4869b06bcda42ed50612e4286/docs/RELEASING.md#lockstep-versioning).
-The host-callable runner takes arguments and injected stdout/stderr, returns an
-exit class, and never exits the host; only the thin binary main exits.
+[ADR-0022](0022-virtual-workspace-layout.md) supersedes the S16a root-library /
+sibling-CLI layout choice. Use a virtual workspace modelled on
+[Praevis-Quant/praevis-thetadata](https://github.com/Praevis-Quant/praevis-thetadata/tree/0ee33ca512664e2f3feffa219b4028e1ca0bdc1e):
+`crates/irig106-time/` is the library; `apps/irig106-time-cli/` is the testing and
+simple-example CLI. Names, the binary, runner and lockstep release contract stay
+the same. The root has no package; both crates inherit `[workspace.package]`
+metadata and the CLI inherits its exact internal pin from
+`[workspace.dependencies]`. Root `fuzz/` stays an independent excluded workspace.
+Cargo benches and examples stay with their owning library package.
+
+The earlier S16a instruction used a root library plus `irig106-time-cli/`, and
+prohibited a `crates/` move; that layout instruction is historical, not current.
+The host-callable runner still takes arguments and injected stdout/stderr,
+returns an exit class and never exits the host; only the thin binary main exits.
 
 ### Consequences
 

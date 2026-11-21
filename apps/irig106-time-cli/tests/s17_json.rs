@@ -373,7 +373,7 @@ fn schema_describes_every_key_and_matches_the_golden_shape() {
     // A structural contract check, not a general-purpose JSON Schema validator.
     // It prevents the schema and producer from drifting on keys/closed enums.
     let schema: Value = serde_json::from_str(include_str!(
-        "../../docs/schema/irigtime-report-v1.schema.json"
+        "../../../docs/schema/irigtime-report-v1.schema.json"
     ))
     .unwrap();
     let golden: Value = serde_json::from_str(include_str!("golden/s17_missing_year.json")).unwrap();

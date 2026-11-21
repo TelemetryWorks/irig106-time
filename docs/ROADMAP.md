@@ -6,6 +6,14 @@
 
 ---
 
+## Current layout — owner 2026-11-21
+
+[ADR-0022](adr/0022-virtual-workspace-layout.md): virtual root workspace, library
+`crates/irig106-time/`, testing/simple-example CLI `apps/irig106-time-cli/`.
+One inherited version and shared exact dependency pin; root fuzz remains independent.
+This supersedes the S16a root/sibling choice. The prototype roadmap below remains
+historical; its layout descriptions do not override this decision.
+
 ## Current release gate — owner 2026-11-21
 
 0.8.0 waits for a **full irig106-tmats 0.1 release plus a bounded time view**
@@ -382,7 +390,7 @@ integration feed into Phase 7 (P7-01).
 | P6-06b | **`irig106-studio` WASM integration** | Medium | 1 day | P6-01 |
 | P6-08 | **MSRV policy** | Medium | — | ✅ Done (v0.7.0). MSRV 1.87 → 1.60. Replaced `u16::is_multiple_of` (1.87) with `util::is_leap_year` and `u64::abs_diff` (1.60) with `util::abs_diff_u64`. Constrained by `dep:` namespaced features in `Cargo.toml`. |
 | P6-10 | **`irig106-time-cli` as a published, reusable sub-crate** | High | 2 days | P6-01 | Owner direction 2026-09-26/27: the crate is `irig106-time-cli`, its built binary is `irigtime`, and `irig106-cli` mounts its commands as the `time` subcommand (`irig106 time …`); in lockstep with `irig106-time`, mountable by `irig106-cli`. Details below. |
-| P6-09 | **Audit all `unwrap()` usage** | High | 1 day | — | Analyze every `.unwrap()` call in library source (`src/*.rs`). For each: determine if it can actually panic, document the invariant that prevents it (or replace with `?` / `expect` with a message if it can). Goal: zero `unwrap()` calls without a documented safety justification, or replace with propagating error handling. |
+| P6-09 | **Audit all `unwrap()` usage** | High | 1 day | — | Analyze every `.unwrap()` call in library source (`crates/irig106-time/src/*.rs`). For each: determine if it can actually panic, document the invariant that prevents it (or replace with `?` / `expect` with a message if it can). Goal: zero `unwrap()` calls without a documented safety justification, or replace with propagating error handling. |
 
 #### Detailed Scope Per Item
 
@@ -450,7 +458,7 @@ Owner direction (2026-09-26): "We need a irig106-time-cli sub-crate as well
 like we have on tmats. This will be used in the irig106-cli project in future
 development."
 
-*Today:* `irig106-time-cli/` has its own manifest and is not a workspace
+*Prototype baseline (historical):* `irig106-time-cli/` has its own manifest and is not a workspace
 member; it is `publish = false`; all of it — argument parsing, a packet
 reader (memory-mapped, sync search), the six commands (`summary`,
 `channels`, `jumps`, `timeline`, `csv`, `correlate`), and the output — is one
@@ -462,8 +470,8 @@ reusable CLI library", W1–W3):
 - **One workspace, two crates, one version.** `irig106-time` and
   `irig106-time-cli` in one Cargo workspace, released in lockstep: one
   version and one tag; the CLI pins the library with `=X.Y.Z`; both
-  published together. The directory layout follows whatever `irig106-tmats`
-  settles in W1 (proposed there: a virtual workspace with `crates/`).
+  published together. Layout now follows ADR-0022: virtual root with the library
+  in `crates/irig106-time/` and CLI in `apps/irig106-time-cli/`.
 - **A library and a binary in the CLI crate**, so `cargo install
   irig106-time-cli` installs the binary and `irig106-cli` depends on the same
   crate. The standalone binary is renamed from `ch10time` to **`irigtime`**,

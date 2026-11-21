@@ -787,7 +787,7 @@ fn main() -> irig106_time::Result<()> {
 }
 ```
 
-Both snippets match [the compiled example](../examples/format2_usage.rs), which
+Both snippets match [the compiled example](../crates/irig106-time/examples/format2_usage.rs), which
 is checked with `deny(deprecated)`; run `cargo test --example format2_usage`.
 
 ---
@@ -1246,7 +1246,7 @@ In0.8.0 chrono is removed (ADR-0020). Enable optional `jiff` and use the checked
 `jiff_interop` functions with explicit `Scaled` evidence. The adapter uses
 `jiff::civil::DateTime`, preserving naive fields and UTC/TAI/GPS provenance;
 unknown year/scale and second60 refuse. It never guesses1970 or converts TAI
-or GPS to UTC implicitly. See the [current example](../src/jiff_interop.rs)
+or GPS to UTC implicitly. See the [current example](../crates/irig106-time/src/jiff_interop.rs)
 and [exit-criteria verification](verification-jiff.md).
 
 

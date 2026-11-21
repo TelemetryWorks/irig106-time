@@ -9,9 +9,9 @@ class ScopeGuards(unittest.TestCase):
     def scan(self, lib, files=None, cli=None):
         with tempfile.TemporaryDirectory(prefix="time-scan-") as tmp:
             root = Path(tmp)
-            paths = {"src/lib.rs": lib, **(files or {})}
+            paths = {"crates/irig106-time/src/lib.rs": lib, **(files or {})}
             if cli is not None:
-                paths["irig106-time-cli/src/main.rs"] = cli
+                paths["apps/irig106-time-cli/src/main.rs"] = cli
             for name, text in paths.items():
                 path = root / name
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -38,7 +38,7 @@ class ScopeGuards(unittest.TestCase):
         for cli in [False, True]:
             with self.subTest(cli=cli):
                 source = 'include!("evil.inc");'
-                prefix = 'irig106-time-cli/src' if cli else 'src'
+                prefix = 'apps/irig106-time-cli/src' if cli else 'crates/irig106-time/src'
                 report = self.scan('' if cli else source,
                     {f'{prefix}/evil.inc': '#[allow(clippy::unwrap_used)] fn f(){}'},
                     cli=source if cli else None)
@@ -46,7 +46,7 @@ class ScopeGuards(unittest.TestCase):
 
     def test_include_cannot_hide_std_in_non_rs_file(self):
         report = self.scan('include!("evil.inc");', {
-            'src/evil.inc': 'extern crate std; fn f(){std::env::var("x");}'})
+            'crates/irig106-time/src/evil.inc': 'extern crate std; fn f(){std::env::var("x");}'})
         self.assertTrue(any('include!' in e for e in report.source_errors))
 
     def test_metavariable_attribute_is_rejected_in_production_macros(self):
@@ -76,7 +76,7 @@ macro_rules! m { ($l:ident) => { #[$l(clippy::unwrap_used)] fn f(){} }; }
 }
 const TEXT:&str = r"include!(not_code); #[$l(clippy::unwrap_used)]";
 // include!(not_code); #[$l(clippy::unwrap_used)]
-''', {'src/tests/evil.inc': ''})
+''', {'crates/irig106-time/src/tests/evil.inc': ''})
         self.assertEqual(report.source_errors, [])
 
     def test_root_allow_and_production_unwrap_are_rejected(self):
@@ -99,7 +99,7 @@ const TEXT:&str = r"include!(not_code); #[$l(clippy::unwrap_used)]";
 
     def test_tests_filename_does_not_make_production_a_test(self):
         report = self.scan('#[path="bad_tests.rs"] mod child;', {
-            "src/bad_tests.rs": '#![allow(clippy::unwrap_used)]\nextern crate std;'})
+            "crates/irig106-time/src/bad_tests.rs": '#![allow(clippy::unwrap_used)]\nextern crate std;'})
         self.assertFalse(report.allowances[0].allowed)
         self.assertEqual(len(report.io_errors), 1)
 
@@ -108,13 +108,13 @@ const TEXT:&str = r"include!(not_code); #[$l(clippy::unwrap_used)]";
         self.assertFalse(report.allowances[0].allowed)
 
     def test_production_child_allow_is_rejected(self):
-        report = self.scan('mod child;', {"src/child.rs": '#[allow(clippy::panic)] fn f(){}'})
+        report = self.scan('mod child;', {"crates/irig106-time/src/child.rs": '#[allow(clippy::panic)] fn f(){}'})
         self.assertFalse(report.allowances[0].allowed)
 
     def test_inline_and_external_test_module_allowances(self):
         report = self.scan('''#[cfg(test)] #[allow(clippy::unwrap_used)] mod inline {}
 #[cfg(test)] #[path="assertions.rs"] mod unit;''', {
-            "src/assertions.rs": '#![allow(clippy::expect_used)]\nfn f(){let _=std::env::var("x");}'})
+            "crates/irig106-time/src/assertions.rs": '#![allow(clippy::expect_used)]\nfn f(){let _=std::env::var("x");}'})
         self.assertEqual(len(report.allowances), 2)
         self.assertTrue(all(a.allowed for a in report.allowances))
         self.assertEqual(report.io_errors, [])
@@ -130,10 +130,10 @@ const TEXT:&str = r"include!(not_code); #[$l(clippy::unwrap_used)]";
         self.assertFalse(report.allowances[0].allowed)
 
     def test_child_std_import_alias_and_path_are_rejected(self):
-        report = self.scan('mod util;', {"src/util.rs":
+        report = self.scan('mod util;', {"crates/irig106-time/src/util.rs":
             'extern crate std as host; fn f(){let _=std::time::SystemTime::now();}'})
         self.assertEqual(len(report.io_errors), 2)
-        self.assertTrue(all('src/util.rs' in e for e in report.io_errors))
+        self.assertTrue(all('crates/irig106-time/src/util.rs' in e for e in report.io_errors))
 
     def test_test_only_std_import_is_not_production_io(self):
         report = self.scan('#[cfg(test)] extern crate std;\n#[cfg(test)] fn f(){std::env::var("x");}')

@@ -18,7 +18,7 @@ def main():
     for error in report.io_errors + report.source_errors:
         print(error, flush=True)
     assert not (report.io_errors or report.source_errors), "production std import/path or source indirection outside cfg(test) code"
-    source = (ROOT / "src/lib.rs").read_text()
+    source = (ROOT / "crates/irig106-time/src/lib.rs").read_text()
     start = source.index("#![no_std]")
     end = source.index("extern crate alloc;") + len("extern crate alloc;")
     header = source[start:end]

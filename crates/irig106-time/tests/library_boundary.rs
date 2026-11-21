@@ -11,6 +11,8 @@ fn serde_feature_is_rejected_before_compilation() {
     let output = Command::new(env!("CARGO"))
         .args([
             "metadata",
+            "--manifest-path",
+            concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"),
             "--offline",
             "--format-version",
             "1",

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Virtual workspace layout
+
+- Move the library to crates/irig106-time and the testing/example CLI to
+  apps/irig106-time-cli. The root is workspace-only; both packages inherit
+  metadata and the CLI inherits the shared exact library pin. Package/binary
+  names, version, features and runtime behaviour are unchanged (ADR-0022).
+- Relocate the library tests/examples/benches with git mv; keep root fuzz
+  independent. Update CI, trace/safety/I/O guards, package documentation and
+  path-sensitive tests. Each package includes README and Apache-2.0 LICENSE.
+
 ### S17a4 protocol inventory golden
 
 - Pin native GPS and NTP/IEEE1588-2002/IEEE1588-2008 JSON inventory in one
@@ -15,21 +25,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   coverage is claimed. Name the three TMATS association states at the seam;
   conflicting remains unresolved. No runtime or dependency change.
 
-### Stable JSON inventory schema
+### Stable versioned JSON inventory reports (S17a3, partial CLI-106)
 
 - Freeze the reviewed report schema as version 1, revision 2: schema_status is
   stable. Synchronize producer metadata and golden/assertion expectations.
   No field shapes, command support, units or compatibility rules change.
 
-### S17a3 draft versioned JSON reports (partial CLI-106)
-
 - Correct Format 2 finding codes: TS0 -> TF-003, reserved TS2..15 -> TF-006
   (both warning). Pin jump finding TF-017/channel/packet provenance. Document
-  explicit release-commit build provenance; schema stays draft pending a
-  separate reviewed stable/revision increment.
+  explicit release-commit build provenance.
 
 - Add strict --format text/json for summary/channels/jumps over one Report/scan.
-  The reviewed draft envelope uses telemetryworks/irigtime-report, version and
+  The reviewed envelope uses telemetryworks/irigtime-report, version and
   revision, tool/library/build provenance, per-command structured findings and
   highest level. Producer schema is strict; consumers ignore unknown fields.
 - Fix channels' unevaluated jumps/threshold to null. Emit the actual scanner
@@ -44,8 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Retain the32MiB six-command CI gate and add direct JSON reset/steady probes.
   Missing-year golden, review projection/mutation evidence and bounded segment
   fixtures are in docs/verification-s17a3.md. Remaining qualification/goldens
-  are explicitly partial. Schema stays draft for final delta review; no library
-  serde, dependency additions, publishing or schema freeze.
+  are explicitly partial. The schema is frozen at stable v1/revision 2; no
+  library serde, dependency additions or publication permission is introduced.
 
 ### Release gate and S17 integration boundary
 
@@ -1168,7 +1175,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **UDP framing documentation** (P5-03) — New `docs/udp_framing.md` documenting that UDP Transfer Format 1 and 2 headers carry no time fields, and how to use `StreamingTimeCorrelator` for live UDP streams.
 - **WASM build verification** (P6-06) — CI now verifies `wasm32-unknown-unknown` compilation with `--no-default-features` and `--no-default-features --features serde`.
 - **`util` module** (P6-08) — Crate-internal `is_leap_year` and `abs_diff_u64` helpers that replace `u16::is_multiple_of` (Rust 1.87) and `u64::abs_diff` (Rust 1.60) respectively. Each carries a targeted `#[allow(clippy::...)]` and full MSRV dependency documentation. 18 unit tests covering leap year rules (common, century, quad-century, edge cases, IRIG 106 era years) and abs_diff properties (symmetry, extremes, leap second timestamps).
-- **11 new integration tests** in `tests/pipeline.rs`: leap year rollover through `sub_nanos` (leap, non-leap, century, quad-century), BCD DMY Feb 29 on leap/non-leap years, `is_near_leap_second` via `abs_diff_u64` (exact boundary, within window, outside, symmetry, far future).
+- **11 new integration tests** in `crates/irig106-time/tests/pipeline.rs`: leap year rollover through `sub_nanos` (leap, non-leap, century, quad-century), BCD DMY Feb 29 on leap/non-leap years, `is_near_leap_second` via `abs_diff_u64` (exact boundary, within window, outside, symmetry, far future).
 
 ### Changed
 
@@ -1194,7 +1201,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`chrono_interop` module** (GAP-06) — Feature-gated `From<AbsoluteTime> for chrono::NaiveDateTime` and reverse. Enable with `features = ["chrono"]`.
 - **F1 leap second handling** (GAP-04) — `LeapSecondTable::offset_for_f1(year, doy)` for Format 1 time sources (IRIG-B, GPS). `is_near_leap_second(unix_seconds, window_secs)` for flagging packets near leap second boundaries.
 - **34 new unit tests** across 5 new test files: `packet_standard_tests.rs` (5), `streaming_tests.rs` (10), `quality_tests.rs` (6), `recording_event_tests.rs` (9), `chrono_interop.rs` (4).
-- **7 new integration tests** in `tests/pipeline.rs`: PacketStandard from version, streaming correlator basic pipeline, streaming eviction, quality metrics, F1 leap second offset, near leap second boundary, recording event pipeline.
+- **7 new integration tests** in `crates/irig106-time/tests/pipeline.rs`: PacketStandard from version, streaming correlator basic pipeline, streaming eviction, quality metrics, F1 leap second offset, near leap second boundary, recording event pipeline.
 
 ### Changed
 
@@ -1222,15 +1229,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Channel-indexed correlation** (P4-01) — Per-channel `BTreeMap<u16, Vec<ReferencePoint>>` index alongside the flat RTC-sorted vec. `nearest_for_channel` is now O(log n) binary search instead of O(n) linear scan. Methods upgraded: `correlate(…, Some(ch))`, `detect_time_jump`, `drift_ppm`, `detect_rtc_resets`.
 - **Per-channel accessors** (P4-02) — `TimeCorrelator::channel_references(channel_id)` returns a sorted slice for a single channel. `channel_ids()` returns all active channel IDs.
 - **BCD lookup table** (P4-03) — `extract_bcd_digit` now validates nibbles via a 16-entry const `BCD_LUT` instead of a branch, eliminating conditional logic in the hot path.
-- **Criterion benchmarks** (P4-06) — `benches/correlation_bench.rs` with statistical benchmarks for `correlate_any`, `correlate_by_channel`, `detect_time_jump`, `drift_ppm`, and `add_reference` at 10/100/1000/3600 reference point scales.
+- **Criterion benchmarks** (P4-06) — `crates/irig106-time/benches/correlation_bench.rs` with statistical benchmarks for `correlate_any`, `correlate_by_channel`, `detect_time_jump`, `drift_ppm`, and `add_reference` at 10/100/1000/3600 reference point scales.
 - **`serde` feature gate** (GAP-02) — Optional `Serialize`/`Deserialize` derives on all public data types (except `TimeError` which contains `&'static str` fields). Enable with `features = ["serde"]`.
-- **7 new integration tests** in `tests/pipeline.rs`: channel_references accessor, channel_ids, channel-indexed correlate consistency, large-set correlate, sub_nanos year boundary crossing, same-day no-year-change, and no-year-info graceful wrap.
+- **7 new integration tests** in `crates/irig106-time/tests/pipeline.rs`: channel_references accessor, channel_ids, channel-indexed correlate consistency, large-set correlate, sub_nanos year boundary crossing, same-day no-year-change, and no-year-info graceful wrap.
 
 ### Changed
 
 - **`Cargo.toml`** — Version bumped to 0.5.0. Added `serde` optional dependency and feature gate. Added `criterion` to dev-dependencies with `correlation_bench` bench target.
 - **CLI (irig106-time-cli)** — Version bumped to 0.5.0.
-- **Test structure** — Extracted `version.rs` inline tests to `src/version_tests.rs` to match the crate's test-per-module convention.
+- **Test structure** — Extracted `version.rs` inline tests to `crates/irig106-time/src/version_tests.rs` to match the crate's test-per-module convention.
 - **Crate docs updated** — `lib.rs` feature list now includes channel-indexed O(log n) lookup and serde support.
 - Total test count: **203** (136 unit + 50 integration + 17 property).
 
@@ -1254,8 +1261,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `PtpTime::to_le_bytes()` → `[u8; 10]`
   - `DayFormatTime::to_le_bytes()` → `[u8; 8]`
   - `DmyFormatTime::to_le_bytes()` → `[u8; 10]`
-- **19 new integration tests** in `tests/pipeline.rs`: version detection, version-aware CSDW, OOO window, RTC reset detection (basic, no false positive, channel isolation), and `to_le_bytes` round-trip for all 7 types.
-- **4 new property tests** in `tests/properties.rs`: encode round-trip for RTC, CSDW, NTP, and PTP.
+- **19 new integration tests** in `crates/irig106-time/tests/pipeline.rs`: version detection, version-aware CSDW, OOO window, RTC reset detection (basic, no false positive, channel isolation), and `to_le_bytes` round-trip for all 7 types.
+- **4 new property tests** in `crates/irig106-time/tests/properties.rs`: encode round-trip for RTC, CSDW, NTP, and PTP.
 
 ### Changed
 
@@ -1286,8 +1293,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`TimeCorrelator::drift_ppm(channel_id)`** (GAP-10) — Estimates RTC clock drift in parts-per-million against absolute time references. Returns average drift across consecutive same-channel reference pairs.
 - **Calendar validation in DMY BCD decoding** (GAP-09) — `DmyFormatTime::from_le_bytes` now rejects invalid day-for-month combinations (e.g., Feb 30, Jun 31) via a `days_in_month()` helper that accounts for leap years.
 - **CLI `Proto` column** (P1-09/GAP-12) — `channels` command table now shows NTP/PTP protocol identity. Summary view appends `Proto: NTP` or `Proto: PTP` for Format 2 channels. `TimeChannelInfo` carries a `network_protocol` field.
-- **`proptest` property-based tests** (P1-08) — `proptest = "1"` added to `[dev-dependencies]`. `tests/properties.rs` rewritten with `proptest!` macros covering RTC masking, round-trip, elapsed bounds, absolute time add/sub/monotonicity/Display, IEEE-1588 consistency, CSDW stability, NTP fraction bounds, and PTP monotonicity.
-- **10 new integration tests** in `tests/pipeline.rs`: Display formatting (DOY, DMY, zero-padding), drift_ppm (zero drift, fast RTC, channel isolation, insufficient refs), calendar validation, and year overflow guard.
+- **`proptest` property-based tests** (P1-08) — `proptest = "1"` added to `[dev-dependencies]`. `crates/irig106-time/tests/properties.rs` rewritten with `proptest!` macros covering RTC masking, round-trip, elapsed bounds, absolute time add/sub/monotonicity/Display, IEEE-1588 consistency, CSDW stability, NTP fraction bounds, and PTP monotonicity.
+- **10 new integration tests** in `crates/irig106-time/tests/pipeline.rs`: Display formatting (DOY, DMY, zero-padding), drift_ppm (zero drift, fast RTC, channel isolation, insufficient refs), calendar validation, and year overflow guard.
 
 ### Changed
 
@@ -1320,7 +1327,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `DEFAULT_TAI_UTC_OFFSET` constant (37 seconds, since 2017).
 - **`TimeCorrelator::add_reference_f2()`** — Accept Format 2 (NTP/PTP) time packets as correlation reference points, with automatic leap-second offset application for PTP sources.
 - **22 new unit tests** in `network_time_tests.rs` covering F2 CSDW parsing, NTP parse/convert/epoch math, PTP parse/TAI-UTC conversion, leap second table lookup, and full payload dispatch.
-- **5 new integration tests** in `tests/pipeline.rs`: full NTP pipeline, full PTP pipeline, mixed F1+F2 correlation, NTP sub-millisecond precision, and leap second table historical accuracy.
+- **5 new integration tests** in `crates/irig106-time/tests/pipeline.rs`: full NTP pipeline, full PTP pipeline, mixed F1+F2 correlation, NTP sub-millisecond precision, and leap second table historical accuracy.
 - **2 new fuzz targets**: `fuzz_ntp` and `fuzz_ptp` covering NTP and PTP parsing entry points.
 - **7 new benchmarks**: `ntp_from_le_bytes` (1.1 ns), `ntp_to_absolute` (115 ns), `ptp_from_le_bytes` (1.6 ns), `ptp_to_absolute` (119 ns), `leap_table_lookup` (6.6 ns), `f2_ntp_payload_parse` (2.7 ns).
 - **L1 Requirements updated** — 16 new L1 requirements for Format 2 (F2CSDW, NTP, PTP, F2COR, TAI) merged into `L1_Requirements.md`, traced to Ch11 §11.2.3.3. Total: 53 L1 requirements.
@@ -1367,9 +1374,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Zero `unsafe` blocks** in the entire crate.
 - **`#[inline]` annotations** on all hot-path functions.
 - **104 unit tests** across 8 modules (tests in separate files alongside source).
-- **10 integration tests** in `tests/pipeline.rs` covering full CSDW-to-correlation flows, multi-channel scenarios, and GPS lock jump detection.
-- **10 property-based tests** in `tests/properties.rs` (10,000 iterations each, zero external dependencies).
-- **23 benchmarks** in `benches/time_benchmarks.rs` (zero-dependency, `std::time::Instant`).
+- **10 integration tests** in `crates/irig106-time/tests/pipeline.rs` covering full CSDW-to-correlation flows, multi-channel scenarios, and GPS lock jump detection.
+- **10 property-based tests** in `crates/irig106-time/tests/properties.rs` (10,000 iterations each, zero external dependencies).
+- **23 benchmarks** in `crates/irig106-time/benches/time_benchmarks.rs` (zero-dependency, `std::time::Instant`).
 - **8 fuzz targets** in `fuzz/fuzz_targets/` covering all parsing entry points.
 - **Documentation**: L1/L2/L3 requirements (37/78/65), architecture doc, security doc, test index, project structure, shared types migration plan, roadmap, and rationale for separate repo.
 - **13-slide technical presentation** (PPTX).

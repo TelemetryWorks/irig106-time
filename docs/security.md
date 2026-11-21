@@ -33,7 +33,7 @@ No panic on any byte sequence.
 
 **Verification:**
 - 8 fuzz targets covering every parsing path (see `fuzz/`)
-- 10,000-iteration property tests on random inputs (see `tests/properties.rs`)
+- 10,000-iteration property tests on random inputs (see `crates/irig106-time/tests/properties.rs`)
 - Explicit `BufferTooShort` checks before all slice indexing
 
 ### 2.2 No Unsafe Code

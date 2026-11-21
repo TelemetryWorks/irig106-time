@@ -174,7 +174,7 @@ def scan_project(root, include_cli=True):
                 if code[item["body"]] == "{":
                     scope.directory = parent.directory / item["name"]
                     scope.anchor = scope.directory
-            elif role == "cli" and path == root / "irig106-time-cli/src/main.rs" and code[:item["start"]].count("{") == code[:item["start"]].count("}"):
+            elif role == "cli" and path == root / "apps/irig106-time-cli/src/main.rs" and code[:item["start"]].count("{") == code[:item["start"]].count("}"):
                 scope.cli = item["name"]
             item["scope"] = scope
             if scope.test_code: extra_test.append((item["start"], item["end"]))
@@ -226,19 +226,19 @@ def scan_project(root, include_cli=True):
                 if not child.is_file(): child = parent.directory / item["name"] / "mod.rs"
             visit(child, role, item["scope"].test_module, item["scope"].test_code)
 
-    visit(root / "src/lib.rs", "library")
+    visit(root / "crates/irig106-time/src/lib.rs", "library")
     # Scan remaining library source files too; test-only files were classified
     # by their actual module declaration, never by a *_tests filename heuristic.
-    for path in sorted((root / "src").rglob("*.rs")):
+    for path in sorted((root / "crates/irig106-time/src").rglob("*.rs")):
         if not any(p == path.resolve() for p, *_ in seen): visit(path, "library")
     if include_cli:
         for name in ["lib.rs", "main.rs", "bin/irigtime.rs"]:
-            cli = root / "irig106-time-cli/src" / name
+            cli = root / "apps/irig106-time-cli/src" / name
             if cli.is_file(): visit(cli, "cli")
     if include_cli:
-        for directory in ["tests", "examples", "benches", "fuzz/fuzz_targets",
-                          "irig106-time-cli/src", "irig106-time-cli/tests"]:
+        for directory in ["crates/irig106-time/tests", "crates/irig106-time/examples", "crates/irig106-time/benches", "fuzz/fuzz_targets",
+                          "apps/irig106-time-cli/src", "apps/irig106-time-cli/tests"]:
             for path in sorted((root / directory).rglob("*.rs")):
                 if not any(p == path.resolve() for p, *_ in seen):
-                    visit(path, "cli" if directory == "irig106-time-cli/src" else "auxiliary")
+                    visit(path, "cli" if directory == "apps/irig106-time-cli/src" else "auxiliary")
     return report

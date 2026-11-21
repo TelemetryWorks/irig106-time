@@ -16,11 +16,11 @@
 
 ## 1. Test Organization
 
-Unit tests live in `src/<module>_tests.rs` files alongside the source, per project convention.
-Integration tests live in `tests/` and exercise the full parsing → correlation pipeline.
+Unit tests live in `crates/irig106-time/src/<module>_tests.rs` files alongside the source, per project convention.
+Integration tests live in `crates/irig106-time/tests/` and exercise the full parsing → correlation pipeline.
 
 ```
-src/
+crates/irig106-time/src/
   error.rs            ← source
   error_tests.rs      ← 7 unit tests
   rtc.rs
@@ -49,7 +49,7 @@ src/
   quality_tests.rs      ← 6 unit tests
   jiff_interop.rs       ← checked civil adapters (optional jiff)
   util.rs               ← 18 unit tests (is_leap_year + abs_diff_u64)
-tests/
+crates/irig106-time/tests/
   jiff_interop.rs      ← 13 civil conversion cases (optional jiff)
   library_boundary.rs  ← removed-feature rejection (no build subprocess)
   pipeline.rs         ← integration tests (event-meaning prototype removed in0.8)
@@ -224,7 +224,7 @@ tests/
 
 ---
 
-## 3. Integration Tests (tests/pipeline.rs, 68 tests)
+## 3. Integration Tests (crates/irig106-time/tests/pipeline.rs, 68 tests)
 
 | Test | Scenario | Traces |
 |------|----------|--------|

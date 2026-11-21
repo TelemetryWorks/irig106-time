@@ -6,7 +6,7 @@ mod format2_usage;
 #[test]
 fn network_usage_snippets_match_the_compiled_example() {
     let example = include_str!("../examples/format2_usage.rs");
-    let usage = include_str!("../docs/usage.md");
+    let usage = include_str!("../../../docs/usage.md");
     let section = usage
         .split("## 13. Processing Network Time Packets")
         .nth(1)

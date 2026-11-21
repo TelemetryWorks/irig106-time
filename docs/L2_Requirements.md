@@ -1702,7 +1702,7 @@ does not settle it or replace its real-recording evidence.
 
 **Statement**: The CLI SHALL provide a reusable CLI library and a thin irigtime binary in the lockstep workspace.
 
-**Source**: ADR-0007; owner, 2026-09-26 and 2026-09-27. Owner S16a layout clarification: root library plus sibling irig106-time-cli; workspace members [".", "irig106-time-cli"], fuzz excluded, single workspace version and exact CLI dependency pin; no crates/ move. See ADR-0007 subsequent clarification.
+**Source**: ADR-0007; owner, 2026-09-26 and 2026-09-27. Owner S16a layout clarification: root library plus sibling irig106-time-cli; workspace members [".", "irig106-time-cli"], fuzz excluded, single workspace version and exact CLI dependency pin; no crates/ move. See ADR-0007 subsequent clarification. Superseding owner decision 2026-11-21, ADR-0022: virtual workspace with crates/irig106-time and apps/irig106-time-cli, inherited workspace metadata and exact workspace dependency pin; no root package. Only the layout instruction is superseded; package/binary names and host-runner behaviour remain.
 
 **Verification Method**: Inspection (I)
 

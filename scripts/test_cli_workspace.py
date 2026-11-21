@@ -9,17 +9,25 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 class CliWorkspace(unittest.TestCase):
-    def test_root_and_sibling_share_one_version_and_exact_library_pin(self):
+    def test_virtual_members_share_one_version_and_workspace_library_pin(self):
         root = tomllib.loads((ROOT / 'Cargo.toml').read_text())
-        cli = tomllib.loads((ROOT / 'irig106-time-cli/Cargo.toml').read_text())
-        self.assertEqual(root['workspace']['members'], ['.', 'irig106-time-cli'])
+        self.assertEqual(set(root), {'workspace'})
+        self.assertEqual(root['workspace']['members'],
+                         ['crates/irig106-time', 'apps/irig106-time-cli'])
         self.assertIn('fuzz', root['workspace']['exclude'])
-        self.assertTrue(root['package']['version']['workspace'])
-        self.assertTrue(cli['package']['version']['workspace'])
+        self.assertEqual(root['workspace']['resolver'], '3')
+        lib = tomllib.loads((ROOT / 'crates/irig106-time/Cargo.toml').read_text())
+        cli = tomllib.loads((ROOT / 'apps/irig106-time-cli/Cargo.toml').read_text())
+        for package in [lib, cli]:
+            self.assertTrue(package['package']['version']['workspace'])
+            self.assertTrue(package['package']['rust-version']['workspace'])
+            self.assertTrue(package['package']['license']['workspace'])
+            self.assertTrue(package['package']['repository']['workspace'])
         version = root['workspace']['package']['version']
-        self.assertEqual(cli['dependencies']['irig106-time'],
-                         {'path': '..', 'version': '=' + version})
-        self.assertFalse((ROOT / 'irig106-time-cli/Cargo.lock').exists())
+        self.assertEqual(root['workspace']['dependencies']['irig106-time'],
+                         {'path': 'crates/irig106-time', 'version': '=' + version})
+        self.assertEqual(cli['dependencies']['irig106-time'], {'workspace': True})
+        self.assertFalse((ROOT / 'apps/irig106-time-cli/Cargo.lock').exists())
         self.assertTrue((ROOT / 'Cargo.lock').is_file())
 
     def test_fuzz_remains_a_separate_workspace_with_its_own_lock(self):

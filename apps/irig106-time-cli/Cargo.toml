@@ -1,5 +1,6 @@
 [package]
 name = "irig106-time-cli"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -19,7 +20,7 @@ name = "irigtime"
 path = "src/bin/irigtime.rs"
 
 [dependencies]
-irig106-time = { path = "..", version = "=0.7.0" }
+irig106-time.workspace = true
 
 # Owner-approved 2026-11-20: CLI JSON output only (ADR-0019).
 serde_json = "1"

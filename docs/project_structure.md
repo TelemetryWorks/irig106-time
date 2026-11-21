@@ -11,7 +11,30 @@ chrono and library serde is removed. Other prototype layout/counts are historica
 
 ---
 
-## Repository Layout
+## Current workspace layout (ADR-0022)
+
+```text
+Cargo.toml                  # virtual workspace only; metadata and exact internal pin
+Cargo.lock                  # one lockfile for library and CLI
+crates/irig106-time/
+  Cargo.toml
+  README.md, LICENSE
+  src/, tests/, examples/, benches/
+apps/irig106-time-cli/
+  Cargo.toml
+  README.md, LICENSE
+  src/, tests/
+fuzz/                       # independent excluded workspace and lockfile
+docs/, scripts/, .github/   # shared documentation, checks and CI
+```
+
+Select `-p irig106-time` for library-only feature checks. CI selects the same
+packages/tests as before; see [move verification](verification-virtual-workspace.md).
+Praevis's top-level `bench/` holds external benchmark drivers; this repository's
+Rust Cargo benches instead travel with their owning package. No new harness is
+introduced. The following prototype tree/counts are historical, not current paths.
+
+## Prototype repository layout (historical)
 
 ```text
 irig106-time/
@@ -23,7 +46,7 @@ irig106-time/
 |-- scripts/
 |   `-- build-trace-matrix.py          # Regenerates docs/TRACE-MATRIX.md (--check in CI)
 |
-|-- src/
+|-- crates/irig106-time/src/
 |   |-- lib.rs                         # #![no_std], module wiring, re-exports
 |   |-- error.rs                       # TimeError enum, Result<T>, Display
 |   |-- error_tests.rs                 # 7 unit tests
@@ -51,14 +74,14 @@ irig106-time/
 |   |-- streaming_tests.rs             # 10 unit tests
 |   |-- quality.rs                     # TimeQuality, compute_quality
 |   |-- quality_tests.rs               # 6 unit tests
-|   |-- jiff_interop.rs                # checked civil adapters (optional jiff; tests/jiff_interop.rs)
+|   |-- jiff_interop.rs                # checked civil adapters (optional jiff; crates/irig106-time/tests/jiff_interop.rs)
 |   `-- util.rs                        # MSRV helpers: is_leap_year, abs_diff_u64 (18 tests)
 |
-|-- tests/
+|-- crates/irig106-time/tests/
 |   |-- pipeline.rs                    # 68 integration tests
 |   `-- properties.rs                  # 17 property-based tests (proptest)
 |
-|-- benches/
+|-- crates/irig106-time/benches/
 |   |-- time_benchmarks.rs             # 28 benchmarks (zero-dep, std::time::Instant)
 |   `-- correlation_bench.rs           # Criterion benchmarks for correlation at scale
 |
@@ -115,10 +138,10 @@ irig106-time/
 ## Companion: irig106-time-cli
 
 ```text
-irig106-time-cli/
+apps/irig106-time-cli/
 |-- Cargo.toml                         # deps: irig106-time; safe owned file-byte input
 |-- README.md                          # CLI usage documentation
-`-- src/
+`-- crates/irig106-time/src/
     |-- lib.rs                         # host-callable run and existing commands
     |-- args.rs                        # strict OS-native preflight (no I/O)
     `-- bin/irigtime.rs                 # thin standalone entry point

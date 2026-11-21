@@ -14,7 +14,7 @@ cargo-fuzz = true
 libfuzzer-sys = "0.4"
 
 [dependencies.irig106-time]
-path = ".."
+path = "../crates/irig106-time"
 
 # Fuzz targets
 [[bin]]

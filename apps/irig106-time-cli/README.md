@@ -15,12 +15,12 @@ is now applied after output completes. Publication and release tags remain subje
 
 ## From the root of irig106-time, build it with:
 ```sh
-cargo build --manifest-path irig106-time-cli/Cargo.toml
+cargo build --manifest-path apps/irig106-time-cli/Cargo.toml
 ```
 
 For a release build:
 ```sh
-cargo build --release --manifest-path irig106-time-cli/Cargo.toml
+cargo build --release --manifest-path apps/irig106-time-cli/Cargo.toml
 ```
 
 This produces the `irigtime` binary:
@@ -29,7 +29,7 @@ This produces the `irigtime` binary:
 
 ## You can also run it directly from the root with:
 ```sh
-cargo run --manifest-path irig106-time-cli/Cargo.toml -- --help
+cargo run --manifest-path apps/irig106-time-cli/Cargo.toml -- --help
 ```
 
 ## Commands
@@ -132,7 +132,7 @@ statistics are accumulated online. The CI RSS gate requires true CLI peaks below
 on both the 384MiB reset/late workload and a reset-free four-channel phase
 with 400,000 F1 references, limited timeline output and CSV file spooling.
 Measured true CLI peaks were 2,968–3,392KiB across both phases; an unbounded
-reference-retention mutant failed at 46,692KiB. See [the measured evidence](../docs/verification-s16b-final-rss.md).
+reference-retention mutant failed at 46,692KiB. See [the measured evidence](https://github.com/TelemetryWorks/irig106-time/blob/main/docs/verification-s16b-final-rss.md).
 This workload is memory evidence, not complete qualified-joining coverage;
 S17 joining remains incomplete. Publishing is still disabled until S20.
 
@@ -181,7 +181,8 @@ missing values or extra positional arguments return2 before opening input.
 with an optional0x prefix. Help: `irigtime --help` or `irigtime COMMAND --help`.
 Use `irigtime summary -- '-capture file.ch10'` for a dash-leading filename;
 place options before `--`. Native OS paths are preserved. The library's source
-is now the conventional src/lib.rs, with the thin binary in src/bin/irigtime.rs.
+is now the conventional apps/irig106-time-cli/src/lib.rs, with the thin binary in
+apps/irig106-time-cli/src/bin/irigtime.rs.
 The S16b memory gate has passed; publication remains disabled until S20.
 
 ## Shared irig106 exit convention
@@ -303,8 +304,8 @@ passed; `publish = false` remains until the owner’s S20 decision.
 ## JSON inventory reports
 
 Summary/channels/jumps accept `--format json` (default text), over the same report
-model as text. See the [stable producer schema](../docs/schema/irigtime-report-v1.schema.json)
-and [compatibility, units and provenance rules](../docs/cli-report-schema.md).
+model as text. See the [stable producer schema](https://github.com/TelemetryWorks/irig106-time/blob/main/docs/schema/irigtime-report-v1.schema.json)
+and [compatibility, units and provenance rules](https://github.com/TelemetryWorks/irig106-time/blob/main/docs/cli-report-schema.md).
 The shared envelope is `telemetryworks/irigtime-report`, stable v1, revision 2. JSON is
 ASCII-only; 64/128-bit quantities are decimal strings. Every defined key is
 present; null meanings are field-specific. Consumers ignore unknown fields;
