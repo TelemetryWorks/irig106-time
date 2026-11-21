@@ -288,3 +288,78 @@ fn segment_finishing_skips_inventory_without_references() {
     assert!(!err.contains("Segment query:"), "{err}");
     assert!(!err.contains("No reset segment covers"), "{err}");
 }
+
+#[test]
+fn every_f1_format_has_the_rdg009_scale_and_basis() {
+    // Fig11-12 FMT bits7..4; RDG-009 distinguishes assumed/stated/unknown.
+    for (fmt, scale, basis) in [
+        (0, "UTC*", "UTC (assumed, RDG-009)"),
+        (1, "UTC*", "UTC (assumed, RDG-009)"),
+        (2, "UTC*", "UTC (assumed, RDG-009)"),
+        (3, "unknown", "scale unknown"),
+        (4, "UTC", "UTC (stated FMT)"),
+        (5, "GPS", "GPS (stated FMT)"),
+    ] {
+        let input = Input::new(&packet(
+            0x11,
+            0,
+            &[(fmt << 4) | 1, 0, 0, 0, 0, 0, 0, 0x12, 0, 1],
+        ));
+        for command in ["summary", "channels"] {
+            let text = input.text(command);
+            assert!(text.contains(basis), "FMT{fmt}: {text}");
+            if command == "channels" {
+                let row = text
+                    .lines()
+                    .find(|line| line.trim_start().starts_with("7 "))
+                    .unwrap();
+                assert_eq!(row.split_whitespace().nth(7), Some(scale), "{text}");
+            }
+        }
+    }
+}
+#[test]
+fn known_leap_year_cannot_skip_day366_without_a_real_jump() {
+    // Fig11-12 LY1; Fig11-13 day36523:59:59 ->day100:00:00 at RTC+1s.
+    // Leap year needs86401s for that span: observed clock advances86400s too far.
+    let input = Input::new(
+        &[
+            packet(0x11, 0, &[0, 1, 0, 0, 0, 0x59, 0x59, 0x23, 0x65, 3]),
+            packet(0x11, 10_000_000, &[0, 1, 0, 0, 0, 0, 0, 0, 1, 0]),
+        ]
+        .concat(),
+    );
+    for command in ["summary", "jumps"] {
+        let text = input.text(command);
+        assert!(text.contains("Expected: 366:00:00:00.000000000"), "{text}");
+        assert!(
+            text.contains("Actual: 001:00:00:00.000000000 (+1 year)"),
+            "{text}"
+        );
+        assert!(text.contains("Delta: +86400000.000 ms"), "{text}");
+        assert!(text.contains("Total: 1 jump(s)"), "{text}");
+    }
+}
+#[test]
+fn correlate_uses_the_shared_nanosecond_clock_format() {
+    let input = Input::new(&packet(0x11, 0, &[0, 0, 0, 0, 0, 0, 0, 0x12, 0, 1]));
+    let mut out = Vec::new();
+    assert_eq!(
+        run(
+            &["correlate", input.0.to_str().unwrap(), "0"],
+            &mut out,
+            &mut Vec::new()
+        ),
+        ExitClass::Success
+    );
+    let text = String::from_utf8(out).unwrap();
+    assert!(
+        text.contains("Any channel  → 100:12:00:00.000000000"),
+        "{text}"
+    );
+    assert!(
+        text.contains("Channel   7  → 100:12:00:00.000000000"),
+        "{text}"
+    );
+    assert!(!text.contains("Day 100"));
+}
