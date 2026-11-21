@@ -1122,9 +1122,9 @@ Handbook, cited as support, never as the rule.
 
 ### L1-REL-001
 
-**Statement**: The project SHALL release `irig106-time` and `irig106-time-cli` together at one version, the CLI pinning the library exactly.
+**Statement**: The project SHALL release `irig106-time` and `irig106-time-cli` together at one version, the CLI pinning the library exactly. Before the 0.8.0 release, the project SHALL require a full irig106-tmats 0.1 release and a bounded time view. A TMATS dependency SHALL NOT be added until that release is published and the owner approves it.
 
-**Source**: ADR-0007.
+**Source**: ADR-0007. Owner 2026-11-21: "irig106-time 0.8.0 WAITS for a FULL irig106-tmats 0.1 release, plus a bounded time view." [ADR-0021](adr/0021-tmats-release-and-bounded-time-view.md). This is release/dependency policy, not an IRIG 106 rule.
 
 **Verification Method**: Inspection (I)
 

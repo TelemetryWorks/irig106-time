@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Release gate and S17 integration boundary
+
+- Owner 2026-11-21: 0.8.0 waits for full irig106-tmats 0.1 plus a bounded time
+  view; no dependency until publication and separate approval (ADR-0021).
+  Independent S17 work continues over plain caller data. Data-row association
+  stays unresolved without real relationship evidence; governing time-channel
+  declarations alone do not establish a Chapter 9 data-to-time link.
+
 ### CLI JSON dependency and library boundary
 
 - Owner-approved 2026-11-20: CLI-only serde_json1, pinned to1.0.149 by the

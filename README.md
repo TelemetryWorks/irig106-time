@@ -1,5 +1,10 @@
 # irig106-time
 
+> **Release gate (owner 2026-11-21):** 0.8.0 waits for the full
+> `irig106-tmats` 0.1 release and a bounded time view. No TMATS dependency
+> before publication and separate owner approval. See
+> [ADR-0021](docs/adr/0021-tmats-release-and-bounded-time-view.md).
+
 > **0.8.0 decision (owner2026-11-17):** JSON belongs to `irig106-time-cli`
 > (`irigtime`). The library's optional serde feature from0.1–0.7 is removed
 > in0.8.0 (breaking); use CLI JSON output. Rust data and native AnswerView/replay

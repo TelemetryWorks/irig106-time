@@ -63,6 +63,17 @@ crates.io-only via Trusted Publishing/OIDC GitHub Actions; no stored publishing
 token or local publish. These JSON, exit and publication rules are product
 policy, not IRIG mandates. No workflow/credential/publication action is taken.
 
+### Additional release and joining constraint (owner 2026-11-21)
+
+[ADR-0021](adr/0021-tmats-release-and-bounded-time-view.md): 0.8.0 waits for the full
+irig106-tmats 0.1 release and a bounded time view. No TMATS dependency may be added
+before publication and separate owner approval. Independent S17 work proceeds
+against the [plain-data consumer seam](analysis/S17-time-view-consumer-seam.md).
+Governing time declarations and data-source association are distinct: the
+owner-relayed Chapter 9 review found no data-channel-to-time-channel link field.
+Without real relationship evidence, the data-row association stays unresolved;
+a selected counter-query reference is not proof of that relationship.
+
 ## 1. What `irig106-time` is for
 
 ### 1.1 The problem: packets carry relative time, not absolute time
