@@ -53,6 +53,6 @@ admission are not claimed by these inventory labels. No host-clock inference.
   Valid, omit unconverted inventory, discard finding counts. Source restored
   after each; focused tests pass afterward. No mutation code is committed.
 - Local fmt, touched CLI Clippy, trace/diff checks; full matrix and unchanged
-  S16 32MiB reset/steady RSS gate run only in PR CI. Results pending.
+  S16 32MiB reset/steady RSS gate run only in PR CI; PR checks provide the run evidence.
 
 Publishing stays disabled until S20. No schema is frozen by this PR.
