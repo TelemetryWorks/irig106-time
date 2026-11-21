@@ -22,11 +22,17 @@ impl Group {
 }
 #[derive(Default)]
 struct Bracket {
+    range: Option<(Rtc, Rtc)>,
     before: Option<Group>,
     after: Option<Group>,
 }
 impl Bracket {
     fn observe(&mut self, target: Rtc, candidate: Candidate) {
+        let rtc = candidate.point.rtc;
+        self.range = Some(
+            self.range
+                .map_or((rtc, rtc), |(lo, hi)| (lo.min(rtc), hi.max(rtc))),
+        );
         let preceding = candidate.point.rtc <= target;
         let slot = if preceding {
             &mut self.before
@@ -79,20 +85,36 @@ impl TargetReferences {
             channels: BTreeMap::new(),
         }
     }
+    #[cfg(test)]
     pub(super) fn observe(&mut self, channel_id: u16, rtc: Rtc, time: AbsoluteTime) {
+        self.observe_at(channel_id, rtc, time, self.arrivals);
+    }
+    pub(super) fn observe_at(
+        &mut self,
+        channel_id: u16,
+        rtc: Rtc,
+        time: AbsoluteTime,
+        arrival: usize,
+    ) {
         let candidate = Candidate {
             point: ReferencePoint {
                 channel_id,
                 rtc,
                 time,
             },
-            arrival: self.arrivals,
+            arrival,
         };
-        self.arrivals += 1;
+        self.arrivals = self.arrivals.max(arrival + 1);
         self.channels
             .entry(channel_id)
             .or_default()
             .observe(self.target, candidate);
+    }
+    pub(super) fn covers(&self, channel: u16) -> bool {
+        self.channels
+            .get(&channel)
+            .and_then(|b| b.range)
+            .is_some_and(|(lo, hi)| lo <= self.target && self.target <= hi)
     }
     pub(super) fn clear_channel(&mut self, channel: u16) {
         self.channels.remove(&channel);

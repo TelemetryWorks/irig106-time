@@ -29,7 +29,10 @@ validation, input open, spool creation, packet reads/spool writes, destination
 copy and host flushes, then file permissions/atomic rename. A missing `--output`
 directory therefore gives 4 even when a readable input is structurally bad;
 an unreadable input gives 3 before spool creation. Exit 1 still publishes CSV.
-Other commands complete their current analysis before rendering.
+Correlate lazily stages closed-segment rows in owned system temp during analysis;
+temp creation/writes can give output4 before later framing input3. It stops
+before further input after a spool error; rendering/copy follows successful
+analysis. Other commands complete analysis before rendering.
 
 The correlation cache retains at most 1,024 references globally and 30 seconds
 of RTC history. A quiet channel may be fully evicted. Unavailable live-window
@@ -64,3 +67,11 @@ See the CLI README for current scanner severity levels. Physical bounds/no
 established sync are input failures; contained decode issues, recovered sync,
 cut final packets/headers and padding remain findings. --output --limit still
 means an output filename of --limit; summary file --help still gives2.
+
+
+Reset-qualified correlate output labels each matching segment on a reset
+channel and warns once when inclusive ranges overlap. Unreset-channel lines
+stay unchanged. Explicit time-channel answers are isolated; a pending late run does not suppress
+another's stated time observations. Data rows after a reset or during unresolved
+classification still require a qualified source/segment association (S17); their
+any-channel answers remain needs-context. Numeric channel equality is not enough.

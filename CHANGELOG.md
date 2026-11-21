@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S16b2b3c2 isolated live answers and labelled reset queries (partial CLI-104)
+
+- Restore unaffected-channel answers during resets/late classification. Valid
+  time-packet observations remain visible. Unqualified data rows after reset/
+  during classification stay needs-context until S17 TMATS joining; matching
+  numeric channel IDs never infer their time source. Live counter caches keep
+  channel-local 30s windows under a shared 1,024-arrival cap. Keep the bounded compatibility
+  cache for unchanged normal-file behavior; add discard_reference for FIFO loss.
+- Correlate spools closed-segment answers to owned system temp: bounded active
+  brackets/counts, no segment history in RAM. Label reset-channel answers, warn
+  once on overlapping inclusive ranges, preserve unreset-channel answer lines.
+  Provisional points enter query ranges only after classification.
+- Replaces c1's global withholding; unassociated/pending counter queries still
+  warn when no source can be selected safely. Dense-F1 RSS/README gate stays.
+  Evidence and operational-error ordering: verification-s16b2b3c2.md.
+
 ### S16b2b3c1 reset classification and channel isolation (partial CLI-104)
 
 - Treat backward RTC steps >30s, or three increasing references behind the
@@ -15,9 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   One/two late points stay out-of-order at EOF; lookahead is bounded to two.
 - Add StreamingTimeCorrelator::clear_channel for explicit caller segment
   boundaries; free that channel's entries and recompute the cache age origin.
-- Interim limitation: live answers pending classification, and answers after a
-  confirmed reset, stay counter-only with needs-context WARNING. Historical
-  labelled/ambiguous segment answers follow in S16b2b3c2; no mixed silent pick.
+- C1's interim global withholding is superseded by S16b2b3c2's channel-local
+  live answers and labelled historical reset-segment answers.
   Dense-F1 RSS and README/publication gates remain. See verification-s16b2b3c1.md.
 
 ### S16b2b3b CLI bounded correlation and online reports (partial CLI-104)

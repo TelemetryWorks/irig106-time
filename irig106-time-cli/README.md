@@ -238,8 +238,9 @@ Help/version also accept the option, e.g. `irigtime --version --fail-on info`.
 
 ## Bounded correlation and online diagnostics (S16b)
 
-The live compatibility correlator retains at most 1,024 references globally
-and 30 seconds of RTC history. These are CLI resource policies, not IRIG limits.
+The compatibility cache retains at most 1,024 references. An isolated live
+pool also caps references at 1,024, with independent 30s RTC windows per channel;
+its FIFO descriptor budget is the last 1,024 classified arrivals. These are CLI resource policies, not IRIG limits.
 A quiet channel can lose every reference; no anchor per channel is reserved.
 The `correlate` target is known before the scan: retain its nearest bracketing
 RTC brackets (at most six values per channel, including duplicate boundaries) independently of cache eviction, including late
@@ -265,7 +266,7 @@ jump/gap pair and preserve its baseline; the late reference remains accepted
 for queries and the displayed Last arrival. Known old correlate targets remain answerable.
 
 
-## RTC reset segments (S16b2b3c1, partial)
+## RTC reset segments
 
 A backward step >30 seconds is an immediate reset on that channel. Three
 consecutive references behind the baseline, strictly increasing among
@@ -277,8 +278,19 @@ references per channel; message generation can therefore be delayed. Confirmed
 runs replay against a fresh baseline, so genuine post-reset jumps remain visible.
 Channel cache/query candidates are discarded at the reset; other channels stay.
 
-Interim: pending-classification live answers, and all answers after a confirmed
-reset, return needs-context WARNING instead of a mixed absolute value.
-S16b2b3c2 will add labelled per-segment historical answers and warnings for
-RTC targets lying in multiple segment ranges. This is not complete reset-aware
-reporting. The dense-F1 gate/interim warning and publish=false remain.
+Unreset channels keep answering during another channel's reset/classification.
+Valid decoded time observations need no counter bridge. Data rows have no
+qualified time-source association yet: after a reset or while classification
+is pending, their any-channel answers report needs-context. Matching numeric
+channel IDs do not establish an association. S17 TMATS joining will select the
+governing time source and segment. Recorder RTC is one counter across all
+channels; a real reset affects them all. No speculative values or row revisions.
+
+Correlate labels each covered reset-channel segment. Overlapping inclusive
+RTC ranges produce an ambiguity WARNING and every matching answer; never a
+single silent pick. Unreset channel lines retain their existing form. Closed
+answers spool to owned system temp; RAM retains active brackets and per-channel
+counts, not all segments. Temp creation/writes occur after input open, during
+analysis; an output failure wins over later input failure. Copy to stdout only
+after analysis, then clean up on success/error. The dense-F1 gate/interim
+warning and publish=false remain.

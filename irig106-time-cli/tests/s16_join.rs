@@ -700,3 +700,278 @@ fn rtc_reset_single_step_and_three_reference_run_keep_real_jump_only() {
         }
     }
 }
+
+fn without_channel7_time(bytes: &[u8]) -> Vec<u8> {
+    let mut result = bytes.to_vec();
+    for p in result.chunks_exact_mut(36) {
+        if p[2..4] == 7u16.to_le_bytes() {
+            p[15] = 9; // Same framing/offsets, no channel7 time source in control.
+            let sum = p[..22]
+                .chunks_exact(2)
+                .map(|w| u16::from_le_bytes([w[0], w[1]]))
+                .fold(0u16, u16::wrapping_add);
+            p[22..24].copy_from_slice(&sum.to_le_bytes());
+        }
+    }
+    result
+}
+fn cli_text(command: &str, bytes: &[u8], extra: &[&str]) -> (String, String) {
+    let input = Input::new(bytes);
+    let mut args = vec![command, input.0.to_str().unwrap()];
+    args.extend_from_slice(extra);
+    args.extend(["--fail-on", "never"]);
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+    assert_eq!(run(&args, &mut out, &mut err), ExitClass::Success);
+    (
+        String::from_utf8(out).unwrap(),
+        String::from_utf8(err).unwrap(),
+    )
+}
+
+#[test]
+fn reset_channel7_does_not_withhold_channel8_timeline_or_old_query() {
+    let mut bytes = Vec::new();
+    for sec in 0..=40 {
+        for ch in [7, 8] {
+            bytes.extend(doy_packet(ch, sec, 100, 43200 + sec as u32));
+        }
+    }
+    for sec in 1..=4 {
+        bytes.extend(doy_packet(7, sec, 100, 43300 + sec as u32));
+        bytes.extend(doy_packet(8, 40 + sec, 100, 43240 + sec as u32));
+    }
+    bytes.extend(doy_packet(7, 80, 100, 43380));
+    let mut data = doy_packet(8, 44, 100, 43244);
+    data[15] = 9;
+    data[16..22].copy_from_slice(&445_000_000u64.to_le_bytes()[..6]);
+    let sum = data[..22]
+        .chunks_exact(2)
+        .map(|w| u16::from_le_bytes([w[0], w[1]]))
+        .fold(0u16, u16::wrapping_add);
+    data[22..24].copy_from_slice(&sum.to_le_bytes());
+    bytes.extend(data); // Channel8 data at 44.5s must not age against channel7's 80s.
+    let control = without_channel7_time(&bytes);
+    let (expected, _) = cli_text("timeline", &control, &[]);
+    let (actual, _) = cli_text("timeline", &bytes, &[]);
+    let rows = |text: &str| {
+        text.lines()
+            .filter(|l| {
+                l.split_whitespace().nth(2) == Some("8")
+                    && l.split_whitespace().nth(3) == Some("Time-F1")
+            })
+            .map(str::to_owned)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(rows(&actual), rows(&expected));
+    assert!(
+        actual
+            .lines()
+            .find(|l| l.contains("PCM-1") && l.split_whitespace().nth(2) == Some("8"))
+            .unwrap()
+            .contains("N/A")
+    );
+    let (expected, _) = cli_text("correlate", &control, &["2FAF080"]); // 5s.
+    let (actual, _) = cli_text("correlate", &bytes, &["2FAF080"]);
+    let line = |text: &str| {
+        text.lines()
+            .find(|l| l.contains("Channel   8  →"))
+            .map(str::to_owned)
+    };
+    assert!(line(&expected).is_some());
+    assert_eq!(line(&actual), line(&expected));
+}
+
+#[test]
+fn overlapping_reset_segments_are_labelled_and_warn_once() {
+    for edges in [false, true] {
+        let mut bytes = Vec::new();
+        for sec in (if edges { 5 } else { 0 })..=40 {
+            bytes.extend(doy_packet(7, sec, 100, 43200 + sec as u32));
+        }
+        for sec in 1..=(if edges { 5 } else { 8 }) {
+            bytes.extend(doy_packet(7, sec, 100, 43300 + sec as u32));
+        }
+        let (out, err) = cli_text("correlate", &bytes, &["2FAF080"]);
+        assert!(
+            out.contains("Channel   7 Segment   1  → Day 100 12:00:05.000.000"),
+            "{out}"
+        );
+        assert!(
+            out.contains("Channel   7 Segment   2  → Day 100 12:01:45.000.000"),
+            "{out}"
+        );
+        assert_eq!(
+            err.matches("ambiguous across reset segments").count(),
+            1,
+            "{err}"
+        );
+        assert!(!out.contains("Any channel"));
+    }
+}
+
+#[test]
+fn provisional_reset_run_cannot_contaminate_old_segment_range() {
+    let mut bytes = Vec::new();
+    for sec in 10..=20 {
+        bytes.extend(doy_packet(7, sec, 100, 43200 + sec as u32));
+    }
+    for sec in 1..=8 {
+        bytes.extend(doy_packet(7, sec, 100, 43300 + sec as u32));
+    }
+    let (out, err) = cli_text("correlate", &bytes, &["2FAF080"]);
+    assert!(
+        out.contains("Channel   7 Segment   2  → Day 100 12:01:45.000.000"),
+        "{out}"
+    );
+    assert!(!out.contains("Segment   1"), "{out}");
+    assert!(!err.contains("ambiguous"), "{err}");
+}
+
+#[test]
+fn pending_late_channel_does_not_withhold_observed_times_or_other_channel() {
+    let mut bytes = Vec::new();
+    for (ch, sec) in [(7, 15), (8, 20), (7, 3), (8, 21), (7, 4), (8, 22)] {
+        bytes.extend(doy_packet(ch, sec, 100, 43200 + sec as u32));
+        if (ch, sec) == (7, 3) {
+            let mut data = doy_packet(8, 20, 100, 43220);
+            data[15] = 9;
+            data[16..22].copy_from_slice(&205_000_000u64.to_le_bytes()[..6]);
+            let sum = data[..22]
+                .chunks_exact(2)
+                .map(|w| u16::from_le_bytes([w[0], w[1]]))
+                .fold(0u16, u16::wrapping_add);
+            data[22..24].copy_from_slice(&sum.to_le_bytes());
+            bytes.extend(data);
+        }
+    }
+    let (out, err) = cli_text("timeline", &bytes, &[]);
+    assert!(
+        out.lines()
+            .filter(|l| l.contains("Time-F1"))
+            .all(|l| !l.contains("N/A")),
+        "{out}"
+    );
+    assert_eq!(out.matches("N/A").count(), 1); // The unqualified data row only.
+    assert!(
+        err.contains("RTC source/channel association required"),
+        "{err}"
+    );
+    assert_eq!(err.matches("Out-of-order").count(), 2);
+}
+
+#[test]
+fn segment_answer_spool_reports_every_segment_with_bounded_finding_samples() {
+    let mut bytes = Vec::new();
+    for segment in 0..128 {
+        for sec in [1, 40] {
+            bytes.extend(doy_packet(7, sec, 100, 43200 + segment * 60 + sec as u32));
+        }
+    }
+    let (out, err) = cli_text("correlate", &bytes, &["2FAF080"]);
+    assert_eq!(out.matches("Channel   7 Segment").count(), 128);
+    assert!(out.contains("Segment 128  → Day 100 14:07:05.000.000"));
+    assert!(err.contains("warning=128"), "{err}"); // 127 resets + one ambiguity.
+    assert!(err.contains("108 more findings"), "{err}");
+}
+
+#[test]
+fn segment_copy_failure_is_output_not_findings() {
+    use std::io::{self, Write};
+    struct Limited(Vec<u8>);
+    impl Write for Limited {
+        fn write(&mut self, b: &[u8]) -> io::Result<usize> {
+            if self.0.len() + b.len() > 128 {
+                return Err(io::Error::other("injected copy failure"));
+            }
+            self.0.extend_from_slice(b);
+            Ok(b.len())
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+    let mut bytes = Vec::new();
+    for (sec, clock) in [(1, 43201), (40, 43240), (1, 43301), (8, 43308)] {
+        bytes.extend(doy_packet(7, sec, 100, clock));
+    }
+    let input = Input::new(&bytes);
+    let mut out = Limited(Vec::new());
+    assert_eq!(
+        run(
+            &[
+                "correlate",
+                input.0.to_str().unwrap(),
+                "2FAF080",
+                "--fail-on",
+                "warning"
+            ],
+            &mut out,
+            &mut Vec::new()
+        ),
+        ExitClass::Output
+    );
+    assert!(String::from_utf8(out.0).unwrap().contains("Resolving RTC"));
+}
+
+#[test]
+fn late_reference_does_not_narrow_closed_segment_coverage() {
+    let mut bytes = Vec::new();
+    for sec in [0, 39, 40, 35] {
+        bytes.extend(doy_packet(7, sec, 100, 43200 + sec as u32));
+    }
+    for sec in [1, 2, 3] {
+        bytes.extend(doy_packet(7, sec, 100, 43300 + sec as u32));
+    }
+    let target = format!("{:X}", 38 * 10_000_000u64);
+    let (out, err) = cli_text("correlate", &bytes, &[&target]);
+    assert!(
+        out.contains("Channel   7 Segment   1  → Day 100 12:00:38.000.000"),
+        "{out}\n{err}"
+    );
+    assert!(!out.contains("Segment   2"), "{out}");
+    assert!(!err.contains("No reset segment covers"), "{err}");
+}
+
+#[test]
+fn uncovered_reset_target_has_explicit_warning() {
+    let mut bytes = Vec::new();
+    for sec in [10, 40] {
+        bytes.extend(doy_packet(7, sec, 100, 43200 + sec as u32));
+    }
+    for sec in [1, 2, 3] {
+        bytes.extend(doy_packet(7, sec, 100, 43300 + sec as u32));
+    }
+    let (out, err) = cli_text("correlate", &bytes, &["2FAF080"]); // 5s, between ranges.
+    assert!(
+        err.contains("Warning: No reset segment covers requested RTC on channel 7"),
+        "{err}"
+    );
+    assert!(
+        err.contains("error=0, warning=2, info=0 (total=2)"),
+        "{err}"
+    );
+    assert!(!out.contains("Segment"), "{out}");
+    assert!(!out.contains("Any channel"), "{out}");
+}
+
+#[test]
+fn reset_data_row_cannot_infer_source_from_matching_channel_id() {
+    let mut bytes = [
+        doy_packet(8, 0, 100, 43200),
+        doy_packet(7, 40, 100, 43240),
+        doy_packet(7, 1, 100, 43301),
+    ]
+    .concat();
+    let mut data = doy_packet(8, 1, 100, 43201);
+    data[15] = 9;
+    let sum = data[..22]
+        .chunks_exact(2)
+        .map(|w| u16::from_le_bytes([w[0], w[1]]))
+        .fold(0u16, u16::wrapping_add);
+    data[22..24].copy_from_slice(&sum.to_le_bytes());
+    bytes.extend(data);
+    let (out, err) = cli_text("timeline", &bytes, &[]);
+    let row = out.lines().find(|l| l.contains("PCM-1")).unwrap();
+    assert!(row.contains("N/A"), "{row}");
+    assert!(err.contains("Warning: Correlation query: time needs context: RTC source/channel association required"), "{err}");
+}

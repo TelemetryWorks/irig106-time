@@ -354,6 +354,25 @@ impl StreamingTimeCorrelator {
         }
     }
 
+    /// Discard the earliest-arriving retained match for a channel/RTC pair.
+    /// Used by caller resource queues; counts as loss for pre-window guards.
+    /// Out-of-order matches do not discard another reference or channel.
+    pub fn discard_reference(&mut self, channel: u16, rtc: Rtc) -> bool {
+        let Some(refs) = self.channel_refs.get_mut(&channel) else {
+            return false;
+        };
+        let Some(index) = refs.iter().position(|r| r.rtc == rtc) else {
+            return false;
+        };
+        refs.remove(index);
+        Self::compact(refs);
+        self.total_refs -= 1;
+        self.total_evicted += 1;
+        self.evicted_channels.insert(channel);
+        self.channel_refs.retain(|_, refs| !refs.is_empty());
+        true
+    }
+
     /// Discard one channel's retained references, returning the removed count.
     /// Other channels survive; the age high-water mark is recomputed from them.
     /// An empty cache can therefore accept a lower-RTC epoch. This is a resource

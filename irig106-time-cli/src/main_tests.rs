@@ -386,3 +386,41 @@ fn reset_discards_only_its_channel_cache_and_suppresses_mixed_answers() {
         Err(TimeError::NeedsContext { .. })
     ));
 }
+
+#[test]
+fn isolated_live_pool_has_shared_cap_and_independent_ages() {
+    let mut pool = live_refs::LiveReferences::default();
+    let t = AbsoluteTime::new(100, 12, 0, 0, 0).unwrap();
+    for i in 0..5000 {
+        pool.observe(if i % 2 == 0 { 7 } else { 8 }, Rtc::from_raw(i), t);
+        let (retained, descriptors) = pool.counts();
+        assert!(retained <= 1024 && descriptors <= 1024);
+    }
+    pool.clear(7);
+    pool.observe(7, Rtc::from_raw(800_000_000), t);
+    pool.observe(8, Rtc::from_raw(50_000_000), t);
+    assert_eq!(pool.correlate(Rtc::from_raw(50_000_000), 8), Ok(t));
+    pool.clear(7);
+    pool.observe(7, Rtc::from_raw(10_000_000), t);
+    assert_eq!(pool.correlate(Rtc::from_raw(10_000_000), 7), Ok(t));
+    assert_eq!(pool.correlate(Rtc::from_raw(50_000_000), 8), Ok(t));
+}
+
+#[test]
+fn staged_segment_output_error_precedes_later_input_error() {
+    let mut s = Ch10TimeScanner::new();
+    s.segment_error = Some(io::Error::other("injected segment spool failure"));
+    // Valid non-time header, then a structural length failure. No extra input
+    // may be read after a segment writer first reports an operational failure.
+    let first = [
+        0x25, 0xEB, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0x3D, 0xF4,
+    ];
+    let mut second = first;
+    second[4] = 26;
+    second[22] = 0x3F;
+    let bytes = [first, second].concat();
+    let failure = s.scan(&bytes[..], false, None).err().unwrap();
+    assert_eq!(failure.class, ExitClass::Output);
+    assert!(failure.message.contains("segment spool failure"));
+    assert_eq!(s.total_packets, 0);
+}

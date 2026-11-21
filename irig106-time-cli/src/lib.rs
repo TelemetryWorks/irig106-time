@@ -44,6 +44,8 @@ pub mod args;
 mod csv_spool;
 /// Bounded raw packet transport; command integration follows in S16b.
 pub mod input;
+mod live_refs;
+mod segment_answers;
 mod target_refs;
 
 // ────────────────────────────────────────────────────────────────────
@@ -150,6 +152,9 @@ struct ObservedReference {
 struct Ch10TimeScanner {
     correlator: StreamingTimeCorrelator,
     query_refs: Option<target_refs::TargetReferences>,
+    segment_answers: Option<segment_answers::SegmentAnswers>,
+    segment_error: Option<io::Error>,
+    isolated: live_refs::LiveReferences,
     pending_channels: usize,
     reset_count: usize,
     references_seen: usize,
@@ -177,6 +182,9 @@ impl Ch10TimeScanner {
                 REFERENCE_CAP,
             ),
             query_refs: None,
+            segment_answers: None,
+            segment_error: None,
+            isolated: live_refs::LiveReferences::default(),
             pending_channels: 0,
             reset_count: 0,
             references_seen: 0,
@@ -284,12 +292,16 @@ impl Ch10TimeScanner {
             }
             self.last_rtc = Some(hdr.rtc);
             *self.data_type_counts.entry(hdr.data_type).or_insert(0) += 1;
+            let prior_refs = self.references_seen;
             if hdr.data_type == DATA_TYPE_TIME_F1 {
                 self.time_packets += 1;
                 self.process_time_packet(&packet.body_prefix, &hdr);
             } else if hdr.data_type == DATA_TYPE_TIME_F2 {
                 self.time_packets += 1;
                 self.process_time_f2_packet(&packet.body_prefix, &hdr);
+            }
+            if let Some(error) = self.segment_error.take() {
+                return Err(error.into());
             }
             if resolve_all && limit.is_none_or(|n| self.total_packets < n) {
                 let row = ResolvedPacket {
@@ -298,7 +310,7 @@ impl Ch10TimeScanner {
                     channel_id: hdr.channel_id,
                     data_type: hdr.data_type,
                     rtc: hdr.rtc,
-                    abs_time: self.resolve(hdr.rtc, None),
+                    abs_time: self.resolve_row(&hdr, self.references_seen != prior_refs),
                 };
                 if let Some(write_row) = emit.as_mut() {
                     write_row(&row)?;
@@ -321,14 +333,24 @@ impl Ch10TimeScanner {
     // Coordinator-approved WARNING: missing retained context is not malformed
     // packet data. No new TF ID. A known target has its own retained brackets.
     fn correlate(&self, rtc: Rtc, channel: Option<u16>) -> irig106_time::Result<AbsoluteTime> {
-        if self.reset_count != 0 {
+        if let Some(ch) = channel {
+            let info = self.time_channels.get(&ch);
+            if info.is_some_and(|c| !c.late.is_empty()) {
+                return Err(TimeError::NeedsContext {
+                    context: "RTC reset classification pending on this channel",
+                });
+            }
+            if self.query_refs.is_some() && info.is_some_and(|c| c.segment > 1) {
+                return Err(TimeError::NeedsContext {
+                    context: "RTC requires a labelled segment answer",
+                });
+            }
+            if self.query_refs.as_ref().is_none_or(|q| q.target != rtc) {
+                return self.isolated.correlate(rtc, ch);
+            }
+        } else if self.reset_count != 0 || self.pending_channels != 0 {
             return Err(TimeError::NeedsContext {
-                context: "RTC reset: segment-qualified answers unavailable",
-            });
-        }
-        if self.pending_channels != 0 {
-            return Err(TimeError::NeedsContext {
-                context: "RTC reset classification pending",
+                context: "RTC source/channel association required",
             });
         }
         if let Some(query) = &self.query_refs {
@@ -348,6 +370,23 @@ impl Ch10TimeScanner {
         }
     }
 
+    fn resolve_row(&mut self, hdr: &PktHeader, decoded: bool) -> Option<AbsoluteTime> {
+        if self.reset_count == 0 && self.pending_channels == 0 {
+            return self.resolve(hdr.rtc, None);
+        }
+        // A decoded time packet states its own value; no counter bridge or
+        // provisional segment decision is needed to report that observation.
+        if decoded {
+            return self
+                .time_channels
+                .get(&hdr.channel_id)
+                .and_then(|c| c.last_time);
+        }
+        // A matching numeric ID is not a qualified data-to-time association.
+        // S17 governing TMATS joining must select its time source/segment.
+        self.resolve(hdr.rtc, None)
+    }
+
     fn observe_reference(&mut self, hdr: &PktHeader, time: AbsoluteTime) {
         let point = ObservedReference {
             rtc: hdr.rtc,
@@ -356,7 +395,6 @@ impl Ch10TimeScanner {
             index: self.references_seen,
         };
         self.references_seen += 1;
-        self.cache_reference(hdr.channel_id, point);
         let info = self
             .time_channels
             .entry(hdr.channel_id)
@@ -370,7 +408,6 @@ impl Ch10TimeScanner {
             if previous.as_raw() - point.rtc.as_raw() > 300_000_000 {
                 self.report_late(hdr.channel_id, late);
                 self.start_reset(hdr.channel_id, previous, point);
-                self.cache_reference(hdr.channel_id, point);
                 self.observe_pair(hdr.channel_id, point);
             } else {
                 if late.last().is_some_and(|p| p.rtc >= point.rtc) {
@@ -382,7 +419,6 @@ impl Ch10TimeScanner {
                         self.start_reset(hdr.channel_id, previous, first);
                     }
                     for p in late {
-                        self.cache_reference(hdr.channel_id, p);
                         self.observe_pair(hdr.channel_id, p);
                     }
                 } else if let Some(info) = self.time_channels.get_mut(&hdr.channel_id) {
@@ -399,8 +435,9 @@ impl Ch10TimeScanner {
     fn cache_reference(&mut self, channel: u16, point: ObservedReference) {
         self.correlator
             .add_reference(channel, point.rtc, point.time);
+        self.isolated.observe(channel, point.rtc, point.time);
         if let Some(query) = self.query_refs.as_mut() {
-            query.observe(channel, point.rtc, point.time);
+            query.observe_at(channel, point.rtc, point.time, point.index);
         }
     }
     fn report_late(&mut self, channel: u16, late: Vec<ObservedReference>) {
@@ -410,6 +447,7 @@ impl Ch10TimeScanner {
             .and_then(|c| c.pair_baseline.map(|p| p.0))
         {
             for point in late {
+                self.cache_reference(channel, point);
                 self.note(
                     Severity::Warning,
                     format!(
@@ -453,7 +491,9 @@ impl Ch10TimeScanner {
             ),
         );
         self.reset_count += 1;
+        self.close_segment(channel, true);
         self.correlator.clear_channel(channel);
+        self.isolated.clear(channel);
         if let Some(query) = self.query_refs.as_mut() {
             query.clear_channel(channel);
         }
@@ -463,6 +503,7 @@ impl Ch10TimeScanner {
         }
     }
     fn observe_pair(&mut self, channel: u16, point: ObservedReference) {
+        self.cache_reference(channel, point);
         let hdr = PktHeader {
             channel_id: channel,
             data_type: 0,
@@ -511,6 +552,64 @@ impl Ch10TimeScanner {
             .entry(hdr.channel_id)
             .or_insert_with(|| TimeChannelInfo::new(hdr.channel_id))
             .pair_baseline = Some((hdr.rtc, time));
+    }
+
+    fn close_segment(&mut self, channel: u16, labelled: bool) {
+        if self.segment_error.is_some() {
+            return;
+        }
+        let Some(query) = self.query_refs.as_ref() else {
+            return;
+        };
+        if labelled && !query.covers(channel) {
+            return;
+        }
+        let segment = self.time_channels.get(&channel).map_or(1, |c| c.segment);
+        let answer = query.correlate(Some(channel));
+        if let Err(error) = &answer {
+            self.note(decode_level(error), format!("Segment query: {error}"));
+        }
+        if self.segment_answers.is_none() {
+            match segment_answers::SegmentAnswers::new() {
+                Ok(report) => self.segment_answers = Some(report),
+                Err(e) => {
+                    self.segment_error = Some(e);
+                    return;
+                }
+            }
+        }
+        let Some(report) = self.segment_answers.as_mut() else {
+            return;
+        };
+        match report.record(channel, segment, labelled, answer) {
+            Ok(true) => self.note(
+                Severity::Warning,
+                format!("RTC is ambiguous across reset segments on channel {channel}"),
+            ),
+            Ok(false) => (),
+            Err(e) => self.segment_error = Some(e),
+        }
+    }
+    fn finish_segments(&mut self) -> Result<(), Failure> {
+        let channels: Vec<_> = self.time_channels.keys().copied().collect();
+        for ch in channels {
+            let labelled = self.time_channels.get(&ch).is_some_and(|c| c.segment > 1);
+            self.close_segment(ch, labelled);
+            if !self
+                .segment_answers
+                .as_ref()
+                .is_some_and(|a| a.contains(ch))
+            {
+                self.note(
+                    Severity::Warning,
+                    format!("No reset segment covers requested RTC on channel {ch}"),
+                );
+            }
+        }
+        if let Some(error) = self.segment_error.take() {
+            return Err(error.into());
+        }
+        Ok(())
     }
 
     fn report_jump_samples(&self, out: &mut dyn Write) -> io::Result<()> {
@@ -1238,11 +1337,11 @@ fn cmd_correlate(
     writeln!(stdout)?;
 
     if scanner.reset_count != 0 {
-        scanner.note(
-            Severity::Warning,
-            "RTC reset: segment-qualified answers unavailable",
-        );
+        scanner.finish_segments()?;
         scanner.report_findings(stderr)?;
+        if let Some(report) = scanner.segment_answers.as_mut() {
+            report.copy_to(stdout)?;
+        }
         return Ok(scanner.highest);
     }
     if scanner.correlator.is_empty() {
@@ -1339,7 +1438,7 @@ fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
     )?;
     writeln!(
         stdout,
-        "Correlation: 1024 references globally / 30 seconds RTC; old/empty-window answers: warning (coordinator-approved)."
+        "Correlation caches: compatibility 1024; isolated 1024 arrivals / 30s per channel. Old/empty-window answers: warning (coordinator-approved)."
     )?;
     writeln!(stdout, "Examples:")?;
     writeln!(stdout, "  irigtime summary flight_042.ch10")?;
