@@ -58,6 +58,15 @@ fn versioned_report_is_deterministic_exact_and_carries_provenance() {
         assert_eq!(v["schema_status"], "draft");
         assert_eq!(v["tool"]["version"], env!("CARGO_PKG_VERSION"));
         assert_eq!(v["input"]["name"], input.0.to_str().unwrap());
+        let hex = v["input"]["native_name_hex"].as_str().unwrap();
+        let native = input.0.as_os_str().as_encoded_bytes();
+        assert_eq!(hex.len(), 2 * native.len());
+        let decoded: Vec<u8> = hex
+            .as_bytes()
+            .chunks_exact(2)
+            .map(|pair| u8::from_str_radix(std::str::from_utf8(pair).unwrap(), 16).unwrap())
+            .collect();
+        assert_eq!(decoded, native);
         assert_eq!(v["input"]["size_bytes"], "24");
         assert_eq!(v["options"]["command"], command);
         assert_eq!(v["options"]["fail_on"], "warning");
@@ -169,6 +178,14 @@ fn missing_year_report_matches_independent_golden() {
     let mut value: Value = serde_json::from_slice(&out).unwrap();
     // Normalize only independently checked run-specific provenance.
     assert_eq!(value["input"]["name"], input.0.to_str().unwrap());
+    let native_hex: String = input
+        .0
+        .as_os_str()
+        .as_encoded_bytes()
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    assert_eq!(value["input"]["native_name_hex"], native_hex);
     assert_eq!(value["tool"]["version"], env!("CARGO_PKG_VERSION"));
     value["input"]["name"] = "fixture.ch10".into();
     value["input"]["native_name_hex"] = "666978747572652e63683130".into();
