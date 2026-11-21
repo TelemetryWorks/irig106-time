@@ -72,8 +72,6 @@ TF-018 is an **information** finding for a counter reset/new session. The CLI's
 approved reset heuristic currently emits a **warning with code null**. It is not
 TF-018 at a different level, and the JSON keeps that distinction.
 
-**Proposal for owner decision:** retain code null for the heuristic warning;
-use TF-018/information only for a separately established new-session fact when
-that fact is reported. Do not relabel this warning TF-018 or silently change its
+Coordinator-accepted 2026-11-21 (owner may override): heuristic reset warnings keep code null; TF-018/information is reserved for an established new-session fact. Do not relabel this warning TF-018 or silently change its
 approved severity, counts or --fail-on behaviour. This PR makes no reset mapping
 change or new finding assignment.

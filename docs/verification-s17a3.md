@@ -130,9 +130,7 @@ in summary AND jumps output. No whole-requirement marker or coverage gain.
 Correct the `never` threshold description. Release builds must set
 IRIGTIME_SOURCE_REVISION to the release commit; PR GITHUB_SHA can be a temporary
 merge commit. TF-018 remains information in the catalog. The approved CLI
-heuristic reset remains warning/code null. Proposal: keep that distinction and
-reserve TF-018/information for a separately established new-session fact, rather
-than attach an information-level ID to a warning. No reset behaviour/level change.
+heuristic reset remains warning/code null. Coordinator-accepted 2026-11-21 (owner may override): heuristic reset warnings keep code null; TF-018/information is reserved for an established new-session fact. No reset behaviour/level change.
 
 Later follow-up, explicitly not implemented in this PR: the #79 consumer seam
 should use tmats #9's association_unestablished / association_conflicting /
