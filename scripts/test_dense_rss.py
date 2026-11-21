@@ -36,6 +36,12 @@ class DenseRss(unittest.TestCase):
                     self.assertEqual(data[offset + 24:offset + 34],
                                      bytes.fromhex('00 00 00 00 00 00 00 12 00 01'))
                     self.assertEqual(data[offset + 34:offset + 36], b'\xDD\xDD')
+                if len(stamps) == 45:
+                    self.assertEqual(data[offset+28:offset+34], bytes.fromhex('50 40 00 12 00 01'))
+                if len(stamps) == 50:
+                    self.assertEqual(data[offset+28:offset+34], bytes.fromhex('00 09 01 12 00 01'))
+                if len(stamps) == 62:
+                    self.assertEqual(data[offset+28:offset+34], bytes.fromhex('00 49 01 12 00 01'))
             else:
                 self.assertEqual((channel, length, data_length), (9, 28, 4))
             offset += length
