@@ -1,0 +1,344 @@
+{
+  "findings": {
+    "error": "0",
+    "info": "0",
+    "omitted": "0",
+    "samples": [
+      {
+        "channel": 8,
+        "code": null,
+        "level": "warning",
+        "message": "Time F2 packet ch=8: correlation error: time needs context: NTP era/basis required; use ntp::convert_ntp",
+        "packet": "1"
+      },
+      {
+        "channel": 11,
+        "code": "TF-006",
+        "level": "warning",
+        "message": "Time F2 packet ch=11: parse error: reserved network time format 0x3",
+        "packet": "4"
+      }
+    ],
+    "warning": "2"
+  },
+  "highest_level": "warning",
+  "input": {
+    "name": "fixture.ch10",
+    "name_lossy": false,
+    "native_name_encoding": "posix-bytes",
+    "native_name_hex": "666978747572652e63683130",
+    "size_bytes": "180"
+  },
+  "options": {
+    "command": "summary",
+    "fail_on": "error",
+    "format": "json",
+    "threshold_ms": "1000"
+  },
+  "report": {
+    "channels": [
+      {
+        "date_format": "doy",
+        "first": {
+          "basis": "stated FMT",
+          "clock_count_ns": "8596800000000000",
+          "day": 100,
+          "hour": 12,
+          "minute": 0,
+          "nanosecond": 0,
+          "scale": "GPS",
+          "second": 0,
+          "year": null,
+          "year_offset": "0"
+        },
+        "first_rtc": "0",
+        "format": "GPS",
+        "format1_low_nibble": 1,
+        "format2_word": null,
+        "format_reserved": null,
+        "id": 7,
+        "last": {
+          "basis": "stated FMT",
+          "clock_count_ns": "8596800000000000",
+          "day": 100,
+          "hour": 12,
+          "minute": 0,
+          "nanosecond": 0,
+          "scale": "GPS",
+          "second": 0,
+          "year": null,
+          "year_offset": "0"
+        },
+        "last_rtc": "0",
+        "leap_year": false,
+        "max_gap_ns": null,
+        "min_gap_ns": null,
+        "native_scale": "GPS",
+        "packets": "1",
+        "scale_basis": "stated FMT",
+        "segment_count": "1",
+        "segments": [
+          {
+            "first": {
+              "basis": "stated FMT",
+              "clock_count_ns": "8596800000000000",
+              "day": 100,
+              "hour": 12,
+              "minute": 0,
+              "nanosecond": 0,
+              "scale": "GPS",
+              "second": 0,
+              "year": null,
+              "year_offset": "0"
+            },
+            "first_rtc": "0",
+            "index": "1",
+            "last": {
+              "basis": "stated FMT",
+              "clock_count_ns": "8596800000000000",
+              "day": 100,
+              "hour": 12,
+              "minute": 0,
+              "nanosecond": 0,
+              "scale": "GPS",
+              "second": 0,
+              "year": null,
+              "year_offset": "0"
+            },
+            "last_rtc": "0"
+          }
+        ],
+        "status": null,
+        "status_raw": null
+      },
+      {
+        "date_format": null,
+        "first": null,
+        "first_rtc": null,
+        "format": "NTP",
+        "format1_low_nibble": null,
+        "format2_word": 1,
+        "format_reserved": null,
+        "id": 8,
+        "last": null,
+        "last_rtc": null,
+        "leap_year": null,
+        "max_gap_ns": null,
+        "min_gap_ns": null,
+        "native_scale": "UTC",
+        "packets": "1",
+        "scale_basis": "standard",
+        "segment_count": "0",
+        "segments": [],
+        "status": "valid",
+        "status_raw": 1
+      },
+      {
+        "date_format": null,
+        "first": {
+          "basis": "derived, leap table",
+          "clock_count_ns": "86400000000123",
+          "day": 2,
+          "hour": 0,
+          "minute": 0,
+          "nanosecond": 123,
+          "scale": "UTC",
+          "second": 0,
+          "year": 2017,
+          "year_offset": "0"
+        },
+        "first_rtc": "20000000",
+        "format": "IEEE1588-2002",
+        "format1_low_nibble": null,
+        "format2_word": 17,
+        "format_reserved": null,
+        "id": 9,
+        "last": {
+          "basis": "derived, leap table",
+          "clock_count_ns": "86400000000123",
+          "day": 2,
+          "hour": 0,
+          "minute": 0,
+          "nanosecond": 123,
+          "scale": "UTC",
+          "second": 0,
+          "year": 2017,
+          "year_offset": "0"
+        },
+        "last_rtc": "20000000",
+        "leap_year": null,
+        "max_gap_ns": null,
+        "min_gap_ns": null,
+        "native_scale": "TAI",
+        "packets": "1",
+        "scale_basis": "standard",
+        "segment_count": "1",
+        "segments": [
+          {
+            "first": {
+              "basis": "derived, leap table",
+              "clock_count_ns": "86400000000123",
+              "day": 2,
+              "hour": 0,
+              "minute": 0,
+              "nanosecond": 123,
+              "scale": "UTC",
+              "second": 0,
+              "year": 2017,
+              "year_offset": "0"
+            },
+            "first_rtc": "20000000",
+            "index": "1",
+            "last": {
+              "basis": "derived, leap table",
+              "clock_count_ns": "86400000000123",
+              "day": 2,
+              "hour": 0,
+              "minute": 0,
+              "nanosecond": 123,
+              "scale": "UTC",
+              "second": 0,
+              "year": 2017,
+              "year_offset": "0"
+            },
+            "last_rtc": "20000000"
+          }
+        ],
+        "status": "valid",
+        "status_raw": 1
+      },
+      {
+        "date_format": null,
+        "first": {
+          "basis": "derived, leap table",
+          "clock_count_ns": "86400000000123",
+          "day": 2,
+          "hour": 0,
+          "minute": 0,
+          "nanosecond": 123,
+          "scale": "UTC",
+          "second": 0,
+          "year": 2017,
+          "year_offset": "0"
+        },
+        "first_rtc": "30000000",
+        "format": "IEEE1588-2008",
+        "format1_low_nibble": null,
+        "format2_word": 33,
+        "format_reserved": null,
+        "id": 10,
+        "last": {
+          "basis": "derived, leap table",
+          "clock_count_ns": "86400000000123",
+          "day": 2,
+          "hour": 0,
+          "minute": 0,
+          "nanosecond": 123,
+          "scale": "UTC",
+          "second": 0,
+          "year": 2017,
+          "year_offset": "0"
+        },
+        "last_rtc": "30000000",
+        "leap_year": null,
+        "max_gap_ns": null,
+        "min_gap_ns": null,
+        "native_scale": "TAI",
+        "packets": "1",
+        "scale_basis": "standard",
+        "segment_count": "1",
+        "segments": [
+          {
+            "first": {
+              "basis": "derived, leap table",
+              "clock_count_ns": "86400000000123",
+              "day": 2,
+              "hour": 0,
+              "minute": 0,
+              "nanosecond": 123,
+              "scale": "UTC",
+              "second": 0,
+              "year": 2017,
+              "year_offset": "0"
+            },
+            "first_rtc": "30000000",
+            "index": "1",
+            "last": {
+              "basis": "derived, leap table",
+              "clock_count_ns": "86400000000123",
+              "day": 2,
+              "hour": 0,
+              "minute": 0,
+              "nanosecond": 123,
+              "scale": "UTC",
+              "second": 0,
+              "year": 2017,
+              "year_offset": "0"
+            },
+            "last_rtc": "30000000"
+          }
+        ],
+        "status": "valid",
+        "status_raw": 1
+      },
+      {
+        "date_format": null,
+        "first": null,
+        "first_rtc": null,
+        "format": "reserved",
+        "format1_low_nibble": null,
+        "format2_word": 49,
+        "format_reserved": 3,
+        "id": 11,
+        "last": null,
+        "last_rtc": null,
+        "leap_year": null,
+        "max_gap_ns": null,
+        "min_gap_ns": null,
+        "native_scale": "unknown",
+        "packets": "1",
+        "scale_basis": "unresolved",
+        "segment_count": "0",
+        "segments": [],
+        "status": "valid",
+        "status_raw": 1
+      }
+    ],
+    "data_types": [
+      {
+        "id": 17,
+        "packets": "1"
+      },
+      {
+        "id": 18,
+        "packets": "4"
+      }
+    ],
+    "first_rtc": "0",
+    "jumps": {
+      "count": "0",
+      "omitted": "0",
+      "samples": []
+    },
+    "last_rtc": "40000000",
+    "qualification": "observed inventory; qualified joining/basis pending",
+    "reference_count": "3",
+    "references_evicted": "0",
+    "references_seen": "3",
+    "reset_count": "0",
+    "rows": null,
+    "rtc_duration_ns": "4000000000",
+    "time_packets": "5",
+    "total_packets": "5"
+  },
+  "schema": "telemetryworks/irigtime-report",
+  "schema_revision": 2,
+  "schema_status": "stable",
+  "schema_version": 1,
+  "tool": {
+    "library_version": "<package-version>",
+    "name": "irigtime",
+    "source_revision": null,
+    "version": "<package-version>"
+  }
+}

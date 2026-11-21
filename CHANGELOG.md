@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S17a4 protocol inventory golden
+
+- Pin native GPS and NTP/IEEE1588-2002/IEEE1588-2008 JSON inventory in one
+  independent golden, including converted PTP UTC basis and nanoseconds.
+  NTP without CLI era context explicitly remains unresolved; no conversion
+  coverage is claimed. Name the three TMATS association states at the seam;
+  conflicting remains unresolved. No runtime or dependency change.
+
 ### Stable JSON inventory schema
 
 - Freeze the reviewed report schema as version 1, revision 2: schema_status is
