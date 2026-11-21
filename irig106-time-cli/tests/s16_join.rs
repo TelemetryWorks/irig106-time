@@ -893,3 +893,66 @@ fn segment_copy_failure_is_output_not_findings() {
     );
     assert!(String::from_utf8(out.0).unwrap().contains("Resolving RTC"));
 }
+
+#[test]
+fn late_reference_does_not_narrow_closed_segment_coverage() {
+    let mut bytes = Vec::new();
+    for sec in [0, 39, 40, 35] {
+        bytes.extend(doy_packet(7, sec, 100, 43200 + sec as u32));
+    }
+    for sec in [1, 2, 3] {
+        bytes.extend(doy_packet(7, sec, 100, 43300 + sec as u32));
+    }
+    let target = format!("{:X}", 38 * 10_000_000u64);
+    let (out, err) = cli_text("correlate", &bytes, &[&target]);
+    assert!(
+        out.contains("Channel   7 Segment   1  → Day 100 12:00:38.000.000"),
+        "{out}\n{err}"
+    );
+    assert!(!out.contains("Segment   2"), "{out}");
+    assert!(!err.contains("No reset segment covers"), "{err}");
+}
+
+#[test]
+fn uncovered_reset_target_has_explicit_warning() {
+    let mut bytes = Vec::new();
+    for sec in [10, 40] {
+        bytes.extend(doy_packet(7, sec, 100, 43200 + sec as u32));
+    }
+    for sec in [1, 2, 3] {
+        bytes.extend(doy_packet(7, sec, 100, 43300 + sec as u32));
+    }
+    let (out, err) = cli_text("correlate", &bytes, &["2FAF080"]); // 5s, between ranges.
+    assert!(
+        err.contains("Warning: No reset segment covers requested RTC on channel 7"),
+        "{err}"
+    );
+    assert!(
+        err.contains("error=0, warning=2, info=0 (total=2)"),
+        "{err}"
+    );
+    assert!(!out.contains("Segment"), "{out}");
+    assert!(!out.contains("Any channel"), "{out}");
+}
+
+#[test]
+fn reset_data_row_cannot_infer_source_from_matching_channel_id() {
+    let mut bytes = [
+        doy_packet(8, 0, 100, 43200),
+        doy_packet(7, 40, 100, 43240),
+        doy_packet(7, 1, 100, 43301),
+    ]
+    .concat();
+    let mut data = doy_packet(8, 1, 100, 43201);
+    data[15] = 9;
+    let sum = data[..22]
+        .chunks_exact(2)
+        .map(|w| u16::from_le_bytes([w[0], w[1]]))
+        .fold(0u16, u16::wrapping_add);
+    data[22..24].copy_from_slice(&sum.to_le_bytes());
+    bytes.extend(data);
+    let (out, err) = cli_text("timeline", &bytes, &[]);
+    let row = out.lines().find(|l| l.contains("PCM-1")).unwrap();
+    assert!(row.contains("N/A"), "{row}");
+    assert!(err.contains("Warning: Correlation query: time needs context: RTC source/channel association required"), "{err}");
+}

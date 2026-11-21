@@ -515,3 +515,17 @@ fn discard_reference_removes_exact_rtc_and_preserves_loss_guard() {
     );
     assert_eq!(s.correlate(Rtc::from_raw(20), Some(8)), Ok(time));
 }
+
+#[test]
+fn discard_reference_discards_earliest_equal_rtc_arrival() {
+    let mut s = StreamingTimeCorrelator::new(NanosDuration::new(u64::MAX));
+    let rtc = Rtc::from_raw(10);
+    let first = AbsoluteTime::new(100, 12, 0, 0, 0).unwrap();
+    let second = AbsoluteTime::new(100, 13, 0, 0, 0).unwrap();
+    s.add_reference(7, rtc, first);
+    s.add_reference(7, rtc, second);
+    assert!(s.discard_reference(7, rtc));
+    assert_eq!(s.len(), 1);
+    assert_eq!(s.total_evicted(), 1);
+    assert_eq!(s.correlate(rtc, Some(7)), Ok(second));
+}
