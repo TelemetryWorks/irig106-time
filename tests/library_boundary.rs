@@ -30,3 +30,46 @@ fn serde_feature_is_rejected_before_compilation() {
         "unexpected rejection: {error}"
     );
 }
+
+#[test]
+fn library_normal_and_build_tree_remains_serde_free() {
+    // Root dev tools may use serde; the shipped library and optional features
+    // may not. Cargo tree reports real package names, including renamed edges.
+    let output = Command::new(env!("CARGO"))
+        .args([
+            "tree",
+            "-p",
+            "irig106-time",
+            "--all-features",
+            "--edges",
+            "normal,build",
+            "--prefix",
+            "none",
+            "--format",
+            "{p}",
+            "--locked",
+            "--offline",
+        ])
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .output()
+        .expect("cargo tree");
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let tree = String::from_utf8(output.stdout).expect("UTF-8 package names");
+    let forbidden: Vec<_> = tree
+        .lines()
+        .filter(|line| {
+            matches!(
+                line.split_whitespace().next(),
+                Some("serde" | "serde_core" | "serde_json")
+            )
+        })
+        .collect();
+    assert!(
+        forbidden.is_empty(),
+        "library JSON dependency leak: {forbidden:?}"
+    );
+}

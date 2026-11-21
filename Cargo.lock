@@ -320,6 +320,7 @@ name = "irig106-time-cli"
 version = "0.7.0"
 dependencies = [
  "irig106-time",
+ "serde_json",
 ]
 
 [[package]]
