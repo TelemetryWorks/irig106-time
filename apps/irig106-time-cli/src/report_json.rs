@@ -218,6 +218,31 @@ fn document(r: &Report<'_>, args: &Args, size: u64) -> Value {
 mod tests {
     use super::*;
     #[test]
+    fn timeline_document_defers_rows_until_emission() {
+        let mut scanner = Ch10TimeScanner::new();
+        scanner.resolved.push(ResolvedPacket {
+            packet_num: 0,
+            offset: 24,
+            channel_id: 7,
+            data_type: 0x11,
+            rtc: Rtc::from_raw(10_000_000),
+            abs_time: None,
+        });
+        let args = match args::parse(&["timeline", "input", "--format", "json"]).unwrap() {
+            args::Request::File(a) => Some(a),
+            _ => None,
+        }
+        .unwrap();
+        let report = Report::from(&scanner);
+        // A marker only: projected row Values must not accumulate in document().
+        assert_eq!(document(&report, &args, 60)["report"]["rows"], json!([]));
+        let mut out = Vec::new();
+        write(&report, &args, 60, &mut out).unwrap();
+        let emitted: Value = serde_json::from_slice(&out).unwrap();
+        assert_eq!(emitted["report"]["rows"].as_array().unwrap().len(), 1);
+        assert_eq!(emitted["report"]["rows"][0]["offset_bytes"], "24");
+    }
+    #[test]
     fn exact_wide_values_and_order_survive_json_projection() {
         let mut s = Ch10TimeScanner::new();
         s.total_packets = usize::MAX;

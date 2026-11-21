@@ -46,6 +46,8 @@ def main(cycles=None, steady_rounds=100_000):
             assert path.stat().st_size == meta['bytes']
             check_commands(bins[0], root, path, meta, label)
             check_json(bins[0], root, path, meta, label)
+            if meta.get('steady'):
+                check_large_timeline_json(bins[0], root, path, meta)
             path.unlink()
 
 
@@ -140,6 +142,41 @@ def check_json(binary, root, path, meta, label):
         if summary := os.environ.get('GITHUB_STEP_SUMMARY'):
             with open(summary, 'a') as out:
                 out.write(result+'\n')
+
+
+def check_large_timeline_json(binary, root, path, meta):
+    # No retained JSON DOM in the CLI, even at a deliberately large caller cap.
+    limit = 100_000
+    with (root/'large-timeline.json').open('w+b') as out, (root/'large-timeline.err').open('w+') as err:
+        code, rss = measure([binary, 'timeline', str(path), '--format', 'json',
+                             '--limit', str(limit), '--fail-on', 'never'],
+                            out, root/'peak.txt', stderr=err)
+        assert code == 0, code
+        assert rss < 32*1024, (rss, '100000 timeline rows exceed 32MiB')
+        err.seek(0)
+        assert not err.read(8192), 'steady workload must have no findings'
+        out.seek(0)
+        prefix = out.read(8192)
+        assert b'"highest_level":null' in prefix
+        assert f'"limit":"{limit}"'.encode() in prefix
+        # The steady fixture has no finding samples: packet keys occur only in
+        # rows. Count across chunk boundaries without loading the large artifact.
+        out.seek(0)
+        marker, carry, rows = b'"packet":', b'', 0
+        while block := out.read(65536):
+            chunk = carry + block
+            rows += chunk.count(marker)
+            carry = chunk[-(len(marker)-1):]
+        assert rows == limit, rows
+        out.seek(max(0, out.tell()-4096))
+        tail = out.read(4096)
+        assert f'"total_packets":"{meta["packets"]}"'.encode() in tail
+        assert tail.endswith(b'}\n')
+    result = f'dense steady timeline JSON limit {limit}: {rss} KiB CLI peak (<32768)'
+    print(result, flush=True)
+    if summary := os.environ.get('GITHUB_STEP_SUMMARY'):
+        with open(summary, 'a') as out:
+            out.write(result+'\n')
 
 
 if __name__ == '__main__':
