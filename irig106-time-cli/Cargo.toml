@@ -20,3 +20,6 @@ path = "src/bin/irigtime.rs"
 
 [dependencies]
 irig106-time = { path = "..", version = "=0.7.0" }
+
+# Owner-approved 2026-11-20: CLI JSON output only (ADR-0019).
+serde_json = "1"
