@@ -1,4 +1,4 @@
-//! CLI-owned draft v1 report JSON (ADR-0019; owner approval 2026-11-20).
+//! CLI-owned stable v1 report JSON (ADR-0019; owner approval 2026-11-20).
 //! Partial Traces: L3-CLI-106 <- L2-CLI-106 <- L1-CLI-006; no loading API.
 use super::{args::Args, report::Report, *};
 use serde_json::{Value, json, ser::Formatter};
@@ -187,7 +187,7 @@ fn native_name(path: &OsStr) -> (String, &'static str) {
 fn document(r: &Report<'_>, args: &Args, size: u64) -> Value {
     let path = args.input.as_os_str();
     let (bytes, encoding) = native_name(path);
-    json!({"schema": "telemetryworks/irigtime-report", "schema_version": 1, "schema_revision": 1, "schema_status": "draft",
+    json!({"schema": "telemetryworks/irigtime-report", "schema_version": 1, "schema_revision": 2, "schema_status": "stable",
         "tool": {"name": "irigtime", "version": PKG_VERSION, "library_version": PKG_VERSION,
             "source_revision": option_env!("IRIGTIME_SOURCE_REVISION").or(option_env!("GITHUB_SHA"))},
         "input": {"name": path.to_string_lossy(), "name_lossy": path.to_str().is_none(),
@@ -364,7 +364,7 @@ mod tests {
         assert!(out.is_ascii());
         let v: Value = serde_json::from_slice(&out).unwrap();
         assert_eq!(v["schema"], "telemetryworks/irigtime-report");
-        assert_eq!(v["schema_revision"], 1);
+        assert_eq!(v["schema_revision"], 2);
         assert_eq!(v["highest_level"], "error");
         assert_eq!(v["findings"]["error"], "1");
         assert_eq!(v["findings"]["info"], "2");
