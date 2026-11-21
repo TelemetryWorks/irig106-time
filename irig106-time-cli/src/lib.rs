@@ -37,7 +37,7 @@ use std::result::Result;
 use irig106_time::bcd::{DayFormatTime, DmyFormatTime};
 use irig106_time::csdw::{DateFormat, TimeF1Csdw};
 use irig106_time::findings::Severity;
-use irig106_time::network_time::{LeapSecondTable, NetworkTimeProtocol, parse_time_f2_payload};
+use irig106_time::network_time::{LeapSecondTable, TimeF2Csdw, parse_time_f2_payload};
 use irig106_time::*;
 /// Strict, filesystem-free argument parsing.
 pub mod args;
@@ -45,6 +45,7 @@ mod csv_spool;
 /// Bounded raw packet transport; command integration follows in S16b.
 pub mod input;
 mod live_refs;
+mod report;
 mod segment_answers;
 mod target_refs;
 
@@ -84,8 +85,11 @@ struct TimeChannelInfo {
     format: Option<TimeFormat>,
     date_format: Option<DateFormat>,
     is_leap_year: Option<bool>,
-    /// For Format 2 channels: the specific network protocol (NTP or PTP).
-    network_protocol: Option<NetworkTimeProtocol>,
+    /// Raw Format 2 word: preserve NTF revision and TS even when conversion fails.
+    network_word: Option<TimeF2Csdw>,
+    first_basis: Option<&'static str>,
+    last_basis: Option<&'static str>,
+    year_rollovers: usize,
     first_time: Option<AbsoluteTime>,
     last_time: Option<AbsoluteTime>,
     first_rtc: Option<Rtc>,
@@ -108,7 +112,10 @@ impl TimeChannelInfo {
             format: None,
             date_format: None,
             is_leap_year: None,
-            network_protocol: None,
+            network_word: None,
+            first_basis: None,
+            last_basis: None,
+            year_rollovers: 0,
             first_time: None,
             last_time: None,
             first_rtc: None,
@@ -161,6 +168,7 @@ struct Ch10TimeScanner {
     jump_threshold: Option<u64>,
     jumps_seen: usize,
     jumps: Vec<TimeJump>,
+    jump_year_days: Vec<(u16, u16)>,
     leap_table: LeapSecondTable,
     time_channels: BTreeMap<u16, TimeChannelInfo>,
     total_packets: usize,
@@ -191,6 +199,7 @@ impl Ch10TimeScanner {
             jump_threshold: None,
             jumps_seen: 0,
             jumps: Vec::new(),
+            jump_year_days: Vec::new(),
             leap_table: LeapSecondTable::builtin(),
             time_channels: BTreeMap::new(),
             total_packets: 0,
@@ -499,6 +508,7 @@ impl Ch10TimeScanner {
         }
         if let Some(info) = self.time_channels.get_mut(&channel) {
             info.pair_baseline = None;
+            info.year_rollovers = 0;
             info.segment += 1;
         }
     }
@@ -517,35 +527,53 @@ impl Ch10TimeScanner {
                 info.max_gap_ns = Some(info.max_gap_ns.map_or(gap, |old| old.max(gap)));
             }
         }
-        if let Some(threshold) = self.jump_threshold {
-            if let Some((rtc, previous)) = self
+        if let Some((rtc, previous)) = self
+            .time_channels
+            .get(&channel)
+            .and_then(|c| c.pair_baseline)
+        {
+            let elapsed = rtc.elapsed_nanos(point.rtc);
+            let leap = self
                 .time_channels
-                .get(&hdr.channel_id)
-                .and_then(|c| c.pair_baseline)
-            {
-                // Adjacent non-backward observations: online state never sorts a file.
-                let expected_nanos = previous.as_total_ns() + rtc.elapsed_nanos(hdr.rtc);
-                let actual_nanos = time.as_total_ns();
-                let delta_nanos = actual_nanos as i64 - expected_nanos as i64;
-                if delta_nanos.unsigned_abs() > threshold {
-                    self.jumps_seen += 1;
-                    if self.jumps.len() < FINDING_SAMPLE_LIMIT {
-                        self.jumps.push(TimeJump {
-                            index: point.index,
-                            channel_id: hdr.channel_id,
-                            expected_nanos,
-                            actual_nanos,
-                            delta_nanos,
-                        });
-                    }
-                    self.note(
-                        Severity::Warning,
-                        format!(
-                            "Time jump on channel {} at reference {}",
-                            hdr.channel_id, point.index
-                        ),
-                    );
+                .get(&channel)
+                .and_then(|c| c.is_leap_year);
+            let year_days = report::year_boundary(previous, time, elapsed, leap);
+            let expected_nanos = previous.as_total_ns() + elapsed;
+            let actual_nanos =
+                time.as_total_ns() + u64::from(year_days.unwrap_or(0)) * 86_400_000_000_000;
+            if year_days.is_some() {
+                if let Some(info) = self.time_channels.get_mut(&channel) {
+                    info.year_rollovers += 1;
                 }
+            }
+            let delta_nanos = actual_nanos as i64 - expected_nanos as i64;
+            if self
+                .jump_threshold
+                .is_some_and(|threshold| delta_nanos.unsigned_abs() > threshold)
+            {
+                self.jumps_seen += 1;
+                if self.jumps.len() < FINDING_SAMPLE_LIMIT {
+                    self.jump_year_days.push((
+                        report::known_year_days(previous, leap)
+                            .or(year_days)
+                            .unwrap_or(0),
+                        year_days.unwrap_or(0),
+                    ));
+                    self.jumps.push(TimeJump {
+                        index: point.index,
+                        channel_id: channel,
+                        expected_nanos,
+                        actual_nanos,
+                        delta_nanos,
+                    });
+                }
+                self.note(
+                    Severity::Warning,
+                    format!(
+                        "Time jump on channel {} at reference {}",
+                        channel, point.index
+                    ),
+                );
             }
         }
         self.time_channels
@@ -591,7 +619,12 @@ impl Ch10TimeScanner {
         }
     }
     fn finish_segments(&mut self) -> Result<(), Failure> {
-        let channels: Vec<_> = self.time_channels.keys().copied().collect();
+        let channels: Vec<_> = self
+            .time_channels
+            .iter()
+            .filter(|(_, c)| c.first_rtc.is_some())
+            .map(|(&ch, _)| ch)
+            .collect();
         for ch in channels {
             let labelled = self.time_channels.get(&ch).is_some_and(|c| c.segment > 1);
             self.close_segment(ch, labelled);
@@ -612,28 +645,6 @@ impl Ch10TimeScanner {
         Ok(())
     }
 
-    fn report_jump_samples(&self, out: &mut dyn Write) -> io::Result<()> {
-        for j in &self.jumps {
-            writeln!(
-                out,
-                "  Channel {:>3} Ref #{:<4} Expected: {} ns Actual: {} ns Delta: {:+.3} ms",
-                j.channel_id,
-                j.index,
-                j.expected_nanos,
-                j.actual_nanos,
-                j.delta_nanos as f64 / 1_000_000.0
-            )?;
-        }
-        if self.jumps_seen > self.jumps.len() {
-            writeln!(
-                out,
-                "  ... and {} more jump details",
-                self.jumps_seen - self.jumps.len()
-            )?;
-        }
-        Ok(())
-    }
-
     fn note(&mut self, level: Severity, message: impl Into<String>) {
         self.observe(level);
         // <=3 facts per complete packet plus terminal/query facts. Checked
@@ -650,37 +661,8 @@ impl Ch10TimeScanner {
         }
     }
 
-    fn finding_total(&self) -> u64 {
-        self.finding_counts.iter().sum()
-    }
-    fn omitted_findings(&self) -> u64 {
-        self.finding_total() - self.errors.len() as u64
-    }
-    fn report_finding_counts(&self, out: &mut dyn Write) -> io::Result<()> {
-        writeln!(
-            out,
-            "Findings: error={}, warning={}, info={} (total={})",
-            self.finding_counts[2],
-            self.finding_counts[1],
-            self.finding_counts[0],
-            self.finding_total()
-        )
-    }
     fn report_findings(&self, stderr: &mut dyn Write) -> Result<(), Failure> {
-        if self.finding_total() != 0 {
-            self.report_finding_counts(stderr)?;
-        }
-        for error in &self.errors {
-            writeln!(stderr, "Finding: {error}")?;
-        }
-        if self.omitted_findings() != 0 {
-            writeln!(
-                stderr,
-                "Finding: ... and {} more findings",
-                self.omitted_findings()
-            )?;
-        }
-        Ok(())
+        report::Report::from(self).report_findings(stderr)
     }
 
     fn process_time_packet(&mut self, payload: &[u8], hdr: &PktHeader) {
@@ -761,20 +743,37 @@ impl Ch10TimeScanner {
             .entry(hdr.channel_id)
             .or_insert_with(|| TimeChannelInfo::new(hdr.channel_id));
         info.packet_count += 1;
+        info.network_word = None;
         info.source = Some(csdw.time_source());
         info.format = Some(csdw.time_format());
         info.date_format = Some(csdw.date_format());
         info.is_leap_year = Some(csdw.is_leap_year());
+        let basis = report::f1_basis(csdw.time_format());
         if info.first_time.is_none() {
             info.first_time = Some(abs_time);
+            info.first_basis = Some(basis);
             info.first_rtc = Some(hdr.rtc);
         }
         info.last_time = Some(abs_time);
+        info.last_basis = Some(basis);
         info.last_rtc = Some(hdr.rtc);
     }
 
     fn process_time_f2_packet(&mut self, payload: &[u8], hdr: &PktHeader) {
-        let (csdw, network_time) = match parse_time_f2_payload(payload) {
+        // Inventory is factual even when TS/era/body prevents an absolute answer.
+        if let Some(bytes) = payload.get(..4).and_then(|b| b.try_into().ok()) {
+            let info = self
+                .time_channels
+                .entry(hdr.channel_id)
+                .or_insert_with(|| TimeChannelInfo::new(hdr.channel_id));
+            info.packet_count += 1;
+            info.network_word = Some(TimeF2Csdw::from_le_bytes(bytes));
+            info.source = None;
+            info.format = None;
+            info.date_format = None;
+            info.is_leap_year = None;
+        }
+        let (_, network_time) = match parse_time_f2_payload(payload) {
             Ok(result) => result,
             Err(e) => {
                 self.note(
@@ -822,26 +821,13 @@ impl Ch10TimeScanner {
             .time_channels
             .entry(hdr.channel_id)
             .or_insert_with(|| TimeChannelInfo::new(hdr.channel_id));
-        info.packet_count += 1;
-        // Map network protocol to TimeSource/TimeFormat for display
-        info.network_protocol = Some(csdw.time_protocol());
-        info.source = Some(match csdw.time_protocol() {
-            NetworkTimeProtocol::Ntp => TimeSource::External,
-            NetworkTimeProtocol::Ptp => TimeSource::External,
-            NetworkTimeProtocol::Reserved(_) => TimeSource::None,
-        });
-        info.format = Some(match csdw.time_protocol() {
-            NetworkTimeProtocol::Ntp => TimeFormat::Utc,
-            NetworkTimeProtocol::Ptp => TimeFormat::Gps, // closest analog
-            NetworkTimeProtocol::Reserved(_) => TimeFormat::Reserved(0xFF),
-        });
-        info.date_format = Some(DateFormat::DayOfYear); // F2 doesn't use BCD date format
-        info.is_leap_year = Some(false); // not applicable for F2
         if info.first_time.is_none() {
             info.first_time = Some(abs_time);
+            info.first_basis = Some("UTC (from TAI via leap table)");
             info.first_rtc = Some(hdr.rtc);
         }
         info.last_time = Some(abs_time);
+        info.last_basis = Some("UTC (from TAI via leap table)");
         info.last_rtc = Some(hdr.rtc);
     }
 }
@@ -851,33 +837,7 @@ impl Ch10TimeScanner {
 // ────────────────────────────────────────────────────────────────────
 
 fn fmt_abs_time(t: &AbsoluteTime) -> String {
-    let ms = t.nanoseconds() / 1_000_000;
-    let us = (t.nanoseconds() % 1_000_000) / 1_000;
-    match t.year() {
-        Some(y) => {
-            format!(
-                "{:04} Day {:03} {:02}:{:02}:{:02}.{:03}.{:03}",
-                y,
-                t.day_of_year(),
-                t.hours(),
-                t.minutes(),
-                t.seconds(),
-                ms,
-                us
-            )
-        }
-        None => {
-            format!(
-                "Day {:03} {:02}:{:02}:{:02}.{:03}.{:03}",
-                t.day_of_year(),
-                t.hours(),
-                t.minutes(),
-                t.seconds(),
-                ms,
-                us
-            )
-        }
-    }
+    report::clock_value(t)
 }
 
 fn fmt_time_source(src: &TimeSource) -> &'static str {
@@ -952,6 +912,7 @@ fn cmd_summary(
     let mut scanner = Ch10TimeScanner::new();
     scanner.jump_threshold = Some(1_000_000_000);
     scanner.scan(input, false, None)?;
+    let scanner = report::Report::from(&scanner);
 
     writeln!(
         stdout,
@@ -980,12 +941,12 @@ fn cmd_summary(
         "Time Channels      : {}",
         scanner.time_channels.len()
     )?;
-    writeln!(stdout, "Correlation Refs   : {}", scanner.correlator.len())?;
+    writeln!(stdout, "Correlation Refs   : {}", scanner.reference_count)?;
     writeln!(stdout, "References Seen    : {}", scanner.references_seen)?;
     writeln!(
         stdout,
         "References Evicted : {}",
-        scanner.correlator.total_evicted()
+        scanner.references_evicted
     )?;
     writeln!(stdout)?;
 
@@ -1019,18 +980,13 @@ fn cmd_summary(
         writeln!(stdout, "Time Channels")?;
         writeln!(stdout, "─────────────")?;
         for info in scanner.time_channels.values() {
-            let proto_str = match info.network_protocol {
-                Some(NetworkTimeProtocol::Ntp) => "  Proto: NTP",
-                Some(NetworkTimeProtocol::Ptp) => "  Proto: PTP",
-                Some(NetworkTimeProtocol::Reserved(_)) => "  Proto: ?",
-                None => "",
-            };
+            let proto_str = report::network_label(info);
             writeln!(
                 stdout,
                 "  Channel {:>3}  │  Source: {:<12}  Format: {:<8}  Date: {:<4}  Leap: {}  Packets: {}{}",
                 info.channel_id,
                 info.source.as_ref().map(fmt_time_source).unwrap_or("?"),
-                info.format.as_ref().map(fmt_time_format).unwrap_or("?"),
+                report::format_label(info),
                 match info.date_format {
                     Some(DateFormat::DayOfYear) => "DOY",
                     Some(DateFormat::DayMonthYear) => "DMY",
@@ -1044,11 +1000,19 @@ fn cmd_summary(
                 fmt_comma(info.packet_count),
                 proto_str,
             )?;
-            if let Some(ref ft) = info.first_time {
-                writeln!(stdout, "                │  First: {}", fmt_abs_time(ft))?;
+            if info.first_time.is_some() {
+                writeln!(
+                    stdout,
+                    "                │  First: {}",
+                    report::first_clock(info)
+                )?;
             }
-            if let Some(ref lt) = info.last_time {
-                writeln!(stdout, "                │  Last:  {}", fmt_abs_time(lt))?;
+            if info.last_time.is_some() {
+                writeln!(
+                    stdout,
+                    "                │  Last:  {}",
+                    report::last_clock(info)
+                )?;
             }
             if let Some((min, max)) = info.min_gap_ns.zip(info.max_gap_ns) {
                 writeln!(
@@ -1075,7 +1039,7 @@ fn cmd_summary(
     // Data type breakdown
     writeln!(stdout, "Data Type Breakdown")?;
     writeln!(stdout, "───────────────────")?;
-    for (dt, count) in &scanner.data_type_counts {
+    for (dt, count) in scanner.data_type_counts {
         writeln!(
             stdout,
             "  0x{:02X} {:<14}  {:>10}",
@@ -1111,56 +1075,53 @@ fn cmd_channels(
 ) -> Result<Option<Severity>, Failure> {
     let mut scanner = Ch10TimeScanner::new();
     scanner.scan(input, false, None)?;
+    let scanner = report::Report::from(&scanner);
     scanner.report_findings(stderr)?;
 
-    writeln!(
-        stdout,
-        "{:<8}  {:<12}  {:<10}  {:<5}  {:<5}  {:<5}  {:>8}  {:>28}  {:>28}",
+    let header = format!(
+        "{:>7}  {:<18}  {:<10}  {:<4}  {:<4}  {:<13}  {:<8}  {:<7}  {:>8}  {:<70}  {}",
         "Channel",
         "Source",
         "Format",
         "Date",
         "Leap",
         "Proto",
+        "Status",
+        "Scale",
         "Packets",
         "First Time",
         "Last Time"
-    )?;
-    writeln!(stdout, "{}", "─".repeat(126))?;
-
+    );
+    writeln!(stdout, "{header}")?;
+    writeln!(stdout, "{}", "─".repeat(header.chars().count()))?;
     for info in scanner.time_channels.values() {
-        let proto = match info.network_protocol {
-            Some(NetworkTimeProtocol::Ntp) => "NTP",
-            Some(NetworkTimeProtocol::Ptp) => "PTP",
-            Some(NetworkTimeProtocol::Reserved(_)) => "?",
-            None => "—",
-        };
+        let (proto, status, scale) = report::columns(info);
         writeln!(
             stdout,
-            "{:>7}  {:<12}  {:<10}  {:<5}  {:<5}  {:<5}  {:>8}  {:>28}  {:>28}",
+            "{:>7}  {:<18}  {:<10}  {:<4}  {:<4}  {:<13}  {:<8}  {:<7}  {:>8}  {:<70}  {}",
             info.channel_id,
             info.source.as_ref().map(fmt_time_source).unwrap_or("?"),
-            info.format.as_ref().map(fmt_time_format).unwrap_or("?"),
+            if info.network_word.is_some() {
+                "Time-F2"
+            } else {
+                report::format_label(info)
+            },
             match info.date_format {
                 Some(DateFormat::DayOfYear) => "DOY",
                 Some(DateFormat::DayMonthYear) => "DMY",
-                None => "?",
+                None => "—",
             },
             match info.is_leap_year {
                 Some(true) => "Yes",
                 Some(false) => "No",
-                None => "?",
+                None => "—",
             },
             proto,
+            status,
+            scale,
             fmt_comma(info.packet_count),
-            info.first_time
-                .as_ref()
-                .map(fmt_abs_time)
-                .unwrap_or_default(),
-            info.last_time
-                .as_ref()
-                .map(fmt_abs_time)
-                .unwrap_or_default(),
+            report::first_clock(info),
+            report::last_clock(info)
         )?;
     }
     Ok(scanner.highest)
@@ -1181,6 +1142,7 @@ fn cmd_jumps(
     let mut scanner = Ch10TimeScanner::new();
     scanner.jump_threshold = Some(threshold);
     scanner.scan(input, false, None)?;
+    let scanner = report::Report::from(&scanner);
     writeln!(
         stdout,
         "Time Jump Detection (threshold: {} ms)",
@@ -1191,14 +1153,22 @@ fn cmd_jumps(
         writeln!(
             stdout,
             "No time jumps detected across {} channel(s).",
-            scanner.time_channels.len()
+            scanner
+                .time_channels
+                .values()
+                .filter(|c| c.first_rtc.is_some())
+                .count()
         )?;
     } else {
         writeln!(
             stdout,
             "Total: {} jump(s) across {} channel(s).",
             scanner.jumps_seen,
-            scanner.time_channels.len()
+            scanner
+                .time_channels
+                .values()
+                .filter(|c| c.first_rtc.is_some())
+                .count()
         )?;
     }
     scanner.report_findings(stderr)?;
@@ -1361,7 +1331,12 @@ fn cmd_correlate(
     }
 
     // Per-channel
-    let channels: Vec<u16> = scanner.time_channels.keys().copied().collect();
+    let channels: Vec<u16> = scanner
+        .time_channels
+        .iter()
+        .filter(|(_, c)| c.first_rtc.is_some())
+        .map(|(&ch, _)| ch)
+        .collect();
     for ch in channels {
         if let Some(t) = scanner.resolve(target, Some(ch)) {
             writeln!(stdout, "  Channel {:>3}  → {}", ch, fmt_abs_time(&t))?;

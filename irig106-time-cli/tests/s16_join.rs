@@ -364,7 +364,11 @@ fn retained_reference_count_and_old_query_finding() {
             ),
             ExitClass::Success
         );
-        assert!(String::from_utf8(out).unwrap().contains("13:45:27.350.000"));
+        assert!(
+            String::from_utf8(out)
+                .unwrap()
+                .contains("13:45:27.350000000")
+        );
         assert!(err.is_empty());
     }
 }
@@ -516,7 +520,7 @@ fn old_target_at_five_seconds_matches_main_on_one_and_two_channels() {
         );
         let text = String::from_utf8(out).unwrap();
         assert_eq!(
-            text.matches("Day 100 12:00:04.000.000").count(),
+            text.matches("100:12:00:04.000000000").count(),
             usize::from(channels + 1),
             "{text}"
         );
@@ -793,11 +797,11 @@ fn overlapping_reset_segments_are_labelled_and_warn_once() {
         }
         let (out, err) = cli_text("correlate", &bytes, &["2FAF080"]);
         assert!(
-            out.contains("Channel   7 Segment   1  → Day 100 12:00:05.000.000"),
+            out.contains("Channel   7 Segment   1  → 100:12:00:05.000000000"),
             "{out}"
         );
         assert!(
-            out.contains("Channel   7 Segment   2  → Day 100 12:01:45.000.000"),
+            out.contains("Channel   7 Segment   2  → 100:12:01:45.000000000"),
             "{out}"
         );
         assert_eq!(
@@ -820,7 +824,7 @@ fn provisional_reset_run_cannot_contaminate_old_segment_range() {
     }
     let (out, err) = cli_text("correlate", &bytes, &["2FAF080"]);
     assert!(
-        out.contains("Channel   7 Segment   2  → Day 100 12:01:45.000.000"),
+        out.contains("Channel   7 Segment   2  → 100:12:01:45.000000000"),
         "{out}"
     );
     assert!(!out.contains("Segment   1"), "{out}");
@@ -869,7 +873,7 @@ fn segment_answer_spool_reports_every_segment_with_bounded_finding_samples() {
     }
     let (out, err) = cli_text("correlate", &bytes, &["2FAF080"]);
     assert_eq!(out.matches("Channel   7 Segment").count(), 128);
-    assert!(out.contains("Segment 128  → Day 100 14:07:05.000.000"));
+    assert!(out.contains("Segment 128  → 100:14:07:05.000000000"));
     assert!(err.contains("warning=128"), "{err}"); // 127 resets + one ambiguity.
     assert!(err.contains("108 more findings"), "{err}");
 }
@@ -925,7 +929,7 @@ fn late_reference_does_not_narrow_closed_segment_coverage() {
     let target = format!("{:X}", 38 * 10_000_000u64);
     let (out, err) = cli_text("correlate", &bytes, &[&target]);
     assert!(
-        out.contains("Channel   7 Segment   1  → Day 100 12:00:38.000.000"),
+        out.contains("Channel   7 Segment   1  → 100:12:00:38.000000000"),
         "{out}\n{err}"
     );
     assert!(!out.contains("Segment   2"), "{out}");

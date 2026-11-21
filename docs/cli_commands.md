@@ -9,6 +9,10 @@
 | `irigtime csv <file> [--output path]`      | Full timestamp export                                   |
 | `irigtime correlate <file> <rtc_hex>`      | Resolve one RTC against all channels                    |
 
+Text clocks use `DDD:hh:mm:ss.fffffffff` (with a year prefix when known),
+including correlate and reset segments. IRIG-A/B/G are `UTC (assumed, RDG-009)`
+with Scale `UTC*`; RTC is unknown scale, FMT4 UTC and FMT5 GPS are stated.
+
 ## Shared irig106 exit convention
 
 Coordinator decision: irig106-time establishes this convention; irig106-tmats
