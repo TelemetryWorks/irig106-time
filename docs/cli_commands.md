@@ -79,3 +79,13 @@ stay unchanged. Explicit time-channel answers are isolated; a pending late run d
 another's stated time observations. Data rows after a reset or during unresolved
 classification still require a qualified source/segment association (S17); their
 any-channel answers remain needs-context. Numeric channel equality is not enough.
+
+
+Summary/channels/jumps also accept `--format text|json` (default text). The
+[draft shared JSON envelope](cli-report-schema.md) records effective options,
+command-specific structured findings, exact wide values and reset segments.
+`channels` does not evaluate jumps; its jumps/threshold are null. JSON stdout is
+ASCII-only. Names remain as given. The producer schema is strict and consumers
+ignore unknown fields within a supported schema version; final delta review is
+pending. Discard output on operational failure (an output error may leave a
+partial JSON stream).

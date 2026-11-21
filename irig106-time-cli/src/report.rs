@@ -1,9 +1,12 @@
 //! Bounded immutable report projection shared by summary/channels/jumps.
-//! Partial Traces: L3-CLI-106 <- L2-CLI-106 <- L1-CLI-006 (text model only).
+//! Partial Traces: L3-CLI-106 <- L2-CLI-106 <- L1-CLI-006 (inventory views; qualified joining remains partial).
 use super::*;
 use irig106_time::network_time::NetworkTimeFormat;
 
 pub(super) struct Report<'a> {
+    pub(super) segment_inventory: Option<&'a segment_inventory::Archive>,
+    pub(super) finding_samples: &'a [FindingSample],
+    pub(super) jump_threshold: Option<u64>,
     pub(super) total_packets: usize,
     pub(super) time_packets: usize,
     pub(super) references_seen: usize,
@@ -24,6 +27,9 @@ pub(super) struct Report<'a> {
 impl<'a> From<&'a Ch10TimeScanner> for Report<'a> {
     fn from(s: &'a Ch10TimeScanner) -> Self {
         Self {
+            segment_inventory: s.segment_inventory.as_ref(),
+            finding_samples: &s.finding_samples,
+            jump_threshold: s.jump_threshold,
             total_packets: s.total_packets,
             time_packets: s.time_packets,
             references_seen: s.references_seen,
@@ -44,6 +50,9 @@ impl<'a> From<&'a Ch10TimeScanner> for Report<'a> {
     }
 }
 impl Report<'_> {
+    pub(super) fn jump_context(&self, index: usize) -> (u16, u16) {
+        self.jump_year_days.get(index).copied().unwrap_or((0, 0))
+    }
     pub(super) fn report_jump_samples(&self, out: &mut dyn Write) -> io::Result<()> {
         for (index, j) in self.jumps.iter().enumerate() {
             writeln!(
@@ -51,14 +60,8 @@ impl Report<'_> {
                 "  Channel {:>3} Ref #{:<4} Expected: {} Actual: {} Delta: {:+.3} ms",
                 j.channel_id,
                 j.index,
-                clock_count(
-                    j.expected_nanos,
-                    self.jump_year_days.get(index).copied().unwrap_or((0, 0)).0
-                ),
-                clock_count(
-                    j.actual_nanos,
-                    self.jump_year_days.get(index).copied().unwrap_or((0, 0)).1
-                ),
+                clock_count(j.expected_nanos, self.jump_context(index).0),
+                clock_count(j.actual_nanos, self.jump_context(index).1),
                 j.delta_nanos as f64 / 1_000_000.0
             )?;
         }
@@ -196,6 +199,21 @@ pub(super) fn last_clock(info: &TimeChannelInfo) -> String {
         display_clock(t, info.last_basis, info.year_rollovers)
     })
 }
+pub(super) fn native_scale(info: &TimeChannelInfo) -> (&'static str, &'static str) {
+    match info.network_word.map(TimeF2Csdw::time_format) {
+        Some(NetworkTimeFormat::NtpV3) => ("UTC", "standard"),
+        Some(NetworkTimeFormat::Ptp2002 | NetworkTimeFormat::Ptp2008) => ("TAI", "standard"),
+        Some(NetworkTimeFormat::Reserved(_)) => ("unknown", "unresolved"),
+        None => match info.format {
+            Some(TimeFormat::IrigA | TimeFormat::IrigB | TimeFormat::IrigG) => {
+                ("UTC", "assumed, RDG-009")
+            }
+            Some(TimeFormat::Utc) => ("UTC", "stated FMT"),
+            Some(TimeFormat::Gps) => ("GPS", "stated FMT"),
+            _ => ("unknown", "unresolved"),
+        },
+    }
+}
 pub(super) fn columns(info: &TimeChannelInfo) -> (String, String, &'static str) {
     use irig106_time::network_time::TimeStatus;
     match info.network_word {
@@ -216,11 +234,9 @@ pub(super) fn columns(info: &TimeChannelInfo) -> (String, String, &'static str) 
         None => (
             "—".into(),
             "—".into(),
-            match info.format {
-                Some(TimeFormat::IrigA | TimeFormat::IrigB | TimeFormat::IrigG) => "UTC*",
-                Some(TimeFormat::Gps) => "GPS",
-                Some(TimeFormat::Utc) => "UTC",
-                _ => "unknown",
+            match native_scale(info) {
+                ("UTC", "assumed, RDG-009") => "UTC*",
+                (scale, _) => scale,
             },
         ),
     }

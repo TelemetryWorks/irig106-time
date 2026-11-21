@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S17a3 draft versioned JSON reports (partial CLI-106)
+
+- Correct Format 2 finding codes: TS0 -> TF-003, reserved TS2..15 -> TF-006
+  (both warning). Pin jump finding TF-017/channel/packet provenance. Document
+  explicit release-commit build provenance; schema stays draft pending a
+  separate reviewed stable/revision increment.
+
+- Add strict --format text/json for summary/channels/jumps over one Report/scan.
+  The reviewed draft envelope uses telemetryworks/irigtime-report, version and
+  revision, tool/library/build provenance, per-command structured findings and
+  highest level. Producer schema is strict; consumers ignore unknown fields.
+- Fix channels' unevaluated jumps/threshold to null. Emit the actual scanner
+  threshold. Add DATE/LY, closed format/status/scale/basis spellings and raw
+  reserved values; preserve file-wide and per-reset-segment clock observations.
+  Closed segment rows spool to disk, keeping bounded memory. Correct the text
+  time-packet label to include both 0x11 and 0x12.
+- JSON is ASCII-only, with Unicode escapes and lossless POSIX-byte/Windows-UTF16LE
+  input-name provenance. Wide quantities are decimal strings. All defined keys
+  are present, with field-specific null semantics and reserved future row shapes.
+  Writer errors remain4; consumers discard stdout on operational failure.
+- Retain the32MiB six-command CI gate and add direct JSON reset/steady probes.
+  Missing-year golden, review projection/mutation evidence and bounded segment
+  fixtures are in docs/verification-s17a3.md. Remaining qualification/goldens
+  are explicitly partial. Schema stays draft for final delta review; no library
+  serde, dependency additions, publishing or schema freeze.
+
 ### Release gate and S17 integration boundary
 
 - Owner 2026-11-21: 0.8.0 waits for full irig106-tmats 0.1 plus a bounded time

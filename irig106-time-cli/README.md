@@ -299,3 +299,21 @@ counts, not all segments. Temp creation/writes occur after input open, during
 analysis; an output failure wins over later input failure. Copy to stdout only
 after analysis, then clean up on success/error. The dense-F1 memory gate has
 passed; `publish = false` remains until the owner’s S20 decision.
+
+## Draft JSON inventory reports
+
+Summary/channels/jumps accept `--format json` (default text), over the same report
+model as text. See the [draft producer schema](../docs/schema/irigtime-report-v1.schema.json)
+and [compatibility, units and provenance rules](../docs/cli-report-schema.md).
+The shared envelope is `telemetryworks/irigtime-report`, v1 revision1. JSON is
+ASCII-only; 64/128-bit quantities are decimal strings. Every defined key is
+present; null meanings are field-specific. Consumers ignore unknown fields;
+producer validation stays strict. Schema remains draft for final delta review.
+
+Findings are command-specific, structured, and top-level. `channels` does not
+evaluate jumps, so its jumps/threshold are null. File-wide channel observations
+can span resets; per-channel segments isolate them and are streamed from a
+private disk spool. Input names stay as supplied, with a lossless platform-native
+hex representation. Complete JSON accompanies exits0/1; discard output on2/3/4
+(an output failure can leave partial JSON). Existing stderr diagnostics remain.
+Qualified joining and remaining qualification goldens are still partial.
