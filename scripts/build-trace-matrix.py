@@ -15,8 +15,8 @@ Sources:
    ``**L3-XXX-NNN** · Parent: L2-XXX-NNN · Verification: T[ · Evidence: ...]``
 4. ``docs/INTERPRETATIONS.md`` — the reading register
    (``### RDG-NNN`` headings with ``**Title**`` and ``**Design**`` lines)
-5. Rust sources of both crates (``src/``, ``tests/``,
-   ``irig106-time-cli/src/``, ``irig106-time-cli/tests/``) — every
+5. Rust sources of both crates (``crates/irig106-time/src/``, ``crates/irig106-time/tests/``,
+   ``apps/irig106-time-cli/src/``, ``apps/irig106-time-cli/tests/``) — every
    ``/// Requirements: ...`` or ``/// Interpretations: ...`` doc-comment line
    directly preceding a ``#[test]`` item, collected by a stateful line scan
    and emitted as ``path::name``
@@ -46,10 +46,10 @@ L3_DOC = ROOT / "docs" / "L3_Requirements.md"
 INT_DOC = ROOT / "docs" / "INTERPRETATIONS.md"
 TRACE_DOC = ROOT / "docs" / "TRACE-MATRIX.md"
 RUST_SOURCE_ROOTS = [
-    ROOT / "src",
-    ROOT / "tests",
-    ROOT / "irig106-time-cli" / "src",
-    ROOT / "irig106-time-cli" / "tests",
+    ROOT / "crates/irig106-time/src",
+    ROOT / "crates/irig106-time/tests",
+    ROOT / "apps/irig106-time-cli/src",
+    ROOT / "apps/irig106-time-cli/tests",
 ]
 
 REQ_ID_PATTERN = re.compile(r"L(?P<level>[123])-(?P<cat>[A-Z0-9]+)-(?P<num>\d+)")

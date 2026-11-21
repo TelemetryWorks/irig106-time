@@ -24,7 +24,7 @@ or unresolved readings, and remaining reconstruction/integration work.
 
 ### T-1 Intra-packet time format is taken from the wrong packet-flag bits
 
-**Code:** `src/intra_packet.rs:40-51`, `IntraPacketTimeFormat::from_packet_flags`
+**Code:** `crates/irig106-time/src/intra_packet.rs:40-51`, `IntraPacketTimeFormat::from_packet_flags`
 — "If bit 2 (secondary header present) is clear, the format is always RTC.
 If bit 2 is set, bits [3:2] select the format". L1-IPT-001 repeats "Packet
 Flag bit 2 = 0".
@@ -47,7 +47,7 @@ combination, including bit 6 set without bit 7.
 
 ### T-2 The Format 2 (network time) CSDW is read from the wrong bits
 
-**Code:** `src/network_time.rs` — `TimeF2Csdw::time_protocol` reads bits
+**Code:** `crates/irig106-time/src/network_time.rs` — `TimeF2Csdw::time_protocol` reads bits
 3–0 as 0 = NTP, 1 = PTP; `validate_reserved` treats bits 31–4 as reserved.
 
 **Standard** (Chapter 11 §11.2.3.3, Figure 11-15, the same in 106-17,
@@ -66,7 +66,7 @@ reference without saying so.
 
 ### T-3 The PTP time body is read as 10 bytes; the standard gives 8
 
-**Code:** `src/network_time.rs:217` onward — `PtpTime` holds "Seconds since
+**Code:** `crates/irig106-time/src/network_time.rs:217` onward — `PtpTime` holds "Seconds since
 1970-01-01 00:00:00 TAI (48 bits)" and 32-bit nanoseconds; L1-PTP-001 says a
 10-byte message.
 
@@ -239,7 +239,7 @@ the note "unchanged through 106-24R1" (with the shared mapping in
 
 ### T-12 Time packet bodies are read as longer than the standard defines
 
-**Code:** `src/bcd.rs` — `DayFormatTime::from_le_bytes` requires 8 bytes
+**Code:** `crates/irig106-time/src/bcd.rs` — `DayFormatTime::from_le_bytes` requires 8 bytes
 (four 16-bit words, "w3 is reserved") and `DmyFormatTime::from_le_bytes`
 requires 10 (five words, "w4 is reserved"); L1-BCD-001 says an 8-byte
 message.
@@ -293,7 +293,7 @@ The handbook is guidance, not the standard; the requirements rest on Chapter
 
 *Found 2026-09-27, at the completeness check of step 1.*
 
-**Code:** `src/absolute.rs:199` — `if seconds > 59` returns `OutOfRange`, so
+**Code:** `crates/irig106-time/src/absolute.rs:199` — `if seconds > 59` returns `OutOfRange`, so
 every time with second 60 is rejected; the prototype's L1-ERR-003 asks for
 it ("seconds > 59").
 
@@ -313,10 +313,10 @@ leap second; reject it elsewhere. A reading for the register (RDG-010).
 
 *Found 2026-09-27, at the completeness check of step 1.*
 
-**Code:** the Format 1 time format is decoded (`src/csdw.rs:79`) but used
+**Code:** the Format 1 time format is decoded (`crates/irig106-time/src/csdw.rs:79`) but used
 nowhere else: references from every format are correlated and returned
 alike, and `LeapSecondTable::offset_for_f1` treats "IRIG-B, GPS, internal
-clock" (`src/network_time.rs:568`) the same.
+clock" (`crates/irig106-time/src/network_time.rs:568`) the same.
 
 **Standard:** FMT distinguishes "0x4 = Universal Coordinated Time (UTC) time
 from GPS" from "0x5 = Native GPS Time" (§11.2.3.2 a), and RCC 200-16 says
@@ -361,7 +361,7 @@ register (ADR-0012): RDG-007.
 
 *Found 2026-09-27, while rewriting L1.*
 
-**Code:** `src/secondary.rs:28-45`, `validate_secondary_checksum` — "the
+**Code:** `crates/irig106-time/src/secondary.rs:28-45`, `validate_secondary_checksum` — "the
 16-bit sum of the first 5 little-endian u16 words (bytes [0..10])".
 
 **Standard:** "a 16-bit arithmetic sum of all secondary header bytes
@@ -385,7 +385,7 @@ report which reading a recording's headers satisfy. Register entry RDG-008.
 ### T-10 Chapter 4 binary time
 
 **Code / GAP-03 (historical defects; S07 context API):** the prototype
-`src/absolute.rs` split the combined high/low value at bit 17 into a day
+`crates/irig106-time/src/absolute.rs` split the combined high/low value at bit 17 into a day
 and a time count. Separately, **irig106-types c59e004 remains wrong**:
 `src/binary_time.rs` `Ch4BinaryTime::from_secondary_bytes` reads
 `[unused(2), high(2), low(2), usec(2)]`; `from_intra_packet_bytes`

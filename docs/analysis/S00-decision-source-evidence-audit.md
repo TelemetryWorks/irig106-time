@@ -3,7 +3,7 @@
 > **Later decision, owner 2026-11-13:** plan Q1–Q6 and C1–C4 are accepted
 > with TF-031/032 levels pending S03/S08 owner confirmation. The original
 > evidence and then-pending labels below are historical, not new results.
-> See [the decision record](../analysis/plan-decisions-2026-11-13.md); release deferrals do not imply coverage.
+> See [the decision record](plan-decisions-2026-11-13.md); release deferrals do not imply coverage.
 > **Subsequent owner decision 2026-11-14:** TF-031 WARNING accepted (body kept,
 > EXT/SRC qualification withheld); only TF-032 remains level pending (S08).
 > The 2026-11-13 holds above are historical; see the owner-decision audit.

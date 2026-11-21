@@ -70,6 +70,6 @@ if __name__ == "__main__":
         print(error, flush=True)
     assert not report.source_errors, "forbidden production source indirection(s) above"
     assert all(a.allowed for a in report.allowances), "forbidden safety-policy allowance(s) above"
-    for root in [ROOT / "src/lib.rs", ROOT / "irig106-time-cli/src/lib.rs",
-                 ROOT / "irig106-time-cli/src/bin/irigtime.rs"]:
+    for root in [ROOT / "crates/irig106-time/src/lib.rs", ROOT / "apps/irig106-time-cli/src/lib.rs",
+                 ROOT / "apps/irig106-time-cli/src/bin/irigtime.rs"]:
         check_root(root)

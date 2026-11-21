@@ -128,7 +128,7 @@ says which channel carries time and in what format.
 **`irig106-time` is the one place in the ecosystem where time is
 understood**: it turns counters, time packets, and packet time stamps into
 absolute time, and says how good that time is. It is a `no_std` library
-(`src/lib.rs`) that works on bytes and values its callers supply.
+(`crates/irig106-time/src/lib.rs`) that works on bytes and values its callers supply.
 
 | Area | What the crate does | Where today |
 |------|---------------------|-------------|
@@ -324,7 +324,7 @@ clock for every channel, wrapping after about 325.8 days.
 
 **Today:** `TimeCorrelator::correlate(rtc, channel)` finds the nearest
 reference point — of the named time channel, or of any — and adds or
-subtracts the counter difference at 100 ns a tick (`src/correlation.rs`);
+subtracts the counter difference at 100 ns a tick (`crates/irig106-time/src/correlation.rs`);
 `StreamingTimeCorrelator` does the same with bounded memory. Counter
 differences are wrap-safe (`Rtc::elapsed_ticks`).
 

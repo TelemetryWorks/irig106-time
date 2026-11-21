@@ -35,6 +35,7 @@ The original seventeen records were accepted by 2026-09-27 (0011 to 0014, 0016, 
 | [0019](0019-json-belongs-to-the-cli.md) | Library Rust data only; CLI owns JSON; remove library serde in 0.8.0 | accepted |
 | [0020](0020-jiff-replaces-chrono.md) | Replace unmaintained chrono with optional Jiff civil interoperability in0.8.0 | accepted2026-11-17 |
 | [0021](0021-tmats-release-and-bounded-time-view.md) | 0.8.0 waits for full TMATS0.1 and a bounded time view; no dependency before publication/approval; no invented data-source association | accepted2026-11-21 |
+| [0022](0022-virtual-workspace-layout.md) | Virtual root, library in crates/, testing/example CLI in apps/, inherited exact pin; supersedes earlier layout | accepted 2026-11-21 |
 
 New records take the next number and use the same front matter
 (`status`, `date`, `decision-makers`).

@@ -473,10 +473,13 @@ it.
 
 ## 10. The workspace and the CLI
 
-One workspace, two crates, one version (ADR-0007): `irig106-time` and
-`irig106-time-cli`, published together; the CLI pins the library with
-`=X.Y.Z`. The layout follows `irig106-tmats`'s decision on W1 to W3 (a
-virtual workspace with `crates/`), so the repositories look alike. The CLI's
+One virtual workspace, two packages, one version (ADR-0007/0022): library
+`crates/irig106-time/` and testing/simple-example CLI `apps/irig106-time-cli/`.
+The root has no package. Both inherit `[workspace.package]`; the CLI inherits
+its exact `=X.Y.Z` library pin from `[workspace.dependencies]`. This follows the
+owner's Praevis layout decision, superseding the earlier TMATS-layout choice.
+Root fuzz is independent/excluded; Cargo examples and benches live in the library.
+The CLI's
 commands are `summary`, `channels`, `jumps`, `timeline`, `csv`, and
 `correlate`, each presenting what the library answers, with the basis and
 the findings; network time is reported as itself, never as GPS (ROADMAP
@@ -505,7 +508,7 @@ carried over through tests written from the standard (ADR-0016).
 | `packet_standard` | `edition` | — |
 | `recording_event` | removed in S14a; body decoder belongs in `irig106-decode`, generic time-tag adapters stay here (ADR-0009); replacement not claimed | T-8 |
 | `error`, `util`, `jiff_interop` | `error`; `util` as needed; `jiff` feature | — |
-| `irig106-time-cli/src/main.rs` | `irig106-time-cli` library and `irigtime` binary | P6-10 |
+| `apps/irig106-time-cli/src/main.rs` | `irig106-time-cli` library and `irigtime` binary | P6-10 |
 
 ---
 

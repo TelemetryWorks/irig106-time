@@ -862,7 +862,7 @@ Handbook, cited as support, never as the rule.
 
 **Verification Method**: Inspection (I)
 
-**Planned evidence**: a check in `scripts/build-trace-matrix.py` that every place in `src/` comparing TMATS and packet values carries an `RDG-NNN` reference to an entry of the register.
+**Planned evidence**: a check in `scripts/build-trace-matrix.py` that every place in `crates/irig106-time/src/` comparing TMATS and packet values carries an `RDG-NNN` reference to an entry of the register.
 
 ### L1-RDG-002
 
@@ -1002,7 +1002,7 @@ Handbook, cited as support, never as the rule.
 
 **Verification Method**: Inspection (I)
 
-**Evidence**: `#![deny(missing_docs)]` in `src/lib.rs`; `.github/workflows/ci.yml` job `doc` (`cargo doc --no-deps --all-features`)
+**Evidence**: `#![deny(missing_docs)]` in `crates/irig106-time/src/lib.rs`; `.github/workflows/ci.yml` job `doc` (`cargo doc -p irig106-time --no-deps --all-features`)
 
 ### L1-API-009
 
@@ -1220,7 +1220,7 @@ Handbook, cited as support, never as the rule.
 
 **Verification Method**: Inspection (I)
 
-**Planned evidence**: a CI check that no file under `tests/` exceeds a size a synthesized fixture needs, and `.gitignore` for the local data directory.
+**Planned evidence**: a CI check that no file under `crates/irig106-time/tests/` exceeds a size a synthesized fixture needs, and `.gitignore` for the local data directory.
 
 ### L1-TST-005
 

@@ -63,7 +63,7 @@ reads both.
 
 **Design**: accepted · **Review**: pending · **Origin**: contract 3.7, 6.4
 
-**Test**: `tests/s09a_declarations.rs` (exhaustive tables, required/default provenance, range context and RCC example)
+**Test**: `crates/irig106-time/tests/s09a_declarations.rs` (exhaustive tables, required/default provenance, range context and RCC example)
 
 **Development**: intensive testing and deep analysis required · **Analysis**: [governing declarations and mappings](verification-s09a.md)
 
@@ -119,7 +119,7 @@ edge-case tests, and two-person review remain outstanding.
 
 **Design**: accepted · **Review**: pending · **Origin**: contract 3.7
 
-**Test**: `tests/s09a_declarations.rs` (exhaustive tables, required/default provenance, range context and RCC example)
+**Test**: `crates/irig106-time/tests/s09a_declarations.rs` (exhaustive tables, required/default provenance, range context and RCC example)
 
 **Development**: intensive testing and deep analysis required · **Analysis**: [governing declarations and mappings](verification-s09a.md)
 
@@ -138,7 +138,7 @@ edge-case tests, and two-person review remain outstanding.
 
 **Design**: accepted · **Review**: pending · **Origin**: contract 3.7
 
-**Test**: `tests/s09a_declarations.rs` (exhaustive tables, required/default provenance, range context and RCC example)
+**Test**: `crates/irig106-time/tests/s09a_declarations.rs` (exhaustive tables, required/default provenance, range context and RCC example)
 
 **Development**: intensive testing and deep analysis required · **Analysis**: [governing declarations and mappings](verification-s09a.md)
 
@@ -156,7 +156,7 @@ edge-case tests, and two-person review remain outstanding.
 
 **Design**: accepted · **Review**: pending · **Origin**: contract 3.7
 
-**Test**: `tests/s09a_declarations.rs` (exhaustive tables, required/default provenance, range context and RCC example)
+**Test**: `crates/irig106-time/tests/s09a_declarations.rs` (exhaustive tables, required/default provenance, range context and RCC example)
 
 **Development**: intensive testing and deep analysis required · **Analysis**: [governing declarations and mappings](verification-s09a.md)
 
@@ -174,7 +174,7 @@ edge-case tests, and two-person review remain outstanding.
 
 **Design**: accepted · **Review**: pending · **Origin**: contract 3.7, 5.2 rule 6
 
-**Test**: `tests/s09b_declarations.rs` (exhaustive pairs, qualified layouts, loss/regain, flag contexts and findings)
+**Test**: `crates/irig106-time/tests/s09b_declarations.rs` (exhaustive pairs, qualified layouts, loss/regain, flag contexts and findings)
 
 **Development**: intensive testing and deep analysis required · **Analysis**: [TSRC/SHTF reading and clause evidence](verification-s09b.md)
 
@@ -193,7 +193,7 @@ edge-case tests, and two-person review remain outstanding.
 
 **Design**: accepted · **Review**: pending · **Origin**: contract 3.7
 
-**Test**: `tests/s09b_declarations.rs` (exhaustive pairs, qualified layouts, loss/regain, flag contexts and findings)
+**Test**: `crates/irig106-time/tests/s09b_declarations.rs` (exhaustive pairs, qualified layouts, loss/regain, flag contexts and findings)
 
 **Development**: intensive testing and deep analysis required · **Analysis**: [TSRC/SHTF reading and clause evidence](verification-s09b.md)
 
@@ -218,7 +218,7 @@ edge-case tests, and two-person review remain outstanding.
 
 **Design**: accepted · **Review**: pending · **Origin**: T-14
 
-**Test**: `tests/s03_edition.rs` (edition rows, all ITS values, non-IRIG FMT, unknown edition, reserved-field findings)
+**Test**: `crates/irig106-time/tests/s03_edition.rs` (edition rows, all ITS values, non-IRIG FMT, unknown edition, reserved-field findings)
 
 **Development**: intensive testing and deep analysis required · **Analysis**: [qualified edition fields](analysis/RDG-007-edition-fields.md)
 
@@ -237,7 +237,7 @@ edge-case tests, and two-person review remain outstanding.
 
 **Design**: suspect · **Review**: pending · **Origin**: T-15
 
-**Test**: `tests/s10a_secondary.rs` (checksum trust, aggregate counts, independent counter retention); tests/slice2_wire.rs::rdg008_byte_only_checksum_is_valid, rdg008_word_only_checksum_is_not_trusted; tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither
+**Test**: `crates/irig106-time/tests/s10a_secondary.rs` (checksum trust, aggregate counts, independent counter retention); crates/irig106-time/tests/slice2_wire.rs::rdg008_byte_only_checksum_is_valid, rdg008_word_only_checksum_is_not_trusted; crates/irig106-time/tests/slice2_readings.rs::rdg008_reports_byte_word_both_and_neither
 
 **Development**: intensive testing and deep analysis required · **Analysis**: [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-008); [S10a1 validation and remaining clauses](verification-s10a.md)
 
@@ -261,7 +261,7 @@ edge-case tests, and two-person review remain outstanding.
 
 **Design**: accepted · **Review**: pending · **Origin**: T-17; contract 3.2
 
-**Test**: tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value, t17_all_fmt_scales_and_policy_provenance
+**Test**: crates/irig106-time/tests/slice2_readings.rs::t17_f2_stated_scales_do_not_depend_on_counter_value, t17_all_fmt_scales_and_policy_provenance
 
 **Development**: intensive testing and deep analysis required · **Analysis**: [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-009)
 
@@ -282,7 +282,7 @@ edge-case tests, and two-person review remain outstanding.
 
 **Design**: accepted · **Review**: pending · **Origin**: T-16; contract 3.2
 
-**Test**: tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates, t16_calendar_known_year_and_wrong_time_boundaries
+**Test**: crates/irig106-time/tests/slice2_readings.rs::t16_leap_second_retained_only_at_permitted_utc_dates, t16_calendar_known_year_and_wrong_time_boundaries
 
 **Development**: intensive testing and deep analysis required · **Analysis**: [wire-slice analysis, limits and checked pages](verification-slice-two.md#rdg-010); [known-year DOY qualification and segment guard](verification-s08.md#pr28-review--known-year-doy-leap-validation)
 
@@ -321,7 +321,7 @@ edge-case tests, and two-person review remain outstanding.
 
 **Design**: accepted · **Review**: pending · **Origin**: Q-NTP, owner 2026-11-12: "make this as correct as possible"
 
-**Test**: `tests/s05_ntp.rs` exercises era/UTC/sentinel/ambiguity/currency semantics; `tests/s05_existing.rs` retains correct wire/floor/contextless controls. [S05 clause-level evidence](verification-s05.md) separates compilation evidence from executed tests and mutations. Contextless NeedsContext tests alone are not evidence for conversion.
+**Test**: `crates/irig106-time/tests/s05_ntp.rs` exercises era/UTC/sentinel/ambiguity/currency semantics; `crates/irig106-time/tests/s05_existing.rs` retains correct wire/floor/contextless controls. [S05 clause-level evidence](verification-s05.md) separates compilation evidence from executed tests and mutations. Contextless NeedsContext tests alone are not evidence for conversion.
 
 **Development**: intensive testing and deep analysis required · **Analysis**: [written all-edition/RFC analysis and planned edge cases](analysis/RDG-012-ntp-utc-era.md)
 

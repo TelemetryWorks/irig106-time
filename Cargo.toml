@@ -1,9 +1,10 @@
 [workspace]
-members = [".", "irig106-time-cli"]
+members = ["crates/irig106-time", "apps/irig106-time-cli"]
 exclude = ["fuzz"]
+resolver = "3"
 
-# The library and CLI release in lockstep; change the version here and the
-# CLI's exact library dependency together (docs/RELEASING.md).
+# Both packages inherit this single lockstep version. The shared exact pin
+# below is checked against it by scripts/test_cli_workspace.py.
 [workspace.package]
 version = "0.7.0"
 edition = "2024"
@@ -11,35 +12,5 @@ rust-version = "1.85"
 license = "Apache-2.0"
 repository = "https://github.com/TelemetryWorks/irig106-time"
 
-[package]
-name = "irig106-time"
-version.workspace = true
-edition.workspace = true
-rust-version.workspace = true
-description = "Precision time interpretation and format conversion for IRIG 106 telemetry data."
-repository.workspace = true
-license.workspace = true
-categories = ["aerospace", "parser-implementations", "no-std"]
-keywords = ["irig106", "telemetry", "time", "chapter10", "flight-test"]
-
-[features]
-default = ["std"]
-std = ["irig106-types/std"]
-jiff = ["dep:jiff"]
-
-[dependencies]
-irig106-types = { version = "0.1", default-features = false }
-
-jiff = { version = "1", default-features = false, optional = true }
-
-[dev-dependencies]
-proptest = "1"
-criterion = { version = "0.7", features = ["html_reports"] }
-
-[[bench]]
-name = "time_benchmarks"
-harness = false
-
-[[bench]]
-name = "correlation_bench"
-harness = false
+[workspace.dependencies]
+irig106-time = { path = "crates/irig106-time", version = "=0.7.0" }

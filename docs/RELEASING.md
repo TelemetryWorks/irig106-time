@@ -23,13 +23,24 @@ release workflow, publication or tag is changed here.
 
 ## Workspace and lockstep versioning
 
-The root library package and sibling `irig106-time-cli/` are the workspace
-members; `fuzz/` is excluded and keeps its independent lockfile. There is no
-`crates/` move. One root `Cargo.lock` now resolves the two release packages.
-The sole authoritative version is `[workspace.package] version`; both package
-versions inherit it. The CLI's exact library requirement (`=X.Y.Z` next to
-`path = ".."`) must match that value. The CI metadata/manifest checks enforce
-this, following the shipped TMATS pattern (ADR-0007's S16a clarification).
+The root is a virtual workspace, with no package. Its members are
+`crates/irig106-time/` and `apps/irig106-time-cli/`; root `fuzz/` remains excluded
+and independent, with its own lockfile. One root `Cargo.lock` covers the members.
+[ADR-0022](adr/0022-virtual-workspace-layout.md) supersedes the earlier S16a layout.
+
+The authoritative version is `[workspace.package] version`; both packages inherit
+version, edition, rust-version, license and repository. The exact `=X.Y.Z` internal
+library pin lives in `[workspace.dependencies]` beside
+`path = "crates/irig106-time"`; the CLI declares `irig106-time.workspace = true`.
+The CI metadata/manifest checks enforce matching versions and inherited edges.
+Change the workspace version and this shared exact pin together, not a second
+package-local dependency declaration.
+
+Select the package explicitly for feature-specific checks and packaging:
+`cargo test -p irig106-time --no-default-features`,
+`cargo package -p irig106-time --list`, and
+`cargo package -p irig106-time-cli --list`. Each package has its own README and
+Apache-2.0 LICENSE. These listing checks are not publication or a dry-run release.
 
 Both remain at 0.7.0 during this restructure; the approved release-preparation
 PR will set 0.8.0 and the exact pin together. The standalone executable is now

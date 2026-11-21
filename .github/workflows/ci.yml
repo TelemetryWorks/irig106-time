@@ -27,10 +27,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: stable
-      - run: cargo test --all-features
-      - run: cargo test --no-default-features
-      - run: cargo test --features jiff
-      - run: cargo test --no-default-features --features jiff
+      - run: cargo test -p irig106-time --all-features
+      - run: cargo test -p irig106-time --no-default-features
+      - run: cargo test -p irig106-time --features jiff
+      - run: cargo test -p irig106-time --no-default-features --features jiff
       - name: CLI transactions on Windows and macOS (Ubuntu covered by CLI job)
         if: matrix.os != 'ubuntu-latest'
         run: cargo test -p irig106-time-cli --lib --test s16_csv_atomic --locked
@@ -49,9 +49,9 @@ jobs:
       # IRIG 106 ecosystem (Cargo.toml rust-version; owner, 2026-09-27).
       # Dev-dependencies (criterion, proptest) require newer Rust.
       # MSRV verification uses cargo check on the library only.
-      - run: cargo check --no-default-features
-      - run: cargo check
-      - run: cargo check --no-default-features --features jiff
+      - run: cargo check -p irig106-time --no-default-features
+      - run: cargo check -p irig106-time
+      - run: cargo check -p irig106-time --no-default-features --features jiff
       - run: cargo check -p irig106-time-cli --locked
 
   clippy:
@@ -65,7 +65,7 @@ jobs:
         with:
           toolchain: stable
           components: clippy
-      - run: cargo clippy --all-targets --all-features -- -D warnings
+      - run: cargo clippy -p irig106-time --all-targets --all-features -- -D warnings
       - run: python3 -m unittest discover -s scripts -p test_safety_scan.py
       - run: python3 scripts/check-safety-policy.py
       - run: python3 scripts/check-library-no-io.py
@@ -93,7 +93,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: stable
-      - run: cargo doc --no-deps --all-features
+      - run: cargo doc -p irig106-time --no-deps --all-features
         env:
           RUSTDOCFLAGS: "-D warnings"
 
@@ -108,15 +108,20 @@ jobs:
         with:
           toolchain: stable
       - run: python3 -m unittest discover -s scripts -p test_cli_workspace.py
-      - run: cargo build --manifest-path irig106-time-cli/Cargo.toml
-      - run: cargo test --manifest-path irig106-time-cli/Cargo.toml --locked
+      - run: cargo build --manifest-path apps/irig106-time-cli/Cargo.toml
+      - name: Inspect both package file lists (no publication)
+        run: |
+          cargo package -p irig106-time --list --locked > /tmp/library-package-files.txt
+          cargo package -p irig106-time-cli --list --locked > /tmp/cli-package-files.txt
+          python3 -c 'from pathlib import Path; files = [set(Path(p).read_text().splitlines()) for p in ["/tmp/library-package-files.txt", "/tmp/cli-package-files.txt"]]; assert all({"README.md", "LICENSE", "Cargo.toml", "src/lib.rs"} <= f for f in files); assert "src/bin/irigtime.rs" in files[1]'
+      - run: cargo test --manifest-path apps/irig106-time-cli/Cargo.toml --locked
       - run: python3 -m unittest discover -s scripts -p test_dense_rss.py
       - name: Dense reset + steady F1 six-command RSS (32 MiB ceiling)
         timeout-minutes: 20
         run: python3 scripts/check-dense-rss.py
       - name: Reader and six-command input RSS (generated 384 MiB)
         run: python3 scripts/check-reader-rss.py
-      - run: cargo clippy --manifest-path irig106-time-cli/Cargo.toml --all-targets -- -D warnings
+      - run: cargo clippy --manifest-path apps/irig106-time-cli/Cargo.toml --all-targets -- -D warnings
 
   fuzz-check:
     name: Fuzz targets compile
@@ -145,8 +150,8 @@ jobs:
         with:
           toolchain: stable
           targets: wasm32-unknown-unknown
-      - run: cargo build --target wasm32-unknown-unknown --no-default-features
-      - run: cargo build --target wasm32-unknown-unknown --no-default-features --features jiff
+      - run: cargo build -p irig106-time --target wasm32-unknown-unknown --no-default-features
+      - run: cargo build -p irig106-time --target wasm32-unknown-unknown --no-default-features --features jiff
 
   trace-matrix:
     name: Trace matrix up to date

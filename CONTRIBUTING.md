@@ -9,35 +9,35 @@ This project has two Rust version floors:
 | **Library users** | **1.85** (edition 2024, the same across the IRIG 106 ecosystem; `docs/adr/0003`) | Anyone adding `irig106-time` to their `Cargo.toml` needs Rust 1.85+. All library source code compiles on 1.85. |
 | **Repository developers** | **Latest stable** | Running benchmarks, fuzz tests, and property tests requires modern Rust. Dev-dependencies (criterion, proptest, libfuzzer-sys) and `std::hint::black_box` (Rust 1.66) require stable Rust newer than the library MSRV. |
 
-The CI enforces this separation: the MSRV job runs `cargo check` (library only),
-while the stable job runs `cargo test --all-features` (with dev-dependencies).
+The CI enforces this separation: the MSRV job runs `cargo check -p irig106-time` (library only),
+while the stable job runs `cargo test -p irig106-time --all-features` (with dev-dependencies).
 
 If you add new library code, verify it compiles on Rust 1.85 by avoiding APIs
-stabilized after that version. See `src/util.rs` for the MSRV dependency table
+stabilized after that version. See `crates/irig106-time/src/util.rs` for the MSRV dependency table
 and the pattern for providing backward-compatible helpers.
 
 ## Building and Testing
 
 ```sh
 # Run all tests (requires stable Rust)
-cargo test --all-features
+cargo test -p irig106-time --all-features
 
 # Individual feature combos
-cargo test --no-default-features
-cargo test --features jiff
-cargo test --no-default-features --features jiff
+cargo test -p irig106-time --no-default-features
+cargo test -p irig106-time --features jiff
+cargo test -p irig106-time --no-default-features --features jiff
 
 # Lint
-cargo clippy --all-targets --all-features -- -D warnings
+cargo clippy -p irig106-time --all-targets --all-features -- -D warnings
 
 # Format check
 cargo fmt -- --check
 
 # Build documentation
-cargo doc --no-deps --all-features
+cargo doc -p irig106-time --no-deps --all-features
 
 # CLI
-cd irig106-time-cli && cargo clippy --all-targets -- -D warnings && cd ..
+cargo clippy -p irig106-time-cli --all-targets -- -D warnings
 ```
 
 The independent `fuzz/` package is not covered by root `--all-targets`.
@@ -45,7 +45,7 @@ Include these compile checks in the local CI equivalent after API/dependency
 changes (the fuzz check also runs in CI):
 
 ```sh
-CARGO_BUILD_JOBS=2 cargo build --benches --all-features
+CARGO_BUILD_JOBS=2 cargo build -p irig106-time --benches --all-features
 CARGO_BUILD_JOBS=2 cargo check --manifest-path fuzz/Cargo.toml --bins --locked
 ```
 
@@ -55,26 +55,26 @@ Instrumented fuzz runs still use the nightly commands below.
 ## Running Benchmarks
 
 Benchmarks use two harnesses: criterion (for statistical rigor) and zero-dep
-`std::time::Instant` (for environments without criterion). Both are in `benches/`.
+`std::time::Instant` (for environments without criterion). Both are in `crates/irig106-time/benches/`.
 
 ```sh
 # Run all criterion benchmarks (requires stable Rust)
-cargo bench
+cargo bench -p irig106-time
 
 # Run a specific benchmark group
-cargo bench -- rtc
-cargo bench -- bcd
-cargo bench -- correlation
-cargo bench -- absolute_time
-cargo bench -- ntp
-cargo bench -- ptp
+cargo bench -p irig106-time -- rtc
+cargo bench -p irig106-time -- bcd
+cargo bench -p irig106-time -- correlation
+cargo bench -p irig106-time -- absolute_time
+cargo bench -p irig106-time -- ntp
+cargo bench -p irig106-time -- ptp
 
 # Generate HTML reports (criterion outputs to target/criterion/)
-cargo bench
+cargo bench -p irig106-time
 # Open target/criterion/report/index.html in a browser
 
 # Quick zero-dep benchmark (same binary, no criterion overhead)
-cargo bench --bench time_benchmarks
+cargo bench -p irig106-time --bench time_benchmarks
 ```
 
 ### Interpreting Criterion Output
@@ -120,18 +120,18 @@ You create one when you have a known-good state on a specific machine.
 
 ```sh
 # Save a baseline (names it so you can compare later)
-cargo bench -- --save-baseline v0.7.0
+cargo bench -p irig106-time -- --save-baseline v0.7.0
 
 # Compare current performance against a saved baseline
-cargo bench -- --baseline v0.7.0
+cargo bench -p irig106-time -- --baseline v0.7.0
 
 # Compare two saved baselines against each other
-cargo bench -- --load-baseline pr-123 --baseline v0.7.0
+cargo bench -p irig106-time -- --load-baseline pr-123 --baseline v0.7.0
 ```
 
 **When to create a baseline:**
 
-- After tagging a release (e.g., `cargo bench -- --save-baseline v0.7.0`)
+- After tagging a release (e.g., `cargo bench -p irig106-time -- --save-baseline v0.7.0`)
 - Before starting a performance-sensitive change (save as `pre-change`)
 - When setting up a new benchmark machine
 - After hardware or OS changes on the benchmark machine
@@ -150,7 +150,7 @@ cargo bench -- --load-baseline pr-123 --baseline v0.7.0
 
 **Date:** 2026-03-29
 **Machine:** [CPU model], [RAM], [OS], [Rust version]
-**Command:** `cargo bench -- --save-baseline v0.7.0`
+**Command:** `cargo bench -p irig106-time -- --save-baseline v0.7.0`
 
 | Benchmark | Mean | 95% CI | ops/sec |
 |-----------|------|--------|---------|
@@ -307,11 +307,11 @@ and memory safety under sustained random input.
 
 | Type | Location | Count | Purpose |
 |------|----------|-------|---------|
-| **Unit tests** | `src/*_tests.rs`, `src/util.rs` | 184 | Test individual functions and methods in isolation. Each test traces to an L3 requirement. |
-| **Integration tests** | `tests/pipeline.rs` | 68 | Test cross-module workflows: BCD→correlate→resolve, NTP→PTP round-trip, MSRV helpers through the public API. |
-| **Property tests** | `tests/properties.rs` | 17 | Proptest-based tests that verify invariants over random inputs: round-trip encode/decode, field ranges, arithmetic commutativity. |
+| **Unit tests** | `crates/irig106-time/src/*_tests.rs`, `crates/irig106-time/src/util.rs` | 184 | Test individual functions and methods in isolation. Each test traces to an L3 requirement. |
+| **Integration tests** | `crates/irig106-time/tests/pipeline.rs` | 68 | Test cross-module workflows: BCD→correlate→resolve, NTP→PTP round-trip, MSRV helpers through the public API. |
+| **Property tests** | `crates/irig106-time/tests/properties.rs` | 17 | Proptest-based tests that verify invariants over random inputs: round-trip encode/decode, field ranges, arithmetic commutativity. |
 | **Fuzz targets** | `fuzz/fuzz_targets/` | 10 | Long-running random-input testing for panic-freedom and memory safety on all parsers. |
-| **Benchmarks** | `benches/` | 2 files | Performance regression detection on hot paths. |
+| **Benchmarks** | `crates/irig106-time/benches/` | 2 files | Performance regression detection on hot paths. |
 
 ### When to Add Each Type
 
@@ -358,10 +358,10 @@ the full requirements hierarchy.
 ## Code Style
 
 - Run `cargo fmt` before committing
-- Run `cargo clippy --all-targets --all-features -- -D warnings` before pushing
+- Run `cargo clippy -p irig106-time --all-targets --all-features -- -D warnings` before pushing
 - Use `#![deny(missing_docs)]` — every public item needs a doc comment
 - Trace public items to requirements with `/// **Traces:** L3-XXX-NNN`
-- Keep the MSRV table in `src/util.rs` updated if you introduce new API dependencies
+- Keep the MSRV table in `crates/irig106-time/src/util.rs` updated if you introduce new API dependencies
 
 ## Security Analysis and Reporting
 

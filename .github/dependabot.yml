@@ -20,7 +20,8 @@ updates:
   - package-ecosystem: cargo
     directories:
       - /
-      - /irig106-time-cli
+      - /crates/irig106-time
+      - /apps/irig106-time-cli
       - /fuzz
     schedule:
       interval: weekly
