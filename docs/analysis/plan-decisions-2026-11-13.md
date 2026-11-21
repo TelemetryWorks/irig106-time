@@ -9,6 +9,30 @@ reinterpret the older roadmap Q1–Q9. Baseline main: `4a5e752` (S00 merged).
 [ADR-0018](../adr/0018-0-8-release-scope-and-policy-decisions.md) records the
 accepted policy; earlier ADRs and historical verification remain intact.
 
+## Additional release gate — owner 2026-11-21
+
+[ADR-0021](../adr/0021-tmats-release-and-bounded-time-view.md) adds: 0.8.0 waits for
+full irig106-tmats 0.1 and a bounded time view; no dependency until publication and
+separate owner approval. Independent S17 work continues. The
+[consumer seam](S17-time-view-consumer-seam.md) is a design proposal over existing
+plain declarations, not an upstream API promise. Chapter 9 provides no field
+linking a data channel to its time channel; association remains unresolved without
+real evidence. This is the in-repository plan amendment, not an edit of the
+coordinator's external saved plan or historical decisions below.
+
+### Requirement audit for the 2026-11-21 gate
+
+| Changed IDs | Parent / scope |
+| --- | --- |
+| L1-REL-001 | Existing lockstep release requirement gains the owner release/dependency gate. |
+| L2-REL-101 / L3-REL-101 | Same L1-REL-001 lineage; full published release, bounded view and separate dependency-approval evidence. |
+| L2-CLI-104 / L3-CLI-104 | Same L1-CLI-004 lineage; governing declarations do not prove a data-to-time-channel relationship. |
+
+Sources retain earlier wording and add the verbatim owner decision, explicitly
+as policy rather than a newly inspected standard quote. Planned probes are not
+executed evidence; no test marker or requirement coverage is added. Review fields
+and existing Design statuses remain untouched.
+
 ## Superseding scope decision — owner 2026-11-17
 
 [ADR-0019](../adr/0019-json-belongs-to-the-cli.md) supersedes the library

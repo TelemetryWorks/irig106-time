@@ -4,6 +4,16 @@ Owner 2026-11-13, plan Q3/Q4; [ADR-0017](adr/0017-releases-after-the-rebuild.md)
 and [ADR-0018](adr/0018-0-8-release-scope-and-policy-decisions.md).
 This is a preparation checklist, not authorization to publish or configure CI.
 
+## Additional blocker — owner 2026-11-21
+
+[ADR-0021](adr/0021-tmats-release-and-bounded-time-view.md): wait for the **full
+irig106-tmats 0.1 release and a bounded time view**. Record the published full
+release/version and bounded-view evidence before clearing this blocker; a
+placeholder/partial release is insufficient. A future TMATS dependency separately
+requires owner approval after publication. No such dependency or publication is
+authorized here. The time library remains TMATS-independent. Data-row association
+without real evidence remains unresolved; see the [seam design](analysis/S17-time-view-consumer-seam.md).
+
 ## Workspace and lockstep versioning
 
 The root library package and sibling `irig106-time-cli/` are the workspace
