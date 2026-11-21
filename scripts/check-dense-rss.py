@@ -7,29 +7,26 @@ import shutil
 import signal
 import subprocess
 import tempfile
-from dense_rss_workload import CYCLE_BYTES, TIMELINE_LIMIT, write_workload, warnings_for
+from dense_rss_workload import CYCLE_BYTES, TIMELINE_LIMIT, write_workload, write_steady_workload, warnings_for
 
 
-def measure(argv, log):
-    proc = subprocess.Popen(argv, stdout=log, stderr=subprocess.STDOUT)
-    def timeout(_signal, _frame):
-        raise TimeoutError(f'command exceeded 180s: {argv[1]}')
-    old = signal.signal(signal.SIGALRM, timeout)
-    signal.alarm(180)
+def measure(argv, log, rss_file):
+    # GNU time execs with a small image before forking the CLI: Python's inherited
+    # high-water mark cannot become the CLI measurement. Never fall back to wait4.
+    assert Path('/usr/bin/time').is_file(), 'GNU time is required on Ubuntu CI'
+    proc = subprocess.Popen(['/usr/bin/time', '-f', '%M', '-o', str(rss_file),
+                             '--', *argv], stdout=log, stderr=subprocess.STDOUT,
+                            start_new_session=True)
     try:
-        _, status, usage = os.wait4(proc.pid, 0)  # Linux ru_maxrss in KiB.
-        proc.returncode = os.waitstatus_to_exitcode(status)
-        return proc.returncode, usage.ru_maxrss
+        code = proc.wait(timeout=180)
+        return code, int(rss_file.read_text().strip())
     except BaseException:
-        proc.kill()
+        os.killpg(proc.pid, signal.SIGKILL)
         proc.wait()
         raise
-    finally:
-        signal.alarm(0)
-        signal.signal(signal.SIGALRM, old)
 
 
-def main(cycles=None):
+def main(cycles=None, steady_rounds=100_000):
     build = subprocess.check_output(['cargo', 'build', '-p', 'irig106-time-cli',
         '--bin', 'irigtime', '--locked', '--message-format=json'], text=True)
     bins = [m['executable'] for line in build.splitlines()
@@ -41,49 +38,59 @@ def main(cycles=None):
     with tempfile.TemporaryDirectory(prefix='irigtime-dense-rss-') as tmp:
         root = Path(tmp)
         # Bound peak fixture/report disk needs before writing; no committed file.
-        assert shutil.disk_usage(root).free > cycles*(CYCLE_BYTES + 980*256)
-        path = root/'dense.ch10'
-        meta = write_workload(path, cycles)
-        assert path.stat().st_size == meta['bytes']
-        for command in ['summary', 'channels', 'jumps', 'timeline', 'csv', 'correlate']:
-            argv = [bins[0], command, str(path), '--fail-on', 'never']
-            if command == 'timeline':
-                argv += ['--limit', str(TIMELINE_LIMIT)]
-            if command == 'csv':
-                argv += ['--output', str(root/'report.csv')]
-            if command == 'correlate':
-                argv.insert(3, '2FAF080')  # RTC5s overlaps every segment.
-            with (root/f'{command}.log').open('w+') as log:
-                code, rss = measure(argv, log)
-                log.seek(0)
-                prefix = log.read(8192)
-                assert code == 0, (command, code, prefix)
-                expected = warnings_for(command, meta)
+        assert shutil.disk_usage(root).free > max(cycles*(CYCLE_BYTES + 980*256), steady_rounds*40*(36+256))
+        for label, writer, count in [('reset', write_workload, cycles),
+                                      ('steady', write_steady_workload, steady_rounds)]:
+            path = root/f'{label}.ch10'
+            meta = writer(path, count)
+            assert path.stat().st_size == meta['bytes']
+            check_commands(bins[0], root, path, meta, label)
+            path.unlink()
+
+
+def check_commands(binary, root, path, meta, label):
+    for command in ['summary', 'channels', 'jumps', 'timeline', 'csv', 'correlate']:
+        argv = [binary, command, str(path), '--fail-on', 'never']
+        if command == 'timeline':
+            argv += ['--limit', str(TIMELINE_LIMIT)]
+        if command == 'csv':
+            argv += ['--output', str(root/'report.csv')]
+        if command == 'correlate':
+            argv.insert(3, '2FAF080')  # RTC5s overlaps every segment.
+        with (root/f'{command}.log').open('w+') as log:
+            code, rss = measure(argv, log, root/'peak.txt')
+            log.seek(0)
+            prefix = log.read(8192)
+            assert code == 0, (command, code, prefix)
+            expected = 0 if meta.get('steady') else warnings_for(command, meta)
+            if expected:
                 assert f'Findings: error=0, warning={expected}, info=0 (total={expected})' in prefix, (command, expected, prefix)
-                assert rss < 64*1024, (command, rss, 'exceeds 64MiB')
-                if command == 'summary':
-                    assert f"Total Packets      : {meta['packets']:,}" in prefix
-                    assert f"Total: {meta['jumps']} jump(s)" in prefix
-                if command == 'timeline':
-                    log.seek(0)
-                    assert sum(1 for row in log if row.split() and row.split()[0].isdigit()) == TIMELINE_LIMIT
-                if command == 'correlate':
-                    log.seek(0)
-                    assert sum('Channel   7 Segment' in row for row in log) == meta['segments']
-            if command == 'csv':
-                with (root/'report.csv').open('rb') as report:
-                    report.readline(1024)
-                    assert report.readline(1024).startswith(b'0,')
-                    report.seek(max(0, report.seek(0, 2)-1024))
-                    assert report.read(1024).splitlines()[-1].startswith(f"{meta['packets']-1},".encode())
-                (root/'report.csv').unlink()
-            result = (f"dense {command}: {rss} KiB peak (<65536); {meta['bytes']} bytes; "
-                      f"{meta['packets']} packets / {meta['time_packets']} F1; "
-                      f"{meta['resets']} resets / {meta['late']} late / {meta['jumps']} jumps")
-            print(result, flush=True)
-            if summary := os.environ.get('GITHUB_STEP_SUMMARY'):
-                with open(summary, 'a') as out:
-                    out.write(result+'\n')
+            else:
+                assert 'Findings:' not in prefix, (command, prefix)
+            assert rss < 32*1024, (command, rss, 'exceeds 32MiB')
+            if command == 'summary':
+                assert f"Total Packets      : {meta['packets']:,}" in prefix
+                assert f"Total: {meta['jumps']} jump(s)" in prefix
+            if command == 'timeline':
+                log.seek(0)
+                assert sum(1 for row in log if row.split() and row.split()[0].isdigit()) == TIMELINE_LIMIT
+            if command == 'correlate' and not meta.get('steady'):
+                log.seek(0)
+                assert sum('Channel   7 Segment' in row for row in log) == meta['segments']
+        if command == 'csv':
+            with (root/'report.csv').open('rb') as report:
+                report.readline(1024)
+                assert report.readline(1024).startswith(b'0,')
+                report.seek(max(0, report.seek(0, 2)-1024))
+                assert report.read(1024).splitlines()[-1].startswith(f"{meta['packets']-1},".encode())
+            (root/'report.csv').unlink()
+        result = (f"dense {label} {command}: {rss} KiB CLI peak (<32768); {meta['bytes']} bytes; "
+                  f"{meta['packets']} packets / {meta['time_packets']} F1; "
+                  f"{meta['resets']} resets / {meta['late']} late / {meta['jumps']} jumps")
+        print(result, flush=True)
+        if summary := os.environ.get('GITHUB_STEP_SUMMARY'):
+            with open(summary, 'a') as out:
+                out.write(result+'\n')
 
 
 if __name__ == '__main__':

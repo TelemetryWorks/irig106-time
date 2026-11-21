@@ -72,3 +72,28 @@ def warnings_for(command, meta):
         groups = min(meta['time_packets'], TIMELINE_LIMIT//10)
         return base + 9*sum(g in (41, 43, 44) or g >= 46 for g in range(groups))
     return base
+
+
+def write_steady_workload(path, rounds=100_000):
+    """400k in-order F1 references: four channels at 100Hz for 1000s.
+
+    Each channel alone supplies 3000 references per 30s; the shared 1024 cap
+    fills before the age window. No resets can hide unbounded live retention.
+    """
+    with path.open('wb') as out:
+        for n in range(rounds):
+            block = bytearray()
+            seconds, fraction = divmod(n, 100)
+            minutes, seconds = divmod(seconds, 60)
+            hours, minutes = divmod(minutes, 60)
+            for channel in range(7, 11):
+                p = packet(0x11, channel, n*(TICKS//100))
+                p[28:34] = bytes([bcd(fraction), bcd(seconds), bcd(minutes),
+                                  bcd(12+hours), 0, 1])
+                block.extend(p)
+                for i in range(1, 10):
+                    block.extend(packet(9, 11, n*(TICKS//100)+i*(TICKS//1000)))
+            out.write(block)
+    return dict(bytes=rounds*4*GROUP_BYTES, packets=rounds*40,
+                time_packets=rounds*4, resets=0, late=0, jumps=0, segments=0,
+                steady=True)

@@ -127,9 +127,9 @@ Resolving RTC 0x00009896800 (10000000 ticks, 1000000000 ns)
 
 Input is buffered and CSV rows are spooled to disk, without whole-file loading
 or mmap. Finding samples and correlation storage are bounded, and jump/gap
-statistics are accumulated online. All six commands passed the 384MiB dense-F1
-RSS gate below 64MiB, including resets, late packets, limited timeline output
-and CSV file spooling. See [the measured evidence](../docs/verification-s16b-final-rss.md).
+statistics are accumulated online. The CI RSS gate requires true CLI peaks below 32MiB across all six commands
+on both the 384MiB reset/late workload and a reset-free four-channel phase
+with 400,000 F1 references, limited timeline output and CSV file spooling. See [the measured evidence](../docs/verification-s16b-final-rss.md).
 This workload is memory evidence, not complete qualified-joining coverage;
 S17 joining remains incomplete. Publishing is still disabled until S20.
 

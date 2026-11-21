@@ -11,10 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add a CI-generated 384MiB small-packet workload: one F1 per ten packets,
   late observations, long/short resets and real jumps. All six commands must
-  stay below 64MiB RSS; timeline uses an explicit limit and CSV spools to a file.
+  stay below 32MiB true CLI RSS; timeline uses an explicit limit and CSV spools to a file.
   Assert exact finding counts and output endpoints so skipped work cannot pass.
-- All six passed at 14,876KiB in CI run 44845372998. Remove the interim memory
-  warning; keep `publish = false` until S20. Qualified joining remains S17;
+- Replace harness-inclusive RSS upper bounds with GNU time measurements; add
+  400,000 reset-free F1 references on four channels to fill live caches.
+  The previous 14,876KiB figure was a harness-inclusive upper bound; keep `publish = false` until S20. Qualified joining remains S17;
   matrix coverage stays 198 tested / 206 verified of 288. Evidence:
   docs/verification-s16b-final-rss.md.
 

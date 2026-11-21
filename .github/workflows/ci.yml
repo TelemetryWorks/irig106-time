@@ -110,7 +110,7 @@ jobs:
       - run: cargo build --manifest-path irig106-time-cli/Cargo.toml
       - run: cargo test --manifest-path irig106-time-cli/Cargo.toml --locked
       - run: python3 -m unittest discover -s scripts -p test_dense_rss.py
-      - name: Dense F1/reset six-command RSS (generated 384 MiB)
+      - name: Dense reset + steady F1 six-command RSS (32 MiB ceiling)
         timeout-minutes: 20
         run: python3 scripts/check-dense-rss.py
       - name: Reader and six-command input RSS (generated 384 MiB)

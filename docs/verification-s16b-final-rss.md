@@ -23,7 +23,7 @@ Exact warnings are pinned for each command, including withheld data, rather
 than --fail-on never hiding malformed time input. Jump/segment/last-row counts
 ensure that the work was not skipped. The sparse transport probe also stays.
 
-All six child processes must have Linux wait4 peak RSS <65,536KiB. Cargo and
+All six commands in both phases must have GNU time CLI peak RSS <32,768KiB. Cargo and
 fixture generation are outside the measured command. The generator holds one
 28KiB cycle, never the whole input. Commands run serially, each with a 180s
 alarm; the CI step has a 20-minute cap. Input/report disk budget is checked
@@ -34,32 +34,34 @@ at full size. publish=false stays; publication is an S20 owner decision.
 ## Honest executed checks
 
 Tests-first 4c3f1ad: one workflow assertion fails and two helper imports fail
-because the gate/module do not exist. New small tests then pass: CRC/alignment,
+because the gate/module do not exist. New small tests then pass: checksum/alignment,
 1/10 ratio, literal day100/12:00 bytes, half-second late BCD, both +5s vectors,
 reset counts and per-command warning totals. A two-cycle (56,448-byte) local
 end-to-end smoke passes across six commands. It is NOT the release-scale RSS
 result. Local fmt/trace/diff checks only beyond these focused tests; the full
 384MiB workload and platform matrix run in GitHub CI.
 
-## Full-size CI evidence
+## Review correction: isolated RSS and a discriminating ceiling
 
-[CI run 44845372998](https://github.com/TelemetryWorks/irig106-time/actions/runs/44845372998)
-at e882f42a0e22367e8d02f09e5e479728de1ea8bf passed the full matrix and gate.
-Generated input: 402,671,808 bytes; 13,981,660 packets, including 1,398,166 F1
-packets, 42,800 resets, 42,801 late packets and 28,534 real jumps.
+The initial wait4 values in runs 44845372998 / 44846090901 (14,688–14,876KiB)
+were harness-inclusive upper bounds, not true CLI peaks: the Python fork's
+high-water mark survives exec. The 64MiB ceiling also admitted the reviewer's
+compact all-reference Vec (44.6MiB). Those results do NOT establish the stronger
+gate. Replace wait4 with GNU /usr/bin/time -f %M: its small exec image forks the
+CLI, so Python's high-water mark cannot dominate the measurement. Require
+<32MiB, no fallback. Timeout kills the owned process group (launcher and CLI).
 
-| Command | Peak RSS (KiB) | Limit (KiB) |
-| --- | ---: | ---: |
-| summary | 14,876 | <65,536 |
-| channels | 14,876 | <65,536 |
-| jumps | 14,876 | <65,536 |
-| timeline --limit 1000 | 14,876 | <65,536 |
-| csv --output report.csv | 14,876 | <65,536 |
-| correlate (RTC 5s) | 14,876 | <65,536 |
+Keep the original reset/late workload unchanged. Add a second, reset-free
+115,200,000-byte phase: 400,000 F1 references / 4,000,000 packets on four time
+channels, 100Hz per channel, 1000s. Each channel supplies 3000 refs per 30s;
+the shared 1024 cap fills before age eviction, without resets clearing it.
+One F1 / nine data packets remains; expected findings/jumps are zero. Run all
+six commands on both phases, with timeline --limit1000 and CSV to a file.
+A few KiB of generation state is retained; input phases are generated/deleted
+serially. The 32MiB RSS cap applies independently to all twelve invocations.
 
-The identical peaks include a conservative pre-exec process RSS baseline;
-wait4 measures each command child, not the fixture or Cargo build. Every command
-also passed its exact finding/output assertions. The sparse transport gate
-passed separately. Remove the interim README memory warning on this evidence;
-keep publish=false and S20 publication authorization separate. No claim that
-this generated workload covers every qualified-joining clause.
+Tests-first 1e5154e: the new reset-free import and isolated-measurement assertion
+fail before implementation. Five small tests pass afterward. Wire tests pin
+per-channel monotonic RTCs, channel count, valid checksums and literal 0.01s BCD.
+No new whole-requirement marker. Updated full CI and one-off unbounded-Vec
+mutation evidence are pending; no large workload is run locally.
