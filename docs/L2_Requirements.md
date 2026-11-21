@@ -1756,7 +1756,7 @@ does not settle it or replace its real-recording evidence.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Each NTF with valid and invalid status in every renderer; native GPS Format 1 remains distinct from network time.
+**Planned verification**: Each NTF with valid and invalid status in every renderer; native GPS Format 1 remains distinct from network time. Partial summary/channels evidence: [S17a1](verification-s17a1.md); CSV/JSON remain unclaimed.
 
 #### L2-CLI-106
 

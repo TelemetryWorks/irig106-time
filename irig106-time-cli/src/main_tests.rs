@@ -424,3 +424,62 @@ fn staged_segment_output_error_precedes_later_input_error() {
     assert!(failure.message.contains("segment spool failure"));
     assert_eq!(s.total_packets, 0);
 }
+
+// Partial CLI-106: immutable bounded projection, not JSON/schema evidence.
+#[test]
+fn report_view_retains_counts_samples_and_channel_order_without_copying_state() {
+    let mut s = Ch10TimeScanner::new();
+    s.total_packets = 57;
+    s.time_packets = 12;
+    s.references_seen = 11;
+    s.reset_count = 2;
+    s.first_rtc = Some(Rtc::from_raw(3));
+    s.last_rtc = Some(Rtc::from_raw(19));
+    s.time_channels.insert(7, TimeChannelInfo::new(7));
+    s.time_channels.insert(2, TimeChannelInfo::new(2));
+    s.data_type_counts.insert(0x12, 5);
+    s.jumps_seen = 23;
+    for _ in 0..24 {
+        s.note(Severity::Warning, "bounded sample");
+    }
+    let report = report::Report::from(&s);
+    assert_eq!(
+        (
+            report.total_packets,
+            report.time_packets,
+            report.references_seen
+        ),
+        (57, 12, 11)
+    );
+    assert_eq!(
+        (
+            report.reference_count,
+            report.references_evicted,
+            report.reset_count
+        ),
+        (0, 0, 2)
+    );
+    assert_eq!(
+        (report.first_rtc, report.last_rtc),
+        (s.first_rtc, s.last_rtc)
+    );
+    assert_eq!(
+        report.time_channels.keys().copied().collect::<Vec<_>>(),
+        [2, 7]
+    );
+    assert_eq!(report.data_type_counts[&0x12], 5);
+    assert_eq!(report.jumps_seen, 23);
+    assert_eq!(report.finding_counts, [0, 24, 0]);
+    assert_eq!(report.highest, Some(Severity::Warning));
+    assert_eq!(
+        (
+            report.errors.len(),
+            report.finding_total(),
+            report.omitted_findings()
+        ),
+        (20, 24, 4)
+    );
+    assert!(std::ptr::eq(report.time_channels, &s.time_channels));
+    assert!(std::ptr::eq(report.jumps.as_ptr(), s.jumps.as_ptr()));
+    assert!(std::ptr::eq(report.errors.as_ptr(), s.errors.as_ptr()));
+}

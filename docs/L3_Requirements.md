@@ -1537,7 +1537,7 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 
 **Source**: ROADMAP P6-10; §11.2.3.3.
 
-**Planned verification**: Each NTF with valid and invalid status in every renderer; native GPS Format 1 remains distinct from network time.
+**Planned verification**: Each NTF with valid and invalid status in every renderer; native GPS Format 1 remains distinct from network time. Partial summary/channels evidence: [S17a1](verification-s17a1.md); CSV/JSON remain unclaimed.
 
 **L3-CLI-106** · Parent: L2-CLI-106 · Verification: T
 

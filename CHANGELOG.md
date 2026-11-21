@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S17a1 shared bounded report view (partial CLI-105/106)
+
+- Summary, channels and jumps render one immutable projection of bounded
+  scanner state, without copying packet/reference history. Preserve exact
+  finding totals, bounded samples and deterministic channel ordering.
+- Render jump Expected/Actual as day-of-year clock strings with nine fractional
+  digits, replacing counted nanoseconds in text. Native jump fields remain typed.
+- Report observed NTF/TS even when status or context prevents conversion; label
+  NTP / IEEE 1588-2002 / IEEE 1588-2008 and native standard scale. Stop presenting
+  PTP as GPS or inventing Format 1 source/date/leap attributes for Format 2.
+  Conversion/admission rules are unchanged. JSON/schema and full qualified
+  provenance remain subsequent S17a slices; no new dependency. Evidence:
+  docs/verification-s17a1.md.
+
 ### S16b dense-F1 memory gate (partial CLI-104)
 
 - Add a CI-generated 384MiB small-packet workload: one F1 per ten packets,
