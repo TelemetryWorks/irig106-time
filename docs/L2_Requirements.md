@@ -1744,7 +1744,7 @@ does not settle it or replace its real-recording evidence.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: A synthetic recording with both formats, two sessions, gaps/jumps, unknown year and counter-only answers; assert relevant provenance in each command. Test 40->1 seconds and 20->1/2/3 seconds, each with a real +5s post-reset jump; single/two late references, broken increasing runs, EOF and overlapping-segment queries. Labelled segment answers remain partial until S16b2b3c2.
+**Planned verification**: A synthetic recording with both formats, two sessions, gaps/jumps, unknown year and counter-only answers; assert relevant provenance in each command. Test 40->1 seconds and 20->1/2/3 seconds, each with a real +5s post-reset jump; single/two late references, broken increasing runs, EOF and overlapping-segment queries. Reset/isolation clause evidence is in verification-s16b2b3c2.md; other CLI-104 clauses remain partial.
 
 #### L2-CLI-105
 
