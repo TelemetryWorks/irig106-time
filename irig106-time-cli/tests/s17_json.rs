@@ -445,3 +445,78 @@ fn schema_describes_every_key_and_matches_the_golden_shape() {
             .contains("Consumers MUST ignore unknown fields")
     );
 }
+
+fn invalid_status_finding(status: u8) -> Value {
+    // Figure11-15: NTF0 (NTPv3), raw TS nibble; Figure11-16:
+    // seconds1/fraction0. Status is checked before needing an NTP era.
+    let input = Input::with_bytes(&packet(
+        9,
+        0x12,
+        0,
+        &[status, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+    ));
+    let mut out = Vec::new();
+    assert_eq!(
+        run(
+            &[
+                "summary",
+                input.0.to_str().unwrap(),
+                "--format",
+                "json",
+                "--fail-on",
+                "warning"
+            ],
+            &mut out,
+            &mut Vec::new()
+        ),
+        ExitClass::Findings
+    );
+    let v: Value = serde_json::from_slice(&out).unwrap();
+    assert_eq!(v["findings"]["warning"], "1");
+    assert_eq!(v["report"]["channels"][0]["status_raw"], status);
+    v["findings"]["samples"][0].clone()
+}
+#[test]
+fn time_not_valid_status_uses_tf003() {
+    // TF catalog: TS0 is Time Not Valid, not a reserved value.
+    let finding = invalid_status_finding(0);
+    assert_eq!(finding["code"], "TF-003");
+    assert_eq!(finding["level"], "warning");
+}
+#[test]
+fn reserved_time_status_values_use_tf006() {
+    // TF catalog / Figure11-15: TS2..15 are reserved values.
+    for status in 2..=15 {
+        let finding = invalid_status_finding(status);
+        assert_eq!(finding["code"], "TF-006", "TS={status}");
+        assert_eq!(finding["level"], "warning");
+    }
+}
+#[test]
+fn jump_finding_pins_code_channel_and_packet_not_reference_index() {
+    // Figure11-13: at RTC+1s native clock advances6s -> +5s residual.
+    // Opaque data between references distinguishes packet2 from reference1.
+    let bytes = [f1(7, 0, 0, 1), packet(8, 9, 5_000_000, &[]), f1(7, 1, 6, 1)].concat();
+    let input = Input::with_bytes(&bytes);
+    for command in ["summary", "jumps"] {
+        let mut out = Vec::new();
+        assert_eq!(
+            run(
+                &[command, input.0.to_str().unwrap(), "--format", "json"],
+                &mut out,
+                &mut Vec::new()
+            ),
+            ExitClass::Success
+        );
+        let v: Value = serde_json::from_slice(&out).unwrap();
+        let findings = v["findings"]["samples"].as_array().unwrap();
+        let jump = findings
+            .iter()
+            .find(|v| v["message"] == "Time jump on channel 7 at reference 1")
+            .unwrap();
+        assert_eq!(jump["code"], "TF-017");
+        assert_eq!(jump["channel"], 7);
+        assert_eq!(jump["packet"], "2");
+        assert_eq!(jump["level"], "warning");
+    }
+}
