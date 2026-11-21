@@ -70,10 +70,19 @@ def check_commands(binary, root, path, meta, label):
             assert rss < 32*1024, (command, rss, 'exceeds 32MiB')
             if command == 'summary':
                 assert f"Total Packets      : {meta['packets']:,}" in prefix
-                assert f"Total: {meta['jumps']} jump(s)" in prefix
+                if meta['jumps']:
+                    assert f"Total: {meta['jumps']} jump(s)" in prefix
+                else:
+                    assert 'Time Jumps         : None detected' in prefix
+                if meta.get('steady'):
+                    assert all(f'Channel {ch:>3}' in prefix for ch in range(7, 11))
             if command == 'timeline':
                 log.seek(0)
                 assert sum(1 for row in log if row.split() and row.split()[0].isdigit()) == TIMELINE_LIMIT
+            if command == 'jumps' and meta.get('steady'):
+                assert 'No time jumps detected across 4 channel(s).' in prefix
+            if command == 'correlate' and meta.get('steady'):
+                assert all(f'Channel {ch:>3}' in prefix for ch in range(7, 11))
             if command == 'correlate' and not meta.get('steady'):
                 log.seek(0)
                 assert sum('Channel   7 Segment' in row for row in log) == meta['segments']
