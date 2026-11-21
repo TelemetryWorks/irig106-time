@@ -14,9 +14,11 @@ No library serde/JSON API, feature or forwarding; publish=false stays untilS20.
 
 ## Partial clause evidence
 
-L1-API-010 -> L2/L3-API-110: root cargo tree --all-features, normal/build edges
+L1-API-010 -> L2/L3-API-110: root cargo tree --all-features --target all, normal/build edges
 only, rejects serde/serde_core/serde_json by real package names, so renamed
-edges cannot hide them. Dev-only tooling is excluded. Retain the existing
+edges cannot hide them. Coordinator PR77 review confirms dev dependencies
+are out of scope: they never ship with the library, and criterion already brings
+serde into the dev tree. The earlier dev-tree wording is withdrawn. Retain the existing
 removed-serde-feature rejection test. This is boundary evidence, not a new
 whole-requirement marker. Coverage stays198 tested/206 verified of288.
 No Review/Design fields changed.
@@ -32,3 +34,18 @@ Local checks: fmt and the two focused library_boundary tests. Full platform,
 CLI MSRV, locked cargo-deny and unchanged S16 32MiB RSS gate via PR CI.
 This PR neither implements JSON output nor requests the owner's schema review.
 ADR-0019 and Q5 govern the subsequent CLI-owned versioned report/schema slice.
+
+## Target-specific guard regression
+
+Tests-first64ff1ee reproduces the Linux bypass: a renamed Windows-only serde
+path dependency is absent from the host-filtered tree. The same library_tree
+command helper is used by the real guard and the regression fixtures. Add
+--target all while retaining --edges normal,build and --all-features/--locked.
+
+The table-driven regression uses independent owned temporary packages and
+local empty stubs; cargo generates fixture locks offline, never compiles stubs
+or contacts a registry for them. Cases: cfg(windows) normal serde, wasm32 normal
+serde_json, target_os=none build serde_core; all must be present by real package
+name. A dev-only serde control must remain absent. Cleanup runs on success or
+panic. No stub or transient lock is committed. All three library_boundary tests
+and fmt/trace/diff checks pass locally; the full matrix runs in PR CI.

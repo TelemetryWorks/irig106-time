@@ -41,6 +41,8 @@ fn library_tree(root: &Path) -> Output {
             "-p",
             "irig106-time",
             "--all-features",
+            "--target",
+            "all",
             "--edges",
             "normal,build",
             "--prefix",
@@ -57,7 +59,7 @@ fn library_tree(root: &Path) -> Output {
 #[test]
 fn library_normal_and_build_tree_remains_serde_free() {
     // Dev tools do not ship; every normal/build edge and library feature must
-    // remain serde-free. Real package names expose renamed dependency edges.
+    // remain serde-free on every target. Real names expose renamed edges.
     let output = library_tree(Path::new(env!("CARGO_MANIFEST_DIR")));
     assert!(
         output.status.success(),

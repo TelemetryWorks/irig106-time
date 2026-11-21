@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Owner-approved 2026-11-20: CLI-only serde_json1, pinned to1.0.149 by the
   lockfile. Guard every library feature's normal/build tree against serde,
-  serde_core and serde_json; keep the removed-feature guard. Verify CLI MSRV
+  serde_core and serde_json on all targets; exclude non-shipping dev tools
+  (criterion already uses serde). Keep the removed-feature guard. Verify CLI MSRV
   and locked cargo-deny in CI. JSON reports/schema follow separately; no
   library serde or JSON API. Evidence: docs/verification-s17a2.md.
 
