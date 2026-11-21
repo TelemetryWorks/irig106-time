@@ -26,7 +26,6 @@ pub struct Args {
     pub(crate) threshold_ms: u64,
     pub(crate) limit: usize,
     pub(crate) fail_on: Option<Severity>,
-    pub(crate) json: bool,
 }
 fn decimal(value: &OsStr) -> Result<u64, String> {
     let text = value.to_str().ok_or("numeric argument is not UTF-8")?;
@@ -66,7 +65,6 @@ pub fn parse<S: AsRef<OsStr>>(raw: &[S]) -> Result<Request, String> {
     }
     let mut parsed = Args {
         command: command.into(),
-        json: false,
         input: PathBuf::new(),
         output: None,
         rtc: Rtc::from_raw(0),
@@ -92,7 +90,6 @@ pub fn parse<S: AsRef<OsStr>>(raw: &[S]) -> Result<Request, String> {
         let flag = argument.to_str().ok_or("option name is not UTF-8")?;
         let allowed = match flag {
             "--fail-on" => true,
-            "--format" => matches!(command, "summary" | "channels" | "jumps"),
             "--threshold-ms" => command == "jumps",
             "--limit" => command == "timeline",
             "--output" => command == "csv",
@@ -122,13 +119,6 @@ pub fn parse<S: AsRef<OsStr>>(raw: &[S]) -> Result<Request, String> {
                     return Err("limit must be positive".into());
                 }
                 parsed.limit = n;
-            }
-            "--format" => {
-                parsed.json = match value.to_str() {
-                    Some("text") => false,
-                    Some("json") => true,
-                    _ => return Err("format must be text or json".into()),
-                }
             }
             "--output" => parsed.output = Some(PathBuf::from(value)),
             "--fail-on" => parsed.fail_on = threshold(value)?,

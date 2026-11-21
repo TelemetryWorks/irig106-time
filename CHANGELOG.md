@@ -7,15 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### S17a2 draft CLI JSON reports (partial CLI-106)
+### CLI JSON dependency and library boundary
 
-- Add strict --format text/json for summary/channels/jumps, sharing the text
-  report model and scan. Draft v1 schema, units, tool/input/options provenance,
-  exact decimal wide values, deterministic ordering and bounded samples.
-- Owner-approved 2026-11-20 CLI-only serde_json1, pinned by Cargo.lock. Reject
-  serde/serde_json in the library normal/build dependency tree; retain the
-  removed-feature check. No library JSON or loading API. Schema is not frozen;
-  qualified basis/goldens remain open. docs/verification-s17a2.md.
+- Owner-approved 2026-11-20: CLI-only serde_json1, pinned to1.0.149 by the
+  lockfile. Guard every library feature's normal/build tree against serde,
+  serde_core and serde_json; keep the removed-feature guard. Verify CLI MSRV
+  and locked cargo-deny in CI. JSON reports/schema follow separately; no
+  library serde or JSON API. Evidence: docs/verification-s17a2.md.
 
 ### S17a1 shared bounded report view (partial CLI-105/106)
 
