@@ -1,0 +1,6 @@
+Channel  Source              Format      Date  Leap  Proto          Status    Scale     Packets  First Time                                                              Last Time
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+      1  Internal            IRIG-B      DOY   No    —              —         UTC*            1  100:12:00:00.000000000 UTC (assumed, RDG-009)                           100:12:00:00.000000000 UTC (assumed, RDG-009)
+      2  ?                   Time-F2     —     —     NTP            Valid     UTC             1                                                                          
+      3  ?                   Time-F2     —     —     IEEE1588-2008  Valid     TAI             1  2017 002:00:00:00.000123456 UTC (from TAI via leap table)               2017 002:00:00:00.000123456 UTC (from TAI via leap table)
+      4  ?                   Time-F2     —     —     RSVD-3         Valid     unknown         1                                                                          

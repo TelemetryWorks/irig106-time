@@ -82,11 +82,20 @@ fn every_network_revision_and_status_is_named_even_without_utc() {
             let input = Input::new(&packet(0x12, 0, &payload));
             for command in ["summary", "channels"] {
                 let text = input.text(command);
-                assert!(text.contains(label), "{text}");
+                assert!(
+                    text.contains(&if command == "channels" {
+                        label.replace(' ', "")
+                    } else {
+                        label.to_string()
+                    }),
+                    "{text}"
+                );
                 assert!(text.contains(status), "{text}");
                 assert!(!text.contains("GPS"), "{text}");
                 assert!(
-                    text.contains(if ntf == 0 {
+                    text.contains(if command == "channels" {
+                        if ntf == 0 { "UTC" } else { "TAI" }
+                    } else if ntf == 0 {
                         "UTC (standard)"
                     } else {
                         "TAI (standard)"
@@ -129,4 +138,228 @@ fn report_writer_failure_remains_output_exit() {
             ExitClass::Output
         );
     }
+}
+
+fn channel(mut p: Vec<u8>, id: u16) -> Vec<u8> {
+    p[2..4].copy_from_slice(&id.to_le_bytes());
+    let sum = p[..22].chunks_exact(2).fold(0u16, |s, w| {
+        s.wrapping_add(u16::from_le_bytes([w[0], w[1]]))
+    });
+    p[22..24].copy_from_slice(&sum.to_le_bytes());
+    p
+}
+fn network(word: u8, ns: u32, rtc: u64) -> Vec<u8> {
+    // Fig11-15/17: NTF2/TS1, 1483315237 TAI ->2017-002 UTC with offset37.
+    let mut body = vec![word, 0, 0, 0];
+    body.extend_from_slice(&1483315237u32.to_le_bytes());
+    body.extend_from_slice(&ns.to_le_bytes());
+    packet(0x12, rtc, &body)
+}
+#[test]
+fn mixed_inventory_columns_match_golden_and_label_converted_clocks() {
+    let input = Input::new(
+        &[
+            channel(packet(0x11, 0, &[0, 0, 0, 0, 0, 0, 0, 0x12, 0, 1]), 1),
+            channel(network(1, 0, 0), 2),
+            channel(network(0x21, 123456, 0), 3),
+            channel(network(0x31, 0, 0), 4),
+        ]
+        .concat(),
+    );
+    assert_eq!(
+        input.text("channels"),
+        include_str!("golden/s17_channels.txt")
+    );
+    let summary = input.text("summary");
+    assert!(summary.contains("UTC (from TAI via leap table)"));
+    assert!(summary.contains("Reserved NTF"));
+    assert!(summary.contains("unknown scale"));
+}
+#[test]
+fn report_rollover_is_not_a_jump_but_boundary_discontinuity_is() {
+    // Fig11-12 LY; Fig11-13: day365/366 23:59:59 ->day1 midnight, RTC+1s.
+    for (day, ly) in [(0x65, 0), (0x66, 1)] {
+        let first = packet(0x11, 0, &[0, ly, 0, 0, 0, 0x59, 0x59, 0x23, day, 3]);
+        for (second, jumps) in [(0, 0), (5, 1)] {
+            let input = Input::new(
+                &[
+                    first.clone(),
+                    packet(0x11, 10_000_000, &[0, ly, 0, 0, 0, second, 0, 0, 1, 0]),
+                ]
+                .concat(),
+            );
+            for command in ["summary", "jumps"] {
+                let text = input.text(command);
+                if jumps == 0 {
+                    assert!(!text.contains("Expected:"), "{text}");
+                } else {
+                    assert!(
+                        text.contains("Expected: 001:00:00:00.000000000 (+1 year)"),
+                        "{text}"
+                    );
+                    assert!(
+                        text.contains("Actual: 001:00:00:05.000000000 (+1 year)"),
+                        "{text}"
+                    );
+                    assert!(text.contains("Delta: +5000.000 ms"), "{text}");
+                }
+                assert!(!text.contains("367:"), "{text}");
+            }
+            assert!(input.text("summary").contains("001:00:00:"));
+            assert!(input.text("channels").contains("(+1 year)"));
+        }
+    }
+}
+#[test]
+fn inventory_without_references_does_not_add_query_findings_or_jump_channels() {
+    let good = packet(0x11, 0, &[0, 0, 0, 0, 0, 0, 0, 0x12, 0, 1]);
+    let input = Input::new(&[good, channel(network(1, 0, 0), 2)].concat());
+    let jumps = input.text("jumps");
+    assert!(
+        jumps.contains("No time jumps detected across 1 channel(s)."),
+        "{jumps}"
+    );
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+    assert_eq!(
+        run(
+            &[
+                "correlate",
+                input.0.to_str().unwrap(),
+                "0",
+                "--fail-on",
+                "never"
+            ],
+            &mut out,
+            &mut err
+        ),
+        ExitClass::Success
+    );
+    let err = String::from_utf8(err).unwrap();
+    assert!(err.contains("warning=1"), "{err}");
+    assert!(!err.contains("Correlation query:"), "{err}");
+}
+#[test]
+fn sub_millisecond_clock_and_f2_to_f1_labels_are_preserved() {
+    let input = Input::new(
+        &[
+            network(0x21, 123456, 0),
+            packet(0x11, 10_000_000, &[0, 0, 0, 0, 0, 0, 0, 0x12, 0, 1]),
+        ]
+        .concat(),
+    );
+    let text = input.text("channels");
+    assert!(
+        text.contains(".000123456 UTC (from TAI via leap table)"),
+        "{text}"
+    );
+    // Current inventory switches to F1; the first PTP clock keeps its own basis.
+    assert!(!text.contains("IEEE1588"), "{text}");
+    assert!(!text.contains("IEEE 1588"), "{text}");
+    assert!(text.contains("IRIG-B"), "{text}");
+}
+
+#[test]
+fn segment_finishing_skips_inventory_without_references() {
+    let input = Input::new(
+        &[
+            packet(0x11, 400_000_000, &[0, 0, 0, 0, 0, 0x40, 0, 0x12, 0, 1]),
+            packet(0x11, 10_000_000, &[0, 0, 0, 0, 0, 1, 0, 0x12, 0, 1]),
+            channel(network(1, 0, 0), 2),
+        ]
+        .concat(),
+    );
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+    assert_eq!(
+        run(
+            &[
+                "correlate",
+                input.0.to_str().unwrap(),
+                "989680",
+                "--fail-on",
+                "never"
+            ],
+            &mut out,
+            &mut err
+        ),
+        ExitClass::Success
+    );
+    let err = String::from_utf8(err).unwrap();
+    assert!(err.contains("warning=2"), "{err}");
+    assert!(!err.contains("Segment query:"), "{err}");
+    assert!(!err.contains("No reset segment covers"), "{err}");
+}
+
+#[test]
+fn every_f1_format_has_the_rdg009_scale_and_basis() {
+    // Fig11-12 FMT bits7..4; RDG-009 distinguishes assumed/stated/unknown.
+    for (fmt, scale, basis) in [
+        (0, "UTC*", "UTC (assumed, RDG-009)"),
+        (1, "UTC*", "UTC (assumed, RDG-009)"),
+        (2, "UTC*", "UTC (assumed, RDG-009)"),
+        (3, "unknown", "scale unknown"),
+        (4, "UTC", "UTC (stated FMT)"),
+        (5, "GPS", "GPS (stated FMT)"),
+    ] {
+        let input = Input::new(&packet(
+            0x11,
+            0,
+            &[(fmt << 4) | 1, 0, 0, 0, 0, 0, 0, 0x12, 0, 1],
+        ));
+        for command in ["summary", "channels"] {
+            let text = input.text(command);
+            assert!(text.contains(basis), "FMT{fmt}: {text}");
+            if command == "channels" {
+                let row = text
+                    .lines()
+                    .find(|line| line.trim_start().starts_with("7 "))
+                    .unwrap();
+                assert_eq!(row.split_whitespace().nth(7), Some(scale), "{text}");
+            }
+        }
+    }
+}
+#[test]
+fn known_leap_year_cannot_skip_day366_without_a_real_jump() {
+    // Fig11-12 LY1; Fig11-13 day36523:59:59 ->day100:00:00 at RTC+1s.
+    // Leap year needs86401s for that span: observed clock advances86400s too far.
+    let input = Input::new(
+        &[
+            packet(0x11, 0, &[0, 1, 0, 0, 0, 0x59, 0x59, 0x23, 0x65, 3]),
+            packet(0x11, 10_000_000, &[0, 1, 0, 0, 0, 0, 0, 0, 1, 0]),
+        ]
+        .concat(),
+    );
+    for command in ["summary", "jumps"] {
+        let text = input.text(command);
+        assert!(text.contains("Expected: 366:00:00:00.000000000"), "{text}");
+        assert!(
+            text.contains("Actual: 001:00:00:00.000000000 (+1 year)"),
+            "{text}"
+        );
+        assert!(text.contains("Delta: +86400000.000 ms"), "{text}");
+        assert!(text.contains("Total: 1 jump(s)"), "{text}");
+    }
+}
+#[test]
+fn correlate_uses_the_shared_nanosecond_clock_format() {
+    let input = Input::new(&packet(0x11, 0, &[0, 0, 0, 0, 0, 0, 0, 0x12, 0, 1]));
+    let mut out = Vec::new();
+    assert_eq!(
+        run(
+            &["correlate", input.0.to_str().unwrap(), "0"],
+            &mut out,
+            &mut Vec::new()
+        ),
+        ExitClass::Success
+    );
+    let text = String::from_utf8(out).unwrap();
+    assert!(
+        text.contains("Any channel  → 100:12:00:00.000000000"),
+        "{text}"
+    );
+    assert!(
+        text.contains("Channel   7  → 100:12:00:00.000000000"),
+        "{text}"
+    );
+    assert!(!text.contains("Day 100"));
 }
