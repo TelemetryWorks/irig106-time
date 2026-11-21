@@ -10,8 +10,8 @@ can mount the same implementation as `irig106 time` by calling
 `irig106_time_cli::run(&["--help"], &mut stdout, &mut stderr)`. Arguments exclude
 the executable/host subcommand; the runner returns `ExitClass` without exiting.
 Arguments are validated before input is opened; the shared --fail-on threshold
-is now applied after output completes. No CLI publication or
-release tag before S16b.
+is now applied after output completes. Publication and release tags remain subject to the owner’s S20 decision;
+`publish = false` stays in the manifest.
 
 ## From the root of irig106-time, build it with:
 ```sh
@@ -123,13 +123,15 @@ Resolving RTC 0x00009896800 (10000000 ticks, 1000000000 ns)
   Channel   7  → Day 100 12:30:28.840.000
 ```
 
-## Interim report-memory gate (S16b)
+## Bounded input and report memory
 
 Input is buffered and CSV rows are spooled to disk, without whole-file loading
 or mmap. Finding samples and correlation storage are bounded, and jump/gap
-statistics are accumulated online. The dense-F1 all-command RSS gate is still
-pending; retain this interim warning and the CLI publication/release gate.
-Qualified joining remains incomplete (see the slice verification record).
+statistics are accumulated online. All six commands passed the 384MiB dense-F1
+RSS gate below 64MiB, including resets, late packets, limited timeline output
+and CSV file spooling. See [the measured evidence](../docs/verification-s16b-final-rss.md).
+This workload is memory evidence, not complete qualified-joining coverage;
+S17 joining remains incomplete. Publishing is still disabled until S20.
 
 ## CSV transactions
 
@@ -177,7 +179,7 @@ with an optional0x prefix. Help: `irigtime --help` or `irigtime COMMAND --help`.
 Use `irigtime summary -- '-capture file.ch10'` for a dash-leading filename;
 place options before `--`. Native OS paths are preserved. The library's source
 is now the conventional src/lib.rs, with the thin binary in src/bin/irigtime.rs.
-The S16b memory/publication gate still applies.
+The S16b memory gate has passed; publication remains disabled until S20.
 
 ## Shared irig106 exit convention
 
@@ -227,7 +229,7 @@ Summary retains its legacy `Errors (N)` heading; N is the total over all levels.
 conflicts with owner-approved TF-005 WARNING. We retain warning, recommending
 that the existing TF level govern. Other malformed decode errors remain error.
 No TF IDs or owner-approved levels change. These are current legacy scanner
-messages; complete qualified findings/report integration remains S16b. In
+messages; complete qualified findings/report integration remains S17. In
 particular the old BCD parser still skips a reserved-bit body; this slice grades
 its diagnostic and does not claim the qualified value-retention rebuild.
 
@@ -292,5 +294,5 @@ single silent pick. Unreset channel lines retain their existing form. Closed
 answers spool to owned system temp; RAM retains active brackets and per-channel
 counts, not all segments. Temp creation/writes occur after input open, during
 analysis; an output failure wins over later input failure. Copy to stdout only
-after analysis, then clean up on success/error. The dense-F1 gate/interim
-warning and publish=false remain.
+after analysis, then clean up on success/error. The dense-F1 memory gate has
+passed; `publish = false` remains until the owner’s S20 decision.

@@ -41,4 +41,25 @@ end-to-end smoke passes across six commands. It is NOT the release-scale RSS
 result. Local fmt/trace/diff checks only beyond these focused tests; the full
 384MiB workload and platform matrix run in GitHub CI.
 
-Full-size CI evidence: pending. README warning remains until it passes.
+## Full-size CI evidence
+
+[CI run 44845372998](https://github.com/TelemetryWorks/irig106-time/actions/runs/44845372998)
+at e882f42a0e22367e8d02f09e5e479728de1ea8bf passed the full matrix and gate.
+Generated input: 402,671,808 bytes; 13,981,660 packets, including 1,398,166 F1
+packets, 42,800 resets, 42,801 late packets and 28,534 real jumps.
+
+| Command | Peak RSS (KiB) | Limit (KiB) |
+| --- | ---: | ---: |
+| summary | 14,876 | <65,536 |
+| channels | 14,876 | <65,536 |
+| jumps | 14,876 | <65,536 |
+| timeline --limit 1000 | 14,876 | <65,536 |
+| csv --output report.csv | 14,876 | <65,536 |
+| correlate (RTC 5s) | 14,876 | <65,536 |
+
+The identical peaks include a conservative pre-exec process RSS baseline;
+wait4 measures each command child, not the fixture or Cargo build. Every command
+also passed its exact finding/output assertions. The sparse transport gate
+passed separately. Remove the interim README memory warning on this evidence;
+keep publish=false and S20 publication authorization separate. No claim that
+this generated workload covers every qualified-joining clause.

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S16b dense-F1 memory gate (partial CLI-104)
+
+- Add a CI-generated 384MiB small-packet workload: one F1 per ten packets,
+  late observations, long/short resets and real jumps. All six commands must
+  stay below 64MiB RSS; timeline uses an explicit limit and CSV spools to a file.
+  Assert exact finding counts and output endpoints so skipped work cannot pass.
+- All six passed at 14,876KiB in CI run 44845372998. Remove the interim memory
+  warning; keep `publish = false` until S20. Qualified joining remains S17;
+  matrix coverage stays 198 tested / 206 verified of 288. Evidence:
+  docs/verification-s16b-final-rss.md.
+
 ### S16b2b3c2 isolated live answers and labelled reset queries (partial CLI-104)
 
 - Restore unaffected-channel answers during resets/late classification. Valid
