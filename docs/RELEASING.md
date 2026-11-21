@@ -19,8 +19,9 @@ PR will set 0.8.0 and the exact pin together. The standalone executable is now
 `irigtime`, replacing `ch10time`; the package stays `irig106-time-cli`. Update
 scripts to the new executable name. The 0.0.1 crates.io CLI placeholder reserves
 the name; it is not this implementation or permission to publish. The CLI stays
-`publish = false` until S16b's bounded-memory reader is implemented and tested.
-No CLI publication or release tag before that gate, per the owner.
+`publish = false` until the owner’s S20 publication decision. The S16b
+bounded-memory prerequisite has passed the [dense-F1 six-command RSS gate](verification-s16b-final-rss.md).
+Passing that gate does not authorize publication or a release tag.
 
 ## Release checklist
 

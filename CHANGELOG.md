@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S16b dense-F1 memory gate (partial CLI-104)
+
+- Add a CI-generated 384MiB small-packet workload: one F1 per ten packets,
+  late observations, long/short resets and real jumps. All six commands must
+  stay below 32MiB true CLI RSS; timeline uses an explicit limit and CSV spools to a file.
+  Assert exact finding counts and output endpoints so skipped work cannot pass.
+- Replace harness-inclusive RSS upper bounds with GNU time measurements; add
+  400,000 reset-free F1 references on four channels to fill live caches.
+  True CLI peaks: 2,968–3,392KiB across both phases (CI 44847361574).
+  A one-off compact unbounded-reference Vec reached 46,692KiB and failed
+  the new gate (run 44847154990). The previous 14,876KiB figure was only a
+  harness-inclusive upper bound. Keep `publish = false` until S20; joining stays S17;
+  matrix coverage stays 198 tested / 206 verified of 288. Evidence:
+  docs/verification-s16b-final-rss.md.
+
 ### S16b2b3c2 isolated live answers and labelled reset queries (partial CLI-104)
 
 - Restore unaffected-channel answers during resets/late classification. Valid

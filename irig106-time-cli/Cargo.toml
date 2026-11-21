@@ -6,7 +6,7 @@ rust-version.workspace = true
 description = "CLI tool for inspecting IRIG 106 Chapter 10 time data — summary, correlation, jump detection, and CSV export."
 license.workspace = true
 repository.workspace = true
-# S15b gate: no CLI publication until S16b bounded streaming is complete.
+# Publishing remains disabled until the owner’s S20 decision.
 publish = false
 
 autobins = false
