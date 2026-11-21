@@ -5,7 +5,7 @@ shape, dependency or Review/Design change. This is a partial CLI-105/106 clause
 slice; no whole-requirement markers or matrix coverage increase. Other S17a
 stale-table/reset goldens and S17b timeline/CSV/correlate work remain OPEN.
 
-Tests-only9deddaa adds a complete normalized JSON output golden for four channels.
+Tests-only9deddaa adds a complete normalized JSON output golden for five channels (four formats plus a reserved selector).
 It passes against the existing implementation: a numeric/projection baseline,
 not a claimed failing-first feature fix. During fixture construction the expected
 NeedsContext message spelling was corrected against error.rs ("time needs
@@ -20,9 +20,11 @@ protocol with a warning/no clock, not an invented absolute time or GPS label.
 This golden does NOT claim RDG-012 CLI conversion completion. PTP UTC2017-01-02
 Unix1483315200 +37 =1483315237 TAI, with123ns, maps to UTC day2, year2017 and
 86400000000123ns; both PTP revisions retain native TAI and derived leap-table
-clock basis. RTC0/1/2/3 seconds uses100ns ticks. Four36-byte aligned packets give
-144 bytes; §11.2.1.1 checksums and Data Length are constructed without encoders.
-Three admitted references, zero evictions/resets/jumps, one context warning.
+clock basis. RTC0/1/2/3/4 seconds uses100ns ticks. Five36-byte aligned packets give
+180 bytes; §11.2.1.1 checksums and Data Length are constructed without encoders.
+Three admitted references, zero evictions/resets/jumps, one context warning and
+one TF-006 reserved-NTF warning. Reserved NTF3 retains its raw word49 and unknown
+scale, never a fabricated protocol/time.
 
 Only runtime path/platform encoding and tool/build versions are normalized after
 separate exact assertions. The golden pins the entire emitted key set, native
@@ -40,6 +42,7 @@ verification records remain historical.
 
 One-at-a-time projection mutations all compile and fail this full golden: NTP
 labelled GPS, swapped PTP2002 label, swapped PTP2008 label, GPS clock scale relabelled
-UTC, and discarded nanoseconds. Source restored. The baseline golden passes.
+UTC, discarded nanoseconds, discarded reserved selector, and invented UTC scale
+for reserved NTF. Source restored. The baseline golden passes.
 Local checks are focused test/mutations, fmt, trace and diff only; platform/MSRV,
 security and memory checks are delegated to PR CI. No complete CLI-105/106 claim.

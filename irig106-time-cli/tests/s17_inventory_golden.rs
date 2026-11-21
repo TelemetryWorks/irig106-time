@@ -58,6 +58,13 @@ fn native_gps_and_every_network_protocol_match_full_inventory_golden() {
         body.extend(123u32.to_le_bytes());
         bytes.extend(packet(channel, 0x12, u64::from(channel - 7), &body));
     }
+    // Figure11-15 NTF3 is reserved; preserve its raw selector, no guessed scale.
+    bytes.extend(packet(
+        11,
+        0x12,
+        4,
+        &[0x31, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    ));
     let input =
         Fixture(std::env::temp_dir().join(format!("s17-inventory-{}.ch10", std::process::id())));
     std::fs::write(&input.0, &bytes).unwrap();

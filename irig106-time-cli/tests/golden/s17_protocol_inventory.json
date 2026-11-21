@@ -10,9 +10,16 @@
         "level": "warning",
         "message": "Time F2 packet ch=8: correlation error: time needs context: NTP era/basis required; use ntp::convert_ntp",
         "packet": "1"
+      },
+      {
+        "channel": 11,
+        "code": "TF-006",
+        "level": "warning",
+        "message": "Time F2 packet ch=11: parse error: reserved network time format 0x3",
+        "packet": "4"
       }
     ],
-    "warning": "1"
+    "warning": "2"
   },
   "highest_level": "warning",
   "input": {
@@ -20,7 +27,7 @@
     "name_lossy": false,
     "native_name_encoding": "posix-bytes",
     "native_name_hex": "666978747572652e63683130",
-    "size_bytes": "144"
+    "size_bytes": "180"
   },
   "options": {
     "command": "summary",
@@ -273,6 +280,28 @@
         ],
         "status": "valid",
         "status_raw": 1
+      },
+      {
+        "date_format": null,
+        "first": null,
+        "first_rtc": null,
+        "format": "reserved",
+        "format1_low_nibble": null,
+        "format2_word": 49,
+        "format_reserved": 3,
+        "id": 11,
+        "last": null,
+        "last_rtc": null,
+        "leap_year": null,
+        "max_gap_ns": null,
+        "min_gap_ns": null,
+        "native_scale": "unknown",
+        "packets": "1",
+        "scale_basis": "unresolved",
+        "segment_count": "0",
+        "segments": [],
+        "status": "valid",
+        "status_raw": 1
       }
     ],
     "data_types": [
@@ -282,7 +311,7 @@
       },
       {
         "id": 18,
-        "packets": "3"
+        "packets": "4"
       }
     ],
     "first_rtc": "0",
@@ -291,16 +320,16 @@
       "omitted": "0",
       "samples": []
     },
-    "last_rtc": "30000000",
+    "last_rtc": "40000000",
     "qualification": "observed inventory; qualified joining/basis pending",
     "reference_count": "3",
     "references_evicted": "0",
     "references_seen": "3",
     "reset_count": "0",
     "rows": null,
-    "rtc_duration_ns": "3000000000",
-    "time_packets": "4",
-    "total_packets": "4"
+    "rtc_duration_ns": "4000000000",
+    "time_packets": "5",
+    "total_packets": "5"
   },
   "schema": "telemetryworks/irigtime-report",
   "schema_revision": 2,
