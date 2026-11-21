@@ -364,7 +364,11 @@ fn retained_reference_count_and_old_query_finding() {
             ),
             ExitClass::Success
         );
-        assert!(String::from_utf8(out).unwrap().contains("13:45:27.350.000"));
+        assert!(
+            String::from_utf8(out)
+                .unwrap()
+                .contains("13:45:27.350000000")
+        );
         assert!(err.is_empty());
     }
 }

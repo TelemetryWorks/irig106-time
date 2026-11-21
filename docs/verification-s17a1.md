@@ -111,3 +111,7 @@ only. CSV numeric/machine columns are untouched. Twelve focused report tests
 pass. Six runtime mutants killed: each of the three missing IRIG assumptions,
 unknown assumed-UTC column, ignored known leap-year constraint and old correlate
 presentation. All source edits restored. No serde_json or #77 changes.
+
+CI44866763571 caught one additional legacy fractional-time assertion without a
+DOY prefix (13:45:27.350.000); update it to13:45:27.350000000. Numeric
+retained-window behaviour is unchanged; the focused regression passes.
