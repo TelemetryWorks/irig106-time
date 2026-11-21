@@ -13,7 +13,8 @@ impl Input {
     fn new() -> Self {
         static NEXT: AtomicUsize = AtomicUsize::new(0);
         let path = std::env::temp_dir().join(format!(
-            "s17-quote\"-{}-{}.ch10",
+            "s17-{}-{}-{}.ch10",
+            if cfg!(unix) { "quote\"" } else { "comma," },
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));

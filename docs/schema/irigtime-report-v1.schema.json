@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/TelemetryWorks/irig106-time/main/docs/schema/irigtime-report-v1.schema.json",
+  "title": "irigtime inventory report v1 — DRAFT, not frozen",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "schema_version", "schema_status", "tool", "input", "options", "units", "report"],
+  "properties": {
+    "schema": {"const": "irigtime-report"}, "schema_version": {"const": 1},
+    "schema_status": {"const": "draft"},
+    "tool": {
+      "type": "object", "additionalProperties": false, "required": ["name", "version"],
+      "properties": {"name": {"const": "irigtime"}, "version": {"type": "string"}}
+    },
+    "input": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "name_lossy", "native_name_hex", "native_name_encoding", "size_bytes"],
+      "properties": {
+        "name": {"type": "string"}, "name_lossy": {"type": "boolean"},
+        "native_name_hex": {"type": "string", "pattern": "^(?:[0-9a-f]{2})*$"},
+        "native_name_encoding": {"const": "OsStr::as_encoded_bytes (platform-dependent)"},
+        "size_bytes": {"$ref": "#/$defs/unsigned"}
+      }
+    },
+    "options": {
+      "type": "object", "additionalProperties": false, "required": ["command", "format", "fail_on", "threshold_ms"],
+      "properties": {
+        "command": {"enum": ["summary", "channels", "jumps"]}, "format": {"const": "json"},
+        "fail_on": {"enum": ["error", "warning", "info", "never"]}, "threshold_ms": {"$ref": "#/$defs/maybe_unsigned"}
+      }
+    },
+    "units": {"const": {"rtc": "100 ns ticks", "durations": "ns", "file_size": "bytes", "counts": "items", "clock_count": "ns since day 1 00:00:00; year unspecified"}},
+    "report": {
+      "type": "object", "additionalProperties": false,
+      "required": ["qualification", "total_packets", "time_packets", "references_seen", "reference_count", "references_evicted", "reset_count", "first_rtc", "last_rtc", "channels", "data_types", "jumps", "findings"],
+      "properties": {
+        "qualification": {"const": "observed inventory; qualified joining/basis pending"},
+        "total_packets": {"$ref": "#/$defs/unsigned"}, "time_packets": {"$ref": "#/$defs/unsigned"},
+        "references_seen": {"$ref": "#/$defs/unsigned"}, "reference_count": {"$ref": "#/$defs/unsigned"},
+        "references_evicted": {"$ref": "#/$defs/unsigned"}, "reset_count": {"$ref": "#/$defs/unsigned"},
+        "first_rtc": {"$ref": "#/$defs/maybe_unsigned"}, "last_rtc": {"$ref": "#/$defs/maybe_unsigned"},
+        "channels": {"type": "array", "items": {"$ref": "#/$defs/channel"}},
+        "data_types": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["id", "packets"], "properties": {"id": {"type": "integer", "minimum": 0, "maximum": 255}, "packets": {"$ref": "#/$defs/unsigned"}}}},
+        "jumps": {"type": "object", "additionalProperties": false, "required": ["count", "omitted", "samples"], "properties": {"count": {"$ref": "#/$defs/unsigned"}, "omitted": {"$ref": "#/$defs/unsigned"}, "samples": {"type": "array", "maxItems": 20, "items": {"$ref": "#/$defs/jump"}}}},
+        "findings": {"type": "object", "additionalProperties": false, "required": ["error", "warning", "info", "omitted", "samples"], "properties": {"error": {"$ref": "#/$defs/unsigned"}, "warning": {"$ref": "#/$defs/unsigned"}, "info": {"$ref": "#/$defs/unsigned"}, "omitted": {"$ref": "#/$defs/unsigned"}, "samples": {"type": "array", "maxItems": 20, "items": {"type": "string"}}}}
+      }
+    }
+  },
+  "$defs": {
+    "unsigned": {"type": "string", "pattern": "^(0|[1-9][0-9]*)$"},
+    "signed": {"type": "string", "pattern": "^(0|-?[1-9][0-9]*)$"},
+    "maybe_unsigned": {"anyOf": [{"$ref": "#/$defs/unsigned"}, {"type": "null"}]},
+    "clock": {
+      "type": ["object", "null"], "additionalProperties": false,
+      "required": ["year", "day", "hour", "minute", "second", "nanosecond", "clock_count_ns", "scale_basis"],
+      "properties": {
+        "year": {"type": ["integer", "null"]}, "day": {"type": "integer", "minimum": 1, "maximum": 366},
+        "hour": {"type": "integer", "minimum": 0, "maximum": 23}, "minute": {"type": "integer", "minimum": 0, "maximum": 59},
+        "second": {"type": "integer", "minimum": 0, "maximum": 60}, "nanosecond": {"type": "integer", "minimum": 0, "maximum": 999999999},
+        "clock_count_ns": {"$ref": "#/$defs/unsigned"}, "scale_basis": {"const": "unqualified inventory clock"}
+      }
+    },
+    "channel": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "packets", "format", "native_scale", "scale_basis", "format2_word", "status", "format1_source", "segments", "first", "last", "first_rtc", "last_rtc", "min_gap_ns", "max_gap_ns"],
+      "properties": {
+        "id": {"type": "integer", "minimum": 0, "maximum": 65535}, "packets": {"$ref": "#/$defs/unsigned"},
+        "format": {"type": "string"}, "native_scale": {"enum": ["UTC", "TAI", "GPS", "unknown"]},
+        "scale_basis": {"enum": ["standard", "stated format", "unresolved"]},
+        "format2_word": {"type": ["integer", "null"], "minimum": 0, "maximum": 4294967295},
+        "status": {"type": ["string", "null"]}, "format1_source": {"type": ["string", "null"]},
+        "segments": {"$ref": "#/$defs/unsigned"}, "first": {"$ref": "#/$defs/clock"}, "last": {"$ref": "#/$defs/clock"},
+        "first_rtc": {"$ref": "#/$defs/maybe_unsigned"}, "last_rtc": {"$ref": "#/$defs/maybe_unsigned"},
+        "min_gap_ns": {"$ref": "#/$defs/maybe_unsigned"}, "max_gap_ns": {"$ref": "#/$defs/maybe_unsigned"}
+      }
+    },
+    "jump": {
+      "type": "object", "additionalProperties": false, "required": ["channel", "index", "expected_ns", "actual_ns", "delta_ns"],
+      "properties": {
+        "channel": {"type": "integer", "minimum": 0, "maximum": 65535}, "index": {"$ref": "#/$defs/unsigned"},
+        "expected_ns": {"$ref": "#/$defs/unsigned"}, "actual_ns": {"$ref": "#/$defs/unsigned"}, "delta_ns": {"$ref": "#/$defs/signed"}
+      }
+    }
+  }
+}

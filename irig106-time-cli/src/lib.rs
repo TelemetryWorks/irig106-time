@@ -46,6 +46,7 @@ mod csv_spool;
 pub mod input;
 mod live_refs;
 mod report;
+mod report_json;
 mod segment_answers;
 mod target_refs;
 
@@ -893,16 +894,11 @@ fn fmt_comma(n: impl std::fmt::Display) -> String {
 // ────────────────────────────────────────────────────────────────────
 
 fn cmd_summary(
-    input: std::fs::File,
+    scanner: &report::Report<'_>,
     file_len: u64,
     filename: &Path,
     stdout: &mut dyn Write,
 ) -> Result<Option<Severity>, Failure> {
-    let mut scanner = Ch10TimeScanner::new();
-    scanner.jump_threshold = Some(1_000_000_000);
-    scanner.scan(input, false, None)?;
-    let scanner = report::Report::from(&scanner);
-
     writeln!(
         stdout,
         "================================================================"
@@ -1050,13 +1046,10 @@ fn cmd_summary(
 }
 
 fn cmd_channels(
-    input: std::fs::File,
+    scanner: &report::Report<'_>,
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
 ) -> Result<Option<Severity>, Failure> {
-    let mut scanner = Ch10TimeScanner::new();
-    scanner.scan(input, false, None)?;
-    let scanner = report::Report::from(&scanner);
     scanner.report_findings(stderr)?;
 
     writeln!(
@@ -1109,21 +1102,11 @@ fn cmd_channels(
 }
 
 fn cmd_jumps(
-    input: std::fs::File,
+    scanner: &report::Report<'_>,
     threshold_ms: u64,
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
 ) -> Result<Option<Severity>, Failure> {
-    let threshold = threshold_ms.checked_mul(1_000_000).ok_or_else(|| {
-        Failure::new(
-            ExitClass::Usage,
-            "threshold milliseconds cannot be represented in nanoseconds",
-        )
-    })?;
-    let mut scanner = Ch10TimeScanner::new();
-    scanner.jump_threshold = Some(threshold);
-    scanner.scan(input, false, None)?;
-    let scanner = report::Report::from(&scanner);
     writeln!(
         stdout,
         "Time Jump Detection (threshold: {} ms)",
@@ -1383,6 +1366,10 @@ fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
         stdout,
         "Correlation caches: compatibility 1024; isolated 1024 arrivals / 30s per channel. Old/empty-window answers: warning (coordinator-approved)."
     )?;
+    writeln!(
+        stdout,
+        "--format <text|json>: summary/channels/jumps only; default text. JSON v1 is draft."
+    )?;
     writeln!(stdout, "Examples:")?;
     writeln!(stdout, "  irigtime summary flight_042.ch10")?;
     writeln!(
@@ -1526,9 +1513,37 @@ fn dispatch(
         .map_err(|e| Failure::new(ExitClass::Input, e.to_string()))?
         .len();
     match args.command.as_str() {
-        "summary" => cmd_summary(input, file_len, &args.input, stdout),
-        "channels" => cmd_channels(input, stdout, stderr),
-        "jumps" => cmd_jumps(input, args.threshold_ms, stdout, stderr),
+        "summary" | "channels" | "jumps" => {
+            let mut scanner = Ch10TimeScanner::new();
+            scanner.jump_threshold = match args.command.as_str() {
+                "summary" => Some(1_000_000_000),
+                "jumps" => Some(
+                    args.threshold_ms
+                        .checked_mul(1_000_000)
+                        .ok_or_else(|| Failure::new(ExitClass::Usage, "threshold overflows ns"))?,
+                ),
+                _ => None,
+            };
+            scanner.scan(input, false, None)?;
+            let report = report::Report::from(&scanner);
+            if args.json {
+                // Preserve diagnostic I/O ordering from the corresponding text view.
+                if args.command == "channels" {
+                    report.report_findings(stderr)?;
+                }
+                report_json::write(&report, &args, file_len, stdout)?;
+                if args.command == "jumps" {
+                    report.report_findings(stderr)?;
+                }
+                Ok(report.highest)
+            } else {
+                match args.command.as_str() {
+                    "summary" => cmd_summary(&report, file_len, &args.input, stdout),
+                    "channels" => cmd_channels(&report, stdout, stderr),
+                    _ => cmd_jumps(&report, args.threshold_ms, stdout, stderr),
+                }
+            }
+        }
         "timeline" => cmd_timeline(input, args.limit, stdout, stderr),
         "csv" => cmd_csv(input, args.output.as_deref(), stdout, stderr, pending),
         "correlate" => cmd_correlate(input, args.rtc, stdout, stderr),

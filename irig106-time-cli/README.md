@@ -298,3 +298,10 @@ counts, not all segments. Temp creation/writes occur after input open, during
 analysis; an output failure wins over later input failure. Copy to stdout only
 after analysis, then clean up on success/error. The dense-F1 memory gate has
 passed; `publish = false` remains until the owner’s S20 decision.
+
+## Draft JSON reports
+
+`irigtime summary flight.ch10 --format json` (also channels/jumps) uses the
+same report model as text. [Draft schema and units](../docs/cli-report-schema.md);
+wide values are decimal strings. Qualified joining/basis remains incomplete;
+this schema is not frozen. Exit classes and --fail-on apply unchanged.

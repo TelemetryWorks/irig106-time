@@ -48,7 +48,6 @@ fn library_normal_and_build_tree_remains_serde_free() {
             "--format",
             "{p}",
             "--locked",
-            "--offline",
         ])
         .current_dir(env!("CARGO_MANIFEST_DIR"))
         .output()
