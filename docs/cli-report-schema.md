@@ -1,7 +1,10 @@
 # irigtime JSON report, stable v1, revision 2
 
-The [producer schema](schema/irigtime-report-v1.schema.json) is the normative
-field/type/unit/null contract. It is CLI-owned (ADR-0019), not an IRIG 106 format
+The [canonical producer schema](../apps/irig106-time-cli/schema/irigtime-report-v1.schema.json)
+is packaged with the CLI. The [docs snapshot](schema/irigtime-report-v1.schema.json)
+is generated from it with `python3 scripts/sync-cli-schema.py`; the workspace
+sync test enforces byte identity. The schema is the normative field/type/unit/null
+contract. It is CLI-owned (ADR-0019), not an IRIG 106 format
 or a library serialization API. The #78 schema review selected the shared
 `telemetryworks/irigtime-report` envelope; it is now frozen as stable v1,
 revision 2.

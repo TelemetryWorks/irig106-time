@@ -1,5 +1,6 @@
 """Lockstep layout checks; metadata only, no dependency build or publication."""
 import json
+import re
 from pathlib import Path
 import subprocess
 import tomllib
@@ -29,6 +30,30 @@ class CliWorkspace(unittest.TestCase):
         self.assertEqual(cli['dependencies']['irig106-time'], {'workspace': True})
         self.assertFalse((ROOT / 'apps/irig106-time-cli/Cargo.lock').exists())
         self.assertTrue((ROOT / 'Cargo.lock').is_file())
+
+    def test_literal_rust_includes_are_package_local(self):
+        for member in ['crates/irig106-time', 'apps/irig106-time-cli']:
+            package = (ROOT / member).resolve()
+            for directory in ['src', 'tests', 'examples', 'benches']:
+                for source in (package / directory).rglob('*.rs'):
+                    for target in re.findall(r'include_(?:str|bytes)!\(\s*"([^"\n]+)"', source.read_text()):
+                        resolved = (source.parent / target).resolve()
+                        self.assertTrue(resolved.is_relative_to(package),
+                                        f'{source.relative_to(ROOT)} includes outside its package: {target}')
+                        self.assertTrue(resolved.is_file(), str(resolved))
+
+    def test_cli_schema_docs_snapshot_matches_packaged_source(self):
+        self.assertEqual(
+            (ROOT / 'apps/irig106-time-cli/schema/irigtime-report-v1.schema.json').read_bytes(),
+            (ROOT / 'docs/schema/irigtime-report-v1.schema.json').read_bytes())
+
+    def test_guide_network_snippets_match_packaged_fixture(self):
+        guide = (ROOT / 'docs/usage.md').read_text().split('## 13. Processing Network Time Packets')[1].split('## 14.')[0]
+        packaged = (ROOT / 'crates/irig106-time/tests/fixtures/format2_usage.md').read_text()
+        def snippets(text):
+            return re.findall(r'```rust\n(.*?)\n```', text, re.S)
+        self.assertEqual(snippets(guide), snippets(packaged))
+        self.assertEqual(len(snippets(packaged)), 2)
 
     def test_fuzz_remains_a_separate_workspace_with_its_own_lock(self):
         result = subprocess.run(['cargo', 'metadata', '--manifest-path',
