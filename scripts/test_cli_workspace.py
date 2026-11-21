@@ -38,7 +38,10 @@ class CliWorkspace(unittest.TestCase):
             package = (ROOT / member).resolve()
             for directory in ['src', 'tests', 'examples', 'benches']:
                 for source in (package / directory).rglob('*.rs'):
-                    for target in re.findall(r'include_(?:str|bytes)!\(\s*"([^"\n]+)"', source.read_text()):
+                    text = source.read_text()
+                    includes = re.findall(r'\binclude(?:_str|_bytes)?!\s*\(\s*"([^"\n]+)"', text)
+                    paths = re.findall(r'#\s*\[\s*path\s*=\s*"([^"\n]+)"\s*\]', text)
+                    for target in includes + paths:
                         resolved = (source.parent / target).resolve()
                         self.assertTrue(resolved.is_relative_to(package),
                                         f'{source.relative_to(ROOT)} includes outside its package: {target}')

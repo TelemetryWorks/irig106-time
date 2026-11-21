@@ -89,3 +89,5 @@ ASCII-only. Names remain as given. The producer schema is strict and consumers
 ignore unknown fields within a supported schema version. The schema is frozen as
 stable v1, revision 2. Discard output on operational failure (an output error may leave a
 partial JSON stream).
+
+Packet CSV column units, quoting and absent values: [CSV column schema](cli-csv-schema.md).
