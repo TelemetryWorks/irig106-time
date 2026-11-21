@@ -55,6 +55,35 @@ class DenseRss(unittest.TestCase):
         self.assertEqual(meta['jumps'], 2)
         self.assertEqual(meta['late'], 3)
 
+    def test_reset_free_multichannel_phase(self):
+        from dense_rss_workload import write_steady_workload
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp)/'steady.ch10'
+            meta = write_steady_workload(path, rounds=3)
+            data = path.read_bytes()
+        self.assertEqual(meta['time_packets'], 12)
+        self.assertEqual(meta['packets'], 120)
+        stamps = {}
+        offset = 0
+        while offset < len(data):
+            h = data[offset:offset+24]
+            length = int.from_bytes(h[4:8], 'little')
+            self.assertEqual(int.from_bytes(h[22:24], 'little'),
+                             sum(struct.unpack('<11H', h[:22])) & 0xffff)
+            if h[15] == 0x11:
+                channel = int.from_bytes(h[2:4], 'little')
+                stamps.setdefault(channel, []).append(int.from_bytes(h[16:22], 'little'))
+                if channel == 7 and len(stamps[channel]) == 2:
+                    self.assertEqual(data[offset+28:offset+34], bytes.fromhex('01 00 00 12 00 01'))
+            offset += length
+        self.assertEqual(stamps, {ch: [0, 100000, 200000] for ch in range(7, 11)})
+
+    def test_true_measurement_and_32_mib_gate(self):
+        source = Path('scripts/check-dense-rss.py').read_text()
+        self.assertIn('/usr/bin/time', source)
+        self.assertNotIn('os.wait4', source)
+        self.assertIn('32*1024', source)
+
     def test_multiple_cycles_and_expected_findings(self):
         from dense_rss_workload import write_workload, warnings_for, CYCLE_BYTES
         with tempfile.TemporaryDirectory() as tmp:
