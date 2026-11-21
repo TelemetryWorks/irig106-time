@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S17a3 draft versioned JSON reports (partial CLI-106)
+
+- Add strict --format text/json for summary/channels/jumps over one Report/scan.
+  Draft schema, units, provenance, deterministic order and decimal wide values;
+  retain per-clock basis/year phase. Writer errors stay4. Missing-year golden.
+- Keep32MiB CI gate; direct JSON probes, qualification/remaining goldens and
+  dedicated schema review stay open. No schema freeze or library serde. Evidence:
+  docs/verification-s17a3.md.
+
 ### CLI JSON dependency and library boundary
 
 - Owner-approved 2026-11-20: CLI-only serde_json1, pinned to1.0.149 by the

@@ -299,3 +299,10 @@ counts, not all segments. Temp creation/writes occur after input open, during
 analysis; an output failure wins over later input failure. Copy to stdout only
 after analysis, then clean up on success/error. The dense-F1 memory gate has
 passed; `publish = false` remains until the owner’s S20 decision.
+
+## Draft JSON inventory reports
+
+Summary/channels/jumps accept `--format json` (default text). See the
+[draft schema/units](../docs/schema/irigtime-report-v1.schema.json). Wide quantities are decimal
+strings; qualified joining and remaining golden cases are not yet complete.
+The schema awaits its dedicated review and is not frozen. Exits are unchanged.

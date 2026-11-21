@@ -11,14 +11,21 @@ use std::{
 struct Input(PathBuf);
 impl Input {
     fn new() -> Self {
+        Self::with_bytes(&common::NO_TIME)
+    }
+    fn with_bytes(bytes: &[u8]) -> Self {
         static NEXT: AtomicUsize = AtomicUsize::new(0);
         let path = std::env::temp_dir().join(format!(
             "s17-{}-{}-{}.ch10",
-            if cfg!(unix) { "quote\"" } else { "comma," },
+            if cfg!(unix) {
+                "quote\",comma,\n"
+            } else {
+                "comma,"
+            },
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));
-        std::fs::write(&path, common::NO_TIME).unwrap();
+        std::fs::write(&path, bytes).unwrap();
         Self(path)
     }
 }
@@ -72,6 +79,25 @@ fn versioned_report_is_deterministic_exact_and_carries_provenance() {
 }
 #[test]
 fn json_options_are_strict_and_precede_input_access() {
+    let input = Input::new();
+    let (mut default, mut text) = (Vec::new(), Vec::new());
+    assert_eq!(
+        run(
+            &["summary", input.0.to_str().unwrap()],
+            &mut default,
+            &mut Vec::new()
+        ),
+        ExitClass::Success
+    );
+    assert_eq!(
+        run(
+            &["summary", input.0.to_str().unwrap(), "--format", "text"],
+            &mut text,
+            &mut Vec::new()
+        ),
+        ExitClass::Success
+    );
+    assert_eq!(default, text);
     for options in [
         vec!["--format", "JSON"],
         vec!["--format", "json", "--format", "text"],
@@ -119,5 +145,36 @@ fn json_writer_failure_is_output_not_findings() {
             &mut Vec::new()
         ),
         ExitClass::Output
+    );
+}
+
+#[test]
+fn missing_year_report_matches_independent_golden() {
+    // Fig11-12/13: FMT0/SRC1, day10012:00:00, no year, 10-byte Data Length.
+    // §11.2.1.1 header sum EB25+7+24+A+6+1100=FC60; DD filler is excluded.
+    let bytes = [
+        0x25, 0xeb, 7, 0, 36, 0, 0, 0, 10, 0, 0, 0, 6, 0, 0, 0x11, 0, 0, 0, 0, 0, 0, 0x60, 0xfc, 1,
+        0, 0, 0, 0, 0, 0, 0x12, 0, 1, 0xdd, 0xdd,
+    ];
+    let input = Input::with_bytes(&bytes);
+    let mut out = Vec::new();
+    assert_eq!(
+        run(
+            &["summary", input.0.to_str().unwrap(), "--format", "json"],
+            &mut out,
+            &mut Vec::new()
+        ),
+        ExitClass::Success
+    );
+    let mut value: Value = serde_json::from_slice(&out).unwrap();
+    // Normalize only independently checked run-specific provenance.
+    assert_eq!(value["input"]["name"], input.0.to_str().unwrap());
+    assert_eq!(value["tool"]["version"], env!("CARGO_PKG_VERSION"));
+    value["input"]["name"] = "fixture.ch10".into();
+    value["input"]["native_name_hex"] = "666978747572652e63683130".into();
+    value["tool"]["version"] = "<package-version>".into();
+    assert_eq!(
+        serde_json::to_string_pretty(&value).unwrap() + "\n",
+        include_str!("golden/s17_missing_year.json")
     );
 }

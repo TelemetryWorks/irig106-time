@@ -1,0 +1,97 @@
+{
+  "input": {
+    "name": "fixture.ch10",
+    "name_lossy": false,
+    "native_name_encoding": "OsStr::as_encoded_bytes (platform-dependent)",
+    "native_name_hex": "666978747572652e63683130",
+    "size_bytes": "36"
+  },
+  "options": {
+    "command": "summary",
+    "fail_on": "error",
+    "format": "json",
+    "threshold_ms": "1000"
+  },
+  "report": {
+    "channels": [
+      {
+        "first": {
+          "clock_count_ns": "8596800000000000",
+          "day": 100,
+          "hour": 12,
+          "minute": 0,
+          "nanosecond": 0,
+          "scale_basis": "UTC (assumed, RDG-009)",
+          "second": 0,
+          "year": null,
+          "year_offset": "0"
+        },
+        "first_rtc": "0",
+        "format": "IRIG-B",
+        "format1_low_nibble": 1,
+        "format2_word": null,
+        "id": 7,
+        "last": {
+          "clock_count_ns": "8596800000000000",
+          "day": 100,
+          "hour": 12,
+          "minute": 0,
+          "nanosecond": 0,
+          "scale_basis": "UTC (assumed, RDG-009)",
+          "second": 0,
+          "year": null,
+          "year_offset": "0"
+        },
+        "last_rtc": "0",
+        "max_gap_ns": null,
+        "min_gap_ns": null,
+        "native_scale": "UTC",
+        "packets": "1",
+        "scale_basis": "assumed, RDG-009",
+        "segments": "1",
+        "status": null
+      }
+    ],
+    "data_types": [
+      {
+        "id": 17,
+        "packets": "1"
+      }
+    ],
+    "findings": {
+      "error": "0",
+      "info": "0",
+      "omitted": "0",
+      "samples": [],
+      "warning": "0"
+    },
+    "first_rtc": "0",
+    "jumps": {
+      "count": "0",
+      "omitted": "0",
+      "samples": []
+    },
+    "last_rtc": "0",
+    "qualification": "observed inventory; qualified joining/basis pending",
+    "reference_count": "1",
+    "references_evicted": "0",
+    "references_seen": "1",
+    "reset_count": "0",
+    "time_packets": "1",
+    "total_packets": "1"
+  },
+  "schema": "irigtime-report",
+  "schema_status": "draft",
+  "schema_version": 1,
+  "tool": {
+    "name": "irigtime",
+    "version": "<package-version>"
+  },
+  "units": {
+    "clock_count": "ns since day 1 00:00:00; year unspecified",
+    "counts": "items",
+    "durations": "ns",
+    "file_size": "bytes",
+    "rtc": "100 ns ticks"
+  }
+}
