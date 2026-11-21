@@ -82,10 +82,10 @@ any-channel answers remain needs-context. Numeric channel equality is not enough
 
 
 Summary/channels/jumps also accept `--format text|json` (default text). The
-[draft shared JSON envelope](cli-report-schema.md) records effective options,
+[stable shared JSON envelope](cli-report-schema.md) records effective options,
 command-specific structured findings, exact wide values and reset segments.
 `channels` does not evaluate jumps; its jumps/threshold are null. JSON stdout is
 ASCII-only. Names remain as given. The producer schema is strict and consumers
-ignore unknown fields within a supported schema version; final delta review is
-pending. Discard output on operational failure (an output error may leave a
+ignore unknown fields within a supported schema version. The schema is frozen as
+stable v1, revision 2. Discard output on operational failure (an output error may leave a
 partial JSON stream).
