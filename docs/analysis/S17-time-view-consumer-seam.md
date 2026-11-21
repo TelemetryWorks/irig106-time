@@ -85,9 +85,9 @@ must preserve, not redo or broaden, those mappings.
 
 Retain packet-layout qualification: unresolved and 106-04 EXT layouts do not
 invent SRC labels or TSRC comparisons. Channel selection/admission and packet
-comparison remain separate operations. Present-empty and uncovered setup ranges
-must preserve their different meanings, including the S09b TF008 applicability
-rule. Retaining a setup basis is not evidence of data-source association.
+comparison remain separate operations. An empty collection of setup ranges is NoGoverningRange, not a governing
+setup. A covering setup with an empty channel list is Present and can report
+TF008 for an undeclared time channel. Preserve the S09b applicability rule. Retaining a setup basis is not evidence of data-source association.
 
 ## Work that can proceed now / verification still planned
 
