@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CI reader and real-command input RSS; report-state audit remains open."""
+"""CI sparse reader/command RSS; dense report-state gate is separate."""
 import json
 import os
 from pathlib import Path
@@ -68,7 +68,7 @@ with tempfile.TemporaryDirectory(prefix="irigtime-reader-rss-") as tmp:
                 print(prefix)
         result = (f"{name} input RSS: {usage.ru_maxrss} KiB peak; {size} input bytes; "
                   f"{size // len(packet)} non-time packets; 8192-byte buffer. "
-                  "Reference/finding/report-state audit remains open.")
+                  "Sparse transport probe; dense report-state gate is separate.")
         print(result, flush=True)
         if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
             with open(summary, "a") as out:
