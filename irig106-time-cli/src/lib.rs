@@ -1440,7 +1440,7 @@ fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
     )?;
     writeln!(
         stdout,
-        "Correlation: 1024 references globally / 30 seconds RTC; old/empty-window answers: warning (coordinator-approved)."
+        "Correlation caches: compatibility 1024; isolated 1024 arrivals / 30s per channel. Old/empty-window answers: warning (coordinator-approved)."
     )?;
     writeln!(stdout, "Examples:")?;
     writeln!(stdout, "  irigtime summary flight_042.ch10")?;

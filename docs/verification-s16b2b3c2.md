@@ -6,8 +6,9 @@ stays 198 tested / 206 verified of 288. No dependencies/unsafe/library I/O.
 
 ## Behavior and evidence
 
-885ebb9 is tests-first: four CLI regressions fail at main at runtime (isolation,
-overlap labels, provisional range pollution and pending observations). New
+885ebb9 is tests-first: four requested-behavior tests fail at main at runtime
+(global withholding/missing segment output/pending observations). The provisional
+range test at main fails for missing output, not an exposed wrong archive. New
 library discard test fails compilation with missing API, not a runtime failure.
 Vectors use existing literal Fig11-13 BCD/primary-header checksums. C2 restores
 channel8 timeline rows byte-for-byte against an unchanged no-reset control
