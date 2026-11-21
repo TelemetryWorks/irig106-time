@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Stable JSON inventory schema
+
+- Freeze the reviewed report schema as version 1, revision 2: schema_status is
+  stable. Synchronize producer metadata and golden/assertion expectations.
+  No field shapes, command support, units or compatibility rules change.
+
 ### S17a3 draft versioned JSON reports (partial CLI-106)
 
 - Correct Format 2 finding codes: TS0 -> TF-003, reserved TS2..15 -> TF-006

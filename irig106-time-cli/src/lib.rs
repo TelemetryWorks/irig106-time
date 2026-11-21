@@ -1510,7 +1510,7 @@ fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
     )?;
     writeln!(
         stdout,
-        "--format <text|json>: summary/channels/jumps only; default text. Schema v1 draft."
+        "--format <text|json>: summary/channels/jumps only; default text. Schema stable v1, revision 2."
     )?;
     writeln!(stdout, "Examples:")?;
     writeln!(stdout, "  irigtime summary flight_042.ch10")?;
