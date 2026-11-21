@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### S17a3 draft versioned JSON reports (partial CLI-106)
 
+- Correct Format 2 finding codes: TS0 -> TF-003, reserved TS2..15 -> TF-006
+  (both warning). Pin jump finding TF-017/channel/packet provenance. Document
+  explicit release-commit build provenance; schema stays draft pending a
+  separate reviewed stable/revision increment.
+
 - Add strict --format text/json for summary/channels/jumps over one Report/scan.
   The reviewed draft envelope uses telemetryworks/irigtime-report, version and
   revision, tool/library/build provenance, per-command structured findings and

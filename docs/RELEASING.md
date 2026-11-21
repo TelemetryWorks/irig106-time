@@ -14,6 +14,13 @@ requires owner approval after publication. No such dependency or publication is
 authorized here. The time library remains TMATS-independent. Data-row association
 without real evidence remains unresolved; see the [seam design](analysis/S17-time-view-consumer-seam.md).
 
+## Build provenance
+
+Release builds must set `IRIGTIME_SOURCE_REVISION` to the actual release commit.
+The CLI's `GITHUB_SHA` fallback can identify a temporary PR merge commit and is
+not a substitute for release identity. This is a build requirement only; no
+release workflow, publication or tag is changed here.
+
 ## Workspace and lockstep versioning
 
 The root library package and sibling `irig106-time-cli/` are the workspace

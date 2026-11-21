@@ -752,7 +752,8 @@ impl Ch10TimeScanner {
     fn note_decode(&mut self, error: &TimeError, message: String) {
         let code = match error {
             TimeError::ReservedBitSet { .. } => Some("TF-005"),
-            TimeError::InvalidTimeStatus { .. } => Some("TF-003"),
+            TimeError::InvalidTimeStatus { status: 0 } => Some("TF-003"),
+            TimeError::InvalidTimeStatus { .. } => Some("TF-006"),
             TimeError::ReservedNetworkTimeFormat { .. } => Some("TF-006"),
             TimeError::InvalidBcdDigit { .. }
             | TimeError::OutOfRange { .. }

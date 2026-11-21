@@ -41,7 +41,11 @@ Lossy display names have a flag and lossless platform representation:
 `posix-bytes` or `windows-utf16le`, in lowercase hex. JSON stdout is ASCII-only;
 non-ASCII characters use Unicode escapes, including surrogate pairs. Tool and
 library versions are lockstep; source revision comes from the build's
-`IRIGTIME_SOURCE_REVISION`, else `GITHUB_SHA`, else null. Runtime never probes Git.
+`IRIGTIME_SOURCE_REVISION`, else `GITHUB_SHA`, else null. **Release builds must
+set IRIGTIME_SOURCE_REVISION to the actual release commit.** In PR builds,
+GITHUB_SHA can name a temporary merge commit, not the reviewed branch head;
+that fallback is diagnostic build provenance, not a release identity. Runtime
+never probes Git.
 Objects/channel/type IDs order deterministically; findings/jumps keep observation
 order. Text retains its existing human-readable labels.
 
@@ -61,3 +65,15 @@ on usage/input errors (2/3). An output error (4) can leave partial, or even full
 written but unsuccessfully flushed, JSON: discard stdout when exit 4 occurs.
 Existing command-specific stderr diagnostics remain. Writer errors take
 precedence over finding thresholds. No new dependency or library serde.
+
+## Reset warning versus catalogued reset finding
+
+TF-018 is an **information** finding for a counter reset/new session. The CLI's
+approved reset heuristic currently emits a **warning with code null**. It is not
+TF-018 at a different level, and the JSON keeps that distinction.
+
+**Proposal for owner decision:** retain code null for the heuristic warning;
+use TF-018/information only for a separately established new-session fact when
+that fact is reported. Do not relabel this warning TF-018 or silently change its
+approved severity, counts or --fail-on behaviour. This PR makes no reset mapping
+change or new finding assignment.

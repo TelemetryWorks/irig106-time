@@ -59,7 +59,7 @@
           "type": "string"
         },
         "source_revision": {
-          "description": "Build-supplied IRIGTIME_SOURCE_REVISION, else GitHub Actions GITHUB_SHA; null when unavailable. Never probes Git at runtime.",
+          "description": "Build-supplied IRIGTIME_SOURCE_REVISION, else GitHub Actions GITHUB_SHA, else null. Release builds must set IRIGTIME_SOURCE_REVISION to the actual release commit; PR GITHUB_SHA may identify a temporary merge commit. Never probes Git at runtime.",
           "type": [
             "string",
             "null"
@@ -129,7 +129,7 @@
           "const": "json"
         },
         "fail_on": {
-          "description": "Effective finding exit threshold; the value never disables finding exit 1.",
+          "description": "Effective finding exit threshold; `never` disables exit 1 only, not operational exits 2/3/4.",
           "enum": [
             "error",
             "warning",

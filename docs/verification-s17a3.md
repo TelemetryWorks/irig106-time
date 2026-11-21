@@ -109,3 +109,40 @@ Local checks: fmt, focused CLI/report tests, touched CLI Clippy, the16 focused
 projection mutants, small generator assertions and trace check only. Full platform,
 MSRV, WASM, dependency, safety and large RSS checks are delegated to PR CI.
 CI run and exact head are reported with the frozen update, not guessed here.
+
+## Final schema delta — TS mapping and jump finding identity
+
+Ordinary merge30889fb brings main a4d8bf8 (#79) into this PR. CHANGELOG was the
+only conflict: retained BOTH the S17a3 draft JSON section and #79's release-gate
+section, before the existing dependency entry. No release gate or schema work
+was dropped. No Review/Design field changed; schema remains draft revision1.
+Freeze (stable plus incremented revision) is a separate reviewed PR.
+
+Tests-only87b09ce: the reserved-TS test fails against the merged
+pre-fix code (TF-003 rather than TF-006); TS0 and jump identity controls already
+pass and are not claimed failing first. Fix note_decode with an explicit TS0
+branch (TF-003) and reserved-value branch (TF-006), both warning. Literal
+Figure11-15 TS0 and every TS2..15 exercise the parser-to-JSON path. The jump
+fixture uses Figure11-13 native +6s at RTC+1s; an intervening non-time packet
+separates packet2 from reference1. Assert TF-017, channel7, packet2 and warning
+in summary AND jumps output. No whole-requirement marker or coverage gain.
+
+Correct the `never` threshold description. Release builds must set
+IRIGTIME_SOURCE_REVISION to the release commit; PR GITHUB_SHA can be a temporary
+merge commit. TF-018 remains information in the catalog. The approved CLI
+heuristic reset remains warning/code null. Proposal: keep that distinction and
+reserve TF-018/information for a separately established new-session fact, rather
+than attach an information-level ID to a warning. No reset behaviour/level change.
+
+Later follow-up, explicitly not implemented in this PR: the #79 consumer seam
+should use tmats #9's association_unestablished / association_conflicting /
+association_evidenced states; conflicting stays unresolved for answers. No TMATS
+dependency or edit to that seam is part of this schema correction.
+
+Focused delta evidence: all10 s17_json tests pass. Five one-at-a-time replacements
+compile and fail runtime assertions: jump code None; sample channel None; TS0
+mapped TF-006; reserved TS mapped TF-003; jump packet location replaced by the
+reference index. The last is killed by packet2 versus reference1. Source restored
+between probes. Local fmt, touched CLI Clippy and trace checks are the only other
+checks; the full matrix/RSS/security checks run in GitHub CI. Coverage remains
+198 tested /206 verified of288. No stable-schema change in this delta.
