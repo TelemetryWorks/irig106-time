@@ -2,7 +2,7 @@
 
 Base main c9508db (#74 merged). Partial L1-CLI-004 -> L2/L3-CLI-104 memory
 clauses only; no whole-requirement marker or Review/Design changes. Matrix
-stays 198 tested / 206 verified of 288. No Rust behavior/dependency changes.
+stays 198 tested / 206 verified of 288. No production Rust behavior/dependency changes.
 
 ## Workload and bounds
 
@@ -63,5 +63,45 @@ serially. The 32MiB RSS cap applies independently to all twelve invocations.
 Tests-first 1e5154e: the new reset-free import and isolated-measurement assertion
 fail before implementation. Five small tests pass afterward. Wire tests pin
 per-channel monotonic RTCs, channel count, valid checksums and literal 0.01s BCD.
-No new whole-requirement marker. Updated full CI and one-off unbounded-Vec
-mutation evidence are pending; no large workload is run locally.
+No new whole-requirement marker. No large workload was run locally.
+
+## Corrected executed evidence
+
+[CI run 44847361574](https://github.com/TelemetryWorks/irig106-time/actions/runs/44847361574)
+at b8fc36b7b1d3c06e1c2b137faf8ec7a114773451 passed the full matrix and both
+phases. These are GNU time CLI peaks, not harness-inclusive upper bounds:
+
+| Command | Reset phase KiB | Reset-free phase KiB | Limit KiB |
+| --- | ---: | ---: | ---: |
+| summary | 2,968 | 3,368 | <32,768 |
+| channels | 2,984 | 3,272 | <32,768 |
+| jumps | 2,984 | 3,272 | <32,768 |
+| timeline --limit 1000 | 3,224 | 3,380 | <32,768 |
+| csv --output report.csv | 3,140 | 3,392 | <32,768 |
+| correlate (RTC 5s) | 3,012 | 3,344 | <32,768 |
+
+Reset phase: 402,671,808 bytes, 13,981,660 packets / 1,398,166 F1,
+42,800 resets, 42,801 late observations, 28,534 real jumps. Reset-free phase:
+115,200,000 bytes, 4,000,000 packets / 400,000 F1, no findings or jumps.
+The steady summary/correlate assertions require all four time channels.
+The first revised CI run 44847118115 passed reset measurements, then failed a
+harness assertion expecting “Total: 0” instead of the CLI's “None detected”;
+correcting that assertion changed no production behavior.
+
+### One-off negative control (not part of regular CI)
+
+[Run 44847154990](https://github.com/TelemetryWorks/irig106-time/actions/runs/44847154990)
+at throwaway commit 4e1fee371d21a48e924de4ade6a1b4996b259c9c injected a
+scanner-owned Vec<[u8;32]>, retaining one copy of the raw F1 payload padded to
+32 bytes on every observation, with black_box keeping it live. It retained all
+1,398,166 references without changing normal bounded-cache answers. Summary's
+exit/finding/output checks passed, then its true CLI peak **46,692KiB** failed
+the **32,768KiB** RSS assertion. This equivalent compact all-reference leak
+would pass the former 64MiB ceiling. The gate stopped at the first rejection;
+no repeated full mutant campaign or mutation in regular CI. The throwaway
+branch was deleted; neither mutant nor one-off workflow is in this PR.
+
+Local checks: five focused Python tests, fmt and diff checks. Large workloads
+and the negative control ran only in GitHub CI. The README memory warning is
+removed on this corrected evidence; publish=false stays until S20. Coverage
+remains 198 tested / 206 verified of 288; S17 qualified joining stays separate.

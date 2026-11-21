@@ -15,7 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Assert exact finding counts and output endpoints so skipped work cannot pass.
 - Replace harness-inclusive RSS upper bounds with GNU time measurements; add
   400,000 reset-free F1 references on four channels to fill live caches.
-  The previous 14,876KiB figure was a harness-inclusive upper bound; keep `publish = false` until S20. Qualified joining remains S17;
+  True CLI peaks: 2,968–3,392KiB across both phases (CI 44847361574).
+  A one-off compact unbounded-reference Vec reached 46,692KiB and failed
+  the new gate (run 44847154990). The previous 14,876KiB figure was only a
+  harness-inclusive upper bound. Keep `publish = false` until S20; joining stays S17;
   matrix coverage stays 198 tested / 206 verified of 288. Evidence:
   docs/verification-s16b-final-rss.md.
 

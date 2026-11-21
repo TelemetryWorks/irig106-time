@@ -129,7 +129,9 @@ Input is buffered and CSV rows are spooled to disk, without whole-file loading
 or mmap. Finding samples and correlation storage are bounded, and jump/gap
 statistics are accumulated online. The CI RSS gate requires true CLI peaks below 32MiB across all six commands
 on both the 384MiB reset/late workload and a reset-free four-channel phase
-with 400,000 F1 references, limited timeline output and CSV file spooling. See [the measured evidence](../docs/verification-s16b-final-rss.md).
+with 400,000 F1 references, limited timeline output and CSV file spooling.
+Measured true CLI peaks were 2,968–3,392KiB across both phases; an unbounded
+reference-retention mutant failed at 46,692KiB. See [the measured evidence](../docs/verification-s16b-final-rss.md).
 This workload is memory evidence, not complete qualified-joining coverage;
 S17 joining remains incomplete. Publishing is still disabled until S20.
 
