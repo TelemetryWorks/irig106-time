@@ -82,11 +82,20 @@ fn every_network_revision_and_status_is_named_even_without_utc() {
             let input = Input::new(&packet(0x12, 0, &payload));
             for command in ["summary", "channels"] {
                 let text = input.text(command);
-                assert!(text.contains(label), "{text}");
+                assert!(
+                    text.contains(&if command == "channels" {
+                        label.replace(' ', "")
+                    } else {
+                        label.to_string()
+                    }),
+                    "{text}"
+                );
                 assert!(text.contains(status), "{text}");
                 assert!(!text.contains("GPS"), "{text}");
                 assert!(
-                    text.contains(if ntf == 0 {
+                    text.contains(if command == "channels" {
+                        if ntf == 0 { "UTC" } else { "TAI" }
+                    } else if ntf == 0 {
                         "UTC (standard)"
                     } else {
                         "TAI (standard)"

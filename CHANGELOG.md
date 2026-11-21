@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   finding totals, bounded samples and deterministic channel ordering.
 - Render jump Expected/Actual as day-of-year clock strings with nine fractional
   digits, replacing counted nanoseconds in text. Native jump fields remain typed.
+- Delta review: align mixed inventory rows with compact Proto/Status/Scale
+  columns; retain per-clock scale/conversion basis and all nine fractional digits.
+  Inventory includes decoded CSDWs without usable references, but these entries
+  no longer add correlation warnings, jump-channel counts or segment results.
+- Apply the coordinator's end-year report policy: continuous 365/366->1 is a
+  rollover, not a jump; retain real boundary residuals and render rolled clocks
+  with (+1 year), never a fabricated day367. No library calendar reconstruction.
 - Report observed NTF/TS even when status or context prevents conversion; label
   NTP / IEEE 1588-2002 / IEEE 1588-2008 and native standard scale. Stop presenting
   PTP as GPS or inventing Format 1 source/date/leap attributes for Format 2.
