@@ -162,6 +162,11 @@ impl CsvSpool {
             .as_mut()
             .ok_or_else(|| io::Error::other("CSV spool closed"))
     }
+    // Private bounded-report archive access; BufWriter is flushed before seeking.
+    pub(crate) fn file(&mut self) -> io::Result<&mut File> {
+        self.flush()?;
+        Ok(self.writer()?.get_mut())
+    }
     pub(crate) fn copy_stdout(&mut self, out: &mut dyn Write) -> io::Result<()> {
         self.flush()?;
         let file = self.writer()?.get_mut();

@@ -4,6 +4,9 @@ use super::*;
 use irig106_time::network_time::NetworkTimeFormat;
 
 pub(super) struct Report<'a> {
+    pub(super) segment_inventory: Option<&'a segment_inventory::Archive>,
+    pub(super) finding_samples: &'a [FindingSample],
+    pub(super) jump_threshold: Option<u64>,
     pub(super) total_packets: usize,
     pub(super) time_packets: usize,
     pub(super) references_seen: usize,
@@ -24,6 +27,9 @@ pub(super) struct Report<'a> {
 impl<'a> From<&'a Ch10TimeScanner> for Report<'a> {
     fn from(s: &'a Ch10TimeScanner) -> Self {
         Self {
+            segment_inventory: s.segment_inventory.as_ref(),
+            finding_samples: &s.finding_samples,
+            jump_threshold: s.jump_threshold,
             total_packets: s.total_packets,
             time_packets: s.time_packets,
             references_seen: s.references_seen,

@@ -10,11 +10,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### S17a3 draft versioned JSON reports (partial CLI-106)
 
 - Add strict --format text/json for summary/channels/jumps over one Report/scan.
-  Draft schema, units, provenance, deterministic order and decimal wide values;
-  retain per-clock basis/year phase. Writer errors stay4. Missing-year golden.
-- Keep32MiB CI gate; direct JSON probes, qualification/remaining goldens and
-  dedicated schema review stay open. No schema freeze or library serde. Evidence:
-  docs/verification-s17a3.md.
+  The reviewed draft envelope uses telemetryworks/irigtime-report, version and
+  revision, tool/library/build provenance, per-command structured findings and
+  highest level. Producer schema is strict; consumers ignore unknown fields.
+- Fix channels' unevaluated jumps/threshold to null. Emit the actual scanner
+  threshold. Add DATE/LY, closed format/status/scale/basis spellings and raw
+  reserved values; preserve file-wide and per-reset-segment clock observations.
+  Closed segment rows spool to disk, keeping bounded memory. Correct the text
+  time-packet label to include both 0x11 and 0x12.
+- JSON is ASCII-only, with Unicode escapes and lossless POSIX-byte/Windows-UTF16LE
+  input-name provenance. Wide quantities are decimal strings. All defined keys
+  are present, with field-specific null semantics and reserved future row shapes.
+  Writer errors remain4; consumers discard stdout on operational failure.
+- Retain the32MiB six-command CI gate and add direct JSON reset/steady probes.
+  Missing-year golden, review projection/mutation evidence and bounded segment
+  fixtures are in docs/verification-s17a3.md. Remaining qualification/goldens
+  are explicitly partial. Schema stays draft for final delta review; no library
+  serde, dependency additions, publishing or schema freeze.
 
 ### CLI JSON dependency and library boundary
 

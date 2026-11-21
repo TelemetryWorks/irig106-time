@@ -48,6 +48,7 @@ mod live_refs;
 mod report;
 mod report_json;
 mod segment_answers;
+mod segment_inventory;
 mod target_refs;
 
 // ────────────────────────────────────────────────────────────────────
@@ -100,6 +101,7 @@ struct TimeChannelInfo {
     pair_baseline: Option<(Rtc, AbsoluteTime)>,
     late: Vec<ObservedReference>,
     segment: usize,
+    active_segment: Option<segment_inventory::Active>,
     min_gap_ns: Option<u64>,
     max_gap_ns: Option<u64>,
 }
@@ -124,6 +126,7 @@ impl TimeChannelInfo {
             pair_baseline: None,
             late: Vec::new(),
             segment: 1,
+            active_segment: None,
             min_gap_ns: None,
             max_gap_ns: None,
         }
@@ -151,13 +154,26 @@ type RowSink<'a> = &'a mut dyn FnMut(&ResolvedPacket) -> io::Result<()>;
 
 #[derive(Clone, Copy, Debug)]
 struct ObservedReference {
+    basis: &'static str,
     rtc: Rtc,
     time: AbsoluteTime,
     packet: usize,
     index: usize,
 }
 
+#[derive(Debug)]
+struct FindingSample {
+    level: Severity,
+    code: Option<String>,
+    message: String,
+    channel: Option<u16>,
+    packet: Option<usize>,
+}
+
 struct Ch10TimeScanner {
+    segment_inventory: Option<segment_inventory::Archive>,
+    finding_samples: Vec<FindingSample>,
+    finding_location: Option<(u16, usize)>,
     correlator: StreamingTimeCorrelator,
     query_refs: Option<target_refs::TargetReferences>,
     segment_answers: Option<segment_answers::SegmentAnswers>,
@@ -190,6 +206,9 @@ impl Ch10TimeScanner {
                 NanosDuration::new(30_000_000_000),
                 REFERENCE_CAP,
             ),
+            segment_inventory: None,
+            finding_samples: Vec::new(),
+            finding_location: None,
             query_refs: None,
             segment_answers: None,
             segment_error: None,
@@ -302,6 +321,7 @@ impl Ch10TimeScanner {
             }
             self.last_rtc = Some(hdr.rtc);
             *self.data_type_counts.entry(hdr.data_type).or_insert(0) += 1;
+            self.finding_location = Some((hdr.channel_id, self.total_packets));
             let prior_refs = self.references_seen;
             if hdr.data_type == DATA_TYPE_TIME_F1 {
                 self.time_packets += 1;
@@ -328,6 +348,7 @@ impl Ch10TimeScanner {
                     self.resolved.push(row);
                 }
             }
+            self.finding_location = None;
             self.total_packets += 1;
         }
         if self.total_packets == 0 {
@@ -374,7 +395,7 @@ impl Ch10TimeScanner {
         match self.correlate(rtc, channel) {
             Ok(t) => Some(t),
             Err(e) => {
-                self.note(decode_level(&e), format!("Correlation query: {e}"));
+                self.note_decode(&e, format!("Correlation query: {e}"));
                 None
             }
         }
@@ -397,8 +418,9 @@ impl Ch10TimeScanner {
         self.resolve(hdr.rtc, None)
     }
 
-    fn observe_reference(&mut self, hdr: &PktHeader, time: AbsoluteTime) {
+    fn observe_reference(&mut self, hdr: &PktHeader, time: AbsoluteTime, basis: &'static str) {
         let point = ObservedReference {
+            basis,
             rtc: hdr.rtc,
             time,
             packet: self.total_packets,
@@ -443,6 +465,15 @@ impl Ch10TimeScanner {
     }
 
     fn cache_reference(&mut self, channel: u16, point: ObservedReference) {
+        if self.segment_inventory.is_some() {
+            if let Some(info) = self.time_channels.get_mut(&channel) {
+                if let Some(active) = &mut info.active_segment {
+                    active.observe(point);
+                } else {
+                    info.active_segment = Some(segment_inventory::Active::new(info.segment, point));
+                }
+            }
+        }
         self.correlator
             .add_reference(channel, point.rtc, point.time);
         self.isolated.observe(channel, point.rtc, point.time);
@@ -458,8 +489,10 @@ impl Ch10TimeScanner {
         {
             for point in late {
                 self.cache_reference(channel, point);
-                self.note(
+                self.note_at(
+                    (channel, point.packet),
                     Severity::Warning,
+                    None,
                     format!(
                         "Out-of-order time reference: channel {} RTC {:#X} -> {:#X} at packet {}",
                         channel,
@@ -490,8 +523,10 @@ impl Ch10TimeScanner {
         }
     }
     fn start_reset(&mut self, channel: u16, previous: Rtc, first: ObservedReference) {
-        self.note(
+        self.note_at(
+            (channel, first.packet),
             Severity::Warning,
+            None,
             format!(
                 "RTC reset on channel {} at packet {}: {:#X} -> {:#X}",
                 channel,
@@ -500,6 +535,17 @@ impl Ch10TimeScanner {
                 first.rtc.as_raw()
             ),
         );
+        if let Some(archive) = &self.segment_inventory {
+            if let Some(row) = self
+                .time_channels
+                .get_mut(&channel)
+                .and_then(|c| c.active_segment.take())
+            {
+                if let Err(e) = archive.push(channel, row) {
+                    self.segment_error = Some(e);
+                }
+            }
+        }
         self.reset_count += 1;
         self.close_segment(channel, true);
         self.correlator.clear_channel(channel);
@@ -545,6 +591,9 @@ impl Ch10TimeScanner {
             if year_days.is_some() {
                 if let Some(info) = self.time_channels.get_mut(&channel) {
                     info.year_rollovers += 1;
+                    if let Some(row) = &mut info.active_segment {
+                        row.years = info.year_rollovers;
+                    }
                 }
             }
             let delta_nanos = actual_nanos as i64 - expected_nanos as i64;
@@ -568,8 +617,10 @@ impl Ch10TimeScanner {
                         delta_nanos,
                     });
                 }
-                self.note(
+                self.note_at(
+                    (channel, point.packet),
                     Severity::Warning,
+                    Some("TF-017"),
                     format!(
                         "Time jump on channel {} at reference {}",
                         channel, point.index
@@ -652,8 +703,63 @@ impl Ch10TimeScanner {
         // u64 byte offsets and >=24-byte frames bound these counts below u64::MAX.
         self.finding_counts[usize::from(rank(level))] += 1;
         if self.errors.len() < FINDING_SAMPLE_LIMIT {
-            self.errors.push(format!("{level:?}: {}", message.into()));
+            let message = message.into();
+            let label = match level {
+                Severity::Error => "Error",
+                Severity::Warning => "Warning",
+                Severity::Information => "Information",
+            };
+            self.errors.push(format!("{label}: {message}"));
+            let code = message
+                .split(':')
+                .next()
+                .filter(|v| {
+                    v.len() == 6
+                        && v.starts_with("TF-")
+                        && v[3..].bytes().all(|b| b.is_ascii_digit())
+                })
+                .map(str::to_owned);
+            self.finding_samples.push(FindingSample {
+                level,
+                code,
+                message,
+                channel: self.finding_location.map(|p| p.0),
+                packet: self.finding_location.map(|p| p.1),
+            });
         }
+    }
+
+    fn note_at(
+        &mut self,
+        location: (u16, usize),
+        level: Severity,
+        code: Option<&str>,
+        message: String,
+    ) {
+        let previous = self.finding_location.replace(location);
+        self.note_code(level, code, message);
+        self.finding_location = previous;
+    }
+    fn note_code(&mut self, level: Severity, code: Option<&str>, message: impl Into<String>) {
+        let before = self.finding_samples.len();
+        self.note(level, message);
+        if self.finding_samples.len() > before {
+            if let Some(sample) = self.finding_samples.last_mut() {
+                sample.code = code.map(str::to_owned);
+            }
+        }
+    }
+    fn note_decode(&mut self, error: &TimeError, message: String) {
+        let code = match error {
+            TimeError::ReservedBitSet { .. } => Some("TF-005"),
+            TimeError::InvalidTimeStatus { .. } => Some("TF-003"),
+            TimeError::ReservedNetworkTimeFormat { .. } => Some("TF-006"),
+            TimeError::InvalidBcdDigit { .. }
+            | TimeError::OutOfRange { .. }
+            | TimeError::BufferTooShort { .. } => Some("TF-004"),
+            _ => None,
+        };
+        self.note_code(decode_level(error), code, message);
     }
 
     fn observe(&mut self, level: Severity) {
@@ -668,8 +774,9 @@ impl Ch10TimeScanner {
 
     fn process_time_packet(&mut self, payload: &[u8], hdr: &PktHeader) {
         let Some(csdw_bytes) = payload.get(..4) else {
-            self.note(
+            self.note_code(
                 Severity::Error,
+                Some("TF-004"),
                 format!("Time packet at ch={} too short for CSDW", hdr.channel_id),
             );
             return;
@@ -681,8 +788,9 @@ impl Ch10TimeScanner {
         let abs_time = match csdw.date_format() {
             DateFormat::DayOfYear => {
                 if bcd_start + 6 > payload.len() {
-                    self.note(
+                    self.note_code(
                         Severity::Error,
+                        Some("TF-004"),
                         format!(
                             "Time packet ch={}: buffer too short for DOY BCD",
                             hdr.channel_id
@@ -693,8 +801,8 @@ impl Ch10TimeScanner {
                 match DayFormatTime::from_le_bytes(&payload[bcd_start..]) {
                     Ok(t) => t.to_absolute(),
                     Err(e) => {
-                        self.note(
-                            decode_level(&e),
+                        self.note_decode(
+                            &e,
                             format!("Time packet ch={}: DOY BCD error: {}", hdr.channel_id, e),
                         );
                         return;
@@ -703,8 +811,9 @@ impl Ch10TimeScanner {
             }
             DateFormat::DayMonthYear => {
                 if bcd_start + 8 > payload.len() {
-                    self.note(
+                    self.note_code(
                         Severity::Error,
+                        Some("TF-004"),
                         format!(
                             "Time packet ch={}: buffer too short for DMY BCD",
                             hdr.channel_id
@@ -716,8 +825,8 @@ impl Ch10TimeScanner {
                     Ok(t) => match t.to_calendar_time() {
                         Ok(ct) => ct.into_absolute_time(),
                         Err(e) => {
-                            self.note(
-                                decode_level(&e),
+                            self.note_decode(
+                                &e,
                                 format!(
                                     "Time packet ch={}: DMY date invalid: {}",
                                     hdr.channel_id, e
@@ -727,8 +836,8 @@ impl Ch10TimeScanner {
                         }
                     },
                     Err(e) => {
-                        self.note(
-                            decode_level(&e),
+                        self.note_decode(
+                            &e,
                             format!("Time packet ch={}: DMY BCD error: {}", hdr.channel_id, e),
                         );
                         return;
@@ -737,7 +846,7 @@ impl Ch10TimeScanner {
             }
         };
 
-        self.observe_reference(hdr, abs_time);
+        self.observe_reference(hdr, abs_time, report::f1_basis(csdw.time_format()));
         // Update channel info
         let info = self
             .time_channels
@@ -777,8 +886,8 @@ impl Ch10TimeScanner {
         let (_, network_time) = match parse_time_f2_payload(payload) {
             Ok(result) => result,
             Err(e) => {
-                self.note(
-                    decode_level(&e),
+                self.note_decode(
+                    &e,
                     format!("Time F2 packet ch={}: parse error: {}", hdr.channel_id, e),
                 );
                 return;
@@ -806,8 +915,8 @@ impl Ch10TimeScanner {
         let abs_time = match converted {
             Ok(t) => t,
             Err(e) => {
-                self.note(
-                    decode_level(&e),
+                self.note_decode(
+                    &e,
                     format!(
                         "Time F2 packet ch={}: correlation error: {}",
                         hdr.channel_id, e
@@ -816,7 +925,7 @@ impl Ch10TimeScanner {
                 return;
             }
         };
-        self.observe_reference(hdr, abs_time);
+        self.observe_reference(hdr, abs_time, "UTC (from TAI via leap table)");
         // Update channel info
         let info = self
             .time_channels
@@ -929,7 +1038,7 @@ fn cmd_summary(
     )?;
     writeln!(
         stdout,
-        "Time Packets (0x11): {}",
+        "Time Packets (0x11/0x12): {}",
         fmt_comma(scanner.time_packets)
     )?;
     writeln!(
@@ -1556,6 +1665,9 @@ fn dispatch(
                 ),
                 _ => None,
             };
+            if args.json {
+                scanner.segment_inventory = Some(segment_inventory::Archive::new()?);
+            }
             scanner.scan(input, false, None)?;
             let report = report::Report::from(&scanner);
             if args.json {

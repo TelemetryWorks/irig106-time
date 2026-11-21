@@ -1,12 +1,98 @@
 //! CLI-owned draft v1 report JSON (ADR-0019; owner approval 2026-11-20).
 //! Partial Traces: L3-CLI-106 <- L2-CLI-106 <- L1-CLI-006; no loading API.
 use super::{args::Args, report::Report, *};
-use serde_json::{Value, json};
+use serde_json::{Value, json, ser::Formatter};
 
+// serde_json handles JSON quoting/control characters; this formatter additionally
+// escapes every non-ASCII UTF-16 code unit (including surrogate pairs).
+struct AsciiFormatter;
+impl Formatter for AsciiFormatter {
+    fn write_string_fragment<W: ?Sized + Write>(
+        &mut self,
+        out: &mut W,
+        fragment: &str,
+    ) -> io::Result<()> {
+        for ch in fragment.chars() {
+            if ch.is_ascii() {
+                write!(out, "{ch}")?;
+            } else {
+                for unit in ch.encode_utf16(&mut [0; 2]) {
+                    write!(out, "\\u{unit:04x}")?;
+                }
+            }
+        }
+        Ok(())
+    }
+}
+fn string(out: &mut dyn Write, value: &str) -> io::Result<()> {
+    let quoted = serde_json::to_string(value)?;
+    let mut formatter = AsciiFormatter;
+    formatter.begin_string(out)?;
+    formatter.write_string_fragment(out, &quoted[1..quoted.len() - 1])?;
+    formatter.end_string(out)
+}
+// Only the bounded channel/field projection is resident. Segment records stream
+// from our private spool; serialization never collects their complete history.
+fn emit(value: &Value, r: &Report<'_>, out: &mut dyn Write) -> io::Result<()> {
+    match value {
+        Value::Object(object) => {
+            out.write_all(b"{")?;
+            for (i, (key, value)) in object.iter().enumerate() {
+                if i != 0 {
+                    out.write_all(b",")?;
+                }
+                string(out, key)?;
+                out.write_all(b":")?;
+                if key == "segments" && object.contains_key("segment_count") {
+                    let channel = object
+                        .get("id")
+                        .and_then(Value::as_u64)
+                        .and_then(|v| u16::try_from(v).ok())
+                        .ok_or_else(|| io::Error::other("internal report channel"))?;
+                    out.write_all(b"[")?;
+                    let mut first = true;
+                    let mut row = |value: &Value| {
+                        if !first {
+                            out.write_all(b",")?;
+                        }
+                        first = false;
+                        emit(value, r, out)
+                    };
+                    if let Some(archive) = r.segment_inventory {
+                        archive.each(channel, &mut row)?;
+                    }
+                    if let Some(active) = r
+                        .time_channels
+                        .get(&channel)
+                        .and_then(|c| c.active_segment.as_ref())
+                    {
+                        row(&active.value())?;
+                    }
+                    out.write_all(b"]")?;
+                } else {
+                    emit(value, r, out)?;
+                }
+            }
+            out.write_all(b"}")
+        }
+        Value::Array(values) => {
+            out.write_all(b"[")?;
+            for (i, value) in values.iter().enumerate() {
+                if i != 0 {
+                    out.write_all(b",")?;
+                }
+                emit(value, r, out)?;
+            }
+            out.write_all(b"]")
+        }
+        Value::String(value) => string(out, value),
+        _ => serde_json::to_writer(out, value).map_err(io::Error::other),
+    }
+}
 pub(super) fn write(r: &Report<'_>, args: &Args, size: u64, out: &mut dyn Write) -> io::Result<()> {
     let mut value = document(r, args, size);
-    value.sort_all_objects(); // Canonical order even if a host enables preserve_order.
-    serde_json::to_writer(&mut *out, &value).map_err(io::Error::other)?;
+    value.sort_all_objects(); // Deterministic even if a host enables preserve_order.
+    emit(&value, r, out)?;
     writeln!(out)
 }
 fn nonzero(days: u16) -> Option<u16> {
@@ -23,61 +109,109 @@ fn level(value: Option<Severity>) -> &'static str {
         None => "never",
     }
 }
-fn clock(t: AbsoluteTime, basis: Option<&str>, years: usize) -> Value {
+fn clock_basis(basis: Option<&str>) -> (&'static str, &'static str) {
+    match basis {
+        Some("UTC (assumed, RDG-009)") => ("UTC", "assumed, RDG-009"),
+        Some("UTC (stated FMT)") => ("UTC", "stated FMT"),
+        Some("GPS (stated FMT)") => ("GPS", "stated FMT"),
+        Some("UTC (from TAI via leap table)") => ("UTC", "derived, leap table"),
+        _ => ("unknown", "unresolved"),
+    }
+}
+pub(super) fn clock(t: AbsoluteTime, basis: Option<&str>, years: usize) -> Value {
+    let (scale, basis) = clock_basis(basis);
     json!({"year": t.year(), "day": t.day_of_year(), "hour": t.hours(),
         "minute": t.minutes(), "second": t.seconds(), "nanosecond": t.nanoseconds(),
-        "clock_count_ns": decimal(t.as_total_ns()), "scale_basis": basis.unwrap_or("scale unknown"), "year_offset": decimal(years)})
+        "clock_count_ns": decimal(t.as_total_ns()), "scale": scale, "basis": basis, "year_offset": decimal(years)})
 }
 fn channel(info: &TimeChannelInfo) -> Value {
+    use irig106_time::network_time::{NetworkTimeFormat, TimeStatus};
     let (scale, basis) = report::native_scale(info);
+    let (format, reserved) = match info.network_word.map(TimeF2Csdw::time_format) {
+        Some(NetworkTimeFormat::NtpV3) => ("NTP", None),
+        Some(NetworkTimeFormat::Ptp2002) => ("IEEE1588-2002", None),
+        Some(NetworkTimeFormat::Ptp2008) => ("IEEE1588-2008", None),
+        Some(NetworkTimeFormat::Reserved(n)) => ("reserved", Some(n)),
+        None => match info.format {
+            Some(TimeFormat::IrigB) => ("IRIG-B", None),
+            Some(TimeFormat::IrigA) => ("IRIG-A", None),
+            Some(TimeFormat::IrigG) => ("IRIG-G", None),
+            Some(TimeFormat::Rtc) => ("RTC", None),
+            Some(TimeFormat::Utc) => ("UTC", None),
+            Some(TimeFormat::Gps) => ("GPS", None),
+            Some(TimeFormat::None) => ("none", None),
+            Some(TimeFormat::Reserved(n)) => ("reserved", Some(n)),
+            None => ("unknown", None),
+        },
+    };
+    let status = info.network_word.map(|w| match w.time_status() {
+        TimeStatus::Valid => "valid",
+        TimeStatus::NotValid => "not-valid",
+        TimeStatus::Reserved(_) => "reserved",
+    });
     json!({"id": info.channel_id, "packets": decimal(info.packet_count),
-        "format": report::format_label(info), "native_scale": scale, "scale_basis": basis,
-        "format2_word": info.network_word.map(TimeF2Csdw::as_raw),
-        "status": info.network_word.map(|w| format!("{:?}", w.time_status())),
+        "format": format, "format_reserved": reserved, "native_scale": scale, "scale_basis": basis,
+        "date_format": info.date_format.map(|f| match f { DateFormat::DayOfYear => "doy", DateFormat::DayMonthYear => "date" }),
+        "leap_year": info.is_leap_year,
+        "format2_word": info.network_word.map(TimeF2Csdw::as_raw), "status": status,
+        "status_raw": info.network_word.map(|w| (w.as_raw() & 15) as u8),
         "format1_low_nibble": info.source.map(|s| match s {
             TimeSource::Internal => 0, TimeSource::External => 1,
-            TimeSource::InternalFromRmm => 2, TimeSource::None => 15,
-            TimeSource::Reserved(n) => n,
+            TimeSource::InternalFromRmm => 2, TimeSource::None => 15, TimeSource::Reserved(n) => n,
         }),
-        "segments": decimal(info.segment),
-        "first": info.first_time.map(|t| clock(t, info.first_basis, 0)), "last": info.last_time.map(|t| clock(t, info.last_basis, info.year_rollovers)),
-        "first_rtc": info.first_rtc.map(|r| decimal(r.as_raw())),
-        "last_rtc": info.last_rtc.map(|r| decimal(r.as_raw())),
+        "segment_count": decimal(if info.first_rtc.is_some() { info.segment } else { 0 }), "segments": [],
+        "first": info.first_time.map(|t| clock(t, info.first_basis, 0)),
+        "last": info.last_time.map(|t| clock(t, info.last_basis, info.year_rollovers)),
+        "first_rtc": info.first_rtc.map(|r| decimal(r.as_raw())), "last_rtc": info.last_rtc.map(|r| decimal(r.as_raw())),
         "min_gap_ns": info.min_gap_ns.map(decimal), "max_gap_ns": info.max_gap_ns.map(decimal)})
+}
+#[cfg(unix)]
+fn native_name(path: &OsStr) -> (String, &'static str) {
+    use std::os::unix::ffi::OsStrExt;
+    (
+        path.as_bytes().iter().map(|b| format!("{b:02x}")).collect(),
+        "posix-bytes",
+    )
+}
+#[cfg(windows)]
+fn native_name(path: &OsStr) -> (String, &'static str) {
+    use std::os::windows::ffi::OsStrExt;
+    (
+        path.encode_wide()
+            .flat_map(u16::to_le_bytes)
+            .map(|b| format!("{b:02x}"))
+            .collect(),
+        "windows-utf16le",
+    )
 }
 fn document(r: &Report<'_>, args: &Args, size: u64) -> Value {
     let path = args.input.as_os_str();
-    let bytes: String = path
-        .as_encoded_bytes()
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect();
-    // BTreeMap iteration and serde_json's default sorted object map fix ordering.
-    json!({"schema": "irigtime-report", "schema_version": 1, "schema_status": "draft",
-        "tool": {"name": "irigtime", "version": PKG_VERSION},
+    let (bytes, encoding) = native_name(path);
+    json!({"schema": "telemetryworks/irigtime-report", "schema_version": 1, "schema_revision": 1, "schema_status": "draft",
+        "tool": {"name": "irigtime", "version": PKG_VERSION, "library_version": PKG_VERSION,
+            "source_revision": option_env!("IRIGTIME_SOURCE_REVISION").or(option_env!("GITHUB_SHA"))},
         "input": {"name": path.to_string_lossy(), "name_lossy": path.to_str().is_none(),
-            "native_name_hex": bytes, "native_name_encoding": "OsStr::as_encoded_bytes (platform-dependent)",
-            "size_bytes": decimal(size)},
+            "native_name_hex": bytes, "native_name_encoding": encoding, "size_bytes": decimal(size)},
         "options": {"command": args.command, "format": "json", "fail_on": level(args.fail_on),
-            "threshold_ms": if args.command != "channels" { Some(decimal(args.threshold_ms)) } else { None }},
-        "units": {"rtc": "100 ns ticks", "durations": "ns", "file_size": "bytes", "counts": "items",
-            "clock_count": "ns since day 1 00:00:00; year unspecified"},
-        "report": {"qualification": "observed inventory; qualified joining/basis pending",
+            "threshold_ms": r.jump_threshold.map(|ns| decimal(ns / 1_000_000))},
+        "highest_level": r.highest.map(|v| level(Some(v))),
+        "findings": {"error": decimal(r.finding_counts[2]), "warning": decimal(r.finding_counts[1]),
+            "info": decimal(r.finding_counts[0]), "omitted": decimal(r.omitted_findings()),
+            "samples": r.finding_samples.iter().map(|s| json!({"level": level(Some(s.level)), "code": s.code,
+                "message": s.message, "channel": s.channel, "packet": s.packet.map(decimal)})).collect::<Vec<_>>()},
+        "report": {"qualification": "observed inventory; qualified joining/basis pending", "rows": null,
             "total_packets": decimal(r.total_packets), "time_packets": decimal(r.time_packets),
             "references_seen": decimal(r.references_seen), "reference_count": decimal(r.reference_count),
             "references_evicted": decimal(r.references_evicted), "reset_count": decimal(r.reset_count),
             "first_rtc": r.first_rtc.map(|v| decimal(v.as_raw())), "last_rtc": r.last_rtc.map(|v| decimal(v.as_raw())),
+            "rtc_duration_ns": if r.reset_count == 0 { r.first_rtc.zip(r.last_rtc).map(|(a,b)| decimal(a.elapsed_nanos(b))) } else { None },
             "channels": r.time_channels.values().map(channel).collect::<Vec<_>>(),
             "data_types": r.data_type_counts.iter().map(|(id, count)| json!({"id": id, "packets": decimal(count)})).collect::<Vec<_>>(),
-            "jumps": {"count": decimal(r.jumps_seen), "omitted": decimal(r.jumps_seen - r.jumps.len()),
+            "jumps": r.jump_threshold.map(|_| json!({"count": decimal(r.jumps_seen), "omitted": decimal(r.jumps_seen - r.jumps.len()),
                 "samples": r.jumps.iter().enumerate().map(|(index, j)| json!({"channel": j.channel_id, "index": decimal(j.index),
-                    "expected_ns": decimal(j.expected_nanos), "actual_ns": decimal(j.actual_nanos),
-                    "delta_ns": decimal(j.delta_nanos),
-                    "expected_year_days": nonzero(r.jump_context(index).0), "actual_year_days": nonzero(r.jump_context(index).1)})).collect::<Vec<_>>()},
-            "findings": {"error": decimal(r.finding_counts[2]), "warning": decimal(r.finding_counts[1]),
-                "info": decimal(r.finding_counts[0]), "omitted": decimal(r.omitted_findings()), "samples": r.errors}}})
+                    "expected_ns": decimal(j.expected_nanos), "actual_ns": decimal(j.actual_nanos), "delta_ns": decimal(j.delta_nanos),
+                    "expected_year_days": nonzero(r.jump_context(index).0), "actual_year_days": nonzero(r.jump_context(index).1)})).collect::<Vec<_>>()}))}})
 }
-
 #[cfg(test)]
 #[allow(clippy::unwrap_used)] // Test fixtures only.
 mod tests {
@@ -86,6 +220,7 @@ mod tests {
     fn exact_wide_values_and_order_survive_json_projection() {
         let mut s = Ch10TimeScanner::new();
         s.total_packets = usize::MAX;
+        s.jump_threshold = Some(1_000_000_000);
         s.finding_counts = [0, (1u64 << 53) + 1, 0];
         s.jumps_seen = 1;
         s.jump_year_days.push((366, 366));
@@ -112,14 +247,14 @@ mod tests {
             "../../docs/schema/irigtime-report-v1.schema.json"
         ))
         .unwrap();
-        assert_eq!(v["units"], schema["properties"]["units"]["const"]);
+
         assert_eq!(
             v["schema_version"],
             schema["properties"]["schema_version"]["const"]
         );
         assert_eq!(v["input"]["size_bytes"], "18446744073709551615");
         assert_eq!(v["report"]["total_packets"], usize::MAX.to_string());
-        assert_eq!(v["report"]["findings"]["warning"], "9007199254740993");
+        assert_eq!(v["findings"]["warning"], "9007199254740993");
         assert_eq!(v["report"]["channels"][0]["id"], 2);
         assert_eq!(v["report"]["channels"][1]["id"], 7);
         let sample = &v["report"]["jumps"]["samples"][0];
@@ -147,7 +282,7 @@ mod tests {
         let row = &projected["report"]["channels"][1];
         assert_eq!(row["native_scale"], "UTC");
         assert_eq!(row["scale_basis"], "assumed, RDG-009");
-        assert_eq!(row["first"]["scale_basis"], "UTC (assumed, RDG-009)");
+        assert_eq!(row["first"]["basis"], "assumed, RDG-009");
         assert_eq!(row["first"]["year_offset"], "0");
         assert_eq!(row["last"]["year_offset"], "1");
     }
@@ -200,7 +335,7 @@ mod tests {
         // Figure 11-15: NTF=0 NTP, TS=3 reserved.
         c.network_word = Some(TimeF2Csdw::from_le_bytes([3, 0, 0, 0]));
         s.time_channels.insert(9, c);
-        let args::Request::File(mut a) = args::parse(&[
+        let mut a = match args::parse(&[
             "jumps",
             "café.ch10",
             "--format",
@@ -208,9 +343,12 @@ mod tests {
             "--fail-on",
             "info",
         ])
-        .unwrap() else {
-            panic!("file args")
-        };
+        .unwrap()
+        {
+            args::Request::File(a) => Some(a),
+            _ => None,
+        }
+        .unwrap();
         #[cfg(unix)]
         {
             use std::os::unix::ffi::OsStringExt;

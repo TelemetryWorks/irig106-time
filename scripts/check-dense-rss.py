@@ -10,12 +10,12 @@ import tempfile
 from dense_rss_workload import CYCLE_BYTES, TIMELINE_LIMIT, write_workload, write_steady_workload, warnings_for
 
 
-def measure(argv, log, rss_file):
+def measure(argv, log, rss_file, stderr=subprocess.STDOUT):
     # GNU time execs with a small image before forking the CLI: Python's inherited
     # high-water mark cannot become the CLI measurement. Never fall back to wait4.
     assert Path('/usr/bin/time').is_file(), 'GNU time is required on Ubuntu CI'
     proc = subprocess.Popen(['/usr/bin/time', '-f', '%M', '-o', str(rss_file),
-                             '--', *argv], stdout=log, stderr=subprocess.STDOUT,
+                             '--', *argv], stdout=log, stderr=stderr,
                             start_new_session=True)
     try:
         code = proc.wait(timeout=180)
@@ -45,6 +45,7 @@ def main(cycles=None, steady_rounds=100_000):
             meta = writer(path, count)
             assert path.stat().st_size == meta['bytes']
             check_commands(bins[0], root, path, meta, label)
+            check_json(bins[0], root, path, meta, label)
             path.unlink()
 
 
@@ -96,6 +97,37 @@ def check_commands(binary, root, path, meta, label):
         result = (f"dense {label} {command}: {rss} KiB CLI peak (<32768); {meta['bytes']} bytes; "
                   f"{meta['packets']} packets / {meta['time_packets']} F1; "
                   f"{meta['resets']} resets / {meta['late']} late / {meta['jumps']} jumps")
+        print(result, flush=True)
+        if summary := os.environ.get('GITHUB_STEP_SUMMARY'):
+            with open(summary, 'a') as out:
+                out.write(result+'\n')
+
+
+def check_json(binary, root, path, meta, label):
+    for command in ['summary', 'channels', 'jumps']:
+        with (root/'json.log').open('w+') as out, (root/'json.err').open('w+') as err:
+            code, rss = measure([binary, command, str(path), '--format', 'json',
+                                 '--fail-on', 'never'], out, root/'peak.txt', stderr=err)
+            assert code == 0, (command, code)
+            assert rss < 32*1024, (label, command, rss, 'JSON exceeds 32MiB')
+            out.seek(0)
+            # Only the harness loads the completed artifact. The measured CLI
+            # streams its potentially long segment history from a private spool.
+            value = json.load(out)
+            report = value['report']
+            assert report['total_packets'] == str(meta['packets'])
+            assert report['time_packets'] == str(meta['time_packets'])
+            expected = 0 if meta.get('steady') else warnings_for(command, meta)
+            assert value['findings']['warning'] == str(expected)
+            assert value['findings']['error'] == '0'
+            if command == 'channels':
+                assert report['jumps'] is None
+                assert value['options']['threshold_ms'] is None
+            else:
+                assert report['jumps']['count'] == str(meta['jumps'])
+            assert sum(len(c['segments']) for c in report['channels']) == (4 if meta.get('steady') else meta['segments'])
+            assert len(report['channels']) == (4 if meta.get('steady') else 1)
+        result = f'dense {label} {command} JSON: {rss} KiB CLI peak (<32768)'
         print(result, flush=True)
         if summary := os.environ.get('GITHUB_STEP_SUMMARY'):
             with open(summary, 'a') as out:

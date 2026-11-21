@@ -323,6 +323,7 @@ fn reset_pending_run_is_strictly_increasing_bounded_and_flushed_at_eof() {
                     rtc: Rtc::from_raw(u64::from(seconds) * 10_000_000),
                 },
                 AbsoluteTime::new(100, 12, 0, seconds, 0).unwrap(),
+                "scale unknown",
             );
             assert!(s.time_channels.values().all(|c| c.late.len() <= 2));
             if s.pending_channels != 0 {
@@ -359,6 +360,7 @@ fn reset_discards_only_its_channel_cache_and_suppresses_mixed_answers() {
                 rtc: Rtc::from_raw(400_000_000),
             },
             old,
+            "scale unknown",
         );
     }
     let new = AbsoluteTime::new(100, 13, 0, 1, 0).unwrap();
@@ -369,6 +371,7 @@ fn reset_discards_only_its_channel_cache_and_suppresses_mixed_answers() {
             rtc: Rtc::from_raw(10_000_000),
         },
         new,
+        "scale unknown",
     );
     assert_eq!(s.time_channels[&1].segment, 2);
     assert_eq!(s.time_channels[&2].segment, 1);
