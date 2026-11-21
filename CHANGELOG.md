@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### S17b2 timeline JSON rows (additive schema revision 3)
 
+- Stream timeline JSON row projection one row at a time, including large explicit
+  row limits; extend the true-CLI32MiB RSS gate to100000 rows. Clarify additive
+  enum/reserved-shape compatibility within revision3.
 - Accept timeline --format text|json. Render the same bounded packet-row report
   in both views; keep analysing the whole file beyond --limit. Expose packet
   identity, offsets, raw RTC and explicit counter-only/unknown-year clocks.

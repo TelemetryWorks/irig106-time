@@ -31,8 +31,8 @@ fn string(out: &mut dyn Write, value: &str) -> io::Result<()> {
     formatter.write_string_fragment(out, &quoted[1..quoted.len() - 1])?;
     formatter.end_string(out)
 }
-// Only the bounded channel/field projection is resident. Segment records stream
-// from our private spool; serialization never collects their complete history.
+// Only bounded channel/field metadata is resident. Segment records stream from
+// their private spool and packet rows project one at a time from the report.
 fn emit(value: &Value, r: &Report<'_>, out: &mut dyn Write) -> io::Result<()> {
     match value {
         Value::Object(object) => {
@@ -67,6 +67,18 @@ fn emit(value: &Value, r: &Report<'_>, out: &mut dyn Write) -> io::Result<()> {
                         .and_then(|c| c.active_segment.as_ref())
                     {
                         row(&active.value())?;
+                    }
+                    out.write_all(b"]")?;
+                } else if key == "rows" && object.contains_key("qualification") && value.is_array()
+                {
+                    out.write_all(b"[")?;
+                    for (index, row) in r.packet_rows.iter().enumerate() {
+                        if index != 0 {
+                            out.write_all(b",")?;
+                        }
+                        let mut value = row.json();
+                        value.sort_all_objects();
+                        emit(&value, r, out)?;
                     }
                     out.write_all(b"]")?;
                 } else {
@@ -200,7 +212,7 @@ fn document(r: &Report<'_>, args: &Args, size: u64) -> Value {
             "info": decimal(r.finding_counts[0]), "omitted": decimal(r.omitted_findings()),
             "samples": r.finding_samples.iter().map(|s| json!({"level": level(Some(s.level)), "code": s.code,
                 "message": s.message, "channel": s.channel, "packet": s.packet.map(decimal)})).collect::<Vec<_>>()},
-        "report": {"qualification": "observed inventory; qualified joining/basis pending", "rows": if args.command == "timeline" { Some(r.packet_rows.iter().map(ResolvedPacket::json).collect::<Vec<_>>()) } else { None },
+        "report": {"qualification": "observed inventory; qualified joining/basis pending", "rows": if args.command == "timeline" { Some(Vec::<Value>::new()) } else { None },
             "total_packets": decimal(r.total_packets), "time_packets": decimal(r.time_packets),
             "references_seen": decimal(r.references_seen), "reference_count": decimal(r.reference_count),
             "references_evicted": decimal(r.references_evicted), "reset_count": decimal(r.reset_count),

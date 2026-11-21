@@ -26,6 +26,10 @@ not evaluated (jumps on channels). Samples contain explicit lowercase levels,
 a TF code when identified (otherwise null), message, channel and packet.
 No Rust Debug spelling is a JSON identifier.
 
+Coordinator clarification within revision 3:
+
+> A revision MAY add values to options.command, row kind and similar enums for newly supported views. Consumers MUST treat unknown enum values as an unsupported view, not an error. Reserved shapes such as rows MAY gain fields until first emitted.
+
 Consumer compatibility: ignore unknown fields within a supported major
 `schema_version`; additions increment `schema_revision`. Producer validation
 remains strict. Incompatible shape/type/unit/meaning changes require a new major
@@ -64,7 +68,8 @@ has zero segments. Closed segments are spooled to a private temporary file and
 streamed during rendering; only active rows and chain endpoints stay in memory.
 The whole artifact can grow with reset count, while producer memory stays bounded.
 `report.rows` remains null for inventory commands. Timeline emits the same
-PacketRow observations as its text renderer, in file order, at most `--limit`
+PacketRow observations as its text renderer, projecting and writing one row at a
+time rather than retaining a JSON DOM for all rows, in file order, at most `--limit`
 (default 100). Scanning and findings still cover the complete input. Rows carry
 packet/channel/RTC, `offset_bytes` and `data_type`, direct `clock` or null, and
 `kind` absolute/counter-only. An absent clock has an issue directing the reader

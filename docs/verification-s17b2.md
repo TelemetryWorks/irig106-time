@@ -66,10 +66,37 @@ are delegated to PR CI, not claimed local execution.
 
 ## Resource boundary
 
-Timeline retains at most caller-selected --limit rows (default100). Its bounded
-JSON Value projection is proportional to that explicit cap; no hidden all-packet
-queue. Findings/counts still cover all input. Segment history remains streamed
+Timeline retains at most caller-selected --limit PacketRow records (default100).
+After the review fix below, JSON projection holds one row Value at a time; no
+second, expanded all-row JSON DOM is retained. Findings/counts still cover all input. Segment history remains streamed
 from its private archive. CI's dense reset and steady F1 workloads now also run
 timeline JSON with limit1000 under32MiB, checking row counts, complete packet/
 reference counts, expected warnings and complete segment inventory. No large
 fixture or expensive memory probe is run locally or committed.
+
+
+## #87 review fix — lazy row emission and compatibility clarification
+
+The initial head eagerly expanded every retained PacketRow into a JSON Value.
+The reviewer measured roughly437MiB at limit100000 and1.3GiB at300000; the earlier
+limit1000 RSS pass did not establish an adequate large-cap serialization bound.
+Those measurements are reviewer evidence, not locally executed probes.
+
+Tests-first23cf50e reproduces eager projection: document() contains a projected
+row instead of the empty marker. The writer now intercepts that marker, builds,
+sorts and emits each row immediately. Inventory rows stay null. The unit also
+asserts the final artifact contains the row; the unchanged exact integration
+golden pins all output fields. PacketRow retention stays the same as text;
+serialization adds only one row projection, not4.4KiB per retained row.
+
+The existing CI steady/dense fixture now additionally runs timeline JSON with
+limit100000 under32MiB, measured by GNU time on the CLI itself. The harness checks
+exactly100000 row packet keys across bounded read chunks, no findings, complete
+input counts and a complete JSON tail, without loading that large artifact.
+The costly gate is run in PR CI only. Focused lazy-projection and timeline/
+inventory golden tests run locally, alongside fmt/schema-sync/trace/diff checks.
+
+The coordinator's enum/reserved-shape clarification is recorded verbatim in the
+canonical schema description and cli-report-schema.md, then synchronized to the
+docs schema copy. It stays within revision3; no version/revision/status increment,
+field representation, row output or text/CSV behavior changes.
