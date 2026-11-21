@@ -1,10 +1,11 @@
-# irigtime JSON report, v1 revision 1 (draft)
+# irigtime JSON report, v1 revision 2 (stable)
 
 The [producer schema](schema/irigtime-report-v1.schema.json) is the normative
 field/type/unit/null contract. It is CLI-owned (ADR-0019), not an IRIG 106 format
 or a library serialization API. The #78 schema review selected the shared
-`telemetryworks/irigtime-report` envelope; this revision awaits final **delta
-review**, not a second full schema review. It is not frozen.
+`telemetryworks/irigtime-report` envelope; #80 records its reviewed freeze as
+stable version 1, revision 2. Future additions and incompatible changes follow
+the compatibility rules below.
 
 `summary`, `channels` and `jumps` accept `--format text|json`, default `text`.
 Both render the same scanner/Report facts. `channels` does not evaluate jumps:
@@ -23,9 +24,9 @@ No Rust Debug spelling is a JSON identifier.
 Consumer compatibility: ignore unknown fields within a supported major
 `schema_version`; additions increment `schema_revision`. Producer validation
 remains strict. Incompatible shape/type/unit/meaning changes require a new major
-schema and a breaking tool release. Draft-to-stable will be an explicit reviewed
-revision increment, with a corresponding immutable schema artifact. The `$id`
-identifies the intended version-pinned v0.8.0 release artifact; that URL becomes
+schema and a breaking tool release. The reviewed draft-to-stable transition is
+revision 2; future revisions require a corresponding reviewed schema artifact.
+The `$id` identifies the intended version-pinned v0.8.0 release artifact; that URL becomes
 resolvable at release. This PR neither tags nor publishes nor freezes anything.
 
 Every `usize` and signed/unsigned 64/128-bit quantity is a decimal string.

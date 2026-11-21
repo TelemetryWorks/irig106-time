@@ -2,8 +2,8 @@
 
 **Status:** design proposal for the consumer adapter; no new API implemented.
 Owner constraints are accepted in [ADR-0021](../adr/0021-tmats-release-and-bounded-time-view.md)
-(2026-11-21). Baseline main `27befa7`; #78 remains separately frozen for schema delta
-review. This note changes neither that PR nor the coordinator's external plan.
+(2026-11-21). Original design baseline main `27befa7`; #78 is now merged.
+This note changes no published TMATS API or external coordination plan.
 
 ## Release and dependency boundary
 
@@ -42,6 +42,22 @@ reinterpret library counter-query policies; do not invent a Chapter 9 link or a
 new finding ID. An eventual association input must retain the actual evidence
 and its origin separately from raw time-channel declarations.
 
+### Association states (owner-relayed tmats #9 vocabulary)
+
+Use three distinct states at the consumer seam:
+
+- `association_unestablished`: no real relationship evidence is available;
+  keep the association unresolved for answers.
+- `association_conflicting`: retain the conflicting candidates/evidence;
+  keep the association unresolved for answers, without silently selecting one.
+- `association_evidenced`: real recording-specific evidence establishes the
+  relationship; still qualify its governing session and segment before use.
+
+These are the coordinator-supplied names from tmats #9, not a claim that a
+particular published Rust API already exists. An evidenced association does
+not authorize bridging sessions/resets or replacing counter-selection policy.
+No dependency, inference rule or relationship is created by naming the states.
+
 ## Proposed adapter boundary
 
 Use existing time-side data shapes, not upstream document objects:
@@ -55,7 +71,7 @@ Use existing time-side data shapes, not upstream document objects:
 | Missing view vs range gap vs governing setup | DeclarationPresence::Absent / NoGoverningRange / Present |
 | Packet/layout evidence | PacketFields plus S03 QualifiedCsdw and original flags |
 | Comparison result and basis | compare_qualified / DetailedComparison; reduce findings into bounded report counts/samples |
-| Data-to-time association | Separate unresolved/evidenced input; NOT a ChannelDeclaration field or invented TMATS relationship |
+| Data-to-time association | Separate three-state input above; NOT a ChannelDeclaration field or invented TMATS relationship |
 
 A future provider advances over setup boundaries and supplies only the governing
 slice needed for the current session/counter window. The CLI adapts that slice
