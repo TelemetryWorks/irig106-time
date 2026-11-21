@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S17b1 packet row projection
+
+- Render timeline and CSV from one packet-row model. Fix counter-only CSV rows
+  to contain all 15 header fields; resolved rows and timeline output are unchanged.
+  Document CSV units, absent values and quoting in docs/cli-csv-schema.md.
+- Extend package-local include checks to literal include! and path attributes.
+  CLI-105/106 coverage is partial; JSON rows, correlate parity and qualified
+  provenance remain open. Frozen JSON v1/revision 2 is unchanged.
+
 ### Package-local compile-time assets
 
 - Package the canonical CLI report schema and keep its docs snapshot synchronized.

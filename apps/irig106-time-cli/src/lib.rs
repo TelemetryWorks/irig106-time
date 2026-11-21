@@ -47,6 +47,8 @@ pub mod input;
 mod live_refs;
 mod report;
 mod report_json;
+mod report_rows;
+use report_rows::PacketRow as ResolvedPacket;
 mod segment_answers;
 mod segment_inventory;
 mod target_refs;
@@ -136,15 +138,6 @@ impl TimeChannelInfo {
 // ────────────────────────────────────────────────────────────────────
 // Resolved packet record (for timeline / CSV)
 // ────────────────────────────────────────────────────────────────────
-
-struct ResolvedPacket {
-    packet_num: usize,
-    offset: u64,
-    channel_id: u16,
-    data_type: u8,
-    rtc: Rtc,
-    abs_time: Option<AbsoluteTime>,
-}
 
 type RowSink<'a> = &'a mut dyn FnMut(&ResolvedPacket) -> io::Result<()>;
 
@@ -1286,19 +1279,7 @@ fn cmd_timeline(
     writeln!(stdout, "{}", "─".repeat(100))?;
 
     for r in &scanner.resolved {
-        writeln!(
-            stdout,
-            "{:>8}  {:>#12X}  {:>6}  {:<14}  {:>14}  {:>28}",
-            r.packet_num,
-            r.offset,
-            r.channel_id,
-            fmt_data_type_short(r.data_type),
-            r.rtc.as_raw(),
-            r.abs_time
-                .as_ref()
-                .map(fmt_abs_time)
-                .unwrap_or_else(|| "N/A".to_string()),
-        )?;
+        r.write_text(stdout)?;
     }
 
     if scanner.total_packets > limit {
@@ -1319,12 +1300,9 @@ fn cmd_csv(
     pending: &mut Option<csv_spool::CsvSpool>,
 ) -> Result<Option<Severity>, Failure> {
     let mut spool = csv_spool::CsvSpool::new(output_path)?;
-    writeln!(
-        spool,
-        "packet_num,offset_hex,channel_id,data_type_hex,data_type_name,rtc_raw,rtc_nanos,day_of_year,hours,minutes,seconds,nanoseconds,year,month,day"
-    )?;
+    writeln!(spool, "{}", report_rows::CSV_HEADER)?;
     let mut scanner = Ch10TimeScanner::new();
-    let mut emit = |row: &ResolvedPacket| write_csv_row(&mut spool, row);
+    let mut emit = |row: &ResolvedPacket| row.write_csv(&mut spool);
     scanner.scan_to(input, true, None, Some(&mut emit))?;
     spool.flush()?;
     scanner.report_findings(stderr)?;
@@ -1340,44 +1318,6 @@ fn cmd_csv(
         spool.copy_stdout(stdout)?;
     }
     Ok(scanner.highest)
-}
-
-fn write_csv_row(out: &mut dyn Write, r: &ResolvedPacket) -> io::Result<()> {
-    match &r.abs_time {
-        Some(t) => {
-            writeln!(
-                out,
-                "{},{:#X},{},0x{:02X},{},{},{},{},{},{},{},{},{},,",
-                r.packet_num,
-                r.offset,
-                r.channel_id,
-                r.data_type,
-                fmt_data_type_short(r.data_type),
-                r.rtc.as_raw(),
-                r.rtc.to_nanos(),
-                t.day_of_year(),
-                t.hours(),
-                t.minutes(),
-                t.seconds(),
-                t.nanoseconds(),
-                t.year().map(|y| y.to_string()).unwrap_or_default(),
-            )?;
-        }
-        None => {
-            writeln!(
-                out,
-                "{},{:#X},{},0x{:02X},{},{},{},,,,,,,",
-                r.packet_num,
-                r.offset,
-                r.channel_id,
-                r.data_type,
-                fmt_data_type_short(r.data_type),
-                r.rtc.as_raw(),
-                r.rtc.to_nanos(),
-            )?;
-        }
-    }
-    Ok(())
 }
 
 fn cmd_correlate(
