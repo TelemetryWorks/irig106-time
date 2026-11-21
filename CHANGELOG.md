@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Package-local compile-time assets
+
+- Package the canonical CLI report schema and keep its docs snapshot synchronized.
+  Package the guide-snippet fixture used by library tests and check it against
+  the root guide. No Rust include reaches outside either package; no test is
+  disabled or removed. CI verifies both packages and compiles their isolated
+  archived test sources. Clarify ADR-0022's library-owned Cargo bench location.
+
 ### Virtual workspace layout
 
 - Move the library to crates/irig106-time and the testing/example CLI to

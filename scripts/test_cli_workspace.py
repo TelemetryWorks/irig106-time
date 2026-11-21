@@ -34,12 +34,13 @@ class CliWorkspace(unittest.TestCase):
     def test_literal_rust_includes_are_package_local(self):
         for member in ['crates/irig106-time', 'apps/irig106-time-cli']:
             package = (ROOT / member).resolve()
-            for source in package.rglob('*.rs'):
-                for target in re.findall(r'include_(?:str|bytes)!\(\s*"([^"\n]+)"', source.read_text()):
-                    resolved = (source.parent / target).resolve()
-                    self.assertTrue(resolved.is_relative_to(package),
-                                    f'{source.relative_to(ROOT)} includes outside its package: {target}')
-                    self.assertTrue(resolved.is_file(), str(resolved))
+            for directory in ['src', 'tests', 'examples', 'benches']:
+                for source in (package / directory).rglob('*.rs'):
+                    for target in re.findall(r'include_(?:str|bytes)!\(\s*"([^"\n]+)"', source.read_text()):
+                        resolved = (source.parent / target).resolve()
+                        self.assertTrue(resolved.is_relative_to(package),
+                                        f'{source.relative_to(ROOT)} includes outside its package: {target}')
+                        self.assertTrue(resolved.is_file(), str(resolved))
 
     def test_cli_schema_docs_snapshot_matches_packaged_source(self):
         self.assertEqual(

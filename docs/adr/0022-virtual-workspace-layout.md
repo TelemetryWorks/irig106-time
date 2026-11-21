@@ -14,4 +14,6 @@ simple examples. Package names and the `irigtime` binary name are unchanged.
 The root Cargo.toml has no package: it holds workspace membership, shared package
 metadata with one lockstep version, and workspace dependencies with an exact
 internal library path/version pin. Keep fuzz excluded or independent; fuzz and
-benchmark placement follow the reference model. This is a layout change only.
+benchmark placement follow the reference model. Cargo benches stay at
+`crates/irig106-time/benches/`, not in a top-level `bench/`. This is a layout
+change only.

@@ -51,6 +51,18 @@ the name; it is not this implementation or permission to publish. The CLI stays
 bounded-memory prerequisite has passed the [dense-F1 six-command RSS gate](verification-s16b-final-rss.md).
 Passing that gate does not authorize publication or a release tag.
 
+## Packaged-source verification
+
+CI runs `python3 scripts/verify-packages.py`: Cargo packages and verifies BOTH
+workspace members together, then compiles all-feature tests from isolated crate
+archives. This catches test-only includes that normal package verification may
+not build. The schema is canonical inside the CLI package, with a checked docs
+snapshot; usage snippets are package-local fixtures checked against the root guide.
+The disposable CLI test fixture uses the verified packaged library via a temporary
+command-line patch because the in-development0.7 version differs from registry0.7.
+No persistent patch or workspace lock change; release still publishes the matching
+library first. See [asset verification](verification-package-assets.md).
+
 ## Release checklist
 
 - Complete every remaining requirement except the current precisely scoped

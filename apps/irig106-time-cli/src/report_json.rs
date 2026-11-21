@@ -243,10 +243,8 @@ mod tests {
         }
         .unwrap();
         let v = document(&Report::from(&s), &a, u64::MAX);
-        let schema: Value = serde_json::from_str(include_str!(
-            "../../../docs/schema/irigtime-report-v1.schema.json"
-        ))
-        .unwrap();
+        let schema: Value =
+            serde_json::from_str(include_str!("../schema/irigtime-report-v1.schema.json")).unwrap();
 
         assert_eq!(
             v["schema_version"],
