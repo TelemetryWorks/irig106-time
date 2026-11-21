@@ -55,6 +55,8 @@ fn observed_clock_and_packet_identity_project_identically() {
     p[4] = 36;
     p[8] = 10;
     p[15] = 0x11;
+    // §11.2.1.1: 10,000,000 header RTC ticks × 100 ns = 1,000,000,000 ns.
+    p[16..22].copy_from_slice(&10_000_000u64.to_le_bytes()[..6]);
     p[24..34].copy_from_slice(&[0x40, 0, 0, 0, 0x12, 4, 0, 0x12, 0, 1]);
     let sum = p[..22].chunks_exact(2).fold(0u16, |s, w| {
         s.wrapping_add(u16::from_le_bytes([w[0], w[1]]))
@@ -70,6 +72,6 @@ fn observed_clock_and_packet_identity_project_identically() {
     );
     assert_eq!(
         csv.lines().nth(1).unwrap(),
-        "0,0x0,7,0x11,Time-F1,0,0,100,12,0,4,120000000,,,"
+        "0,0x0,7,0x11,Time-F1,10000000,1000000000,100,12,0,4,120000000,,,"
     );
 }

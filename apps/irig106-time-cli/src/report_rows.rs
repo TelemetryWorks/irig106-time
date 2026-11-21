@@ -91,6 +91,7 @@ mod tests {
             ("a,b", "\"a,b\""),
             ("a\"b", "\"a\"\"b\""),
             ("a\r\nb", "\"a\r\nb\""),
+            ("a\rb", "\"a\rb\""),
             ("", ""),
         ] {
             let mut out = Vec::new();

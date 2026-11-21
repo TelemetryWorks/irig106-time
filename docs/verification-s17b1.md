@@ -2,7 +2,7 @@
 
 Base: main 1d6bbc7. Slice scope: extract the existing timeline/CSV observation
 into report_rows::PacketRow and render both from it; document the 15-column CSV
-schema, units, quoting and absence; fix counter-only rows with 14 fields. The
+schema, units, quoting and absence; fix counter-only rows to contain all 15 fields. The
 include/package guard now checks literal include! and #[path = "..."] as well
 as include_str!/include_bytes!. No dependencies or library changes.
 
@@ -21,7 +21,7 @@ Future additive JSON row/options fields will increment schema_revision to 3.
 ## Tests-first and sources
 
 Tests-only commit 6242a0c precedes implementation. On main, the counter-only
-regression fails: 14 fields versus header15. Both include!/path negative probes
+regression fails: a row shorter than the 15-column header. Both include!/path negative probes
 fail because neither escape is detected. The observed-clock parity baseline
 passes on main after correcting the test's short labels from `Time F1`/`Analog`
 to the actual `Time-F1`/`PCM-1`; those fixture spelling mistakes are not defects
@@ -31,7 +31,7 @@ extracted renderer, not claimed as tests-first.
 Decoder-independent literal bytes: 106-24R1 §11.2.3.2 Figures11-12/13, FMT4 UTC,
 DATE0, fraction0x12 →120000000ns, seconds04/minutes00/hour12/DOY100, year unknown.
 §11.2.1.1: 24-byte header, Data Length10, two filler bytes excluded, header
-word-sum checksum hand-computed. Expected packet0/offset0/channel7/RTC0 and
+word-sum checksum hand-computed. Expected packet0/offset0/channel7/RTC10000000 (1000000000ns) and
 100:12:00:04.120000000 are pinned in both projections. The no-time PCM packet
 has zero Data Length and a hand-summed header in tests/common/mod.rs.
 Both commands' finding diagnostics must also agree for each fixture.
@@ -53,3 +53,14 @@ macro expansion/computed file names; actual archive compilation remains in CI.
 Local: fmt, focused packet-row and escaping tests, 13 existing atomic CSV tests, seven workspace guard tests,
 trace check and diff check. Full platform/security/package/memory checks are
 PR CI evidence, not claimed local execution.
+
+
+## #86 review delta — exact RTC units and lone CR
+
+The packet projection fixture now uses 10,000,000 header RTC ticks, asserting
+both rtc_raw=10000000 and rtc_nanos=1000000000 in the exact CSV row. The escaping
+unit adds a lone CR (`a\rb`), independently of its existing CRLF fixture.
+Both focused tests pass at the corrected implementation. Each corresponding
+single-site mutant compiles and fails: raw RTC instead of ×100 in rtc_nanos;
+CR removed from the quote-trigger set. Sources restored after the probes.
+No production behavior or schema change; rows and header both have 15 columns.
