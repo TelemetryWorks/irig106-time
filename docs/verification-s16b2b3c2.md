@@ -11,10 +11,11 @@ stays 198 tested / 206 verified of 288. No dependencies/unsafe/library I/O.
 range test at main fails for missing output, not an exposed wrong archive. New
 library discard test fails compilation with missing API, not a runtime failure.
 Vectors use existing literal Fig11-13 BCD/primary-header checksums. C2 restores
-channel8 timeline rows byte-for-byte against an unchanged no-reset control
+channel8 time-observation rows byte-for-byte against an unchanged no-reset control
 with identical frame offsets/indices; its RTC5s correlate line is identical.
-Channel7 resets and later advances to native RTC80 while channel8 data is at
-44.5s: channel8 must use its own age origin, not channel7's.
+The adversarial age fixture also includes a data row at RTC44.5s after a reset.
+Under the coordinator clarification below it is intentionally withheld; its
+matching numeric channel ID is not a time-source association.
 
 Closed segment ranges are inclusive. An overlapping target gets every answer
 labelled channel/segment, plus one WARNING per ambiguous channel, never Any
@@ -27,9 +28,8 @@ short-run provisional points excluded from the old range, and 128 segments:
 One/two late references remain classified at resolution/EOF. Candidate ingestion
 now follows classification, with original arrival ordinals retained for library
 tie handling. Valid decoded time observations are reported directly when
-classification/reset context exists; they require no counter bridge. Known
-channel data uses its isolated live cache. Only unresolved source/pending-counter
-association withholds a value. No emitted row is revised. A new source-selection or
+classification/reset context exists; they require no counter bridge. Unqualified data rows in reset/pending context withhold a value. Explicit
+per-time-channel queries remain isolated; no data-to-time association is inferred. No emitted row is revised. A new source-selection or
 TMATS policy is not invented; qualified CLI-104 joining stays partial.
 
 ## Bounds and operations
@@ -67,3 +67,35 @@ pending-row suppression; provisional archive pollution; lost closed archive;
 missing/inclusive range guards; missing ambiguity/label; pool-cap removal;
 ignored copy error; deferred writer error; wrong-RTC discard. Each compiled
 and failed assertions. Sources restored before focused rerun.
+
+
+## PR #74 review — three guards and the conservative data decision
+
+The three requested tests already pass at 0eac5a1 (not claimed failing first).
+1. Equal RTCs with different times: discard leaves the later time. The mutant
+   replacing position with rposition compiles and fails this assertion.
+2. Segment RTCs 0/39/40, then late35 and reset1/2/3: target38 still answers
+   from segment1. Replacing range maximum with last RTC compiles and fails.
+3. Target5 lies between old10..40/new1..3: assert the exact No reset segment
+   covers requested RTC on channel7 WARNING, never silently empty output.
+   Removing that finding compiles and fails the test. Sources restored.
+
+Coordinator confirms conservative data rows until S17 qualified (TMATS)
+joining supplies their governing time source AND segment. Chapter 10 RTC is
+one counter for the whole recorder: a real reset affects every channel at
+once. Channel-local bookkeeping tracks observation histories, not independent
+hardware counters. A matching numeric packet/time-channel ID does not qualify
+an association. Valid stated time observations and explicit channel queries
+remain answerable; data's unqualified any-channel answers are withheld after
+any reset (also during unresolved classification).
+
+One small policy mismatch was found and reported before fixing: resolve_row
+used observed same-ID membership to select a source for data rows. Tests-first
+4f2a4cb reproduces it at 0eac5a1 (data8 incorrectly received 12:00:01). Remove
+that shortcut; the new case returns N/A plus needs-context WARNING. Update
+the prior data-row expectation deliberately; channel8 Time-F1 observation rows
+and correlate remain identical to control. A fourth runtime mutant restores
+the shortcut and fails. This is the only production change in this delta.
+
+Local focused tests/mutants, fmt, touched Clippy and trace check; full CI via
+GitHub. No new whole-requirement markers, coverage or release-gate claim.

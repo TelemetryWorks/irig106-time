@@ -71,5 +71,7 @@ means an output filename of --limit; summary file --help still gives2.
 
 Reset-qualified correlate output labels each matching segment on a reset
 channel and warns once when inclusive ranges overlap. Unreset-channel lines
-stay unchanged. Live answers are isolated per channel; a pending late run on
-one channel does not suppress another's data or stated time observations.
+stay unchanged. Explicit time-channel answers are isolated; a pending late run does not suppress
+another's stated time observations. Data rows after a reset or during unresolved
+classification still require a qualified source/segment association (S17); their
+any-channel answers remain needs-context. Numeric channel equality is not enough.

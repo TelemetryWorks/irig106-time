@@ -279,9 +279,12 @@ runs replay against a fresh baseline, so genuine post-reset jumps remain visible
 Channel cache/query candidates are discarded at the reset; other channels stay.
 
 Unreset channels keep answering during another channel's reset/classification.
-Valid decoded time observations need no counter bridge. Associated data uses
-the channel's own live window; queries lacking a safe source association still
-report needs-context. No speculative values or revisions of emitted rows.
+Valid decoded time observations need no counter bridge. Data rows have no
+qualified time-source association yet: after a reset or while classification
+is pending, their any-channel answers report needs-context. Matching numeric
+channel IDs do not establish an association. S17 TMATS joining will select the
+governing time source and segment. Recorder RTC is one counter across all
+channels; a real reset affects them all. No speculative values or row revisions.
 
 Correlate labels each covered reset-channel segment. Overlapping inclusive
 RTC ranges produce an ambiguity WARNING and every matching answer; never a

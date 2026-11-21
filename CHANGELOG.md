@@ -10,8 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### S16b2b3c2 isolated live answers and labelled reset queries (partial CLI-104)
 
 - Restore unaffected-channel answers during resets/late classification. Valid
-  time-packet observations remain visible; associated data uses channel-local
-  30s windows under a shared 1,024-arrival cap. Keep the bounded compatibility
+  time-packet observations remain visible. Unqualified data rows after reset/
+  during classification stay needs-context until S17 TMATS joining; matching
+  numeric channel IDs never infer their time source. Live counter caches keep
+  channel-local 30s windows under a shared 1,024-arrival cap. Keep the bounded compatibility
   cache for unchanged normal-file behavior; add discard_reference for FIFO loss.
 - Correlate spools closed-segment answers to owned system temp: bounded active
   brackets/counts, no segment history in RAM. Label reset-channel answers, warn

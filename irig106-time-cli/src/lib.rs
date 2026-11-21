@@ -382,11 +382,9 @@ impl Ch10TimeScanner {
                 .get(&hdr.channel_id)
                 .and_then(|c| c.last_time);
         }
-        let ch = self
-            .time_channels
-            .contains_key(&hdr.channel_id)
-            .then_some(hdr.channel_id);
-        self.resolve(hdr.rtc, ch)
+        // A matching numeric ID is not a qualified data-to-time association.
+        // S17 governing TMATS joining must select its time source/segment.
+        self.resolve(hdr.rtc, None)
     }
 
     fn observe_reference(&mut self, hdr: &PktHeader, time: AbsoluteTime) {

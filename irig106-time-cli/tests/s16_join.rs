@@ -755,11 +755,21 @@ fn reset_channel7_does_not_withhold_channel8_timeline_or_old_query() {
     let (actual, _) = cli_text("timeline", &bytes, &[]);
     let rows = |text: &str| {
         text.lines()
-            .filter(|l| l.split_whitespace().nth(2) == Some("8"))
+            .filter(|l| {
+                l.split_whitespace().nth(2) == Some("8")
+                    && l.split_whitespace().nth(3) == Some("Time-F1")
+            })
             .map(str::to_owned)
             .collect::<Vec<_>>()
     };
     assert_eq!(rows(&actual), rows(&expected));
+    assert!(
+        actual
+            .lines()
+            .find(|l| l.contains("PCM-1") && l.split_whitespace().nth(2) == Some("8"))
+            .unwrap()
+            .contains("N/A")
+    );
     let (expected, _) = cli_text("correlate", &control, &["2FAF080"]); // 5s.
     let (actual, _) = cli_text("correlate", &bytes, &["2FAF080"]);
     let line = |text: &str| {
@@ -835,8 +845,17 @@ fn pending_late_channel_does_not_withhold_observed_times_or_other_channel() {
         }
     }
     let (out, err) = cli_text("timeline", &bytes, &[]);
-    assert!(!out.contains("N/A"), "{out}");
-    assert!(!err.contains("classification pending"), "{err}");
+    assert!(
+        out.lines()
+            .filter(|l| l.contains("Time-F1"))
+            .all(|l| !l.contains("N/A")),
+        "{out}"
+    );
+    assert_eq!(out.matches("N/A").count(), 1); // The unqualified data row only.
+    assert!(
+        err.contains("RTC source/channel association required"),
+        "{err}"
+    );
     assert_eq!(err.matches("Out-of-order").count(), 2);
 }
 
