@@ -5,6 +5,8 @@ from pathlib import Path
 import subprocess
 import tomllib
 import unittest
+import tempfile
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -41,6 +43,19 @@ class CliWorkspace(unittest.TestCase):
                         self.assertTrue(resolved.is_relative_to(package),
                                         f'{source.relative_to(ROOT)} includes outside its package: {target}')
                         self.assertTrue(resolved.is_file(), str(resolved))
+
+    def test_include_and_path_guard_negative_probes(self):
+        for attribute in ['include!("../../../outside.rs");',
+                          '#[path = "../../../outside.rs"] mod external;']:
+            with self.subTest(attribute=attribute), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                source = root / 'crates/irig106-time/src/probe.rs'
+                source.parent.mkdir(parents=True)
+                source.write_text(attribute)
+                (root / 'outside.rs').write_text('// external source')
+                with patch.dict(globals(), ROOT=root):
+                    with self.assertRaisesRegex(AssertionError, 'outside its package'):
+                        self.test_literal_rust_includes_are_package_local()
 
     def test_cli_schema_docs_snapshot_matches_packaged_source(self):
         self.assertEqual(
