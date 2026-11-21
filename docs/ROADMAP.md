@@ -6,6 +6,17 @@
 
 ---
 
+## Current release gate — owner 2026-11-21
+
+0.8.0 waits for a **full irig106-tmats 0.1 release plus a bounded time view**
+([ADR-0021](adr/0021-tmats-release-and-bounded-time-view.md)). No TMATS dependency
+until that release is published AND the owner approves. Continue independent
+S17 work; prepare the [consumer seam](analysis/S17-time-view-consumer-seam.md)
+with synthetic plain declarations. Data-row time-channel association remains
+unresolved without real evidence: Chapter 9 supplies no such relationship field.
+The schema review for #78 is separate; its reported head remains frozen pending
+delta review. Passing CI/memory gates does not authorize release or publication.
+
 ## Where we left off (2026-09-27)
 
 > Read this first when resuming. The phased plan below is the prototype's

@@ -101,6 +101,23 @@ which carries its basis.
 
 ---
 
+### Bounded time-view integration (owner 2026-11-21)
+
+[ADR-0021](adr/0021-tmats-release-and-bounded-time-view.md) gates 0.8.0 on the full
+TMATS 0.1 release and a bounded time view. Add no dependency before publication
+and explicit owner approval. The [consumer-seam proposal](analysis/S17-time-view-consumer-seam.md)
+uses current plain declaration/qualification shapes; an eventual approved CLI
+adapter performs extraction/I/O. It must not retain all setup documents/ranges.
+The time library keeps its leaf boundary.
+
+A governing TIMEIN declaration permits comparison with that channel's time
+packets; it does not associate data channels with a time channel. Chapter 9 has
+no field establishing that relationship (owner-relayed TMATS review). Without
+real evidence, retain unresolved data-row association, including after resets.
+A counter-query channel-selection policy is not evidence of such a link.
+
+---
+
 ## 4. The layers and modules
 
 ![The layers of irig106-time](diagrams/time-architecture.svg)
