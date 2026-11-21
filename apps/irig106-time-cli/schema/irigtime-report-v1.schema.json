@@ -1,0 +1,867 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/TelemetryWorks/irig106-time/v0.8.0/docs/schema/irigtime-report-v1.schema.json",
+  "title": "irigtime report v1 revision 2 \u2014 stable",
+  "$comment": "Version-pinned release artifact identifier (resolves when v0.8.0 is published). Schema frozen after the reviewed draft; no tag or publication is performed by this PR.",
+  "description": "Producer validation is strict (unknown producer keys fail). Consumers MUST ignore unknown fields within a supported schema_version, accept additive schema_revision increases, and reject unsupported schema_version values. Every defined key is always emitted; null meaning is per field. Incompatible changes require a new schema_version and breaking tool release. All usize and signed/unsigned 64/128-bit values are decimal strings, including future fields; small wire/date fields remain integers. Suffix units: _ns nanoseconds, _ms milliseconds, _bytes bytes, _rtc 100 ns RTC ticks; clock_count_ns is native year-relative time, not Unix. Output is ASCII-only JSON (non-ASCII uses Unicode escapes); ordering is deterministic. Draft->stable is an explicit reviewed revision change. This is CLI output only, not an IRIG 106 wire standard or a JSON loading API. Complete reports are produced on exits 0/1; no report is started on usage/input exits 2/3. On output failure 4 a partial or even complete byte stream may already have been written: consumers must discard it. Existing stderr diagnostics are retained; findings are per command.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "schema_revision",
+    "schema_status",
+    "tool",
+    "input",
+    "options",
+    "highest_level",
+    "findings",
+    "report"
+  ],
+  "properties": {
+    "schema": {
+      "description": "Shared ecosystem report namespace.",
+      "const": "telemetryworks/irigtime-report"
+    },
+    "schema_version": {
+      "description": "Major schema contract; incompatible shape/type/unit/meaning changes require a new version and a breaking tool release.",
+      "const": 1
+    },
+    "schema_revision": {
+      "description": "Additive schema revision within version 1; consumers must ignore unknown fields. This stable revision is 2.",
+      "const": 2
+    },
+    "schema_status": {
+      "description": "Stable contract following the reviewed draft-to-stable transition at revision 2. Further contract changes follow the version and revision rules.",
+      "const": "stable"
+    },
+    "tool": {
+      "description": "Producer identity and optional build provenance.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "library_version",
+        "source_revision"
+      ],
+      "properties": {
+        "name": {
+          "description": "CLI binary name.",
+          "const": "irigtime"
+        },
+        "version": {
+          "description": "CLI package version.",
+          "type": "string"
+        },
+        "library_version": {
+          "description": "Exactly lockstep library version used by the CLI.",
+          "type": "string"
+        },
+        "source_revision": {
+          "description": "Build-supplied IRIGTIME_SOURCE_REVISION, else GitHub Actions GITHUB_SHA, else null. Release builds must set IRIGTIME_SOURCE_REVISION to the actual release commit; PR GITHUB_SHA may identify a temporary merge commit. Never probes Git at runtime.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "input": {
+      "description": "Input provenance; never canonicalizes or makes the user path absolute.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "name_lossy",
+        "native_name_encoding",
+        "native_name_hex",
+        "size_bytes"
+      ],
+      "properties": {
+        "name": {
+          "description": "File name exactly as supplied, decoded lossily if needed; never made absolute.",
+          "type": "string"
+        },
+        "name_lossy": {
+          "description": "True iff name required replacement characters; native_name_hex preserves its exact representation.",
+          "type": "boolean"
+        },
+        "native_name_encoding": {
+          "description": "Stable platform representation, not OsStr::as_encoded_bytes.",
+          "enum": [
+            "posix-bytes",
+            "windows-utf16le"
+          ]
+        },
+        "native_name_hex": {
+          "description": "Lowercase hexadecimal POSIX filename bytes or Windows UTF-16LE code units; includes unpaired surrogates.",
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{2})*$"
+        },
+        "size_bytes": {
+          "description": "Input size in bytes from the opened file metadata. A digest may be added in a later revision.",
+          "$ref": "#/$defs/unsigned"
+        }
+      }
+    },
+    "options": {
+      "description": "Effective options used for this command.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "command",
+        "format",
+        "fail_on",
+        "threshold_ms"
+      ],
+      "properties": {
+        "command": {
+          "description": "Inventory view requested.",
+          "enum": [
+            "summary",
+            "channels",
+            "jumps"
+          ]
+        },
+        "format": {
+          "description": "Output renderer.",
+          "const": "json"
+        },
+        "fail_on": {
+          "description": "Effective finding exit threshold; `never` disables exit 1 only, not operational exits 2/3/4.",
+          "enum": [
+            "error",
+            "warning",
+            "info",
+            "never"
+          ]
+        },
+        "threshold_ms": {
+          "description": "Effective scanner jump threshold in milliseconds: summary uses 1000, jumps uses the selected value; null for channels (not evaluated).",
+          "$ref": "#/$defs/maybe_unsigned"
+        }
+      }
+    },
+    "highest_level": {
+      "description": "Highest observed command-specific level, regardless of fail_on; null if no findings. Drives exit 1 only at/above fail_on.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/level"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "findings": {
+      "description": "Command-specific findings; stderr diagnostics retain the existing command behaviour.",
+      "$ref": "#/$defs/findings"
+    },
+    "report": {
+      "description": "One shared text/JSON report projection. Qualification remains observed inventory until governing joining is implemented.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "qualification",
+        "rows",
+        "total_packets",
+        "time_packets",
+        "references_seen",
+        "reference_count",
+        "references_evicted",
+        "reset_count",
+        "first_rtc",
+        "last_rtc",
+        "rtc_duration_ns",
+        "channels",
+        "data_types",
+        "jumps"
+      ],
+      "properties": {
+        "qualification": {
+          "description": "Honest current qualification boundary.",
+          "const": "observed inventory; qualified joining/basis pending"
+        },
+        "rows": {
+          "description": "Reserved for future timeline/csv views; always null in summary/channels/jumps (not applicable).",
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/row"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total_packets": {
+          "description": "Number of complete framed packets in the file.",
+          "$ref": "#/$defs/unsigned"
+        },
+        "time_packets": {
+          "description": "Number of time packets, BOTH 0x11 (Format 1) and 0x12 (Format 2).",
+          "$ref": "#/$defs/unsigned"
+        },
+        "references_seen": {
+          "description": "Total admitted absolute references observed, including evicted references.",
+          "$ref": "#/$defs/unsigned"
+        },
+        "reference_count": {
+          "description": "Current bounded compatibility-correlator reference cache size.",
+          "$ref": "#/$defs/unsigned"
+        },
+        "references_evicted": {
+          "description": "References removed from that cache by eviction or reset; not lost report segments.",
+          "$ref": "#/$defs/unsigned"
+        },
+        "reset_count": {
+          "description": "Detected per-channel RTC reset count.",
+          "$ref": "#/$defs/unsigned"
+        },
+        "first_rtc": {
+          "description": "Header RTC of the first complete packet in FILE ORDER, on any channel across resets; 100 ns ticks; null if not observed.",
+          "$ref": "#/$defs/maybe_unsigned"
+        },
+        "last_rtc": {
+          "description": "Header RTC of the last complete packet in FILE ORDER, on any channel across resets; 100 ns ticks; null if not observed.",
+          "$ref": "#/$defs/maybe_unsigned"
+        },
+        "rtc_duration_ns": {
+          "description": "Forward modular first-to-last RTC elapsed ns only with no detected resets; null if unavailable due to resets or no endpoints (as in text).",
+          "$ref": "#/$defs/maybe_unsigned"
+        },
+        "channels": {
+          "description": "Channel inventory sorted by ascending channel ID.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/channel"
+          }
+        },
+        "data_types": {
+          "description": "Observed packet types sorted by numeric ID.",
+          "type": "array",
+          "items": {
+            "description": "One data type count.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "packets"
+            ],
+            "properties": {
+              "id": {
+                "description": "Raw data type.",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255
+              },
+              "packets": {
+                "description": "Complete packet count for this type.",
+                "$ref": "#/$defs/unsigned"
+              }
+            }
+          }
+        },
+        "jumps": {
+          "description": "null means NOT EVALUATED (channels); evaluated count 0 means no jump detected (summary/jumps).",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/jumps"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "unsigned": {
+      "description": "Nonnegative decimal string; all usize/u64/u128 quantities use this representation.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)$"
+    },
+    "signed": {
+      "description": "Signed decimal string; all i64/i128 quantities use this representation.",
+      "type": "string",
+      "pattern": "^(0|-?[1-9][0-9]*)$"
+    },
+    "maybe_unsigned": {
+      "description": "Decimal string or null; null meaning is defined at each field.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/unsigned"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "level": {
+      "description": "Shared --fail-on finding severity, from most to least severe.",
+      "enum": [
+        "error",
+        "warning",
+        "info"
+      ]
+    },
+    "scale": {
+      "description": "Time scale; unknown means no scale qualification is available.",
+      "enum": [
+        "UTC",
+        "TAI",
+        "GPS",
+        "unknown"
+      ]
+    },
+    "basis": {
+      "description": "Origin of a scale qualification, never Rust Debug text.",
+      "enum": [
+        "standard",
+        "stated FMT",
+        "assumed, RDG-009",
+        "derived, leap table",
+        "unresolved"
+      ]
+    },
+    "clock": {
+      "description": "Observed civil clock; no Unix epoch is implied. Native leap label 60 is retained.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "year",
+        "day",
+        "hour",
+        "minute",
+        "second",
+        "nanosecond",
+        "clock_count_ns",
+        "scale",
+        "basis",
+        "year_offset"
+      ],
+      "properties": {
+        "year": {
+          "description": "Calendar year (native domain 0..9999), or null when unknown; never inferred from the host clock.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 9999
+        },
+        "day": {
+          "description": "One-based day of year.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 366
+        },
+        "hour": {
+          "description": "Hour of day.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 23
+        },
+        "minute": {
+          "description": "Minute of hour.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 59
+        },
+        "second": {
+          "description": "Second of minute, including an explicit leap label 60.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 60
+        },
+        "nanosecond": {
+          "description": "Fractional second in nanoseconds.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 999999999
+        },
+        "clock_count_ns": {
+          "description": "Nanoseconds since day 1 00:00:00 within the represented year; not Unix time.",
+          "$ref": "#/$defs/unsigned"
+        },
+        "scale": {
+          "description": "Scale of this clock, after any labelled conversion.",
+          "$ref": "#/$defs/scale"
+        },
+        "basis": {
+          "description": "How this clock scale was established; derived, leap table denotes PTP TAI->UTC.",
+          "$ref": "#/$defs/basis"
+        },
+        "year_offset": {
+          "description": "Count of report-detected forward year rollovers within this reset segment; not an absolute year.",
+          "$ref": "#/$defs/unsigned"
+        }
+      }
+    },
+    "segment": {
+      "description": "One admitted-reference reset segment on one channel; never combines different reset segments.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "index",
+        "first",
+        "last",
+        "first_rtc",
+        "last_rtc"
+      ],
+      "properties": {
+        "index": {
+          "description": "One-based per-channel reset segment index, in observation order.",
+          "$ref": "#/$defs/unsigned"
+        },
+        "first": {
+          "description": "First admitted clock in file observation order in this segment; null if not observed.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/clock"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last": {
+          "description": "Last admitted clock in file observation order in this segment; null if not observed.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/clock"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "first_rtc": {
+          "description": "Header RTC of the first admitted reference in this segment; 100 ns ticks; null if not observed.",
+          "$ref": "#/$defs/maybe_unsigned"
+        },
+        "last_rtc": {
+          "description": "Header RTC of the last admitted reference in this segment; 100 ns ticks; null if not observed.",
+          "$ref": "#/$defs/maybe_unsigned"
+        }
+      }
+    },
+    "channel": {
+      "description": "File-wide observed time-channel inventory. Last format/status attributes describe the latest decoded CSDW; first/last can span resets. Consult segments for isolated clocks.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "packets",
+        "format",
+        "format_reserved",
+        "native_scale",
+        "scale_basis",
+        "date_format",
+        "leap_year",
+        "format2_word",
+        "status",
+        "status_raw",
+        "format1_low_nibble",
+        "segment_count",
+        "segments",
+        "first",
+        "last",
+        "first_rtc",
+        "last_rtc",
+        "min_gap_ns",
+        "max_gap_ns"
+      ],
+      "properties": {
+        "id": {
+          "description": "Channel ID from the packet header; rows sort ascending.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "packets": {
+          "description": "Observed Format 1/2 packet count represented by this channel inventory.",
+          "$ref": "#/$defs/unsigned"
+        },
+        "format": {
+          "description": "Closed native format name. reserved carries its wire value in format_reserved; unknown means not observed.",
+          "enum": [
+            "IRIG-B",
+            "IRIG-A",
+            "IRIG-G",
+            "RTC",
+            "UTC",
+            "GPS",
+            "none",
+            "NTP",
+            "IEEE1588-2002",
+            "IEEE1588-2008",
+            "reserved",
+            "unknown"
+          ]
+        },
+        "format_reserved": {
+          "description": "Raw reserved FMT or NTF nibble; null unless format is reserved.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 15
+        },
+        "native_scale": {
+          "description": "Native payload scale before conversion; does not qualify the converted first/last clocks.",
+          "$ref": "#/$defs/scale"
+        },
+        "scale_basis": {
+          "description": "Basis for native_scale, using the same vocabulary as clock.basis.",
+          "$ref": "#/$defs/basis"
+        },
+        "date_format": {
+          "description": "Latest Format 1 DATE field; null when not applicable (Format 2) or not observed.",
+          "enum": [
+            "doy",
+            "date",
+            null
+          ]
+        },
+        "leap_year": {
+          "description": "Latest Format 1 LY flag; null when not applicable (Format 2) or not observed.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "format2_word": {
+          "description": "Raw Format 2 CSDW u32; null when not applicable or not observed.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "status": {
+          "description": "Explicit Format 2 TS spelling; reserved retains status_raw; null when not applicable/not observed.",
+          "enum": [
+            "valid",
+            "not-valid",
+            "reserved",
+            null
+          ]
+        },
+        "status_raw": {
+          "description": "Raw Format 2 TS nibble; null when not applicable/not observed.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 15
+        },
+        "format1_low_nibble": {
+          "description": "Raw low nibble, not an unqualified SRC assertion: edition/EXT qualification remains necessary. Null for Format 2 or unobserved.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 15
+        },
+        "segment_count": {
+          "description": "Number of admitted-reference segments on this channel; starts at 1 when a reference is admitted, otherwise 0.",
+          "$ref": "#/$defs/unsigned"
+        },
+        "segments": {
+          "description": "All admitted-reference segments, in per-channel index order; disk-spooled, not retained in RAM.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/segment"
+          }
+        },
+        "first": {
+          "description": "First admitted clock in file order across all segments; null if not observed. May have a different scale/basis from last.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/clock"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last": {
+          "description": "Last admitted clock in file order across all segments; null if not observed.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/clock"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "first_rtc": {
+          "description": "Header RTC of the first admitted reference in file order across resets; 100 ns ticks; null if not observed.",
+          "$ref": "#/$defs/maybe_unsigned"
+        },
+        "last_rtc": {
+          "description": "Header RTC of the last admitted reference in file order across resets; 100 ns ticks; null if not observed.",
+          "$ref": "#/$defs/maybe_unsigned"
+        },
+        "min_gap_ns": {
+          "description": "Minimum non-backward same-segment reference-pair spacing in ns; null if no eligible pair was evaluated.",
+          "$ref": "#/$defs/maybe_unsigned"
+        },
+        "max_gap_ns": {
+          "description": "Maximum non-backward same-segment reference-pair spacing in ns; null if no eligible pair was evaluated.",
+          "$ref": "#/$defs/maybe_unsigned"
+        }
+      }
+    },
+    "jump": {
+      "description": "Sampled native clock discontinuity in observation order, bounded to the first 20.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "channel",
+        "index",
+        "expected_ns",
+        "actual_ns",
+        "delta_ns",
+        "expected_year_days",
+        "actual_year_days"
+      ],
+      "properties": {
+        "channel": {
+          "description": "Time channel ID.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "index": {
+          "description": "Zero-based global admitted-reference observation index, not per-channel and not packet index.",
+          "$ref": "#/$defs/unsigned"
+        },
+        "expected_ns": {
+          "description": "Expected native day-1 clock count in ns, including unwrapped year span when applicable; not Unix time.",
+          "$ref": "#/$defs/unsigned"
+        },
+        "actual_ns": {
+          "description": "Actual native day-1 clock count in ns, including unwrapped year span when applicable; not Unix time.",
+          "$ref": "#/$defs/unsigned"
+        },
+        "delta_ns": {
+          "description": "Signed actual-minus-expected residual in ns.",
+          "$ref": "#/$defs/signed"
+        },
+        "expected_year_days": {
+          "description": "365/366 day basis for expected_ns; null when unknown.",
+          "enum": [
+            365,
+            366,
+            null
+          ]
+        },
+        "actual_year_days": {
+          "description": "365/366 unwrapped year basis for actual_ns; null when no year unwrap was applied.",
+          "enum": [
+            365,
+            366,
+            null
+          ]
+        }
+      }
+    },
+    "finding": {
+      "description": "One sampled command-specific finding; all location keys are present.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "level",
+        "code",
+        "message",
+        "channel",
+        "packet"
+      ],
+      "properties": {
+        "level": {
+          "description": "Owner-approved TF severity or documented CLI scanner severity.",
+          "$ref": "#/$defs/level"
+        },
+        "code": {
+          "description": "TF-nnn when explicitly identified; null for CLI diagnostics without an assigned TF code.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^TF-[0-9]{3}$"
+        },
+        "message": {
+          "description": "Human diagnostic without a Rust Debug severity prefix; wording is not a machine identifier.",
+          "type": "string"
+        },
+        "channel": {
+          "description": "Packet channel ID when known; null for file-wide or unlocated diagnostics.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "packet": {
+          "description": "Zero-based file packet observation index when known; null for file-wide/unlocated diagnostics.",
+          "$ref": "#/$defs/maybe_unsigned"
+        }
+      }
+    },
+    "findings": {
+      "description": "Per-command exact counts and bounded samples; commands can evaluate different facts (channels does not evaluate jumps).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "error",
+        "warning",
+        "info",
+        "omitted",
+        "samples"
+      ],
+      "properties": {
+        "error": {
+          "description": "Exact error finding count.",
+          "$ref": "#/$defs/unsigned"
+        },
+        "warning": {
+          "description": "Exact warning finding count.",
+          "$ref": "#/$defs/unsigned"
+        },
+        "info": {
+          "description": "Exact information finding count.",
+          "$ref": "#/$defs/unsigned"
+        },
+        "omitted": {
+          "description": "Total finding count minus number of emitted samples.",
+          "$ref": "#/$defs/unsigned"
+        },
+        "samples": {
+          "description": "First findings in observation order; at most 20.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/finding"
+          },
+          "maxItems": 20
+        }
+      }
+    },
+    "jumps": {
+      "description": "Jump evaluation over admitted non-backward pairs.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "count",
+        "omitted",
+        "samples"
+      ],
+      "properties": {
+        "count": {
+          "description": "Exact number of detected jumps.",
+          "$ref": "#/$defs/unsigned"
+        },
+        "omitted": {
+          "description": "Exact jump count minus number of emitted samples.",
+          "$ref": "#/$defs/unsigned"
+        },
+        "samples": {
+          "description": "First jump samples in observation order; at most 20.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/jump"
+          },
+          "maxItems": 20
+        }
+      }
+    },
+    "row": {
+      "description": "RESERVED shape for future timeline/csv views; never emitted by these inventory commands. It does not implement ambiguity resolution.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "packet",
+        "channel",
+        "rtc",
+        "candidates",
+        "issue"
+      ],
+      "properties": {
+        "kind": {
+          "description": "Counter-only and ambiguity are explicit, never silently converted to a chosen absolute answer.",
+          "enum": [
+            "absolute",
+            "counter-only",
+            "ambiguous"
+          ]
+        },
+        "packet": {
+          "description": "Zero-based packet observation index.",
+          "$ref": "#/$defs/unsigned"
+        },
+        "channel": {
+          "description": "Packet channel ID.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "rtc": {
+          "description": "Header RTC in 100 ns ticks.",
+          "$ref": "#/$defs/unsigned"
+        },
+        "candidates": {
+          "description": "Labelled possible segment answers; empty for counter-only.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/row_candidate"
+          }
+        },
+        "issue": {
+          "description": "Context issue; null if there is none.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "row_candidate": {
+      "description": "RESERVED labelled segment answer.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "segment",
+        "clock"
+      ],
+      "properties": {
+        "segment": {
+          "description": "One-based per-channel segment index.",
+          "$ref": "#/$defs/unsigned"
+        },
+        "clock": {
+          "description": "Candidate clock or null when unresolved.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/clock"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
