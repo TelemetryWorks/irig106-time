@@ -432,6 +432,8 @@ fn schema_describes_every_key_and_matches_the_golden_shape() {
             }
         }
     }
+    // AbsoluteTime's native calendar explicitly permits year zero.
+    assert_eq!(schema["$defs"]["clock"]["properties"]["year"]["minimum"], 0);
     descriptions(&schema);
     shape(&golden, &schema, &schema);
     assert!(schema["$id"].as_str().unwrap().contains("/v0.8.0/"));
