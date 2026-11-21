@@ -1263,13 +1263,23 @@ fn cmd_jumps(
 
 fn cmd_timeline(
     input: std::fs::File,
-    limit: usize,
+    args: &args::Args,
+    size: u64,
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
 ) -> Result<Option<Severity>, Failure> {
     let mut scanner = Ch10TimeScanner::new();
+    let limit = args.limit;
+    if args.json {
+        scanner.segment_inventory = Some(segment_inventory::Archive::new()?);
+    }
     scanner.scan(input, true, Some(limit))?;
-    scanner.report_findings(stderr)?;
+    let report = report::Report::from(&scanner);
+    report.report_findings(stderr)?;
+    if args.json {
+        report_json::write(&report, args, size, stdout)?;
+        return Ok(report.highest);
+    }
 
     writeln!(
         stdout,
@@ -1278,18 +1288,18 @@ fn cmd_timeline(
     )?;
     writeln!(stdout, "{}", "─".repeat(100))?;
 
-    for r in &scanner.resolved {
+    for r in report.packet_rows {
         r.write_text(stdout)?;
     }
 
-    if scanner.total_packets > limit {
+    if report.total_packets > limit {
         writeln!(
             stdout,
             "... showing first {} of {} packets",
-            limit, scanner.total_packets
+            limit, report.total_packets
         )?;
     }
-    Ok(scanner.highest)
+    Ok(report.highest)
 }
 
 fn cmd_csv(
@@ -1450,7 +1460,7 @@ fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
     )?;
     writeln!(
         stdout,
-        "--format <text|json>: summary/channels/jumps only; default text. Schema stable v1, revision 2."
+        "--format <text|json>: summary/channels/jumps/timeline; default text. Schema stable v1, revision 3."
     )?;
     writeln!(stdout, "Examples:")?;
     writeln!(stdout, "  irigtime summary flight_042.ch10")?;
@@ -1628,7 +1638,7 @@ fn dispatch(
                 }
             }
         }
-        "timeline" => cmd_timeline(input, args.limit, stdout, stderr),
+        "timeline" => cmd_timeline(input, &args, file_len, stdout, stderr),
         "csv" => cmd_csv(input, args.output.as_deref(), stdout, stderr, pending),
         "correlate" => cmd_correlate(input, args.rtc, stdout, stderr),
         _ => Err(Failure::new(ExitClass::Usage, "unknown command")),

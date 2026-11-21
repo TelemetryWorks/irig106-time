@@ -18,6 +18,7 @@
     "command": "summary",
     "fail_on": "error",
     "format": "json",
+    "limit": null,
     "threshold_ms": "1000"
   },
   "report": {
@@ -121,7 +122,7 @@
     "total_packets": "1"
   },
   "schema": "telemetryworks/irigtime-report",
-  "schema_revision": 2,
+  "schema_revision": 3,
   "schema_status": "stable",
   "schema_version": 1,
   "tool": {

@@ -1,5 +1,5 @@
 //! Shared packet observations projected by timeline and CSV.
-//! CLI-105/106 partial clauses; no claim of qualified joining or JSON row coverage.
+//! CLI-105/106 partial clauses; no claim of qualified joining or complete report coverage.
 use super::{fmt_abs_time, fmt_data_type_short};
 use irig106_time::{AbsoluteTime, Rtc};
 use std::io::{self, Write};
@@ -15,6 +15,20 @@ pub(super) struct PacketRow {
     pub(super) abs_time: Option<AbsoluteTime>,
 }
 impl PacketRow {
+    // Packet-row correlation currently has no qualified source lineage. Keep
+    // clock scale/basis unresolved rather than borrow labels from a same-ID
+    // time channel or invent a reset-segment/data-channel association.
+    pub(super) fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "kind": if self.abs_time.is_some() { "absolute" } else { "counter-only" },
+            "packet": self.packet_num.to_string(), "channel": self.channel_id,
+            "rtc": self.rtc.as_raw().to_string(), "offset_bytes": self.offset.to_string(),
+            "data_type": self.data_type, "association": "association_unestablished",
+            "clock": self.abs_time.map(|t| super::report_json::clock(t, None, 0)),
+            "candidates": [],
+            "issue": if self.abs_time.is_none() { Some("No resolved clock; see command findings") } else { None }
+        })
+    }
     pub(super) fn write_text(&self, out: &mut dyn Write) -> io::Result<()> {
         writeln!(
             out,

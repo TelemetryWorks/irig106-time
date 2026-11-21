@@ -1,4 +1,4 @@
-# irigtime JSON report, stable v1, revision 2
+# irigtime JSON report, stable v1, revision 3
 
 The [canonical producer schema](../apps/irig106-time-cli/schema/irigtime-report-v1.schema.json)
 is packaged with the CLI. The [docs snapshot](schema/irigtime-report-v1.schema.json)
@@ -6,12 +6,15 @@ is generated from it with `python3 scripts/sync-cli-schema.py`; the workspace
 sync test enforces byte identity. The schema is the normative field/type/unit/null
 contract. It is CLI-owned (ADR-0019), not an IRIG 106 format
 or a library serialization API. The #78 schema review selected the shared
-`telemetryworks/irigtime-report` envelope; it is now frozen as stable v1,
-revision 2.
+`telemetryworks/irigtime-report` envelope; the inventory contract was frozen as stable v1,
+revision 2. Current revision 3 adds timeline packet rows and the effective row limit
+without changing the reviewed inventory fields or their meanings.
 
-`summary`, `channels` and `jumps` accept `--format text|json`, default `text`.
+`summary`, `channels`, `jumps` and `timeline` accept `--format text|json`, default `text`.
 Both render the same scanner/Report facts. `channels` does not evaluate jumps:
 `report.jumps` and `options.threshold_ms` are **null**, rather than a false zero.
+Timeline also leaves jumps/threshold null. `options.limit` is its effective
+positive row cap as a decimal string; it is null for inventory commands.
 Findings are command-specific; evaluating jumps can add findings. `highest_level`
 is independent of `--fail-on`; that option only determines exit 1.
 
@@ -60,9 +63,24 @@ first/last clocks and RTCs, indexed from 1; a channel with no admitted reference
 has zero segments. Closed segments are spooled to a private temporary file and
 streamed during rendering; only active rows and chain endpoints stay in memory.
 The whole artifact can grow with reset count, while producer memory stays bounded.
-The reserved `report.rows` shape documents future absolute/counter-only/ambiguous
-timeline/csv rows, but is always null in these three commands. No such adapter
-is implemented or claimed here.
+`report.rows` remains null for inventory commands. Timeline emits the same
+PacketRow observations as its text renderer, in file order, at most `--limit`
+(default 100). Scanning and findings still cover the complete input. Rows carry
+packet/channel/RTC, `offset_bytes` and `data_type`, direct `clock` or null, and
+`kind` absolute/counter-only. An absent clock has an issue directing the reader
+to command findings; zero is never substituted. Candidate segment answers stay
+empty in timeline. CSV/correlate JSON and ambiguous candidates remain reserved.
+
+Current packet correlation does not retain a qualified source lineage: row
+clocks therefore explicitly keep unknown scale/unresolved basis, even when an
+inventory time-channel clock separately has a stated scale. This preserves the
+existing numeric projection without inventing a data-to-time-channel link.
+`association` uses the seam vocabulary association_unestablished /
+association_conflicting / association_evidenced; timeline emits unestablished
+only. Conflicting is unresolved for answers, never an automatic source pick.
+After reset/pending classification, existing conservative counter-only data rows
+remain so. No source, segment, year offset or UTC assumption is fabricated.
+The row schema additions are revision 3; existing inventory fields are unchanged.
 
 Complete JSON is produced on success/findings (exits 0/1). No report is started
 on usage/input errors (2/3). An output error (4) can leave partial, or even fully

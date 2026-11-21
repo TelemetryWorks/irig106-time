@@ -306,7 +306,7 @@ passed; `publish = false` remains until the owner’s S20 decision.
 Summary/channels/jumps accept `--format json` (default text), over the same report
 model as text. See the [stable producer schema](https://github.com/TelemetryWorks/irig106-time/blob/main/apps/irig106-time-cli/schema/irigtime-report-v1.schema.json)
 and [compatibility, units and provenance rules](https://github.com/TelemetryWorks/irig106-time/blob/main/docs/cli-report-schema.md).
-The shared envelope is `telemetryworks/irigtime-report`, stable v1, revision 2. JSON is
+The shared envelope is `telemetryworks/irigtime-report`, stable v1, revision 3. JSON is
 ASCII-only; 64/128-bit quantities are decimal strings. Every defined key is
 present; null meanings are field-specific. Consumers ignore unknown fields;
 producer validation stays strict. The schema is frozen after review.
@@ -318,3 +318,11 @@ private disk spool. Input names stay as supplied, with a lossless platform-nativ
 hex representation. Complete JSON accompanies exits0/1; discard output on2/3/4
 (an output failure can leave partial JSON). Existing stderr diagnostics remain.
 Qualified joining and remaining qualification goldens are still partial.
+
+
+Timeline accepts `--format text|json` using the shared packet-row model.
+JSON revision 3 adds `options.limit` and bounded `report.rows` with explicit
+counter-only clocks and unresolved association. The entire input is analysed;
+the row cap never hides findings. Inventory `rows` and non-timeline `limit` are
+null. CSV/correlate JSON remain subsequent work; no qualified time-source link
+is inferred from channel IDs. See [the report schema](../../docs/cli-report-schema.md).

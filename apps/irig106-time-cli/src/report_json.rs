@@ -187,19 +187,20 @@ fn native_name(path: &OsStr) -> (String, &'static str) {
 fn document(r: &Report<'_>, args: &Args, size: u64) -> Value {
     let path = args.input.as_os_str();
     let (bytes, encoding) = native_name(path);
-    json!({"schema": "telemetryworks/irigtime-report", "schema_version": 1, "schema_revision": 2, "schema_status": "stable",
+    json!({"schema": "telemetryworks/irigtime-report", "schema_version": 1, "schema_revision": 3, "schema_status": "stable",
         "tool": {"name": "irigtime", "version": PKG_VERSION, "library_version": PKG_VERSION,
             "source_revision": option_env!("IRIGTIME_SOURCE_REVISION").or(option_env!("GITHUB_SHA"))},
         "input": {"name": path.to_string_lossy(), "name_lossy": path.to_str().is_none(),
             "native_name_hex": bytes, "native_name_encoding": encoding, "size_bytes": decimal(size)},
         "options": {"command": args.command, "format": "json", "fail_on": level(args.fail_on),
+            "limit": if args.command == "timeline" { Some(decimal(args.limit)) } else { None },
             "threshold_ms": r.jump_threshold.map(|ns| decimal(ns / 1_000_000))},
         "highest_level": r.highest.map(|v| level(Some(v))),
         "findings": {"error": decimal(r.finding_counts[2]), "warning": decimal(r.finding_counts[1]),
             "info": decimal(r.finding_counts[0]), "omitted": decimal(r.omitted_findings()),
             "samples": r.finding_samples.iter().map(|s| json!({"level": level(Some(s.level)), "code": s.code,
                 "message": s.message, "channel": s.channel, "packet": s.packet.map(decimal)})).collect::<Vec<_>>()},
-        "report": {"qualification": "observed inventory; qualified joining/basis pending", "rows": null,
+        "report": {"qualification": "observed inventory; qualified joining/basis pending", "rows": if args.command == "timeline" { Some(r.packet_rows.iter().map(ResolvedPacket::json).collect::<Vec<_>>()) } else { None },
             "total_packets": decimal(r.total_packets), "time_packets": decimal(r.time_packets),
             "references_seen": decimal(r.references_seen), "reference_count": decimal(r.reference_count),
             "references_evicted": decimal(r.references_evicted), "reset_count": decimal(r.reset_count),
@@ -362,7 +363,7 @@ mod tests {
         assert!(out.is_ascii());
         let v: Value = serde_json::from_slice(&out).unwrap();
         assert_eq!(v["schema"], "telemetryworks/irigtime-report");
-        assert_eq!(v["schema_revision"], 2);
+        assert_eq!(v["schema_revision"], 3);
         assert_eq!(v["highest_level"], "error");
         assert_eq!(v["findings"]["error"], "1");
         assert_eq!(v["findings"]["info"], "2");

@@ -1,9 +1,10 @@
-//! Bounded immutable report projection shared by summary/channels/jumps.
+//! Bounded immutable report projection shared by inventory and packet-row views.
 //! Partial Traces: L3-CLI-106 <- L2-CLI-106 <- L1-CLI-006 (inventory views; qualified joining remains partial).
 use super::*;
 use irig106_time::network_time::NetworkTimeFormat;
 
 pub(super) struct Report<'a> {
+    pub(super) packet_rows: &'a [ResolvedPacket],
     pub(super) segment_inventory: Option<&'a segment_inventory::Archive>,
     pub(super) finding_samples: &'a [FindingSample],
     pub(super) jump_threshold: Option<u64>,
@@ -27,6 +28,7 @@ pub(super) struct Report<'a> {
 impl<'a> From<&'a Ch10TimeScanner> for Report<'a> {
     fn from(s: &'a Ch10TimeScanner) -> Self {
         Self {
+            packet_rows: &s.resolved,
             segment_inventory: s.segment_inventory.as_ref(),
             finding_samples: &s.finding_samples,
             jump_threshold: s.jump_threshold,

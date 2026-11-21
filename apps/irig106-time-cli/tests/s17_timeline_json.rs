@@ -91,6 +91,36 @@ fn timeline_rows_golden_pins_counter_and_clock_without_invented_association() {
                       "clock_count_ns":"8596805120000000","scale":"unknown","basis":"unresolved","year_offset":"0"}}
         ])
     );
+    let schema: Value =
+        serde_json::from_str(include_str!("../schema/irigtime-report-v1.schema.json")).unwrap();
+    for row in v["report"]["rows"].as_array().unwrap() {
+        assert_eq!(
+            row.as_object().unwrap().keys().collect::<Vec<_>>(),
+            schema["$defs"]["row"]["properties"]
+                .as_object()
+                .unwrap()
+                .keys()
+                .collect::<Vec<_>>()
+        );
+        for key in ["kind", "association"] {
+            assert!(
+                schema["$defs"]["row"]["properties"][key]["enum"]
+                    .as_array()
+                    .unwrap()
+                    .contains(&row[key])
+            );
+        }
+        if !row["clock"].is_null() {
+            assert_eq!(
+                row["clock"].as_object().unwrap().keys().collect::<Vec<_>>(),
+                schema["$defs"]["clock"]["properties"]
+                    .as_object()
+                    .unwrap()
+                    .keys()
+                    .collect::<Vec<_>>()
+            );
+        }
+    }
     let (text_exit, text, text_err) = input.output("text", "3");
     assert_eq!(text_exit, exit);
     assert_eq!(text_err, err);
