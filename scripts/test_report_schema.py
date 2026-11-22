@@ -10,11 +10,23 @@ ROOT = Path(__file__).resolve().parent.parent
 class ReportSchema(unittest.TestCase):
     def test_ci_installs_hash_locked_tools_and_checks_live_views(self):
         workflow = (ROOT / '.github/workflows/ci.yml').read_text()
-        # The colon-space in :all: must stay inside a YAML block scalar.
-        self.assertIn('run: |\n          python -m pip install --require-hashes --only-binary=:all:', workflow)
-        self.assertIn('scripts/requirements-schema.txt', workflow)
-        self.assertIn('python scripts/validate_cli_reports.py', workflow)
-        self.assertIn('test_report_schema.py', workflow)
+        self.assertIn('python -m venv "$RUNNER_TEMP/schema-venv"', workflow)
+        interpreter = '"$RUNNER_TEMP/schema-venv/bin/python" -I'
+        # Shell quotes/colon-space commands must stay in YAML block scalars.
+        for command in [
+            f'{interpreter} -m pip install --require-hashes --only-binary=:all: -r scripts/requirements-schema.txt',
+            f'{interpreter} -m unittest discover -s scripts -p test_report_schema.py',
+            f'{interpreter} scripts/validate_cli_reports.py',
+        ]:
+            self.assertIn('          ' + command + '\n', workflow)
+
+    def test_exact_fixture_set_yields_thirty_reports(self):
+        from validate_cli_reports import VIEWS, fixtures
+        cases = fixtures()
+        self.assertEqual([label for label, _, _ in cases], [
+            'inventory', 'reset', 'no-time', 'ntp-no-era', 'ntp-era1', 'ntp-sentinel',
+        ])
+        self.assertEqual(len(cases) * len(VIEWS), 30)
 
     def test_all_supported_json_views_are_in_the_live_gate(self):
         from validate_cli_reports import VIEWS
