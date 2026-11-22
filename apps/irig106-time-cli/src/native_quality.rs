@@ -116,7 +116,7 @@ impl Quality {
             };
             json!({"channel":channel,"valid":stats.valid.to_string(),"admitted":stats.admitted.to_string(),"rejected":stats.rejected.to_string(),
                 "interval_ns":stats.interval_ns.map(|n|n.to_string()),"min_spacing_ns":stats.min_spacing_ns.map(|n|n.to_string()),"max_spacing_ns":stats.max_spacing_ns.map(|n|n.to_string()),
-                "references_per_second":stats.references_per_second,"drift_ppm":stats.drift_ppm,"unavailable_reason":stats.unavailable,
+                "references_per_second":stats.references_per_second,"drift_ppm":stats.drift_ppm,"drift_uses_stale_leap_table":q.drift_uses_stale_leap_table(),"unavailable_reason":stats.unavailable,
                 "first":first,"last":last,"calendar_unavailable_reason":calendar_issue,"rejection_reason":final_state.issues.get(&channel)})
         }).collect();
         json!({"formats":"format1+format2","ntp_era":self.ntp_era.map(|n|n.to_string()),"ntp_era_source":if self.ntp_era.is_some(){"caller-declared"}else{"none"},"ntp_era_inference":"disabled","include_undeclared":true,"year_inference":"packet-only","channel_cap":CHANNEL_CAP.to_string(),"pending_cap":PENDING_CAP.to_string(),"status":if final_state.unavailable.is_some(){"needs-context"}else{"complete"},"unavailable_reason":final_state.unavailable,"channels":rows})

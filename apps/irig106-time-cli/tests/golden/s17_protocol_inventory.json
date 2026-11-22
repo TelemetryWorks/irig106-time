@@ -348,6 +348,7 @@
                 "calendar_unavailable_reason": null,
                 "channel": 7,
                 "drift_ppm": null,
+                "drift_uses_stale_leap_table": false,
                 "first": {
                   "basis": "stated",
                   "day": 100,
@@ -384,6 +385,7 @@
                 "calendar_unavailable_reason": null,
                 "channel": 8,
                 "drift_ppm": null,
+                "drift_uses_stale_leap_table": false,
                 "first": null,
                 "interval_ns": null,
                 "last": null,
@@ -400,6 +402,7 @@
                 "calendar_unavailable_reason": null,
                 "channel": 9,
                 "drift_ppm": null,
+                "drift_uses_stale_leap_table": false,
                 "first": {
                   "basis": "stated",
                   "day": 2,
@@ -436,6 +439,7 @@
                 "calendar_unavailable_reason": null,
                 "channel": 10,
                 "drift_ppm": null,
+                "drift_uses_stale_leap_table": false,
                 "first": {
                   "basis": "stated",
                   "day": 2,
@@ -472,6 +476,7 @@
                 "calendar_unavailable_reason": null,
                 "channel": 11,
                 "drift_ppm": null,
+                "drift_uses_stale_leap_table": false,
                 "first": null,
                 "interval_ns": null,
                 "last": null,
@@ -536,7 +541,7 @@
     "total_packets": "5"
   },
   "schema": "telemetryworks/irigtime-report",
-  "schema_revision": 11,
+  "schema_revision": 12,
   "schema_status": "stable",
   "schema_version": 1,
   "tool": {

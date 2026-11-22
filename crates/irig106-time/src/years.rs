@@ -166,7 +166,7 @@ struct Point {
 }
 const DAY_NS: i128 = 86_400_000_000_000;
 /// Constant-size session clock/first-DMY anchor, independent of stream caps.
-#[derive(Default, Clone)]
+#[derive(Debug, Default, Clone)]
 pub(crate) struct YearClock {
     last: Option<Point>,
     phase: i32,
@@ -221,6 +221,38 @@ fn year_evidence(r: &TimelineReference) -> bool {
                 .all(|reason| matches!(reason, Rejection::NeedsContext)))
 }
 impl YearClock {
+    // Shared offline gap handling. Stream retains its explicit NeedsContext retry.
+    fn stamp_replay(
+        &mut self,
+        r: &mut TimelineReference,
+        policy: &OfflinePolicy,
+    ) -> Result<Option<Self>> {
+        r.input.year_basis.resolved = false;
+        r.input.year_basis.phase_residual = None;
+        match self.stamp(r, policy) {
+            Ok(()) => Ok(None),
+            Err(TimeError::NeedsContext { .. }) => {
+                let old = self.clone();
+                let gap = self
+                    .last
+                    .and_then(|last| r.key.ticks.checked_sub(last.ticks));
+                let mut next = Self {
+                    segment: self
+                        .segment
+                        .checked_add(1)
+                        .ok_or(TimeError::QuantityOverflow {
+                            quantity: "year continuity segments",
+                        })?,
+                    gap,
+                    ..Self::default()
+                };
+                next.stamp(r, policy)?;
+                *self = next;
+                Ok(Some(old))
+            }
+            Err(error) => Err(error),
+        }
+    }
     // Call in observation order, separately from counter order used for phase.
     fn remember_anchor(&mut self, r: &TimelineReference) {
         if year_evidence(r)
@@ -862,29 +894,7 @@ fn resolve_session_pass(
     // Apply the first observed origin BEFORE validating late day366 against its
     // selected year, exactly as stream does. Query/quality indexes still sort RTC.
     for reference in refs.iter_mut() {
-        reference.input.year_basis.resolved = false;
-        reference.input.year_basis.phase_residual = None;
-        match clock.stamp(reference, policy) {
-            Err(TimeError::NeedsContext { .. }) => {
-                // An implausible nearest explanation breaks year continuity just
-                // like a full-cycle gap. Preserve native partial time and TF-020.
-                let gap = clock
-                    .last
-                    .and_then(|last| reference.key.ticks.checked_sub(last.ticks));
-                clock = YearClock {
-                    segment: clock
-                        .segment
-                        .checked_add(1)
-                        .ok_or(TimeError::QuantityOverflow {
-                            quantity: "year continuity segments",
-                        })?,
-                    gap,
-                    ..YearClock::default()
-                };
-                clock.stamp(reference, policy)?;
-            }
-            result => result?,
-        }
+        clock.stamp_replay(reference, policy)?;
     }
     let mut groups = BTreeMap::<usize, Vec<usize>>::new();
     for (i, r) in refs
@@ -921,4 +931,213 @@ fn resolve_session_pass(
         }
     }
     Ok(findings)
+}
+
+/// Bounded observation-order year-phase pass for one native recording session.
+/// Caller supplies already-admitted/prepared references and a frozen policy.
+/// It reuses the engine YEAR-PHASE rule, not RTC sorting or new admission rules.
+/// Sources: 106-24R1 Figures 11-13/11-14; contract §5.3 / D9, owner 2026-11-15 reader policy.
+/// **Traces:** L3-COR-110 ← L2-COR-110 ← L1-COR-010
+#[derive(Debug, Clone)]
+pub struct SessionYearCursor {
+    session: usize,
+    clock: YearClock,
+    evidence: YearClock,
+    policy: OfflinePolicy,
+    first: Option<u64>,
+    last: Option<u64>,
+    expected_first: Option<u64>,
+}
+/// Frozen first/latest DMY anchors for one year-continuity segment.
+/// Bounded live state only; no timeline/JSON rehydration or retained reference list.
+/// Source: contract §5.3 / D9; 106-24R1 Figures 11-13/11-14.
+/// **Traces:** L3-COR-110 ← L2-COR-110 ← L1-COR-010
+#[derive(Debug, Clone)]
+pub struct SessionYearResolver {
+    session: usize,
+    clock: YearClock,
+    policy: OfflinePolicy,
+    first: u64,
+    last: u64,
+}
+/// Opaque phase-stamped reference, not yet resolved against future DMY evidence.
+/// Replay must reproduce observation order and retain newly rejected leap labels.
+/// Source: contract §5.3 / D9; 106-24R1 Figures 11-13/11-14.
+/// **Traces:** L3-COR-110 ← L2-COR-110 ← L1-COR-010
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StampedYearReference {
+    reference: TimelineReference,
+    domain: (usize, usize, u64),
+    policy: OfflinePolicy,
+}
+impl StampedYearReference {
+    /// Inspect capture/phase evidence; use resolve before final year-dependent answers.
+    /// Source: contract §5.3 / D9; Figures 11-13/11-14.
+    /// **Traces:** L3-COR-110 ← L2-COR-110 ← L1-COR-010
+    pub fn reference(&self) -> &TimelineReference {
+        &self.reference
+    }
+}
+impl SessionYearCursor {
+    /// Freeze a validated policy for a nonzero session. No default year is added.
+    /// Source: contract §5.3 / D9; Figures 11-13/11-14.
+    /// **Traces:** L3-COR-110 ← L2-COR-110 ← L1-COR-010
+    pub fn new(session: usize, policy: OfflinePolicy) -> Result<Self> {
+        policy.validate()?;
+        if session == 0 {
+            return Err(TimeError::InvalidTimelineInput("year session zero"));
+        }
+        Ok(Self {
+            session,
+            clock: YearClock::default(),
+            evidence: YearClock::default(),
+            policy,
+            first: None,
+            last: None,
+            expected_first: None,
+        })
+    }
+    /// Stamp in strictly increasing packet-ID order; RTCs may be late.
+    /// Returns the stamp and, on a native year-context gap, the closed resolver.
+    /// Errors leave the cursor unchanged. Reference ownership is consumed.
+    /// Source: contract §5.3 / D9; Figures 11-13/11-14.
+    /// **Traces:** L3-COR-110 ← L2-COR-110 ← L1-COR-010
+    pub fn observe(
+        &mut self,
+        mut reference: TimelineReference,
+    ) -> Result<(StampedYearReference, Option<SessionYearResolver>)> {
+        let key = reference.key;
+        if key.session != self.session {
+            return Err(TimeError::CrossSessionCounterDelta);
+        }
+        if self.last.is_some_and(|last| key.packet <= last)
+            || (self.first.is_none()
+                && self.expected_first.is_some_and(|first| first != key.packet))
+        {
+            return Err(TimeError::InvalidTimelineInput(
+                "year observation/replay order",
+            ));
+        }
+        if reference.input.network.is_none() {
+            if let Some(last) = self.clock.last {
+                // Headroom covers every u16 day/u8 clock field plus a year shift;
+                // native residual arithmetic must not overflow on corrupt keys.
+                key.ticks
+                    .checked_sub(last.ticks)
+                    .and_then(|d| d.checked_mul(100))
+                    .and_then(i128::checked_abs)
+                    .and_then(|d| d.checked_add(66_000 * DAY_NS))
+                    .ok_or(TimeError::QuantityOverflow {
+                        quantity: "year counter span",
+                    })?;
+            }
+        }
+        let mut clock = self.clock.clone();
+        let closed = if clock.stamp_replay(&mut reference, &self.policy)?.is_some() {
+            let (first, last) =
+                self.first
+                    .zip(self.last)
+                    .ok_or(TimeError::InvalidTimelineInput(
+                        "missing year segment origin",
+                    ))?;
+            Some(SessionYearResolver {
+                session: self.session,
+                clock: self.evidence.clone(),
+                policy: self.policy.clone(),
+                first,
+                last,
+            })
+        } else {
+            None
+        };
+        // Offline resolution collects all eligible DMY evidence AFTER phase
+        // stamping, including labels the phase clock did not use as anchors.
+        let mut evidence = if closed.is_some() {
+            YearClock {
+                segment: clock.segment,
+                gap: clock.gap,
+                ..YearClock::default()
+            }
+        } else {
+            self.evidence.clone()
+        };
+        evidence.remember_anchor(&reference);
+        let first = if closed.is_some() {
+            key.packet
+        } else {
+            self.first.unwrap_or(key.packet)
+        };
+        let stamp = StampedYearReference {
+            reference,
+            domain: (self.session, clock.segment, first),
+            policy: self.policy.clone(),
+        };
+        self.clock = clock;
+        self.evidence = evidence;
+        self.first = Some(first);
+        self.last = Some(key.packet);
+        Ok((stamp, closed))
+    }
+    /// Freeze the current segment's anchors; None before any observation.
+    /// Source: contract §5.3 / D9; Figures 11-13/11-14.
+    /// **Traces:** L3-COR-110 ← L2-COR-110 ← L1-COR-010
+    pub fn freeze(&self) -> Option<SessionYearResolver> {
+        self.first
+            .zip(self.last)
+            .map(|(first, last)| SessionYearResolver {
+                session: self.session,
+                clock: self.evidence.clone(),
+                policy: self.policy.clone(),
+                first,
+                last,
+            })
+    }
+}
+impl SessionYearResolver {
+    /// Begin another raw observation-order pass at this segment's actual origin.
+    /// Caller retains/replays input externally; this creates no history buffer.
+    /// Source: contract §5.3 / D9; Figures 11-13/11-14.
+    /// **Traces:** L3-COR-110 ← L2-COR-110 ← L1-COR-010
+    pub fn replay(&self) -> SessionYearCursor {
+        SessionYearCursor {
+            session: self.session,
+            clock: YearClock {
+                segment: self.clock.segment,
+                gap: self.clock.gap,
+                ..YearClock::default()
+            },
+            evidence: YearClock {
+                segment: self.clock.segment,
+                gap: self.clock.gap,
+                ..YearClock::default()
+            },
+            policy: self.policy.clone(),
+            first: None,
+            last: None,
+            expected_first: Some(self.first),
+        }
+    }
+    /// Resolve a stamp from the same segment/origin/policy using final anchors.
+    /// Returns the reference, native findings and whether a forbidden leap label
+    /// requires a rebuilt pass. Retain that rejection and repeat until no NEW
+    /// rejections remain, as the offline engine does; no opaque state is loaded.
+    /// Source: contract §5.3 / D9/RDG-010; 106-24R1 Figures 11-13/11-14.
+    /// **Traces:** L3-COR-110 ← L2-COR-110 ← L1-COR-010
+    pub fn resolve(
+        &self,
+        stamp: StampedYearReference,
+    ) -> Result<(TimelineReference, Vec<TimelineFinding>, bool)> {
+        if stamp.domain != (self.session, self.clock.segment, self.first)
+            || stamp.policy != self.policy
+            || stamp.reference.key.packet > self.last
+        {
+            return Err(TimeError::InvalidTimelineInput(
+                "year resolver stamp domain/policy",
+            ));
+        }
+        let mut reference = stamp.reference;
+        let findings = self.clock.resolve(&mut reference, &self.policy)?;
+        let rebuild = invalid_resolved_label(&reference);
+        Ok((reference, findings, rebuild))
+    }
 }

@@ -509,7 +509,8 @@ fn native_ntp_endpoints_keep_leap_ambiguity_without_inventing_drift() {
 fn native_drift_marks_stale_offset_use_but_not_native_tai_or_absent_drift() {
     // 2017Jan2 Unix1483315200 + (18*365+4)*86400 =2035Jan2 2051308800.
     // Last-known37s offset: TAI2051308837; NTP4260297600. Dates are
-    // beyond builtin table coverage. Only INTERIOR UTC points use the offset.
+    // beyond builtin table coverage. Only INTERIOR UTC points use the offset;
+    // unequal cross-scale intervals prevent its cancellation in mean drift.
     let mut bytes = network_packet(7, 0, 0x21, 2_051_308_837, 0);
     bytes.extend(network_packet(8, 0, 0x21, 2_051_308_837, 0));
     bytes.extend(packet_body(
@@ -520,7 +521,8 @@ fn native_drift_marks_stale_offset_use_but_not_native_tai_or_absent_drift() {
     ));
     bytes.extend(network_packet(7, 20_000_000, 1, 4_260_297_602, 0));
     bytes.extend(network_packet(8, 20_000_000, 0x21, 2_051_308_839, 0));
-    bytes.extend(network_packet(7, 30_000_000, 0x21, 2_051_308_840, 0));
+    bytes.extend(network_packet(7, 40_000_000, 0x21, 2_051_308_841, 0));
+    bytes.extend(network_packet(7, 50_000_000, 0x21, 2_051_308_842, 0));
     let input = Input::bytes(&bytes);
     let (_, out) = input.era_output("summary", true, Some("0"));
     let v: Value = serde_json::from_str(&out).unwrap();
@@ -537,8 +539,8 @@ fn native_drift_marks_stale_offset_use_but_not_native_tai_or_absent_drift() {
     bytes.extend(packet_body(
         7,
         0x11,
-        40_000_000,
-        &[0x31, 2, 0, 0, 0, 4, 0, 0, 2, 1, 0x35, 0x20],
+        60_000_000,
+        &[0x31, 2, 0, 0, 0, 6, 0, 0, 2, 1, 0x35, 0x20],
     ));
     let (_, out) = Input::bytes(&bytes).era_output("summary", true, Some("0"));
     let v: Value = serde_json::from_str(&out).unwrap();

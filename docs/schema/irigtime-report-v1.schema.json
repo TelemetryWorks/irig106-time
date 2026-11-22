@@ -28,8 +28,8 @@
       "const": 1
     },
     "schema_revision": {
-      "description": "Additive revision 11 extends native candidate quality to Format 2 with explicit NTP era policy and rejection context; session-year inference and qualified joining remain open.",
-      "const": 11
+      "description": "Additive revision 12 identifies available native quality drift that used a stale normalized leap-table offset; no new finding is emitted. Session-year CLI wiring remains open.",
+      "const": 12
     },
     "schema_status": {
       "description": "Stable contract following the reviewed draft-to-stable transition at revision 2. Further contract changes follow the version and revision rules.",
@@ -374,7 +374,7 @@
     },
     "native_quality_channel": {
       "description":"Native COR-113 metrics; unavailable reasons distinguish context from zero. First/last are valid references in RTC order, not calendar extrema.", "type":"object", "additionalProperties":false,
-      "required":["channel", "valid", "admitted", "rejected", "interval_ns", "min_spacing_ns", "max_spacing_ns", "references_per_second", "drift_ppm", "unavailable_reason", "first", "last", "calendar_unavailable_reason", "rejection_reason"],
+      "required":["channel", "valid", "admitted", "rejected", "interval_ns", "min_spacing_ns", "max_spacing_ns", "references_per_second", "drift_ppm", "drift_uses_stale_leap_table", "unavailable_reason", "first", "last", "calendar_unavailable_reason", "rejection_reason"],
       "properties": {
         "channel":{"description": "Wire channel identifier.", "type": "integer", "minimum": 0, "maximum": 65535},
         "valid":{"description": "Admitted readable valid references, decimal count.", "$ref": "#/$defs/unsigned"},
@@ -385,6 +385,7 @@
         "max_spacing_ns":{"description": "Maximum adjacent valid RTC spacing in ns; null if not measurable.", "anyOf": [{"$ref": "#/$defs/signed"}, {"type": "null"}]},
         "references_per_second":{"description": "Valid count divided by measured seconds; null when unmeasurable.", "type": ["number", "null"]},
         "drift_ppm":{"description": "Mean adjacent-pair (absolute/RTC - 1)*1e6; null if scale/calendar/normalization unavailable.", "type": ["number", "null"]},
+        "drift_uses_stale_leap_table":{"description":"True only when an available drift used a normalized endpoint with an applied UTC offset beyond table coverage, including interior pairs. False for absent drift and native-TAI-only arithmetic, even if its separate UTC display is stale. A basis flag, not a new finding.","type":"boolean"},
         "unavailable_reason":{"description": "Null when drift measurable; otherwise native reason, independent of calendar endpoints.", "type": ["string", "null"]},
         "first":{"description": "First valid native calendar in RTC order; null absent/unavailable. Unknown year remains null in a present calendar.", "anyOf": [{"$ref": "#/$defs/quality_calendar"}, {"type": "null"}]},
         "last":{"description": "Last valid native calendar in RTC order; null absent/unavailable.", "anyOf": [{"$ref": "#/$defs/quality_calendar"}, {"type": "null"}]},

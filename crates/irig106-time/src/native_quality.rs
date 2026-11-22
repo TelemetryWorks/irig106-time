@@ -33,6 +33,7 @@ pub struct OrderedQuality {
     context: bool,
     missing_delta: bool,
     drift_sum: f64,
+    stale_drift: bool,
 }
 impl OrderedQuality {
     /// Bind a nonzero session and one channel; does not choose a time source.
@@ -65,6 +66,7 @@ impl OrderedQuality {
             context: false,
             missing_delta: false,
             drift_sum: 0.,
+            stale_drift: false,
         })
     }
     /// Actual session/channel scope, not a data-channel association.
@@ -99,8 +101,12 @@ impl OrderedQuality {
             counts.rejected = add(counts.rejected, 1)?;
         }
         let valid = r.admitted && matches!(r.input.value, ReferenceValue::Readable(_, true));
-        let (mut duplicate, mut missing, mut sum) =
-            (self.duplicate, self.missing_delta, self.drift_sum);
+        let (mut duplicate, mut missing, mut sum, mut stale) = (
+            self.duplicate,
+            self.missing_delta,
+            self.drift_sum,
+            self.stale_drift,
+        );
         if valid {
             counts.valid = add(counts.valid, 1)?;
             if let (Some(first), Some(last)) = (&self.first, &self.last) {
@@ -112,6 +118,12 @@ impl OrderedQuality {
                     duplicate = true;
                 } else if let Some(delta) = crate::timeline::absolute_delta(last, r) {
                     sum += 1e6 * (delta as f64 / gap as f64 - 1.);
+                    stale |= [last, r].iter().any(|r| {
+                        r.input
+                            .normalization
+                            .as_ref()
+                            .is_some_and(|n| n.possibly_out_of_date())
+                    });
                 } else {
                     missing = true;
                 }
@@ -122,6 +134,7 @@ impl OrderedQuality {
         self.duplicate = duplicate;
         self.missing_delta = missing;
         self.drift_sum = sum;
+        self.stale_drift = stale;
         if valid {
             let scale = r.input.scale.effective();
             self.same_scale &= scale != TimeScale::Unknown
@@ -176,6 +189,14 @@ impl OrderedQuality {
             q.unavailable = None;
         }
         q
+    }
+    /// True only for an available drift value that used a stale normalized UTC
+    /// offset in at least one pair. Native TAI needs no UTC offset; a stale UTC
+    /// display projection alone does not qualify. This is basis, not a finding.
+    /// Source: D7/RDG-012; contract3.6/5.4; 106-24R1 §11.2.3.3.
+    /// **Traces:** L3-COR-113 ← L2-COR-113 ← L1-COR-013
+    pub fn drift_uses_stale_leap_table(&self) -> bool {
+        self.stale_drift && self.snapshot().drift_ppm.is_some()
     }
     /// First valid native reference by RTC order, with its original provenance.
     /// Source: 106-24R1 Figs11-13..17; contract3.6/ADR-0011.

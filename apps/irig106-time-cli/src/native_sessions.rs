@@ -146,7 +146,8 @@ impl NativeSessions {
             if let Some(rows) = quality["channels"].as_array() {
                 for q in rows {
                     let interval = q["interval_ns"].as_str().map_or_else(|| "unavailable".to_owned(), |n| format!("{n} ns"));
-                    let drift = q["drift_ppm"].as_f64().map_or_else(|| "unavailable".to_owned(), |n| format!("{n} ppm"));
+                    let mut drift = q["drift_ppm"].as_f64().map_or_else(|| "unavailable".to_owned(), |n| format!("{n} ppm"));
+                    if q["drift_uses_stale_leap_table"].as_bool()==Some(true){drift.push_str(" (possibly out of date: stale leap table)");}
                     writeln!(out,"    Native quality ch{}: valid {}; rejected {}; admitted {}; interval {}; drift {}",q["channel"],field(q,"valid")?,field(q,"rejected")?,field(q,"admitted")?,interval,drift)?;
                     if let Some(reason) = q["unavailable_reason"].as_str() { writeln!(out,"      Unavailable: {reason}")?; }
                     if let Some(reason)=q["rejection_reason"].as_str(){writeln!(out,"      Rejected reference: {reason}")?;}

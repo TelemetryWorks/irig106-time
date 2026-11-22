@@ -305,7 +305,7 @@ fn correlate_json_matches_native_answers_with_all_query_fields() {
     let (exit, v, err) = input.json_at(5);
     assert_eq!(exit, ExitClass::Success);
     assert_eq!(err, input.query_at(5).2);
-    assert_eq!(v["schema_revision"], 11);
+    assert_eq!(v["schema_revision"], 12);
     assert_eq!(v["options"]["query_rtc"], "50000000");
     assert!(v["options"]["limit"].is_null());
     assert!(v["options"]["threshold_ms"].is_null());
