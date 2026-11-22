@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/TelemetryWorks/irig106-time/v0.8.0/docs/schema/irigtime-report-v1.schema.json",
-  "title": "irigtime report v1 revision 2 \u2014 stable",
+  "title": "irigtime report v1 revision 3 \u2014 stable",
   "$comment": "Version-pinned release artifact identifier (resolves when v0.8.0 is published). Schema frozen after the reviewed draft; no tag or publication is performed by this PR.",
-  "description": "Producer validation is strict (unknown producer keys fail). Consumers MUST ignore unknown fields within a supported schema_version, accept additive schema_revision increases, and reject unsupported schema_version values. Every defined key is always emitted; null meaning is per field. Incompatible changes require a new schema_version and breaking tool release. All usize and signed/unsigned 64/128-bit values are decimal strings, including future fields; small wire/date fields remain integers. Suffix units: _ns nanoseconds, _ms milliseconds, _bytes bytes, _rtc 100 ns RTC ticks; clock_count_ns is native year-relative time, not Unix. Output is ASCII-only JSON (non-ASCII uses Unicode escapes); ordering is deterministic. Draft->stable is an explicit reviewed revision change. This is CLI output only, not an IRIG 106 wire standard or a JSON loading API. Complete reports are produced on exits 0/1; no report is started on usage/input exits 2/3. On output failure 4 a partial or even complete byte stream may already have been written: consumers must discard it. Existing stderr diagnostics are retained; findings are per command.",
+  "description": "Producer validation is strict (unknown producer keys fail). Consumers MUST ignore unknown fields within a supported schema_version, accept additive schema_revision increases, and reject unsupported schema_version values. Every defined key is always emitted; null meaning is per field. Incompatible changes require a new schema_version and breaking tool release. All usize and signed/unsigned 64/128-bit values are decimal strings, including future fields; small wire/date fields remain integers. Suffix units: _ns nanoseconds, _ms milliseconds, _bytes bytes, _rtc 100 ns RTC ticks; clock_count_ns is native year-relative time, not Unix. Output is ASCII-only JSON (non-ASCII uses Unicode escapes); ordering is deterministic. Draft->stable is an explicit reviewed revision change. This is CLI output only, not an IRIG 106 wire standard or a JSON loading API. Complete reports are produced on exits 0/1; no report is started on usage/input exits 2/3. On output failure 4 a partial or even complete byte stream may already have been written: consumers must discard it. Existing stderr diagnostics are retained; findings are per command. A revision MAY add values to options.command, row kind and similar enums for newly supported views. Consumers MUST treat unknown enum values as an unsupported view, not an error. Reserved shapes such as rows MAY gain fields until first emitted.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -28,8 +28,8 @@
       "const": 1
     },
     "schema_revision": {
-      "description": "Additive schema revision within version 1; consumers must ignore unknown fields. This stable revision is 2.",
-      "const": 2
+      "description": "Additive schema revision within version 1; consumers must ignore unknown fields. Revision 3 adds timeline rows and their effective limit; revision 2 froze the inventory contract.",
+      "const": 3
     },
     "schema_status": {
       "description": "Stable contract following the reviewed draft-to-stable transition at revision 2. Further contract changes follow the version and revision rules.",
@@ -113,15 +113,17 @@
         "command",
         "format",
         "fail_on",
-        "threshold_ms"
+        "threshold_ms",
+        "limit"
       ],
       "properties": {
         "command": {
-          "description": "Inventory view requested.",
+          "description": "Report view requested.",
           "enum": [
             "summary",
             "channels",
-            "jumps"
+            "jumps",
+            "timeline"
           ]
         },
         "format": {
@@ -138,7 +140,11 @@
           ]
         },
         "threshold_ms": {
-          "description": "Effective scanner jump threshold in milliseconds: summary uses 1000, jumps uses the selected value; null for channels (not evaluated).",
+          "description": "Effective scanner jump threshold in milliseconds: summary uses 1000, jumps uses the selected value; null for channels (not evaluated). Also null for timeline (jumps not evaluated).",
+          "$ref": "#/$defs/maybe_unsigned"
+        },
+        "limit": {
+          "description": "Effective maximum emitted packet rows for timeline, as decimal count; null for commands where not applicable. Entire input is still analysed.",
           "$ref": "#/$defs/maybe_unsigned"
         }
       }
@@ -184,7 +190,7 @@
           "const": "observed inventory; qualified joining/basis pending"
         },
         "rows": {
-          "description": "Reserved for future timeline/csv views; always null in summary/channels/jumps (not applicable).",
+          "description": "Packet rows in file order for timeline, at most options.limit; null for inventory commands. CSV and correlate JSON rows remain reserved.",
           "anyOf": [
             {
               "type": "array",
@@ -787,7 +793,7 @@
       }
     },
     "row": {
-      "description": "RESERVED shape for future timeline/csv views; never emitted by these inventory commands. It does not implement ambiguity resolution.",
+      "description": "One shared packet observation: numeric absolute clock or explicit counter-only result. Correlate ambiguity candidates remain reserved. No data/time-channel association is inferred.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -796,7 +802,11 @@
         "channel",
         "rtc",
         "candidates",
-        "issue"
+        "issue",
+        "offset_bytes",
+        "data_type",
+        "association",
+        "clock"
       ],
       "properties": {
         "kind": {
@@ -822,7 +832,7 @@
           "$ref": "#/$defs/unsigned"
         },
         "candidates": {
-          "description": "Labelled possible segment answers; empty for counter-only.",
+          "description": "Reserved labelled source/segment candidates. Timeline emits an empty array: the direct clock does not establish a data/time-channel or segment association.",
           "type": "array",
           "items": {
             "$ref": "#/$defs/row_candidate"
@@ -833,6 +843,35 @@
           "type": [
             "string",
             "null"
+          ]
+        },
+        "offset_bytes": {
+          "description": "Byte offset of the packet header in the input file, decimal string.",
+          "$ref": "#/$defs/unsigned"
+        },
+        "data_type": {
+          "description": "Packet data-type code from the header.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "association": {
+          "description": "Qualification seam states. Conflicting and unestablished are unresolved for source/segment answers; timeline currently emits unestablished only. Numeric channel equality is not evidence.",
+          "enum": [
+            "association_unestablished",
+            "association_conflicting",
+            "association_evidenced"
+          ]
+        },
+        "clock": {
+          "description": "Current CLI numeric calendar resolution, or null when counter-only. Until source lineage is qualified its scale/basis stay unknown/unresolved; no UTC, year offset or reset segment is inferred. See command findings for detailed context.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/clock"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       }

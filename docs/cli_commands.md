@@ -87,7 +87,15 @@ command-specific structured findings, exact wide values and reset segments.
 `channels` does not evaluate jumps; its jumps/threshold are null. JSON stdout is
 ASCII-only. Names remain as given. The producer schema is strict and consumers
 ignore unknown fields within a supported schema version. The schema is frozen as
-stable v1, revision 2. Discard output on operational failure (an output error may leave a
+stable v1, revision 3. Discard output on operational failure (an output error may leave a
 partial JSON stream).
 
 Packet CSV column units, quoting and absent values: [CSV column schema](cli-csv-schema.md).
+
+
+Timeline accepts `--format text|json` using the shared packet-row model.
+JSON revision 3 adds `options.limit` and bounded `report.rows` with explicit
+counter-only clocks and unresolved association. The entire input is analysed;
+the row cap never hides findings. Inventory `rows` and non-timeline `limit` are
+null. CSV/correlate JSON remain subsequent work; no qualified time-source link
+is inferred from channel IDs. See [the report schema](cli-report-schema.md).

@@ -31,8 +31,8 @@ fn string(out: &mut dyn Write, value: &str) -> io::Result<()> {
     formatter.write_string_fragment(out, &quoted[1..quoted.len() - 1])?;
     formatter.end_string(out)
 }
-// Only the bounded channel/field projection is resident. Segment records stream
-// from our private spool; serialization never collects their complete history.
+// Only bounded channel/field metadata is resident. Segment records stream from
+// their private spool and packet rows project one at a time from the report.
 fn emit(value: &Value, r: &Report<'_>, out: &mut dyn Write) -> io::Result<()> {
     match value {
         Value::Object(object) => {
@@ -67,6 +67,18 @@ fn emit(value: &Value, r: &Report<'_>, out: &mut dyn Write) -> io::Result<()> {
                         .and_then(|c| c.active_segment.as_ref())
                     {
                         row(&active.value())?;
+                    }
+                    out.write_all(b"]")?;
+                } else if key == "rows" && object.contains_key("qualification") && value.is_array()
+                {
+                    out.write_all(b"[")?;
+                    for (index, row) in r.packet_rows.iter().enumerate() {
+                        if index != 0 {
+                            out.write_all(b",")?;
+                        }
+                        let mut value = row.json();
+                        value.sort_all_objects();
+                        emit(&value, r, out)?;
                     }
                     out.write_all(b"]")?;
                 } else {
@@ -187,19 +199,20 @@ fn native_name(path: &OsStr) -> (String, &'static str) {
 fn document(r: &Report<'_>, args: &Args, size: u64) -> Value {
     let path = args.input.as_os_str();
     let (bytes, encoding) = native_name(path);
-    json!({"schema": "telemetryworks/irigtime-report", "schema_version": 1, "schema_revision": 2, "schema_status": "stable",
+    json!({"schema": "telemetryworks/irigtime-report", "schema_version": 1, "schema_revision": 3, "schema_status": "stable",
         "tool": {"name": "irigtime", "version": PKG_VERSION, "library_version": PKG_VERSION,
             "source_revision": option_env!("IRIGTIME_SOURCE_REVISION").or(option_env!("GITHUB_SHA"))},
         "input": {"name": path.to_string_lossy(), "name_lossy": path.to_str().is_none(),
             "native_name_hex": bytes, "native_name_encoding": encoding, "size_bytes": decimal(size)},
         "options": {"command": args.command, "format": "json", "fail_on": level(args.fail_on),
+            "limit": if args.command == "timeline" { Some(decimal(args.limit)) } else { None },
             "threshold_ms": r.jump_threshold.map(|ns| decimal(ns / 1_000_000))},
         "highest_level": r.highest.map(|v| level(Some(v))),
         "findings": {"error": decimal(r.finding_counts[2]), "warning": decimal(r.finding_counts[1]),
             "info": decimal(r.finding_counts[0]), "omitted": decimal(r.omitted_findings()),
             "samples": r.finding_samples.iter().map(|s| json!({"level": level(Some(s.level)), "code": s.code,
                 "message": s.message, "channel": s.channel, "packet": s.packet.map(decimal)})).collect::<Vec<_>>()},
-        "report": {"qualification": "observed inventory; qualified joining/basis pending", "rows": null,
+        "report": {"qualification": "observed inventory; qualified joining/basis pending", "rows": if args.command == "timeline" { Some(Vec::<Value>::new()) } else { None },
             "total_packets": decimal(r.total_packets), "time_packets": decimal(r.time_packets),
             "references_seen": decimal(r.references_seen), "reference_count": decimal(r.reference_count),
             "references_evicted": decimal(r.references_evicted), "reset_count": decimal(r.reset_count),
@@ -216,6 +229,31 @@ fn document(r: &Report<'_>, args: &Args, size: u64) -> Value {
 #[allow(clippy::unwrap_used)] // Test fixtures only.
 mod tests {
     use super::*;
+    #[test]
+    fn timeline_document_defers_rows_until_emission() {
+        let mut scanner = Ch10TimeScanner::new();
+        scanner.resolved.push(ResolvedPacket {
+            packet_num: 0,
+            offset: 24,
+            channel_id: 7,
+            data_type: 0x11,
+            rtc: Rtc::from_raw(10_000_000),
+            abs_time: None,
+        });
+        let args = match args::parse(&["timeline", "input", "--format", "json"]).unwrap() {
+            args::Request::File(a) => Some(a),
+            _ => None,
+        }
+        .unwrap();
+        let report = Report::from(&scanner);
+        // A marker only: projected row Values must not accumulate in document().
+        assert_eq!(document(&report, &args, 60)["report"]["rows"], json!([]));
+        let mut out = Vec::new();
+        write(&report, &args, 60, &mut out).unwrap();
+        let emitted: Value = serde_json::from_slice(&out).unwrap();
+        assert_eq!(emitted["report"]["rows"].as_array().unwrap().len(), 1);
+        assert_eq!(emitted["report"]["rows"][0]["offset_bytes"], "24");
+    }
     #[test]
     fn exact_wide_values_and_order_survive_json_projection() {
         let mut s = Ch10TimeScanner::new();
@@ -362,7 +400,7 @@ mod tests {
         assert!(out.is_ascii());
         let v: Value = serde_json::from_slice(&out).unwrap();
         assert_eq!(v["schema"], "telemetryworks/irigtime-report");
-        assert_eq!(v["schema_revision"], 2);
+        assert_eq!(v["schema_revision"], 3);
         assert_eq!(v["highest_level"], "error");
         assert_eq!(v["findings"]["error"], "1");
         assert_eq!(v["findings"]["info"], "2");

@@ -7,14 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S17b2 timeline JSON rows (additive schema revision 3)
+
+- Stream timeline JSON row projection one row at a time, including large explicit
+  row limits; extend the true-CLI32MiB RSS gate to100000 rows. Clarify additive
+  enum/reserved-shape compatibility within revision3.
+- Accept timeline --format text|json. Render the same bounded packet-row report
+  in both views; keep analysing the whole file beyond --limit. Expose packet
+  identity, offsets, raw RTC and explicit counter-only/unknown-year clocks.
+- Extend stable schema v1 to revision 3: timeline rows and effective limit;
+  inventory rows/limit stay null. Preserve existing fields and units. Association
+  remains explicitly unestablished, with unknown clock scale/basis until source
+  lineage is qualified; no channel/segment/UTC inference. Extend the RSS gate to
+  timeline JSON. CSV/correlate JSON and remaining qualification goldens stay open.
+
 ### S17b1 packet row projection
 
 - Render timeline and CSV from one packet-row model. Fix counter-only CSV rows
   to contain all 15 header fields; resolved rows and timeline output are unchanged.
   Document CSV units, absent values and quoting in docs/cli-csv-schema.md.
 - Extend package-local include checks to literal include! and path attributes.
-  CLI-105/106 coverage is partial; JSON rows, correlate parity and qualified
-  provenance remain open. Frozen JSON v1/revision 2 is unchanged.
+  CLI-105/106 coverage is partial; correlate parity and qualified provenance
+  remain open. This extraction kept JSON unchanged; S17b2 extends it additively.
 
 ### Package-local compile-time assets
 
