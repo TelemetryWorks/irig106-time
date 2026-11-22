@@ -45,7 +45,7 @@ package, deny, fuzz, schema validation and RSS are delegated to PR CI.
 
 ## PR #101 review delta
 
-At approved b4914cb the four new integration fixtures already pass; no core
+At reviewed b4914cb the four new integration fixtures already pass; no core
 behavior was changed. Tests-only 8f9a2c5 adds: the same channel after a native
 session boundary (own count and day101 endpoint); four closed-channel rows whose
 serialized span exceeds 2 KiB; 1,100 live references (complete, exact valid count);
