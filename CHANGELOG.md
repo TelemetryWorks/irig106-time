@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Bounded native quality core and text session cap
+
+- New public `native_quality::OrderedQuality` accumulates qualified ordered
+  references with constant history: counts, interval/spacing, density, drift and
+  native calendar endpoints with explicit unavailable context. Summary quality
+  integration remains next; the library stays I/O/serde-free.
+- Native summary text shows the first 20 sessions with exact totals and an
+  omitted-count line; JSON retains the full inventory. No schema change.
+
 ### Native session spans in summary
 
 - Summary text/JSON now show recording-wide native counter sessions separately
