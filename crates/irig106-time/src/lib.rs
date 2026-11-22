@@ -174,6 +174,8 @@ pub mod rtc;
 pub mod secondary;
 /// Secondary own-time validation/evidence, independent of counter answers.
 pub mod secondary_packet;
+/// Bounded native session/header spans without retaining the recording.
+pub mod session;
 /// Bounded policy-driven stream answers with explicit caller progress.
 pub mod stream;
 /// Streaming RTC-to-absolute-time correlator for live data.
