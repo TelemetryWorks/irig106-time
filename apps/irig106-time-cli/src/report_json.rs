@@ -267,7 +267,7 @@ fn query_metadata(r: &Report<'_>) -> Option<Value> {
 fn document(r: &Report<'_>, args: &Args, size: u64) -> Value {
     let path = args.input.as_os_str();
     let (bytes, encoding) = native_name(path);
-    json!({"schema": "telemetryworks/irigtime-report", "schema_version": 1, "schema_revision": 10, "schema_status": "stable",
+    json!({"schema": "telemetryworks/irigtime-report", "schema_version": 1, "schema_revision": 11, "schema_status": "stable",
         "tool": {"name": "irigtime", "version": PKG_VERSION, "library_version": PKG_VERSION,
             "source_revision": option_env!("IRIGTIME_SOURCE_REVISION").or(option_env!("GITHUB_SHA"))},
         "input": {"name": path.to_string_lossy(), "name_lossy": path.to_str().is_none(),
@@ -301,7 +301,7 @@ mod tests {
     #[test]
     fn native_document_defers_closed_and_active_spans_until_emission() {
         let mut scanner = Ch10TimeScanner::new();
-        let mut native = native_sessions::NativeSessions::new().unwrap();
+        let mut native = native_sessions::NativeSessions::new(None).unwrap();
         native.observe(0, Rtc::from_raw(20_000_000)).unwrap();
         native.observe(1, Rtc::ZERO).unwrap();
         scanner.native_sessions = Some(native);
@@ -532,7 +532,7 @@ mod tests {
         assert!(out.is_ascii());
         let v: Value = serde_json::from_slice(&out).unwrap();
         assert_eq!(v["schema"], "telemetryworks/irigtime-report");
-        assert_eq!(v["schema_revision"], 10);
+        assert_eq!(v["schema_revision"], 11);
         assert_eq!(v["highest_level"], "error");
         assert_eq!(v["findings"]["error"], "1");
         assert_eq!(v["findings"]["info"], "2");

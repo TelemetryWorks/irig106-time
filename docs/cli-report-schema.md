@@ -1,4 +1,4 @@
-# irigtime JSON report, stable v1, revision 10
+# irigtime JSON report, stable v1, revision 11
 
 The [canonical producer schema](../apps/irig106-time-cli/schema/irigtime-report-v1.schema.json)
 is packaged with the CLI. The [docs snapshot](schema/irigtime-report-v1.schema.json)
@@ -289,3 +289,22 @@ Resource exhaustion labels a prefix (`needs-context`); it never reports complete
 statistics after discarding pending inputs. Closed native spans stream from a
 private disk spool; text still caps its session inventory at 20, JSON emits all.
 Format 2, retrospective session-year qualification and TMATS joining remain open.
+
+
+## Native network quality (revision 11)
+
+`reference_quality.formats` now names pipeline scope `format1+format2`.
+The additive revision rules allow that new scope value; older consumers treat
+an unknown scope as an unsupported quality view, not a malformed document.
+New `ntp_era`, `ntp_era_source` and `ntp_era_inference` state actual CLI context:
+caller-declared signed decimal era or null, with no pivot/era0 guessing. Raw
+seconds+fraction (0,0) stays unknown; fraction-only readings need an era and are
+valid with explicit era0. Context survives native session boundaries.
+
+Native PTP calendar endpoints are TAI, not the report's separate derived UTC
+inventory clocks. Native NTP endpoints add `ntp_leap_status`: covered,
+leap-ambiguous or coverage-unknown, null for non-NTP. Ambiguous UTC is kept but
+cannot supply physical drift. Each channel's `rejection_reason` is the last
+factory decode/context error, null otherwise; invalid TS/reserved NTF admission
+rejections are counted independently. F1 packet years and F2 conversion dates
+are retained; retrospective session-year qualification remains open.

@@ -356,6 +356,49 @@ pub(crate) fn check_capture(packet: &PacketObservation) -> Result<()> {
     }
     Ok(())
 }
+/// Admit one standalone network reference without retaining a timeline.
+/// The caller supplies the real session/key; capture, context and raw RTC must
+/// agree. Reuses engine admission and finding levels, not a new eligibility rule.
+/// No session/year inference, channel selection or shared-policy preparation.
+/// A shared policy requires the timeline engines and is rejected here explicitly.
+/// Source: 106-24R1 §11.2.3.3, Figs 11-15..17; contract §5.2; ADR-0011.
+/// **Traces:** L3-F2COR-101 ← L2-F2COR-101 ← L1-F2COR-001
+/// **Traces:** L3-COR-106 ← L2-COR-106 ← L1-COR-006
+pub fn admit_format2_reference(
+    observation: Format2Observation,
+    context: NtpContext,
+    table: LeapSecondTable,
+    key: PacketKey,
+    policy: &OfflinePolicy,
+    raw_network_rate: bool,
+) -> Result<(TimelineReference, Vec<TimelineFinding>)> {
+    policy.validate()?;
+    let c = observation.capture();
+    if policy.shared.is_some()
+        || key.session == 0
+        || c.session != key.session
+        || context.session != key.session
+        || c.packet != key.packet
+        || c.rtc != Rtc::from_raw(key.ticks as u64)
+    {
+        return Err(TimeError::InvalidTimelineInput(
+            "standalone network capture/context/policy mismatch",
+        ));
+    }
+    let input = ReferenceInput::format2(observation.clone(), context, table, raw_network_rate)?;
+    let packet = PacketObservation {
+        id: c.packet,
+        channel: c.channel,
+        rtc: c.rtc,
+        kind: PacketKind::Time,
+        declared_timein: observation.declared_timein(),
+        declared_external: false,
+        flags: 0,
+        reference: None,
+    };
+    admit_network(input, &packet, key, policy)
+}
+
 pub(crate) fn admit_network(
     mut input: ReferenceInput,
     packet: &PacketObservation,

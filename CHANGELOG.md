@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Native Format 2 summary quality (schema revision 11)
+
+- Native candidate quality includes NTP and both PTP versions alongside Format 1;
+  explicit NTP era and leap-certainty labels are preserved, PTP stays TAI.
+  Session-year inference remains open. Measured text drift retains its ppm unit.
+- New public `reference::admit_format2_reference` validates real capture/key/context
+  scope and reuses native admission without accumulating a timeline. Shared-policy
+  qualification still requires the timeline engines; library stays serde/I/O-free.
+
 ### Native Format 1 quality/calendar summary (schema revision 10)
 
 - Summary adds bounded per-native-session/channel candidate quality and native

@@ -143,6 +143,7 @@
                   "hours": 12,
                   "minutes": 0,
                   "nanoseconds": 0,
+                  "ntp_leap_status": null,
                   "scale": "UTC",
                   "seconds": 0,
                   "year": null
@@ -154,6 +155,7 @@
                   "hours": 12,
                   "minutes": 0,
                   "nanoseconds": 0,
+                  "ntp_leap_status": null,
                   "scale": "UTC",
                   "seconds": 0,
                   "year": null
@@ -162,12 +164,16 @@
                 "min_spacing_ns": null,
                 "references_per_second": null,
                 "rejected": "0",
+                "rejection_reason": null,
                 "unavailable_reason": "fewer than two valid references",
                 "valid": "1"
               }
             ],
-            "formats": "format1",
+            "formats": "format1+format2",
             "include_undeclared": true,
+            "ntp_era": null,
+            "ntp_era_inference": "disabled",
+            "ntp_era_source": "none",
             "pending_cap": "1024",
             "status": "complete",
             "unavailable_reason": null,
@@ -215,7 +221,7 @@
     "total_packets": "1"
   },
   "schema": "telemetryworks/irigtime-report",
-  "schema_revision": 10,
+  "schema_revision": 11,
   "schema_status": "stable",
   "schema_version": 1,
   "tool": {

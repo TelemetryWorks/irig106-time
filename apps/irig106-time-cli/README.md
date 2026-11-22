@@ -306,7 +306,7 @@ passed; `publish = false` remains until the owner’s S20 decision.
 Summary/channels/jumps accept `--format json` (default text), over the same report
 model as text. See the [stable producer schema](https://github.com/TelemetryWorks/irig106-time/blob/main/apps/irig106-time-cli/schema/irigtime-report-v1.schema.json)
 and [compatibility, units and provenance rules](https://github.com/TelemetryWorks/irig106-time/blob/main/docs/cli-report-schema.md).
-The shared envelope is `telemetryworks/irigtime-report`, stable v1, revision 10. JSON is
+The shared envelope is `telemetryworks/irigtime-report`, stable v1, revision 11. JSON is
 ASCII-only; 64/128-bit quantities are decimal strings. Every defined key is
 present; null meanings are field-specific. Consumers ignore unknown fields;
 producer validation stays strict. The schema is frozen after review.
@@ -406,9 +406,9 @@ Native session text lists the first20 known sessions, with exact totals and an
 `N more` line. This is display-only: JSON keeps every session; use `--format json`
 for the full inventory. Recording-wide sessions and channel reset segments stay separate.
 
-Summary additionally reports native **Format 1 candidate quality**, distinct from
+Summary additionally reports native **Format 1/2 candidate quality**, distinct from
 CLI reset segments. Its declaration-free profile includes undeclared candidates
-but invents no TIMEIN declarations; years come only from each packet. Endpoint
+but invents no TIMEIN declarations; dates come from packet bodies or explicit network context. Endpoint
 calendars retain unknown years and native scales. A 1.1 s late queue is bounded
 at 1,024 references and 64 channels per session; exhaustion labels prefix-only
-quality. Format 2 and retrospective session-year qualification remain pending.
+quality. NTP requires --ntp-era for nonzero readings and keeps leap ambiguity/coverage labels; PTP endpoints stay native TAI. Retrospective session-year qualification remains pending.
