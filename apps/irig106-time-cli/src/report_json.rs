@@ -251,7 +251,7 @@ fn query_metadata(r: &Report<'_>) -> Option<Value> {
 fn document(r: &Report<'_>, args: &Args, size: u64) -> Value {
     let path = args.input.as_os_str();
     let (bytes, encoding) = native_name(path);
-    json!({"schema": "telemetryworks/irigtime-report", "schema_version": 1, "schema_revision": 6, "schema_status": "stable",
+    json!({"schema": "telemetryworks/irigtime-report", "schema_version": 1, "schema_revision": 7, "schema_status": "stable",
         "tool": {"name": "irigtime", "version": PKG_VERSION, "library_version": PKG_VERSION,
             "source_revision": option_env!("IRIGTIME_SOURCE_REVISION").or(option_env!("GITHUB_SHA"))},
         "input": {"name": path.to_string_lossy(), "name_lossy": path.to_str().is_none(),
@@ -265,7 +265,7 @@ fn document(r: &Report<'_>, args: &Args, size: u64) -> Value {
             "info": decimal(r.finding_counts[0]), "omitted": decimal(r.omitted_findings()),
             "samples": r.finding_samples.iter().map(|s| json!({"level": level(Some(s.level)), "code": s.code,
                 "message": s.message, "channel": s.channel, "packet": s.packet.map(decimal)})).collect::<Vec<_>>()},
-        "report": {"correlation": query_metadata(r), "qualification": "observed inventory; qualified joining/basis pending", "rows": if args.command == "timeline" { Some(Vec::<Value>::new()) } else { None },
+        "report": {"policy":super::report_policy::value(r),"correlation": query_metadata(r), "qualification": "observed inventory; qualified joining/basis pending", "rows": if args.command == "timeline" { Some(Vec::<Value>::new()) } else { None },
             "total_packets": decimal(r.total_packets), "time_packets": decimal(r.time_packets),
             "references_seen": decimal(r.references_seen), "reference_count": decimal(r.reference_count),
             "references_evicted": decimal(r.references_evicted), "reset_count": decimal(r.reset_count),
@@ -488,7 +488,7 @@ mod tests {
         assert!(out.is_ascii());
         let v: Value = serde_json::from_slice(&out).unwrap();
         assert_eq!(v["schema"], "telemetryworks/irigtime-report");
-        assert_eq!(v["schema_revision"], 6);
+        assert_eq!(v["schema_revision"], 7);
         assert_eq!(v["highest_level"], "error");
         assert_eq!(v["findings"]["error"], "1");
         assert_eq!(v["findings"]["info"], "2");
@@ -524,5 +524,171 @@ mod tests {
         let v = document(&Report::from(&s), &a, 123);
         assert!(v["report"]["jumps"].is_null());
         assert!(v["options"]["threshold_ms"].is_null());
+    }
+    // CLI-106 partial: effective settings must come from actual scanner state.
+    #[test]
+    fn policy_identity_tracks_cache_and_installed_table_not_a_fresh_builtin() {
+        let mut scanner = Ch10TimeScanner::new();
+        let args = args::parse(&["summary", "input", "--format", "json"]).unwrap();
+        let args = match args {
+            args::Request::File(a) => Some(a),
+            _ => None,
+        }
+        .unwrap();
+        let base = document(&Report::from(&scanner), &args, 0);
+        assert_eq!(
+            base["report"]["policy"]["reference_window_ns"],
+            "30000000000"
+        );
+        // Reset metadata must describe the actual comparison/run boundaries.
+        for (rtcs, expected) in [
+            (vec![30, 0], 0),
+            (vec![31, 0], 1),
+            (vec![20, 1, 2], 0),
+            (vec![20, 1, 2, 3], 1),
+        ] {
+            let mut probe = Ch10TimeScanner::new();
+            for rtc in rtcs {
+                let second = (rtc % 60) as u8;
+                let payload = [
+                    0x41,
+                    0,
+                    0,
+                    0,
+                    0,
+                    second / 10 * 16 + second % 10,
+                    0,
+                    0x12,
+                    0,
+                    1,
+                ];
+                probe.process_time_packet(
+                    &payload,
+                    &PktHeader {
+                        channel_id: 7,
+                        data_type: 0x11,
+                        rtc: Rtc::from_raw(rtc * 10_000_000),
+                    },
+                );
+            }
+            let observed = document(&Report::from(&probe), &args, 0);
+            assert_eq!(observed["report"]["reset_count"], expected.to_string());
+            assert_eq!(
+                observed["report"]["policy"]["reset_backward_step_ns"],
+                "30000000000"
+            );
+            assert_eq!(observed["report"]["policy"]["reset_run_references"], "3");
+        }
+        for i in 0..1050 {
+            scanner.correlator.add_reference(
+                7,
+                Rtc::from_raw(i),
+                AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(),
+            );
+        }
+        let value = document(&Report::from(&scanner), &args, 0);
+        assert_eq!(scanner.correlator.len(), 1024);
+        assert_eq!(
+            value["report"]["policy"]["reference_cap"],
+            scanner.correlator.len().to_string()
+        );
+        scanner.correlator = StreamingTimeCorrelator::with_reference_limit(
+            NanosDuration::new(47_000_000_000),
+            REFERENCE_CAP,
+        );
+        scanner.leap_table = LeapSecondTable::empty();
+        let value = document(&Report::from(&scanner), &args, 0);
+        let policy = &value["report"]["policy"];
+        assert_eq!(policy["reference_window_ns"], "47000000000");
+        assert_eq!(policy["leap_table"]["id"], "empty");
+        assert_eq!(policy["leap_table"]["source"], "caller");
+        assert_eq!(policy["leap_table"]["entries"], "0");
+        assert_eq!(policy["leap_table"]["supported_start_unix_s"], "63072000");
+        assert_eq!(
+            policy["leap_table"]["known_current_through_unix_s"],
+            "63072000"
+        );
+    }
+    // CLI-106 partial: compare the JSON claims to the isolated pool itself.
+    #[test]
+    fn policy_matches_actual_isolated_window_and_pooled_eviction_cap() {
+        let mut scanner = Ch10TimeScanner::new();
+        let args = match args::parse(&["summary", "input", "--format", "json"]).unwrap() {
+            args::Request::File(a) => Some(a),
+            _ => None,
+        }
+        .unwrap();
+        for i in 0..1050 {
+            scanner.isolated.observe(
+                7 + (i % 2) as u16,
+                Rtc::from_raw(i),
+                AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(),
+            );
+        }
+        let value = document(&Report::from(&scanner), &args, 0);
+        let policy = &value["report"]["policy"];
+        for ch in [7, 8] {
+            assert_eq!(
+                policy["reference_window_ns"],
+                scanner.isolated.actual_window_ns(ch).unwrap().to_string()
+            );
+        }
+        let (actual_refs, actual_order) = scanner.isolated.counts();
+        assert_eq!(policy["reference_cap"], actual_refs.to_string());
+        assert_eq!(policy["reference_cap"], actual_order.to_string());
+        assert_eq!(actual_refs, 1024);
+    }
+    // CLI-106 partial: exercise the actual sampling paths, not just constants.
+    #[test]
+    fn policy_sample_caps_match_retained_findings_and_jump_samples() {
+        let mut scanner = Ch10TimeScanner::new();
+        scanner.jump_threshold = Some(0);
+        for i in 0..35 {
+            scanner.note(Severity::Warning, format!("finding {i}"));
+        }
+        // Fig11-12/13: UTC FMT4, DOY10012:mm:ss; +2s clock per+1s RTC
+        // yields31 literal+1s jumps, more than either20-sample bound.
+        for i in 0..32u64 {
+            let seconds = (2 * i % 60) as u8;
+            let minutes = (2 * i / 60) as u8;
+            let payload = [
+                0x41,
+                0,
+                0,
+                0,
+                0,
+                seconds / 10 * 16 + seconds % 10,
+                minutes,
+                0x12,
+                0,
+                1,
+            ];
+            scanner.process_time_packet(
+                &payload,
+                &PktHeader {
+                    channel_id: 7,
+                    data_type: 0x11,
+                    rtc: Rtc::from_raw(i * 10_000_000),
+                },
+            );
+        }
+        let args = match args::parse(&["summary", "input", "--format", "json"]).unwrap() {
+            args::Request::File(a) => Some(a),
+            _ => None,
+        }
+        .unwrap();
+        let value = document(&Report::from(&scanner), &args, 0);
+        let policy = &value["report"]["policy"];
+        assert_eq!(
+            policy["finding_sample_cap"],
+            scanner.finding_samples.len().to_string()
+        );
+        assert_eq!(policy["jump_sample_cap"], scanner.jumps.len().to_string());
+        assert_eq!(
+            policy["finding_sample_cap"],
+            FINDING_SAMPLE_LIMIT.to_string()
+        );
+        assert_eq!(policy["jump_sample_cap"], JUMP_SAMPLE_LIMIT.to_string());
+        assert_eq!(scanner.jumps_seen, 31);
     }
 }

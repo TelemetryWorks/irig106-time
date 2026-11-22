@@ -324,6 +324,29 @@
       "samples": []
     },
     "last_rtc": "40000000",
+    "policy": {
+      "defaults_id": "telemetryworks/irigtime-cli-defaults-v1",
+      "drift_correction": false,
+      "finding_sample_cap": "20",
+      "id": "telemetryworks/irigtime-cli-nearest-v1",
+      "jump_sample_cap": "20",
+      "leap_table": {
+        "entries": "28",
+        "id": "IERS-C72-2026-07-06/6cb6f5d4b819f2e568e25db4b0b26d89dedf031fdffb18bc94d40f4e94e268d7",
+        "known_current_through_unix_s": "1814140799",
+        "source": "https://hpiers.obspm.fr/iers/bul/bulc/Leap_Second.dat (Bulletin C72)",
+        "supported_start_unix_s": "63072000"
+      },
+      "query_candidates_per_channel": "6",
+      "query_reference_storage": "target-brackets",
+      "reference_cap": "1024",
+      "reference_selection": "nearest-reference-counter-offset",
+      "reference_window_ns": "30000000000",
+      "reset_backward_comparison": "strictly-greater",
+      "reset_backward_step_ns": "30000000000",
+      "reset_run_order": "strictly-increasing-behind-baseline",
+      "reset_run_references": "3"
+    },
     "qualification": "observed inventory; qualified joining/basis pending",
     "reference_count": "3",
     "references_evicted": "0",
@@ -335,7 +358,7 @@
     "total_packets": "5"
   },
   "schema": "telemetryworks/irigtime-report",
-  "schema_revision": 6,
+  "schema_revision": 7,
   "schema_status": "stable",
   "schema_version": 1,
   "tool": {

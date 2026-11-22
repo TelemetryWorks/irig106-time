@@ -87,7 +87,7 @@ command-specific structured findings, exact wide values and reset segments.
 `channels` does not evaluate jumps; its jumps/threshold are null. JSON stdout is
 ASCII-only. Names remain as given. The producer schema is strict and consumers
 ignore unknown fields within a supported schema version. The schema is frozen as
-stable v1, revision 6. Discard output on operational failure (an output error may leave a
+stable v1, revision 7. Discard output on operational failure (an output error may leave a
 partial JSON stream).
 
 Packet CSV column units, quoting and absent values: [CSV column schema](cli-csv-schema.md).
@@ -135,3 +135,11 @@ RTC is scale unknown. Text suffixes and JSON basis follow that reference,
 including closed reset segments, not the packet's own or latest channel FMT.
 Numeric values/unknown years and CSV columns are unchanged; no data-channel
 association is inferred from this counter-reference choice.
+
+
+## Effective report policy (revision 7)
+
+`report.policy` records the CLI nearest-reference/default identities, actual
+live window/cap, query brackets, reset thresholds and installed leap table,
+even without findings. These are CLI compatibility settings, not native
+SharedPolicy/Standard/Interpolate claims. See the [schema contract](cli-report-schema.md).

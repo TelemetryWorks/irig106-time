@@ -1,4 +1,4 @@
-# irigtime JSON report, stable v1, revision 6
+# irigtime JSON report, stable v1, revision 7
 
 The [canonical producer schema](../apps/irig106-time-cli/schema/irigtime-report-v1.schema.json)
 is packaged with the CLI. The [docs snapshot](schema/irigtime-report-v1.schema.json)
@@ -167,12 +167,42 @@ invalid reference usable. Older consumers ignore this additive field. Timeline
 and correlate text append the same protocol/TS facts, explicitly prefixed
 `[packet: ...]` and `[reference: ...]` respectively. CSV separately exposes
 packet facts under its approved [19-column append-only contract](cli-csv-schema.md);
-the JSON schema stays at revision6.
+the CSV addition itself changes no JSON fields; policy metadata is revision7.
 
 
 F1 clock qualification uses the already-reviewed version1 scale/basis enums:
-no key, type, unit, enum value or schema revision changes (revision6). Text now
+that F1 label fix introduced no key/type/unit/enum/revision change in revision6. Text now
 suffixes F1 row/query clocks with `UTC (assumed, RDG-009)`, `UTC (stated FMT)`,
 `GPS (stated FMT)` or `scale unknown`. Native GPS values are not converted to
 UTC. No year, origin or data-channel/time-channel association is inferred.
 The19-column CSV remains basis-free and unchanged.
+
+
+## Effective report policy (revision 7)
+
+`report.policy` identifies the actual CLI nearest-reference counter-offset
+algorithm and its versioned defaults, not the native library SharedPolicy or
+Standard/Interpolate modes. It records the live30s/1024-reference bounds, separate
+six-candidate-per-channel query brackets, immediate reset strictly above30s and
+three strictly increasing behind-baseline references for a short reset. Bounds
+are reader/resource policy, not standard packet limits. Main global-age and
+isolated channel-age pools each have their own1024 shared budget; query brackets
+preserve old requested RTCs independently of those live caches.
+
+The installed leap table's ID, source, transition count and inclusive supported/
+current-through Unix-second bounds are retained even if no PTP value uses it.
+Counts, ns and Unix seconds are decimal strings. No table is fetched or host
+clock consulted. Effective jump threshold remains in `options.threshold_ms`.
+The policy ID changes with the CLI correlation algorithm; the defaults ID changes
+with fixed defaults. These CLI identities must not be substituted for native
+library policy IDs. Metadata applies to the whole report, including rows/answers,
+and is emitted without findings. It does not establish source association or
+claim a complete native answer-policy replay snapshot. Older consumers ignore
+this additive field under the version1 compatibility rule.
+
+
+Unreleased revision7 also records `finding_sample_cap` and `jump_sample_cap`
+as decimal-string counts, each20 by default, from the separate constants used
+by those sampling paths. Omitted/total counts remain exact. Isolated cache
+window/cap coupling is tested against instantiated channel caches and actual
+pooled evictions, not just the main cache or a repeated default literal.
