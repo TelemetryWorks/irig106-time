@@ -11,7 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Schema revision6 adds packet-observed and query-reference `network_time` facts
   (NTF/protocol, TS/status). Timeline/correlate text now shows the same facts,
-  retaining reserved values and facts without a clock. Reset spools preserve
+  retaining reserved values and facts without a clock. Text explicitly prefixes
+  these as `[packet: ...]` for timeline and `[reference: ...]` for correlate,
+  separating the observed CSDW from the clock source. Reset spools preserve
   the selected reference; numeric correlation and CSV columns are unchanged.
 
 ### S17 full-adapter golden and clause audit

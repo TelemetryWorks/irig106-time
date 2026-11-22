@@ -2,7 +2,8 @@
 
 Base main2610636(#91 merged). Partial L1-CLI-005 -> L2/L3-CLI-105;
 no whole Requirements marker, Review/Design or requirement-statement change.
-CSV is unchanged pending coordinator approval of the proposed18-column contract.
+CSV is unchanged; the coordinator-approved19-column append-only contract
+follows separately after #92 merges.
 Later assigned F1 basis, policy identity, NTP era, CI schema validation, native
 session/quality and documentation slices are not claimed here.
 
@@ -41,7 +42,28 @@ schema-sync/trace/diff checks only; CI carries platform/package/security and RSS
 Matrix remains198 tested/206 verified of288, with no whole coverage gain.
 
 
-CSV proposal (not implemented or approved here): append network_time_format,
-network_protocol,time_status to the existing15 columns; raw NTF/TS integers,
-closed protocol names as JSON, empty for non-F2/missing CSDW. Await coordinator
-approval of the exact18-column list in the PR before changing the CSV contract.
+The initial18-column CSV proposal is superseded by the coordinator-approved
+19-column contract: append network_time_format,network_protocol,time_status,
+time_status_name (Valid/NotValid/RSVD-n). Future columns append only, never
+reorder/remove; empty for non-F2/missing CSDW; packet facts, not clock source.
+Implementation remains a separate PR after #92 merges.
+
+## #92 wording review
+
+Tests-only18040ec: three runtime failures before the fix; existing JSON/source
+selection control passes. The reviewer's wire fixture is ch9 PTP2008 TS1 atRTC0,
+ch10 PTP2002 TS1 atRTC1, then ch9 PTP2008 TS0 atRTC2. Ch10's UTC00:01:40
+plus1s supplies row3's00:01:41 clock; ch9 would give00:00:02 from its prior
+reference, and its invalid body would give00:08:20. The row must end with
+`[packet: IEEE1588-2008 TS=0 not-valid]`. The any-channel query atRTC5 instead
+uses00:01:44 and `[reference: IEEE1588-2002 TS=1 valid]`.
+
+The change only prefixes existing text annotations at their three render sites:
+timeline packet rows, any-channel correlate and channel/segment answers. JSON,
+numeric selection, schema revision6, CSV and findings are unchanged. The256-case
+text expectations and reset-spool labels now include the appropriate prefix.
+No whole requirement marker, Review/Design change or coverage increase.
+
+Three additional compiling scope-swap mutants fail: timeline labelled reference,
+any-channel correlate labelled packet, and channel/segment correlate labelled
+packet. Source restored; the22 focused network/stale/query tests pass.

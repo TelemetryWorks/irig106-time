@@ -46,7 +46,8 @@ impl PacketRow {
                     .as_ref()
                     .map(|t| super::clock_basis::text(t, self.basis))
                     .unwrap_or_else(|| "N/A".to_string()),
-                self.network_time
+                self.network_time,
+                "packet",
             ),
         )
     }

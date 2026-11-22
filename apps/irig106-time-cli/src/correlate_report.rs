@@ -42,7 +42,7 @@ impl Answer {
             .unwrap_or_else(|| {
                 format!("unresolved: {}", self.issue.as_deref().unwrap_or_default())
             });
-        let value = super::NetworkFacts::annotate(value, self.network_time);
+        let value = super::NetworkFacts::annotate(value, self.network_time, "reference");
         if self.labelled {
             writeln!(
                 out,
@@ -155,7 +155,8 @@ impl Query<'_> {
                     "  Any channel  → {}",
                     super::NetworkFacts::annotate(
                         clock_basis::text(t, self.any_basis),
-                        self.any_network
+                        self.any_network,
+                        "reference",
                     )
                 )?,
                 Err(e) => writeln!(out, "  Any channel  → {:?}: {e}", decode_level(e))?,

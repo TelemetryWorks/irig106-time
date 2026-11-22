@@ -163,5 +163,6 @@ an applicable selected F2 answer. Keys are `ntf` (raw0..15), `protocol` (NTP,
 IEEE1588-2002, IEEE1588-2008, reserved), `ts` (raw0..15), `status` (not-valid,
 valid, reserved). Facts never establish data-channel association or make an
 invalid reference usable. Older consumers ignore this additive field. Timeline
-and correlate text append the same protocol/TS facts. CSV awaits a separately
-approved column-contract change and stays unchanged here.
+and correlate text append the same protocol/TS facts, explicitly prefixed
+`[packet: ...]` and `[reference: ...]` respectively. CSV stays unchanged here;
+the approved19-column append-only contract follows in a separate PR after #92.

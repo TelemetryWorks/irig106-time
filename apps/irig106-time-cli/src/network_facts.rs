@@ -13,7 +13,7 @@ impl NetworkFacts {
         json!({"ntf":ntf,"protocol":match ntf {0=>"NTP",1=>"IEEE1588-2002",2=>"IEEE1588-2008",_=>"reserved"},
             "ts":ts,"status":match ts {0=>"not-valid",1=>"valid",_=>"reserved"}})
     }
-    pub(super) fn annotate(value: String, facts: Option<Self>) -> String {
+    pub(super) fn annotate(value: String, facts: Option<Self>, scope: &str) -> String {
         let Some(facts) = facts else {
             return value;
         };
@@ -30,6 +30,6 @@ impl NetworkFacts {
             1 => "valid",
             _ => "reserved",
         };
-        format!("{value} [{protocol} TS={ts} {status}]")
+        format!("{value} [{scope}: {protocol} TS={ts} {status}]")
     }
 }
