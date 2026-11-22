@@ -74,3 +74,11 @@ Library quality reasons, scales, unknown years and rejected references must
 remain honest. No native CLI summary/quality clause is marked covered here.
 Item7 docs/migration and the full published TMATS0.1 + bounded time view + owner
 approval gate remain open; no dependency or source association is invented.
+
+CI45005105600 caught the public-type inventory omission on all three OSes before
+remaining library tests: three new values and SessionClock were unclassified.
+Register the Copy/Eq/Hash span/start/update values with actual trait assertions,
+and the mutable clock with controllers (its Clone/Debug/Send/Sync assertions are
+in the new tests). The guard remains exact; no wildcard/exemption was added.
+The failed run was canceled to stop its remaining RSS work. Focused inventory
+and session tests pass after correction; the succeeding run is final CI evidence.

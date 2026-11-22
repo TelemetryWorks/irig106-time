@@ -11,7 +11,7 @@ use crate::{
 };
 
 /// Why a reader began this session; inferred boundaries are policy, not wire facts.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SessionStart {
     /// First observed packet.
     Initial,
@@ -22,7 +22,7 @@ pub enum SessionStart {
 }
 /// Observed header span across all channels in one native session.
 /// First/last are file-order observations; low/high are unwrapped extrema.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SessionSpan {
     /// Boundary provenance; does not establish data/time-channel association.
     pub start: SessionStart,
@@ -38,7 +38,7 @@ pub struct SessionSpan {
     pub packets: u64,
 }
 /// One atomic progress result; a closed span is returned once at a boundary.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SessionUpdate {
     /// Native query position of this observation.
     pub key: PacketKey,

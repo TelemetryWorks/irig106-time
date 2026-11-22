@@ -39,6 +39,7 @@ fn public_value_derive_inventory() {
     covered.extend(values! { secondary::SecondaryHeaderTime, secondary::SecondaryChecksum });
     covered.extend(values! { secondary_packet::TimeApplicability, secondary_packet::SecondaryPacket<'static>, secondary_packet::SecondaryPolicy, secondary_packet::RtcErtcCheck, secondary_packet::SecondaryInspection, secondary_packet::SecondaryWithCounter<'static, own_time::CounterAnswer<'static>>, secondary_packet::ChecksumCounts });
     covered.extend(values! { stream::StreamMode, stream::BufferCaps, stream::StreamPolicy, stream::StreamChannel, stream::StreamChannelChoice, stream::ReleaseReason, stream::StreamBasis, stream::StreamAnswer, stream::StreamBatch, stream::BufferUsage });
+    covered.extend(values! { session::SessionStart, session::SessionSpan, session::SessionUpdate });
     covered.extend(values! { streaming::StreamingRef });
     covered.extend(values! { timeline::ReferenceStrategy, timeline::ChannelChoice, timeline::OfflinePolicy, timeline::TimelineFinding, timeline::PacketKind, timeline::YearOrigin, timeline::ReferenceValue, timeline::ReferenceInput, timeline::PacketObservation, timeline::PacketKey, timeline::Rejection, timeline::TimelineReference, timeline::OfflineSession, timeline::ReferencePosition, timeline::OfflineBasis, timeline::OfflineAnswer, timeline::OfflineQuality });
     covered.extend(values! { version::Format2Availability });
@@ -74,6 +75,7 @@ fn fixed_scalar_recording_metadata_derive_inventory() {
     scalars! { secondary::SecondaryHeaderTime, secondary::SecondaryChecksum }
     scalars! { secondary_packet::ChecksumCounts }
     scalars! { stream::StreamMode, stream::BufferCaps, stream::StreamChannel, stream::StreamChannelChoice, stream::ReleaseReason, stream::BufferUsage }
+    scalars! { session::SessionStart, session::SessionSpan, session::SessionUpdate }
     scalars! { streaming::StreamingRef }
     scalars! { timeline::ReferenceStrategy, timeline::ChannelChoice, timeline::PacketKind, timeline::YearOrigin, timeline::ReferenceValue, timeline::PacketKey, timeline::Rejection, timeline::ReferencePosition }
     scalars! { version::Format2Availability }
@@ -92,6 +94,7 @@ fn verify_inventory(covered: &[&str]) {
         "timeline::TimelineBuilder",
         "timeline::OfflineTimeline",
         "stream::StreamTimeline",
+        "session::SessionClock",
         "declarations::DeclarationAudit",
         "secondary_packet::SecondaryAudit",
     ]
