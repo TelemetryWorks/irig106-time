@@ -251,23 +251,31 @@ fn era_syntax_errors_precede_input_and_extreme_values_never_panic() {
         );
     }
     let input = Input::new(63104, 0);
-    for era in [
-        "-1",
-        "0",
-        "1",
-        "9223372036854775807",
-        "-9223372036854775808",
-    ] {
-        let result = std::panic::catch_unwind(|| input.output("summary", true, Some(era), "never"));
-        assert!(result.is_ok());
-        let (exit, out, _) = result.unwrap();
+    for era in ["-1", "0", "1", "-14", "59"] {
+        let (exit, out, _) = input.output("summary", true, Some(era), "never");
         assert_eq!(exit, ExitClass::Success);
         let v: Value = serde_json::from_str(&out).unwrap();
         assert_eq!(v["options"]["ntp_era"], era);
-        if era.len() > 15 {
-            assert_eq!(v["highest_level"], "warning");
-            assert!(v["report"]["channels"][0]["first"].is_null());
-        }
+    }
+    // Proleptic Gregorian year0 inclusive to year10000 exclusive, relative1900:
+    // [-59958230400,255611289600) seconds. Floor-divide endpoints by2^32.
+    for (era, expected) in [
+        ("-15", ExitClass::Usage),
+        ("-14", ExitClass::Input),
+        ("59", ExitClass::Input),
+        ("60", ExitClass::Usage),
+        ("9223372036854775807", ExitClass::Usage),
+        ("-9223372036854775808", ExitClass::Usage),
+    ] {
+        assert_eq!(
+            run(
+                &["summary", "missing.ch10", "--ntp-era", era],
+                &mut Vec::new(),
+                &mut Vec::new()
+            ),
+            expected,
+            "{era}"
+        );
     }
 }
 
@@ -310,5 +318,79 @@ fn declared_era_does_not_repair_status_and_survives_reset_spooling() {
             a["clock"]["basis"],
             "caller-declared era, leap coverage uncertain"
         );
+    }
+}
+
+#[test]
+fn fraction_only_requires_declaration_and_plain_basis_survives_every_path() {
+    let input = Input::new(0, 0x80000000);
+    let (_, out, _) = input.output("timeline", true, None, "never");
+    let v: Value = serde_json::from_str(&out).unwrap();
+    assert!(v["report"]["rows"][0]["clock"].is_null());
+    assert_eq!(v["report"]["policy"]["ntp_era_source"], "none");
+    assert_eq!(v["report"]["policy"]["ntp_era_inference"], "disabled");
+    assert!(
+        v["findings"]["samples"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f["message"]
+                .as_str()
+                .unwrap()
+                .contains("NTP era/basis required"))
+    );
+    // RFC5905 §6: seconds+fraction BOTH zero is the sentinel. With era0,
+    // a fraction-only wire value legitimately dates1900-01-01.
+    let (_, out, _) = input.output("timeline", true, Some("0"), "never");
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let c = &v["report"]["rows"][0]["clock"];
+    assert_eq!(c["year"], 1900);
+    assert_eq!(c["day"], 1);
+    assert_eq!(c["nanosecond"], 500000000);
+    assert!(
+        !v["findings"]["samples"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f["code"] == "TF-029")
+    );
+
+    // Covered2017-01-02, not ambiguity/uncertain coverage: exact plain basis.
+    // Force a reset so correlate reloads the first answer from its segment spool.
+    let mut bytes = Vec::new();
+    for (rtc, seconds) in [
+        (0u64, 3692304000),
+        (40, 3692304040),
+        (0, 3692304060),
+        (10, 3692304070),
+    ] {
+        let wire = Input::new(seconds, 0x80000000);
+        let mut p = std::fs::read(&wire.0).unwrap();
+        p[16..22].copy_from_slice(&(rtc * 10_000_000).to_le_bytes()[..6]);
+        checksum(&mut p);
+        bytes.extend(p);
+    }
+    std::fs::write(&input.0, bytes).unwrap();
+    for cmd in ["summary", "timeline", "correlate"] {
+        let (_, out, _) = input.output(cmd, true, Some("0"), "never");
+        let v: Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(v["report"]["policy"]["ntp_era_source"], "caller-declared");
+        assert_eq!(v["report"]["policy"]["ntp_era_inference"], "disabled");
+        assert_eq!(
+            v["report"]["channels"][0]["first"]["basis"],
+            "caller-declared era"
+        );
+        if cmd == "timeline" {
+            for row in v["report"]["rows"].as_array().unwrap() {
+                assert_eq!(row["clock"]["basis"], "caller-declared era");
+            }
+        }
+        if cmd == "correlate" {
+            let answers = v["report"]["correlation"]["answers"].as_array().unwrap();
+            assert_eq!(answers.len(), 2);
+            for a in answers {
+                assert_eq!(a["clock"]["basis"], "caller-declared era");
+            }
+        }
     }
 }
