@@ -42,32 +42,10 @@ Full file overview: packet counts, time channels, RTC range, time jump detection
 irigtime summary flight_042.ch10
 ```
 
-```
-================================================================
-irigtime — IRIG 106 Time Analysis
-================================================================
-
-File               : flight_042.ch10
-File Size          : 1,234,567,890 bytes
-Total Packets      : 2,456,789
-Time Packets (0x11): 3,612
-Time Channels      : 2
-Correlation Refs   : 3,612
-
-RTC Range          : 0x00000098A600 → 0x0000E8D4A510
-RTC Duration       : 3612.000 seconds (60.2 minutes)
-
-Time Channels
-─────────────
-  Channel   3  │  Source: External      Format: IRIG-B   Date: DOY   Leap: No   Packets: 1,806
-                │  First: 100:12:30:25.340000000 UTC (assumed, RDG-009)
-                │  Last:  100:13:00:37.340000000 UTC (assumed, RDG-009)
-  Channel   7  │  Source: External      Format: UTC      Date: DOY   Leap: No   Packets: 1,806
-                │  First: 100:12:30:28.840000000 UTC (stated FMT)
-                │  Last:  100:13:00:40.840000000 UTC (stated FMT)
-
-Time Jumps         : None detected (threshold: 1 second)
-```
+Summary includes both0x11 and0x12 time packets, file-wide compatibility counters,
+per-channel reset segments and a separate recording-wide native session/quality
+section. See the checked synthetic goldens rather than treating an illustrative
+transcript as output from a real recording.
 
 ### channels
 
@@ -87,7 +65,7 @@ irigtime jumps flight_042.ch10
 irigtime jumps flight_042.ch10 --threshold-ms 500
 ```
 
-Flags GPS lock events, clock resets, or any point where absolute time jumps relative to what the RTC progression predicts.
+Reports observed time discontinuities relative to RTC progression. A jump alone does not establish GPS lock state or a native session boundary.
 
 ### timeline
 
@@ -106,23 +84,19 @@ Export every packet's timestamp to CSV for analysis in pandas, Excel, or your da
 irigtime csv flight_042.ch10 --output times.csv
 ```
 
-Columns: `packet_num, offset_hex, channel_id, data_type_hex, data_type_name, rtc_raw, rtc_nanos, day_of_year, hours, minutes, seconds, nanoseconds, year, month, day`
+Columns (19, append-only): `packet_num,offset_hex,channel_id,data_type_hex,data_type_name,rtc_raw,rtc_nanos,day_of_year,hours,minutes,seconds,nanoseconds,year,month,day,network_time_format,network_protocol,time_status,time_status_name`. The last four describe the packet, not its resolved clock source.
 
 ### correlate
 
 Resolve a single RTC value against all available time channels. Useful for debugging specific packets.
 
 ```sh
-irigtime correlate flight_042.ch10 0x00009896800
+irigtime correlate flight_042.ch10 0x00989680
 ```
 
-```
-Resolving RTC 0x00009896800 (10000000 ticks, 1000000000 ns)
-
-  Any channel  → 100:12:30:25.340000000
-  Channel   3  → 100:12:30:25.340000000
-  Channel   7  → 100:12:30:28.840000000
-```
+Answers use the shared day-of-year/nanosecond clock format, protocol/reference
+labels and explicit basis. Overlapping reset segments are listed independently
+with an ambiguity finding; no fabricated transcript is shown here.
 
 ## Bounded input and report memory
 
@@ -131,10 +105,12 @@ or mmap. Finding samples and correlation storage are bounded, and jump/gap
 statistics are accumulated online. The CI RSS gate requires true CLI peaks below 32MiB across all six commands
 on both the 384MiB reset/late workload and a reset-free four-channel phase
 with 400,000 F1 references, limited timeline output and CSV file spooling.
-Measured true CLI peaks were 2,968–3,392KiB across both phases; an unbounded
+The original gate measured 2,968–3,392KiB; later revision 13 summary/replay evidence
+is in verification-s17-cli-year-replay.md. These are dated measurements, not a
+fixed peak promised for every build. An unbounded
 reference-retention mutant failed at 46,692KiB. See [the measured evidence](https://github.com/TelemetryWorks/irig106-time/blob/main/docs/verification-s16b-final-rss.md).
 This workload is memory evidence, not complete qualified-joining coverage;
-S17 joining remains incomplete. Publishing is still disabled until S20.
+TMATS-qualified joining remains gated. Publishing is still disabled until S20.
 
 ## CSV transactions
 
@@ -176,8 +152,8 @@ Apache-2.0
 
 All option values are separate arguments. Unknown/inapplicable/duplicate options,
 missing values or extra positional arguments return2 before opening input.
-`--threshold-ms` accepts unsigned decimal0..18446744073709 (default1000);
-`--limit` accepts positive decimal fitting usize (default100). RTC is48-bit hex,
+`--threshold-ms` accepts unsigned decimal0..18446744073709 (default 1000);
+`--limit` accepts positive decimal fitting usize (default 100). RTC is48-bit hex,
 with an optional0x prefix. Help: `irigtime --help` or `irigtime COMMAND --help`.
 Use `irigtime summary -- '-capture file.ch10'` for a dash-leading filename;
 place options before `--`. Native OS paths are preserved. The library's source
@@ -195,10 +171,10 @@ findings, 2 usage, 3 fatal input, 4 output.
 or `never`, as a separate argument. Default: `error`. Exit1 occurs if any
 finding is at or above the selected level (`error > warning > info`); `never`
 disables only exit1. Accept the option on every command, including help/version,
-where a valid option has no effect. Unknown values and duplicates are usage2.
+where a valid option has no effect. Unknown values and duplicates are usage 2.
 
-Precedence is usage2 first, then the first fatal input3/output4, then findings1,
-then success0. Validate all usage before opening input; finish output and both
+Precedence is usage 2 first, then the first fatal input 3/output 4, then findings 1,
+then success 0. Validate all usage before opening input; finish output and both
 flushes before selecting a finding-only result. Diagnostics after fatal errors
 are attempted where possible and cannot replace that first fatal class.
 CSV temp creation and row writes interleave with input analysis. Order is usage
@@ -376,11 +352,11 @@ SharedPolicy/Standard/Interpolate claims. See the [schema contract](../../docs/c
 (all six file commands). Example: `irigtime timeline flight.ch10 --ntp-era 1`.
 Values are separate decimal arguments; missing/duplicate/invalid/out-of-range values give2
 before input access. No option means needs-context, never a host-clock/F1-date
-pivot or era0 guess. Era0 begins1900; era1 begins2036 and ends2172 (136-year
+pivot or era 0 guess. Era0 begins1900; era1 begins2036 and ends 2172 (136-year
 wrap, not the68-year pivot interval). UTC clocks say caller-declared era, with
 leap ambiguity/coverage uncertainty retained. No cumulative TAI-UTC is added.
 Only seconds **and** fraction both zero are TF-029/no body time (RDG-012;
-coordinator-confirmed2026-11-22). With declared era0, seconds0 plus a nonzero
+coordinator-confirmed2026-11-22). With declared era 0, seconds0 plus a nonzero
 fraction legitimately maps1900-01-01; without an option it stays needs-context.
 The accepted era range comprises every era overlapping Gregorian years0..=9999;
 individual instants beyond that calendar still need context. The exact supported
@@ -412,3 +388,9 @@ but invents no TIMEIN declarations; dates come from same-session DMY evidence or
 calendars retain unknown years and native scales. A 1.1 s late queue is bounded
 at 1,024 references and 64 channels per session; exhaustion labels prefix-only
 quality. NTP requires --ntp-era for nonzero readings and keeps leap ambiguity/coverage labels; PTP endpoints stay native TAI. Revision 13 replays raw time prefixes from a private temporary disk file (62 bytes per time packet), using native YEAR-PHASE/D9 and retaining rejected leap-label flags. Earlier DOY values can use a later DMY anchor; missing years remain partial, and anchors never cross native session/year-context gaps. Endpoint year evidence includes the selected source, DMY packet ID and contradictory candidates. No caller-year or TMATS date is guessed. New year-derived TF-004/007/032 and year-context TF-020 facts use their approved levels; baseline decode/jump findings remain separate. Temporary disk use grows with time-packet count; RAM remains capped.
+
+
+Current usage and migration are in [usage](https://github.com/TelemetryWorks/irig106-time/blob/main/docs/usage.md)
+and [0.8 migration](https://github.com/TelemetryWorks/irig106-time/blob/main/docs/MIGRATING-0.8.md).
+This implementation targets106-24R1; the0.0.1 registry placeholder is not this
+unreleased CLI. Build from the workspace; no install/publish/tag is authorized.

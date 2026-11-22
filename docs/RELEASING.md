@@ -69,26 +69,27 @@ library first. See [asset verification](verification-package-assets.md).
   [release deferrals](analysis/plan-decisions-2026-11-13.md#release-scope).
   Do not treat a trace-matrix link as complete clause coverage. Offline
   drift-corrected query mode is after 0.8.0.
-- Publish `irig106-types` through its own authorized release process before
-  replacing this repository's git dependency with a crates.io version. No
-  dependency change is made by this documentation PR.
+- `irig106-types` 0.1 registry adoption is complete; retain final lock/checksum
+  and dependency-policy evidence. No git-to-registry migration remains.
 - Release `irig106-time` and `irig106-time-cli` together as 0.8.0 (ADR-0007),
   with the CLI using the matching exact library version; make the approved
   version/lockfile changes in the release preparation PR.
-- Refresh README, usage and migration documentation to 106-24R1. Finalize
+- Current README/usage/examples and [migration](MIGRATING-0.8.md) target106-24R1.
+  Reconcile any subsequent integration changes before release. Finalize
   CHANGELOG 0.8.0 with T-1..T-17 and their effects on old answers, API migrations,
   MSRV, policy decisions, unresolved readings and these release deferrals.
   Do not yank 0.1.0..0.7.0 (ADR-0017).
-- Apply owner2026-11-17 [ADR-0019](adr/0019-json-belongs-to-the-cli.md):
-  remove library serde/JSON code, feature/dependency/forwarding in0.8.0 and
-  document the breaking migration from0.1–0.7 to CLI JSON output. Keep native
-  AnswerView/replay; irig106-types' own serde feature remains unchanged.
-  The Q3 library rehydration deferral is moot, not a remaining load obligation.
-- Review the CLI's versioned JSON report schema once before freeze (Q5).
-  Verify units, decimal-string64/128-bit values and raw/stated/assumed provenance
+- Library serde/JSON removal under owner2026-11-17 [ADR-0019](adr/0019-json-belongs-to-the-cli.md)
+  is complete. Keep that boundary, native AnswerView/replay and the types crate's
+  independent serde feature; the Q3 library rehydration deferral is moot.
+- The CLI schema received its single review and is stable v1/revision 13.
+  Follow the reviewed additive/breaking rules for subsequent changes (Q5).
+  Verify units, decimal-string 64/128-bit values and raw/stated/assumed provenance
   in emitted output. There is no library JSON loading or CLI input requirement.
-- Run the full CI equivalent with bounded resources (`CARGO_BUILD_JOBS=2`),
-  requirements/matrix checks, final package-content inspection and
+- Keep the full GitHub CI matrix green. Under the compute rule, local checks
+  stay focused (fmt/touched tests/Clippy); do not duplicate unchanged CI jobs.
+  Release-task validation still needs requirements/matrix checks,
+  final package-content inspection and
   `cargo publish --dry-run` for **both** packages, using their manifests.
   A dry run performs no publication; retain its evidence and resolve failures
   before requesting an authorized release. Do not bypass verification.

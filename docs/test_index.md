@@ -1,5 +1,10 @@
 # Test Documentation Index — irig106-time
 
+Current S17 guide checks: `s17_docs` executes `qualified_usage.rs` with/without
+Jiff and pins the package README snippet; `s14_usage_snippets` executes the
+network example. See the [current clause ledger](verification-s17-completion.md)
+and [migration](MIGRATING-0.8.md). Counts below describe the prototype only.
+
 > **Prototype document** (tag `prototype-0`). It traces to the prototype's
 > L1, which was rewritten on 2026-09-27 for the rebuild (`docs/adr/0001`);
 > ten of its L1 identifiers are retired (`docs/L1_Requirements.md`, section
