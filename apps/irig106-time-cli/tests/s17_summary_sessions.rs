@@ -29,7 +29,7 @@ fn packet_body(channel: u16, kind: u8, ticks: u64, body: &[u8]) -> Vec<u8> {
     let len = p.len() as u32;
     p[4..8].copy_from_slice(&len.to_le_bytes());
     p[8..12].copy_from_slice(&(body.len() as u32).to_le_bytes());
-    p[12] = 6;
+    p[12] = if kind == 0x12 { 8 } else { 6 };
     p[15] = kind;
     p[16..22].copy_from_slice(&ticks.to_le_bytes()[..6]);
     let sum = p[..22].chunks_exact(2).fold(0u16, |s, w| {
@@ -59,12 +59,18 @@ impl Input {
         Self(path)
     }
     fn output(&self, command: &str, json: bool) -> (ExitClass, String) {
+        self.era_output(command, json, None)
+    }
+    fn era_output(&self, command: &str, json: bool, era: Option<&str>) -> (ExitClass, String) {
         let mut a = vec![command, self.0.to_str().unwrap()];
         if command == "correlate" {
             a.push("0");
         }
         if json {
             a.extend(["--format", "json"]);
+        }
+        if let Some(era) = era {
+            a.extend(["--ntp-era", era]);
         }
         a.extend(["--fail-on", "never"]);
         let mut out = Vec::new();
@@ -269,6 +275,7 @@ fn native_summary_quality_orders_late_f1_and_keeps_partial_calendar() {
     let (_, text) = input.output("summary", false);
     assert!(text.contains("Native quality ch7: valid 4; rejected 0; admitted 4"));
     assert!(text.contains("year unknown"));
+    assert!(text.contains("drift -1000000 ppm"));
 }
 
 #[test]
@@ -363,4 +370,104 @@ fn native_quality_text_reports_unavailable_measures_and_cap_prefix() {
     assert!(!text.contains("null ppm"));
     let (_, text) = Input::new(&vec![(7, 0x11, 0); 1025]).output("summary", false);
     assert!(text.contains("Quality prefix only: native quality pending cap (1024); prefix only"));
+}
+
+fn network_packet(ch: u16, ticks: u64, word: u8, seconds: u32, fraction: u32) -> Vec<u8> {
+    // 106-24R1 Figs11-15..17: NTF/TS followed by seconds + fraction/ns.
+    let mut body = vec![word, 0, 0, 0];
+    body.extend(seconds.to_le_bytes());
+    body.extend(fraction.to_le_bytes());
+    packet_body(ch, 0x12, ticks, &body)
+}
+#[test]
+fn native_network_quality_joins_ntp_ptp_and_f1_without_relabelling_tai() {
+    // UTC2017Jan2=1483315200 Unix; NTP=3692304000; PTP TAI=+37s.
+    // On ch7: UTC0 -> TAI38 -> UTC2 at RTC0/1/2 => zero physical drift.
+    let mut bytes = network_packet(7, 0, 1, 3_692_304_000, 0);
+    bytes.extend(network_packet(8, 0, 0x21, 1_483_315_237, 0));
+    bytes.extend(network_packet(7, 10_000_000, 0x11, 1_483_315_238, 0));
+    bytes.extend(network_packet(8, 10_000_000, 0x21, 1_483_315_238, 0));
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        20_000_000,
+        &[0x41, 2, 0, 0, 0, 2, 0, 0, 2, 1, 0x17, 0x20],
+    ));
+    let input = Input::bytes(&bytes);
+    let (exit, out) = input.era_output("summary", true, Some("0"));
+    assert_eq!(exit, ExitClass::Success);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let q = &v["report"]["native_sessions"]["spans"][0]["reference_quality"];
+    assert_eq!(q["formats"], "format1+format2");
+    assert_eq!(q["ntp_era"], "0");
+    assert_eq!(q["ntp_era_source"], "caller-declared");
+    assert_eq!(q["ntp_era_inference"], "disabled");
+    let a = &q["channels"][0];
+    assert_eq!(a["valid"], "3");
+    assert_eq!(a["drift_ppm"], 0.0);
+    assert_eq!(a["first"]["scale"], "UTC");
+    assert_eq!(a["last"]["seconds"], 2);
+    let b = &q["channels"][1];
+    assert_eq!(b["valid"], "2");
+    assert_eq!(b["drift_ppm"], 0.0);
+    assert_eq!(b["first"]["scale"], "TAI");
+    assert_eq!(b["first"]["seconds"], 37);
+    assert_eq!(b["last"]["seconds"], 38);
+    assert_eq!(b["first"]["basis"], "stated");
+    let (_, text) = input.era_output("summary", false, Some("0"));
+    assert!(text.contains("caller-declared era 0"));
+    assert!(text.contains("drift 0 ppm"));
+    assert!(text.contains("TAI (stated, year 2017)"));
+}
+#[test]
+fn native_network_quality_rejects_unqualified_invalid_and_malformed_observations() {
+    // Seconds0/fraction1 is NOT the sentinel, and must not acquire era0 implicitly.
+    let mut bytes = network_packet(9, 0, 1, 0, 1);
+    bytes.extend(network_packet(10, 0, 1, 0, 0));
+    bytes.extend(network_packet(11, 0, 0x31, 0, 0)); // Reserved NTF.
+    bytes.extend(network_packet(12, 0, 0x11, 1_483_315_237, 1_000_000_000));
+    bytes.extend(network_packet(13, 0, 0x10, 1_483_315_237, 0)); // Invalid TS.
+    bytes.extend(network_packet(14, 0, 0x13, 1_483_315_237, 0)); // Reserved TS.
+    bytes.extend(packet_body(15, 0x12, 0, &[0x11, 0, 0, 0, 0, 0, 0, 0, 0])); //9 bytes,3 filler.
+    let (_, out) = Input::bytes(&bytes).output("summary", true);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let q = &v["report"]["native_sessions"]["spans"][0]["reference_quality"];
+    assert!(q["ntp_era"].is_null());
+    assert_eq!(q["ntp_era_source"], "none");
+    let rows = q["channels"].as_array().unwrap();
+    assert_eq!(rows.len(), 7);
+    for row in rows {
+        assert_eq!(row["valid"], "0");
+        assert_eq!(row["rejected"], "1");
+        assert!(row["first"].is_null());
+    }
+    assert!(
+        rows[0]["rejection_reason"]
+            .as_str()
+            .unwrap()
+            .contains("NTP era/basis required")
+    );
+    assert!(rows[6]["rejection_reason"].is_string());
+}
+#[test]
+fn declared_era_is_applied_in_each_native_session() {
+    // RFC5905 Fig4: era1 offset63104=2036Feb8; half fraction=.5s.
+    let mut bytes = Vec::new();
+    for ticks in [200_000_000, 210_000_000, 0, 10_000_000] {
+        bytes.extend(network_packet(7, ticks, 1, 63_104, 0x8000_0000));
+    }
+    let input = Input::bytes(&bytes);
+    let (_, out) = input.era_output("summary", true, Some("1"));
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let spans = v["report"]["native_sessions"]["spans"].as_array().unwrap();
+    assert_eq!(spans.len(), 2);
+    for span in spans {
+        let q = &span["reference_quality"];
+        assert_eq!(q["ntp_era"], "1");
+        assert_eq!(q["channels"][0]["valid"], "2");
+        let c = &q["channels"][0]["first"];
+        assert_eq!(c["year"], 2036);
+        assert_eq!(c["day"], 39);
+        assert_eq!(c["nanoseconds"], 500_000_000);
+    }
 }
