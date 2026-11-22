@@ -301,3 +301,155 @@ fn resolver_keeps_dmy_evidence_skipped_by_the_phase_clock() {
         assert_eq!(got.input.year_basis, want.input.year_basis);
     }
 }
+
+// Rebuild from raw inputs; carry forward ONLY newly rejected leap labels.
+// Bounded test driver retains inputs; production callers may spool them to disk.
+fn cursor_resolve(original: &[TimelineReference]) -> Vec<TimelineReference> {
+    let mut inputs = original.to_vec();
+    for _ in 0..=inputs.len() {
+        let mut cursor = SessionYearCursor::new(1, OfflinePolicy::default()).unwrap();
+        let mut stamps = Vec::new();
+        let mut resolvers = Vec::new();
+        for r in &inputs {
+            let (stamp, closed) = cursor.observe(r.clone()).unwrap();
+            stamps.push(stamp);
+            if let Some(closed) = closed {
+                resolvers.push(closed);
+            }
+        }
+        resolvers.push(cursor.freeze().unwrap());
+        let mut output = Vec::new();
+        let mut changed = false;
+        for (i, stamp) in stamps.into_iter().enumerate() {
+            let (r, _, bad) = resolvers
+                .iter()
+                .find_map(|resolver| resolver.resolve(stamp.clone()).ok())
+                .unwrap();
+            if bad && !matches!(inputs[i].input.value, ReferenceValue::Malformed) {
+                inputs[i] = r.clone();
+                changed = true;
+            }
+            output.push(r);
+        }
+        if !changed {
+            return output;
+        }
+    }
+    panic!("monotone rejected labels did not converge");
+}
+fn assert_equivalent(refs: &[TimelineReference]) {
+    let got = cursor_resolve(refs);
+    let timeline = oracle(refs);
+    let want = &timeline.sessions()[0].references;
+    assert_eq!(got, *want);
+    for r in want {
+        if matches!(r.input.value, ReferenceValue::Readable(..)) {
+            assert!(!r.reasons.contains(&Rejection::Malformed), "{r:?}");
+        }
+    }
+}
+#[test]
+fn rebuild_does_not_transport_other_malformed_rejections() {
+    // Figs11-13/14: DOY366 23:58:50..56, RTC0..6s, then a dated
+    // 2016-01-01 12:58:59 anchor 13h later. Pin both the eight-packet
+    // ordinary case and its leap-labelled variant, which requires a rebuild.
+    let mut refs: Vec<_> = (0..7)
+        .map(|i| {
+            raw(
+                i,
+                i128::from(i) * 10_000_000,
+                &[0x41, 1, 0, 0, 0, 0x50 + i as u8, 0x58, 0x23, 0x66, 3],
+            )
+        })
+        .collect();
+    refs.push(raw(
+        7,
+        (6 + 13 * 3600) * 10_000_000,
+        &[0x41, 3, 0, 0, 0, 0x59, 0x58, 0x12, 1, 1, 0x16, 0x20],
+    ));
+    assert_equivalent(&refs);
+    refs[6] = raw(
+        6,
+        60 * 10_000_000,
+        &[0x41, 1, 0, 0, 0, 0x60, 0x59, 0x23, 0x66, 3],
+    );
+    assert_equivalent(&refs);
+}
+#[test]
+fn seeded_bounded_cursor_offline_equivalence() {
+    // Fixed seed, 192 eight-reference sessions; Figs11-13/14 decimal fields.
+    let mut seed = 0x1062_4013u32;
+    for _ in 0..192 {
+        let mut refs = Vec::new();
+        for i in 0..7 {
+            seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            let day = [1u16, 181, 182, 365, 366][(seed as usize) % 5];
+            let seconds = if day != 1 && seed & 8 == 0 {
+                0x60
+            } else {
+                0x50 + i as u8
+            };
+            let day_bcd = ((day % 10) | ((day / 10 % 10) << 4)) as u8;
+            refs.push(raw(
+                i,
+                i128::from(i) * 10_000_000,
+                &[
+                    0x41,
+                    u8::from(day == 366),
+                    0,
+                    0,
+                    0,
+                    seconds,
+                    0x59,
+                    0x23,
+                    day_bcd,
+                    (day / 100) as u8,
+                ],
+            ));
+        }
+        refs.push(raw(
+            7,
+            (6 + 13 * 3600) * 10_000_000,
+            &[0x41, 3, 0, 0, 0, 0x59, 0x58, 0x12, 1, 1, 0x16, 0x20],
+        ));
+        assert_equivalent(&refs);
+    }
+}
+#[test]
+fn gap_closed_resolver_uses_final_evidence_not_phase_anchors() {
+    // Explicit2017 DMY leap label is skipped by the2016 phase clock but
+    // remains final evidence; then >half-year context gap closes the resolver.
+    let refs = vec![
+        raw(0, 0, &[0x41, 3, 0, 0, 0, 0, 0, 0, 1, 1, 0x16, 0x20]),
+        raw(
+            1,
+            10_000_000,
+            &[0x41, 2, 0, 0, 0, 0x60, 0x59, 0x23, 0x30, 6, 0x17, 0x20],
+        ),
+        raw(2, 20_000_000, &[0x41, 1, 0, 0, 0, 0, 0, 0, 2, 0]),
+    ];
+    let mut cursor = SessionYearCursor::new(1, OfflinePolicy::default()).unwrap();
+    let mut last = None;
+    for r in &refs {
+        last = Some(cursor.observe(r.clone()).unwrap().0);
+    }
+    let stamp = last.unwrap();
+    let expected = cursor.freeze().unwrap().resolve(stamp.clone()).unwrap();
+    let (_, closed) = cursor
+        .observe(raw(
+            3,
+            800 * 86400 * 10_000_000,
+            &[0x41, 0, 0, 0, 0, 0, 0, 0, 1, 0],
+        ))
+        .unwrap();
+    assert_eq!(closed.unwrap().resolve(stamp).unwrap(), expected);
+    assert!(
+        expected
+            .0
+            .input
+            .year_basis
+            .candidates()
+            .iter()
+            .any(|c| c.supplied == 2017)
+    );
+}

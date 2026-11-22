@@ -548,3 +548,30 @@ fn native_drift_marks_stale_offset_use_but_not_native_tai_or_absent_drift() {
     assert!(row["drift_ppm"].is_null());
     assert_eq!(row["drift_uses_stale_leap_table"], false);
 }
+
+#[test]
+fn native_drift_stale_first_only_and_last_only_endpoints() {
+    // 2035Jan2 Unix2051308800, TAI+37; NTP+2208988800.
+    for stale_first in [true, false] {
+        let first = if stale_first {
+            (1, 4_260_297_600)
+        } else {
+            (0x21, 2_051_308_837)
+        };
+        let last = if stale_first {
+            (0x21, 2_051_308_838)
+        } else {
+            (1, 4_260_297_601)
+        };
+        let mut bytes = network_packet(7, 0, first.0, first.1, 0);
+        bytes.extend(network_packet(7, 10_000_000, last.0, last.1, 0));
+        let (_, out) = Input::bytes(&bytes).era_output("summary", true, Some("0"));
+        let v: Value = serde_json::from_str(&out).unwrap();
+        let row = &v["report"]["native_sessions"]["spans"][0]["reference_quality"]["channels"][0];
+        assert_eq!(row["drift_ppm"], 0.0);
+        assert_eq!(
+            row["drift_uses_stale_leap_table"], true,
+            "stale_first={stale_first}"
+        );
+    }
+}
