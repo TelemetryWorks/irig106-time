@@ -82,7 +82,7 @@ fn timeline_preserves_observed_protocol_and_status_even_without_a_clock() {
             };
             assert!(
                 text.contains(&format!(
-                    "[{protocol} TS={ts} {}]",
+                    "[packet: {protocol} TS={ts} {}]",
                     facts(ntf, ts)["status"].as_str().unwrap()
                 )),
                 "{text}"
@@ -119,7 +119,7 @@ fn correlate_retains_selected_protocol_across_later_updates_and_reset_spool() {
     assert!(
         input
             .output("correlate", false)
-            .contains("[IEEE1588-2002 TS=1 valid]")
+            .contains("[reference: IEEE1588-2002 TS=1 valid]")
     );
     let reset = Input::new(
         &[
@@ -139,11 +139,13 @@ fn correlate_retains_selected_protocol_across_later_updates_and_reset_spool() {
     let text = reset.output("correlate", false);
     assert!(
         text.lines()
-            .any(|l| l.contains("Segment   1") && l.contains("[IEEE1588-2002 TS=1 valid]"))
+            .any(|l| l.contains("Segment   1")
+                && l.contains("[reference: IEEE1588-2002 TS=1 valid]"))
     );
     assert!(
         text.lines()
-            .any(|l| l.contains("Segment   2") && l.contains("[IEEE1588-2008 TS=1 valid]"))
+            .any(|l| l.contains("Segment   2")
+                && l.contains("[reference: IEEE1588-2008 TS=1 valid]"))
     );
 }
 #[test]
@@ -159,4 +161,42 @@ fn packet_observation_is_distinct_from_the_query_reference() {
     assert!(rows[2]["network_time"].is_null());
     let v: Value = serde_json::from_str(&input.output("correlate", true)).unwrap();
     assert!(v["report"]["correlation"]["any"]["network_time"].is_null());
+}
+
+#[test]
+fn invalid_packet_label_is_explicit_when_clock_comes_from_other_protocol() {
+    // Fig11-15/17: ch9 PTP2008 TS1 atRTC0; ch10 PTP2002 TS1 atRTC1;
+    // ch9 PTP2008 TS0 atRTC2. Its body cannot supply a usable clock.
+    let mut second = f2(1, 1, 1, 100);
+    second[2] = 10;
+    let sum = second[..22].chunks_exact(2).fold(0u16, |s, w| {
+        s.wrapping_add(u16::from_le_bytes([w[0], w[1]]))
+    });
+    second[22..24].copy_from_slice(&sum.to_le_bytes());
+    let input = Input::new(&[f2(2, 1, 0, 0), second, f2(2, 0, 2, 500)].concat());
+    let v: Value = serde_json::from_str(&input.output("timeline", true)).unwrap();
+    let row = &v["report"]["rows"][2];
+    assert_eq!(row["network_time"], facts(2, 0));
+    // Nearest usable reference is ch10 atRTC1, UTC00:01:40; +1s=00:01:41.
+    // ch9's preceding reference would give00:00:02; its invalid body gives00:08:20.
+    assert_eq!(row["clock"]["minute"], 1);
+    assert_eq!(row["clock"]["second"], 41);
+    let text = input.output("timeline", false);
+    let line = text
+        .lines()
+        .find(|l| l.split_whitespace().next() == Some("2"))
+        .unwrap();
+    assert!(line.contains("002:00:01:41.000000000"), "{line}");
+    assert!(
+        line.ends_with("[packet: IEEE1588-2008 TS=0 not-valid]"),
+        "{line}"
+    );
+    assert!(!line.contains("[reference:"), "{line}");
+    let query = input.output("correlate", false);
+    let any = query.lines().find(|l| l.contains("Any channel")).unwrap();
+    assert!(any.contains("002:00:01:44.000000000"), "{any}");
+    assert!(
+        any.ends_with("[reference: IEEE1588-2002 TS=1 valid]"),
+        "{any}"
+    );
 }
