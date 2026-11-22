@@ -575,3 +575,88 @@ fn native_drift_stale_first_only_and_last_only_endpoints() {
         );
     }
 }
+
+#[test]
+fn native_summary_replays_future_dmy_without_crossing_sessions() {
+    // Figs11-13/14: DOY36523:59:59 -> day100:00 -> DMY2024Jan100:00:01.
+    // The first two references must date2023/2024 using the later DMY anchor.
+    let mut bytes = packet_body(7, 0x11, 0, &[0x41, 0, 0, 0, 0, 0x59, 0x59, 0x23, 0x65, 3]);
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        10_000_000,
+        &[0x41, 1, 0, 0, 0, 0, 0, 0, 1, 0],
+    ));
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        20_000_000,
+        &[0x41, 3, 0, 0, 0, 1, 0, 0, 1, 1, 0x24, 0x20],
+    ));
+    // A >1.1s backward header starts a separate native session, with no year.
+    bytes.extend(packet_body(7, 0x11, 0, &[0x41, 0, 0, 0, 0, 0, 0, 0, 1, 0]));
+    let input = Input::bytes(&bytes);
+    let (_, out) = input.output("summary", true);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let spans = &v["report"]["native_sessions"]["spans"];
+    let q = &spans[0]["reference_quality"];
+    assert_eq!(q["year_inference"], "session-dmy");
+    let row = &q["channels"][0];
+    assert_eq!(row["valid"], "3");
+    assert_eq!(row["first"]["year"], 2023);
+    assert_eq!(row["last"]["year"], 2024);
+    assert_eq!(row["drift_ppm"], 0.0);
+    assert!(spans[1]["reference_quality"]["channels"][0]["first"]["year"].is_null());
+    let (_, text) = input.output("summary", false);
+    assert!(text.contains("session DMY year evidence"));
+    assert!(text.contains("year 2023"));
+}
+#[test]
+fn native_year_replay_backdates_a_prefix_larger_than_the_pending_cap() {
+    let mut bytes = Vec::new();
+    //1320 yearless F1 points (22min), followed by dated2024Jan2.
+    for i in 0..1320u64 {
+        let bcd = |n: u64| ((n / 10) << 4 | n % 10) as u8;
+        bytes.extend(packet_body(
+            7,
+            0x11,
+            i * 10_000_000,
+            &[0x41, 1, 0, 0, 0, bcd(i % 60), bcd(i / 60), 0, 2, 0],
+        ));
+    }
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        1320 * 10_000_000,
+        &[0x41, 3, 0, 0, 0, 0, 0x22, 0, 2, 1, 0x24, 0x20],
+    ));
+    let (_, out) = Input::bytes(&bytes).output("summary", true);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let q = &v["report"]["native_sessions"]["spans"][0]["reference_quality"];
+    assert_eq!(q["status"], "complete");
+    assert_eq!(q["channels"][0]["valid"], "1321");
+    assert_eq!(q["channels"][0]["first"]["year"], 2024);
+    assert_eq!(q["channels"][0]["drift_ppm"], 0.0);
+}
+#[test]
+fn native_year_replay_reports_new_malformed_and_contradictory_years() {
+    // Day366 is readable with LY=1 before a future2017 common-year anchor.
+    let mut bytes = packet_body(7, 0x11, 0, &[0x41, 1, 0, 0, 0, 0, 0, 0, 0x66, 3]);
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        10_000_000,
+        &[0x41, 2, 0, 0, 0, 1, 0, 0, 0x31, 0x12, 0x17, 0x20],
+    ));
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        20_000_000,
+        &[0x41, 3, 0, 0, 0, 2, 0, 0, 0x31, 0x12, 0x16, 0x20],
+    ));
+    let (_, out) = Input::bytes(&bytes).output("summary", true);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let samples = v["findings"]["samples"].as_array().unwrap();
+    assert!(samples.iter().any(|f| f["code"] == "TF-004"));
+    assert!(samples.iter().any(|f| f["code"] == "TF-032"));
+}
