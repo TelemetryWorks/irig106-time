@@ -26,7 +26,14 @@ newly derived TF-007, exact year-evidence text and corrupt-flag rejection.
 [Deferred follow-ups](S17-deferred-followups.md) remain explicit: decode-once,
 packet-local TF-007 omission and the single-pass mutation survivor.
 
-## Still gated or requiring integration audit
+## Qualified-joining audit completed; closure remains gated
+
+The [2026-11-22 clause audit](verification-s17-qualified-joining.md) is the current
+closure disposition for CLI-104/105/106. **Draft — closure gated on TMATS
+(ADR-0021)**; no whole-requirement credit is added. It separates closed clauses
+from TMATS-dependent consumption and independent native adapter/basis integration.
+Summary session-year replay is closed by #104; it is not an open implementation
+item. S18-S20 are not started; wait for the coordinator after the TMATS gate.
 
 - **TMATS gate (ADR-0021):** full published TMATS 0.1 and bounded time view, then
   explicit owner dependency approval. No time-library→TMATS dependency. CLI
@@ -38,7 +45,7 @@ packet-local TF-007 omission and the single-pass mutation survivor.
   coincidence rule, especially for data rows after resets.
 - **Native answer integration:** current reports still use the documented CLI
   compatibility query policy. Full qualified AnswerView/reference/adapter basis
-  and governing-source joining need the remaining integration/clause audit;
+  and governing-source joining remain incomplete, as the new clause audit records;
   rendering goldens do not establish that all native engine clauses are wired.
   Do not silently classify every independent integration obligation as TMATS-gated.
 - **Release:** final remaining-requirement audit, approved deferrals, lockstep
