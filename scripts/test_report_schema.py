@@ -27,6 +27,10 @@ class ReportSchema(unittest.TestCase):
             'inventory', 'reset', 'no-time', 'ntp-no-era', 'ntp-era1', 'ntp-sentinel',
         ])
         self.assertEqual(len(cases) * len(VIEWS), 30)
+        self.assertEqual({label: options for label, _, options in cases}, {
+            'inventory': [], 'reset': [], 'no-time': [], 'ntp-no-era': [],
+            'ntp-era1': ['--ntp-era', '1'], 'ntp-sentinel': ['--ntp-era', '0'],
+        })
 
     def test_all_supported_json_views_are_in_the_live_gate(self):
         from validate_cli_reports import VIEWS
