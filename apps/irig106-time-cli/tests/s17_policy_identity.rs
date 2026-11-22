@@ -29,6 +29,7 @@ fn every_json_view_records_effective_cli_defaults_even_without_findings() {
         "id":"telemetryworks/irigtime-cli-nearest-v1","defaults_id":"telemetryworks/irigtime-cli-defaults-v1",
         "reference_selection":"nearest-reference-counter-offset","drift_correction":false,
         "reference_window_ns":"30000000000","reference_cap":"1024",
+        "finding_sample_cap":"20","jump_sample_cap":"20",
         "query_reference_storage":"target-brackets","query_candidates_per_channel":"6",
         "reset_backward_step_ns":"30000000000","reset_backward_comparison":"strictly-greater",
         "reset_run_references":"3","reset_run_order":"strictly-increasing-behind-baseline",

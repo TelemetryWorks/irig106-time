@@ -7,6 +7,7 @@ pub(super) fn value(r: &report::Report<'_>) -> Value {
     json!({"id":"telemetryworks/irigtime-cli-nearest-v1","defaults_id":"telemetryworks/irigtime-cli-defaults-v1",
         "reference_selection":"nearest-reference-counter-offset","drift_correction":false,
         "reference_window_ns":r.reference_window_ns.to_string(),"reference_cap":REFERENCE_CAP.get().to_string(),
+        "finding_sample_cap":FINDING_SAMPLE_LIMIT.to_string(),"jump_sample_cap":JUMP_SAMPLE_LIMIT.to_string(),
         "query_reference_storage":"target-brackets","query_candidates_per_channel":"6",
         "reset_backward_step_ns":(RESET_BACKWARD_TICKS*100).to_string(),"reset_backward_comparison":"strictly-greater",
         "reset_run_references":RESET_RUN_REFERENCES.to_string(),"reset_run_order":"strictly-increasing-behind-baseline",

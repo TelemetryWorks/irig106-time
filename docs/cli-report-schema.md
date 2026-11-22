@@ -199,3 +199,10 @@ library policy IDs. Metadata applies to the whole report, including rows/answers
 and is emitted without findings. It does not establish source association or
 claim a complete native answer-policy replay snapshot. Older consumers ignore
 this additive field under the version1 compatibility rule.
+
+
+Unreleased revision7 also records `finding_sample_cap` and `jump_sample_cap`
+as decimal-string counts, each20 by default, from the separate constants used
+by those sampling paths. Omitted/total counts remain exact. Isolated cache
+window/cap coupling is tested against instantiated channel caches and actual
+pooled evictions, not just the main cache or a repeated default literal.

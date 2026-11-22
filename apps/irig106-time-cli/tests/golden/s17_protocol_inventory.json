@@ -327,7 +327,9 @@
     "policy": {
       "defaults_id": "telemetryworks/irigtime-cli-defaults-v1",
       "drift_correction": false,
+      "finding_sample_cap": "20",
       "id": "telemetryworks/irigtime-cli-nearest-v1",
+      "jump_sample_cap": "20",
       "leap_table": {
         "entries": "28",
         "id": "IERS-C72-2026-07-06/6cb6f5d4b819f2e568e25db4b0b26d89dedf031fdffb18bc94d40f4e94e268d7",

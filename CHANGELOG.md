@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add `report.policy` in schema v1 revision7: versioned CLI correlation/default
   identities, actual live window/cap, query-bracket storage, reset thresholds
-  and installed leap-table identity/currency. It is present without findings.
+  and installed leap-table identity/currency. Include separate finding/jump
+  sample caps from the actual sampling constants. It is present without findings.
 - Report the actual legacy nearest-reference policy, not a library Standard/
   Interpolate policy the CLI does not yet run. No numeric, text or CSV change.
 

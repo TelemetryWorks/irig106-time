@@ -62,3 +62,31 @@ only one fixed-size policy object/borrowed table metadata, no packet history.
 198 tested/206 verified of288 unchanged. NTP era context, automated schema
 validation, native sessions/quality and docs/migration remain items4..7;
 TMATS declarations stay separately gated. No merge, tag or publication.
+
+
+## #95 review — isolated-cache and sample-cap coupling
+
+Tests-only37f345a adds an isolated-state comparison (passing at the reviewed
+head) and a sample-cap test that fails there because the fields were absent.
+The isolated implementation already uses the same REFERENCE_WINDOW_NS and
+REFERENCE_CAP constants as the main cache; no resource value changes. The
+new test fills1050 interleaved references, compares JSON with each real channel
+cache's max-age getter, and compares the reported cap with actual retained
+references AND pooled arrival entries after eviction. Both requested compiling
+mutants (isolated20s, pool cap512) now fail that test at runtime.
+
+Revision7 is still unreleased: add finding_sample_cap and jump_sample_cap there,
+not a revision increment. Each reads its own sample constant; jump retention now
+uses the dedicated JUMP_SAMPLE_LIMIT(20), while finding retention continues using
+FINDING_SAMPLE_LIMIT(20). The test produces35 findings and31 literal+1s jumps
+(Fig11-13 clock advances2s per1s RTC), and compares JSON with each actual retained
+sample vector. Exact total counts and behavior stay unchanged.
+
+A temporary build with distinct limits17(findings)/11(jumps) passes the coupling
+test. Four compiling crosswire mutants then fail: either JSON cap reading the
+other constant, jump retention reading the finding limit, or finding retention
+reading the jump limit. Source/limits are restored. This avoids both defaults20
+masking a wrong link. These probes plus the two isolated-cache mutants are six
+additional killed mutants; no repeated full local matrix. Focused tests, fmt,
+trace/schema-sync/diff locally; full checks and RSS gates are from new-head CI.
+No Review/Design, library/dependency, numeric, text, CSV or coverage change.

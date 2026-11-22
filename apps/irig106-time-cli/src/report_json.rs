@@ -684,8 +684,11 @@ mod tests {
             scanner.finding_samples.len().to_string()
         );
         assert_eq!(policy["jump_sample_cap"], scanner.jumps.len().to_string());
-        assert_eq!(policy["finding_sample_cap"], "20");
-        assert_eq!(policy["jump_sample_cap"], "20");
+        assert_eq!(
+            policy["finding_sample_cap"],
+            FINDING_SAMPLE_LIMIT.to_string()
+        );
+        assert_eq!(policy["jump_sample_cap"], JUMP_SAMPLE_LIMIT.to_string());
         assert_eq!(scanner.jumps_seen, 31);
     }
 }

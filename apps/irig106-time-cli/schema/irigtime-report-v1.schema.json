@@ -1094,7 +1094,7 @@
     "report_policy": {
       "description": "Versioned effective CLI settings; current legacy correlation is reported honestly, not relabelled as a native recording policy.",
       "type": "object", "additionalProperties": false,
-      "required": ["id", "defaults_id", "reference_selection", "drift_correction", "reference_window_ns", "reference_cap", "query_reference_storage", "query_candidates_per_channel", "reset_backward_step_ns", "reset_backward_comparison", "reset_run_references", "reset_run_order", "leap_table"],
+      "required": ["id", "defaults_id", "reference_selection", "drift_correction", "reference_window_ns", "reference_cap", "query_reference_storage", "query_candidates_per_channel", "reset_backward_step_ns", "reset_backward_comparison", "reset_run_references", "reset_run_order", "leap_table", "finding_sample_cap", "jump_sample_cap"],
       "properties": {
         "id": {"description": "Versioned CLI correlation algorithm identity; deliberately distinct from library SharedPolicy IDs. Change on algorithm change.", "type": "string", "minLength": 1},
         "defaults_id": {"description": "Versioned CLI defaults catalog; change when fixed defaults change. Effective command overrides remain in options.", "type": "string", "minLength": 1},
@@ -1108,7 +1108,9 @@
         "reset_backward_comparison": {"description": "Strict threshold: equality alone is out-of-order, not immediate reset.", "enum": ["strictly-greater"]},
         "reset_run_references": {"description": "Consecutive behind-baseline references needed to declare the short-reset run at its first packet.", "$ref": "#/$defs/unsigned"},
         "reset_run_order": {"description": "The reset run must increase strictly among its members while all remain behind the accepted baseline.", "enum": ["strictly-increasing-behind-baseline"]},
-        "leap_table": {"description": "Table actually installed in the scanner, even if no PTP value uses it; identity/currency do not imply every reported clock is covered.", "$ref": "#/$defs/policy_leap_table"}
+        "leap_table": {"description": "Table actually installed in the scanner, even if no PTP value uses it; identity/currency do not imply every reported clock is covered.", "$ref": "#/$defs/policy_leap_table"},
+        "finding_sample_cap": {"description": "Maximum retained first finding messages; exact per-level counts include all omitted findings.", "$ref": "#/$defs/unsigned"},
+        "jump_sample_cap": {"description": "Maximum retained jump samples; jumps.count and omitted remain exact independently.", "$ref": "#/$defs/unsigned"}
       }
     },
     "policy_leap_table": {

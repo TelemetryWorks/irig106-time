@@ -65,6 +65,7 @@ mod target_refs;
 const DATA_TYPE_TIME_F1: u8 = 0x11;
 const DATA_TYPE_TIME_F2: u8 = 0x12;
 const FINDING_SAMPLE_LIMIT: usize = 20;
+const JUMP_SAMPLE_LIMIT: usize = 20;
 const REFERENCE_WINDOW_NS: u64 = 30_000_000_000;
 const RESET_BACKWARD_TICKS: u64 = REFERENCE_WINDOW_NS / 100;
 const RESET_RUN_REFERENCES: usize = 3;
@@ -659,7 +660,7 @@ impl Ch10TimeScanner {
                 .is_some_and(|threshold| delta_nanos.unsigned_abs() > threshold)
             {
                 self.jumps_seen += 1;
-                if self.jumps.len() < FINDING_SAMPLE_LIMIT {
+                if self.jumps.len() < JUMP_SAMPLE_LIMIT {
                     self.jump_year_days.push((
                         report::known_year_days(previous, leap)
                             .or(year_days)
