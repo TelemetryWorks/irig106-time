@@ -469,5 +469,25 @@ fn declared_era_is_applied_in_each_native_session() {
         assert_eq!(c["year"], 2036);
         assert_eq!(c["day"], 39);
         assert_eq!(c["nanoseconds"], 500_000_000);
+        assert_eq!(c["ntp_leap_status"], "coverage-unknown");
     }
+}
+
+#[test]
+fn native_ntp_endpoints_keep_leap_ambiguity_without_inventing_drift() {
+    // RDG-012: Unix2017Jan1=1483228800; NTP3692217600. The inserted
+    // second's folded coordinate [B,B+1) is ambiguous, mapped value kept.
+    let mut bytes = network_packet(7, 0, 1, 3_692_217_600, 0x8000_0000);
+    bytes.extend(network_packet(7, 10_000_000, 1, 3_692_217_601, 0x8000_0000));
+    let input = Input::bytes(&bytes);
+    let (_, out) = input.era_output("summary", true, Some("0"));
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let q = &v["report"]["native_sessions"]["spans"][0]["reference_quality"]["channels"][0];
+    assert_eq!(q["valid"], "2");
+    assert!(q["drift_ppm"].is_null());
+    assert_eq!(q["first"]["ntp_leap_status"], "leap-ambiguous");
+    assert_eq!(q["last"]["ntp_leap_status"], "covered");
+    assert_eq!(q["first"]["nanoseconds"], 500_000_000);
+    let (_, text) = input.era_output("summary", false, Some("0"));
+    assert!(text.contains("[NTP leap-ambiguous]"));
 }
