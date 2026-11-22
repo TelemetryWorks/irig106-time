@@ -1,0 +1,17 @@
+[
+  {"name":"irig-b","kind":17,"word":1,"format":"IRIG-B","scale":"UTC","basis":"assumed, RDG-009","status":null,"clock":[null,100,12,0,0,0],"clock_basis":"assumed, RDG-009"},
+  {"name":"irig-a","kind":17,"word":17,"format":"IRIG-A","scale":"UTC","basis":"assumed, RDG-009","status":null,"clock":[null,100,12,0,0,0],"clock_basis":"assumed, RDG-009"},
+  {"name":"irig-g","kind":17,"word":33,"format":"IRIG-G","scale":"UTC","basis":"assumed, RDG-009","status":null,"clock":[null,100,12,0,0,0],"clock_basis":"assumed, RDG-009"},
+  {"name":"rtc","kind":17,"word":49,"format":"RTC","scale":"unknown","basis":"unresolved","status":null,"clock":[null,100,12,0,0,0],"clock_basis":"unresolved"},
+  {"name":"utc","kind":17,"word":65,"format":"UTC","scale":"UTC","basis":"stated FMT","status":null,"clock":[null,100,12,0,0,0],"clock_basis":"stated FMT"},
+  {"name":"gps","kind":17,"word":81,"format":"GPS","scale":"GPS","basis":"stated FMT","status":null,"clock":[null,100,12,0,0,0],"clock_basis":"stated FMT"},
+  {"name":"ntp-valid-context-missing","kind":18,"word":1,"seconds":2208988800,"format":"NTP","scale":"UTC","basis":"standard","status":"valid","clock":null,"clock_basis":null},
+  {"name":"ptp-2002","kind":18,"word":17,"seconds":1483315237,"format":"IEEE1588-2002","scale":"TAI","basis":"standard","status":"valid","clock":[2017,2,0,0,0,123],"clock_basis":"derived, leap table"},
+  {"name":"ptp-2008","kind":18,"word":33,"seconds":1483315237,"format":"IEEE1588-2008","scale":"TAI","basis":"standard","status":"valid","clock":[2017,2,0,0,0,123],"clock_basis":"derived, leap table"},
+  {"name":"ptp-stale","kind":18,"word":33,"seconds":1893542437,"format":"IEEE1588-2008","scale":"TAI","basis":"standard","status":"valid","clock":[2030,2,0,0,0,123],"clock_basis":"derived, stale leap table","finding":"TF-021"},
+  {"name":"ntp-invalid","kind":18,"word":0,"seconds":2208988800,"format":"NTP","scale":"UTC","basis":"standard","status":"not-valid","clock":null,"clock_basis":null,"finding":"TF-003"},
+  {"name":"ptp-2002-invalid","kind":18,"word":16,"seconds":1483315237,"format":"IEEE1588-2002","scale":"TAI","basis":"standard","status":"not-valid","clock":null,"clock_basis":null,"finding":"TF-003"},
+  {"name":"ptp-2008-invalid","kind":18,"word":32,"seconds":1483315237,"format":"IEEE1588-2008","scale":"TAI","basis":"standard","status":"not-valid","clock":null,"clock_basis":null,"finding":"TF-003"},
+  {"name":"ptp-reserved-status","kind":18,"word":35,"seconds":1483315237,"format":"IEEE1588-2008","scale":"TAI","basis":"standard","status":"reserved","clock":null,"clock_basis":null,"finding":"TF-006"},
+  {"name":"reserved-ntf","kind":18,"word":49,"seconds":0,"format":"reserved","scale":"unknown","basis":"unresolved","status":"valid","clock":null,"clock_basis":null,"finding":"TF-006"}
+]
