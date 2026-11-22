@@ -1746,7 +1746,9 @@ does not settle it or replace its real-recording evidence.
 
 **Planned verification**: A synthetic recording with both formats, two sessions, gaps/jumps, unknown year and counter-only answers; assert relevant provenance in each command. Test 40->1 seconds and 20->1/2/3 seconds, each with a real +5s post-reset jump; single/two late references, broken increasing runs, EOF and overlapping-segment queries. Reset/isolation clause evidence is in verification-s16b2b3c2.md; other CLI-104 clauses remain partial. Planned: a data channel with one or several declared TIMEIN channels, with/without resets, remains association-unresolved absent real relationship evidence. Counter-query policy selection is not proof of association; adapter evidence remains partial until integration.
 
-**Clause evidence**: [S17 adapter audit](verification-s17-completion.md); [bounded native session infrastructure](verification-s17-native-sessions.md) is available; [summary native counter spans](verification-s17-summary-spans.md) are integrated. A [bounded ordered quality core](verification-s17-native-quality.md) is available; [Format 1 summary candidate quality/calendar endpoints](verification-s17-summary-quality.md) are integrated with explicit scope. [Format 2 quality](verification-s17-native-f2.md) is integrated with explicit era/scale context. Session-year qualification, full qualified joining and native answer provenance remain open.
+**Clause evidence**: [S17 adapter audit](verification-s17-completion.md); [bounded native session infrastructure](verification-s17-native-sessions.md) is available; [summary native counter spans](verification-s17-summary-spans.md) are integrated. A [bounded ordered quality core](verification-s17-native-quality.md) is available; [Format 1 summary candidate quality/calendar endpoints](verification-s17-summary-quality.md) are integrated with explicit scope. [Format 2 quality](verification-s17-native-f2.md) is integrated with explicit era/scale context. Session-year qualification in summary is integrated ([CLI replay evidence](verification-s17-cli-year-replay.md)); full qualified joining and native packet/query answer provenance remain open.
+
+**Closure status**: Draft — closure gated on TMATS (ADR-0021). [Qualified-joining/basis audit](verification-s17-qualified-joining.md) separates closed clauses, TMATS-dependent work and native integration not intrinsically TMATS-dependent; no whole-requirement verification credit is added.
 
 #### L2-CLI-105
 
@@ -1758,7 +1760,9 @@ does not settle it or replace its real-recording evidence.
 
 **Verification Method**: Test (T)
 
-**Planned verification**: Each NTF with valid and invalid status in every renderer; native GPS Format 1 remains distinct from network time. Current partial evidence: [S17 adapter clause audit](verification-s17-completion.md), including native GPS, every NTF/status, stale PTP and reset goldens. Packet/query text/JSON protocol/status evidence: [S17 follow-up1](verification-s17-network-facts.md). CSV packet-fact columns: [19-column clause evidence](verification-s17-csv-facts.md). No whole-requirement completion claim; remaining native basis/policy/era/session clauses stay in the S17 audit.
+**Planned verification**: Each NTF with valid and invalid status in every renderer; native GPS Format 1 remains distinct from network time. Current partial evidence: [S17 adapter clause audit](verification-s17-completion.md), including native GPS, every NTF/status, stale PTP and reset goldens. Packet/query text/JSON protocol/status evidence: [S17 follow-up1](verification-s17-network-facts.md). CSV packet-fact columns: [19-column clause evidence](verification-s17-csv-facts.md). Observed-only protocol/status/scale clauses are evidenced; this adds no declaration obligation to CLI-105. Whole-requirement closure stays at the coordinated qualified-integration checkpoint; [exact clause disposition](verification-s17-qualified-joining.md).
+
+**Closure status**: Draft — closure gated on TMATS (ADR-0021). [Qualified-joining/basis audit](verification-s17-qualified-joining.md) separates closed clauses, TMATS-dependent work and native integration not intrinsically TMATS-dependent; no whole-requirement verification credit is added.
 
 #### L2-CLI-106
 
@@ -1773,6 +1777,8 @@ does not settle it or replace its real-recording evidence.
 **Planned verification**: CLI golden text/CSV/JSON reports with quotes/commas/newlines, unknown year/scale, counter-only results and signed/unsigned 64/128-bit extrema (including values above 2^53). Validate emitted JSON schema/version/units, exact decimal strings and full raw/stated/assumed provenance. No library snapshot alignment or untrusted JSON load/roundtrip API is required.
 
 **Clause evidence**: [S17 adapter audit](verification-s17-completion.md); F1 row/query scale+basis evidence: [S17 item2](verification-s17-f1-basis.md). Effective CLI policy/default identity: [S17 item3](verification-s17-policy-identity.md). Explicit CLI NTP era/basis: [S17 item4](verification-s17-ntp-era.md); the library era0 fallback policy is unchanged. Automated all-view schema validation: [S17 item5](verification-s17-schema-validation.md). Complete native answer/reference provenance remains partial.
+
+**Closure status**: Draft — closure gated on TMATS (ADR-0021). [Qualified-joining/basis audit](verification-s17-qualified-joining.md) separates closed clauses, TMATS-dependent work and native integration not intrinsically TMATS-dependent; no whole-requirement verification credit is added.
 
 #### L2-CLI-107
 
