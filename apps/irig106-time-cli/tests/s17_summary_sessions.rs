@@ -223,3 +223,32 @@ fn native_text_caps_twenty_sessions_but_json_keeps_exact_full_inventory() {
     );
     assert_eq!(v["report"]["native_sessions"]["spans"][24]["index"], "25");
 }
+
+#[test]
+fn native_summary_quality_orders_late_f1_and_keeps_partial_calendar() {
+    // Fig11-12/13 UTC DOY10012:00, no year. RTC0/1/3s; second packet
+    // at3s is followed by an in-bound late2s, so native sorting is required.
+    let input = Input::new(&[
+        (7, 0x11, 0),
+        (7, 0x11, 10_000_000),
+        (7, 0x11, 30_000_000),
+        (7, 0x11, 20_000_000),
+    ]);
+    let (_, out) = input.output("summary", true);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let q = &v["report"]["native_sessions"]["spans"][0]["quality"][0];
+    assert_eq!(q["channel"], 7);
+    assert_eq!(q["valid"], "4");
+    assert_eq!(q["interval_ns"], "3000000000");
+    assert_eq!(q["min_spacing_ns"], "1000000000");
+    assert_eq!(q["max_spacing_ns"], "1000000000");
+    assert_eq!(q["drift_ppm"], -1_000_000.0);
+    assert!(q["first"]["year"].is_null());
+    assert_eq!(q["first"]["day"], 100);
+    assert_eq!(q["first"]["scale"], "UTC");
+    assert_eq!(q["last"]["basis"], "stated");
+    assert!(q["unavailable_reason"].is_null());
+    let (_, text) = input.output("summary", false);
+    assert!(text.contains("Native quality ch7: valid 4; rejected 0; admitted 4"));
+    assert!(text.contains("year unknown"));
+}
