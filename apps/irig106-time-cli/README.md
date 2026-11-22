@@ -394,3 +394,10 @@ Summary separates recording-wide native sessions (1100ms policy) from per-channe
 CLI reset segments (30s/run heuristic). Revision9 adds `native_sessions` for summary,
 null elsewhere: counter spans, not calendar/reference quality. Ambiguous native
 ordering labels only the known prefix; other analysis continues.
+
+Native ordering needs-context is a coordinator-accepted WARNING with code null:
+TF-018 describes established resets, TF-019 late packets and TF-024 a flag bit.
+CLI policy-inferred sessions remain `start: "inferred"`, without TF-018. The CLI
+reserves TF-018 for established new-session facts. The library differs deliberately:
+`TimelineBuilder` records TF-018 for policy inference under L3-COR-105; the CLI
+summary does not forward that inferred-session finding policy.

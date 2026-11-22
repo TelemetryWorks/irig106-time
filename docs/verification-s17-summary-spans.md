@@ -12,11 +12,11 @@ First/last follow observation order; low/high are extrema; checked(high-low)*100
 is counter ns. Text/JSON stream one private spool row plus the active cursor.
 Temp/writer failures give4. Other commands do not construct native state (null).
 Exact half-wrap ambiguity stops only native analysis at a labelled prefix.
-Proposed WARNING/code null matches correlation needs-context; no TF-018 fact is
+Coordinator-accepted WARNING/code null matches correlation needs-context; no TF-018 fact is
 invented. One finding retains channel/packet; status/reason disclose the limit.
 
 Tests-first c33d344:3 runtime failures for absent sections/fields and writer4.
-Now3 tests cover2 native sessions vs1 channel segment, data-header inclusion,
+Original3 tests cover2 native sessions vs1 channel segment, data-header inclusion,
 3000ns forward wrap, ambiguous-prefix/default-warning-never classes and writer4.
 Literal Fig11-12/13/§11.2.1.1 wire/checksum fixtures and inventory golden header
 coordinates are independent of production encoders/captured output. A private
@@ -34,3 +34,14 @@ RSS harness's8KiB prefix assumption: native span rows precede summary findings/
 jump totals. Scan the log line by line for these assertions; keep32MiB and exact
 expected counts unchanged. A small footer-after8KiB/no-slurp regression fails
 before the helper exists and passes after; no local large workload is rerun.
+
+#99 review: a first header at 1.0s followed by a header at 0.5s stays in one
+session. The new test pins first_ticks=10000000 vs low_ticks=5000000,
+high=10000000, last_ticks=5000000 and first/last packet IDs 0/1. Correct production passes; the
+first-from-low projection mutant fails the literal first_ticks assertion. Restored.
+All four summary tests pass. No production change or whole coverage claim.
+Coordinator accepts native ordering needs-context as WARNING/code null; inferred
+CLI sessions keep start=inferred, not TF-018. CLI docs now explicitly distinguish
+its established-fact TF-018 convention from TimelineBuilder's policy-inference
+TF-018 under L3-COR-105. TF-019 and TF-024 do not fit this condition. No TF row,
+Review/Design field, schema revision or library behavior is changed.

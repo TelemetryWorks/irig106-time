@@ -260,5 +260,11 @@ are observation order; high-water does not fall on late arrivals. Text and JSON
 stream closed spans from a bounded private spool plus the active span. Native
 ordering ambiguity yields needs-context and a reason, retaining only a labelled
 known prefix; remaining report analysis continues. The associated code-null
-WARNING follows the proposed native needs-context mapping. This is header-counter
-analysis, not calendar spans, reference quality, admission or TMATS association.
+WARNING is coordinator-accepted (PR #99 review). No TF code fits: TF-018 is for
+established new-session facts, TF-019 for late packets and TF-024 for a flag bit.
+CLI native policy-inferred sessions stay `start: "inferred"`; they do not emit
+TF-018. This differs deliberately from the library's `TimelineBuilder`, which
+records TF-018 for policy inference under L3-COR-105. The CLI reserves TF-018 for
+established new-session facts; it does not forward those inferred library findings.
+This is header-counter analysis, not calendar spans, reference quality, admission
+or TMATS association.
