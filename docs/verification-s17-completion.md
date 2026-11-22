@@ -1,6 +1,6 @@
 # S17 completion ledger — after #104 / schema revision 13
 
-Base 7c1ca0d; supersedes the [dated #91 audit](history/s17-audit-at-pr91.md).
+Base 7c1ca0d; supersedes the [dated #91 audit](https://github.com/TelemetryWorks/irig106-time/blob/7c1ca0de669b585a90374d71b62b4b74be984e06/docs/verification-s17-completion.md).
 This docs/examples slice changes no runtime policy, Review/Design field, version
 or publication setting. Earlier records remain dated evidence. Inspection is
 against current source, manifests, help/parser and verification records; no new
@@ -17,7 +17,7 @@ standard-page inspection or upstream release-status check is claimed.
 | L1-CLI-006 → L2/L3-CLI-106: shared views and machine formats | Summary/channels/jumps/timeline/correlate JSON and text share the report; CSV is a separate documented machine format, not JSON-wrapped CSV. Rows/answers stream from private spools |
 | CLI-106: schema/version/units/provenance | One schema review and freeze, additive revisions through13; ASCII JSON, exact wide decimal strings, per-command findings, policy/window/cap/reset/leap-table identity, native year source/candidates |
 | CLI-106: NTP era context and automated validation | #96 explicit --ntp-era, no CLI guessing; #97 pinned/hash-locked isolated jsonschema tooling validates all 30 live views, with option/fixture guards |
-| CLI-106: current docs/examples/migration | This slice: current106-24R1 guide, executed qualified/network/Jiff examples, package README, migration table, consolidated Unreleased notes. Historical prototype guide and slice notes are archived |
+| CLI-106: current docs/examples/migration | This slice: current106-24R1 guide, executed qualified/network/Jiff examples, package README, migration table, consolidated Unreleased notes. Prior guide/slice notes are linked at an immutable commit |
 | L1-CLI-007 → L2/L3-CLI-107: exit/host/writer behavior | S16 exit/threshold/transaction tests retained; context is a finding, not output failure (#104 year-range regression); writer/flush failures remain4 |
 
 The #104 review compared 45,000 cases with offline (reviewer evidence, not a new
@@ -62,6 +62,6 @@ fixtures passed locally; the qualified example also ran with Jiff. Its initial
 finding-count assertion assumed one fact, but the explicit undeclared override
 also reports a fact; the example now preserves every supplied finding rather
 than dropping one. No runtime implementation was changed to fit documentation.
-Historical usage and development notes are preserved separately; the published
+Historical usage and development notes remain at the linked immutable commit; the published
 0.1–0.7 changelog sections are byte-for-byte unchanged. No tests-first runtime
 failure claim is made for this docs-only slice.

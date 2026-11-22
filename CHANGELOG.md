@@ -10,8 +10,8 @@ versions remain 0.7.0 and CLI publishing remains disabled. The full published
 TMATS 0.1/bounded-view gate, integration audit and owner S20 decision remain.
 See [migration](docs/MIGRATING-0.8.md), [release prerequisites](docs/RELEASING.md)
 and the [S17 clause ledger](docs/verification-s17-completion.md). These notes
-supersede intermediate slice announcements preserved as
-[dated development history](docs/history/development-notes-through-s17.md).
+supersede intermediate slice announcements preserved in Git as
+[dated development history](https://github.com/TelemetryWorks/irig106-time/blob/7c1ca0de669b585a90374d71b62b4b74be984e06/CHANGELOG.md).
 Published release sections below are retained unchanged.
 
 ### Breaking changes and migration

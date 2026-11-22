@@ -29,7 +29,7 @@ Re-read original bytes; do not merely relabel previously computed timestamps.
 See [S14 removed/retained export audit](verification-s14b.md),
 [event handoff](handoff-recording-events-to-decode.md), [current examples](usage.md),
 and [wire corrections](../CHANGELOG.md#unreleased). Old per-slice notes are
-[historical development evidence](history/development-notes-through-s17.md),
+[historical development evidence](https://github.com/TelemetryWorks/irig106-time/blob/7c1ca0de669b585a90374d71b62b4b74be984e06/CHANGELOG.md),
 including superseded intermediate APIs; they are not migration instructions.
 
 ## CLI reports and operations

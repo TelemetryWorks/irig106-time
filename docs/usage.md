@@ -4,7 +4,7 @@ This guide describes current main, not the published prototype. Cargo versions
 remain 0.7.0 until S20. Use the workspace checkout; `0.8` is not yet a registry
 installation instruction. See [migration](MIGRATING-0.8.md), [CLI details](../apps/irig106-time-cli/README.md)
 and the [release gate](RELEASING.md). Older examples are preserved only as
-[prototype history](history/usage-before-s17-docs.md).
+[prototype history](https://github.com/TelemetryWorks/irig106-time/blob/7c1ca0de669b585a90374d71b62b4b74be984e06/docs/usage.md).
 
 ## 1. Workspace and features
 
