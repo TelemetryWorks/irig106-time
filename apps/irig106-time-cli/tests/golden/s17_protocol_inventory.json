@@ -358,7 +358,12 @@
                   "ntp_leap_status": null,
                   "scale": "GPS",
                   "seconds": 0,
-                  "year": null
+                  "year": null,
+                  "year_evidence": {
+                    "anchor_packet": null,
+                    "candidates": [],
+                    "source": "unknown"
+                  }
                 },
                 "interval_ns": null,
                 "last": {
@@ -370,7 +375,12 @@
                   "ntp_leap_status": null,
                   "scale": "GPS",
                   "seconds": 0,
-                  "year": null
+                  "year": null,
+                  "year_evidence": {
+                    "anchor_packet": null,
+                    "candidates": [],
+                    "source": "unknown"
+                  }
                 },
                 "max_spacing_ns": null,
                 "min_spacing_ns": null,
@@ -412,7 +422,12 @@
                   "ntp_leap_status": null,
                   "scale": "TAI",
                   "seconds": 37,
-                  "year": 2017
+                  "year": 2017,
+                  "year_evidence": {
+                    "anchor_packet": null,
+                    "candidates": [],
+                    "source": "network"
+                  }
                 },
                 "interval_ns": null,
                 "last": {
@@ -424,7 +439,12 @@
                   "ntp_leap_status": null,
                   "scale": "TAI",
                   "seconds": 37,
-                  "year": 2017
+                  "year": 2017,
+                  "year_evidence": {
+                    "anchor_packet": null,
+                    "candidates": [],
+                    "source": "network"
+                  }
                 },
                 "max_spacing_ns": null,
                 "min_spacing_ns": null,
@@ -449,7 +469,12 @@
                   "ntp_leap_status": null,
                   "scale": "TAI",
                   "seconds": 37,
-                  "year": 2017
+                  "year": 2017,
+                  "year_evidence": {
+                    "anchor_packet": null,
+                    "candidates": [],
+                    "source": "network"
+                  }
                 },
                 "interval_ns": null,
                 "last": {
@@ -461,7 +486,12 @@
                   "ntp_leap_status": null,
                   "scale": "TAI",
                   "seconds": 37,
-                  "year": 2017
+                  "year": 2017,
+                  "year_evidence": {
+                    "anchor_packet": null,
+                    "candidates": [],
+                    "source": "network"
+                  }
                 },
                 "max_spacing_ns": null,
                 "min_spacing_ns": null,
@@ -497,7 +527,7 @@
             "pending_cap": "1024",
             "status": "complete",
             "unavailable_reason": null,
-            "year_inference": "packet-only"
+            "year_inference": "session-dmy"
           },
           "start": "initial"
         }
@@ -541,7 +571,7 @@
     "total_packets": "5"
   },
   "schema": "telemetryworks/irigtime-report",
-  "schema_revision": 12,
+  "schema_revision": 13,
   "schema_status": "stable",
   "schema_version": 1,
   "tool": {

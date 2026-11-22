@@ -28,8 +28,8 @@
       "const": 1
     },
     "schema_revision": {
-      "description": "Additive revision 12 identifies available native quality drift that used a stale normalized leap-table offset; no new finding is emitted. Session-year CLI wiring remains open.",
-      "const": 12
+      "description": "Revision 13 adds the session-dmy quality scope: retrospective same-session DMY evidence via bounded disk replay. Unknown years remain partial; TMATS and caller year input remain unavailable.",
+      "const": 13
     },
     "schema_status": {
       "description": "Stable contract following the reviewed draft-to-stable transition at revision 2. Further contract changes follow the version and revision rules.",
@@ -364,7 +364,7 @@
         "ntp_era_inference":{"description":"No automatic pivot or era0 assumption is used for nonzero NTP readings.","const":"disabled"},
         "formats":{"description": "Accepted pipeline formats, not an observed protocol inventory. Unknown scope values mean unsupported view.", "const": "format1+format2"},
         "include_undeclared":{"description": "Explicit declaration-free candidate-quality override; not TIMEIN evidence.", "const": true},
-        "year_inference":{"description": "F1 body year or F2 dated conversion only; no session-year inference or guessed rollover.", "const": "packet-only"},
+        "year_inference":{"description": "Native same-session DMY inference and owner YEAR-PHASE rule; unknown years remain partial. No TMATS or caller year input.", "const": "session-dmy"},
         "channel_cap":{"description": "Maximum quality channels per session, decimal count.", "const": "64"},
         "pending_cap":{"description": "Maximum total late-window references, decimal count.", "const": "1024"},
         "status":{"description": "Complete for Format1/2 observations; needs-context reports a bounded prefix.", "enum": ["complete", "needs-context"]},
@@ -395,10 +395,19 @@
     },
     "quality_calendar": {
       "description":"Native calendar endpoint; no UTC relabelling of GPS/TAI. A partial calendar is not an absolute instant.", "type":"object", "additionalProperties":false,
-      "required":["ntp_leap_status", "year", "day", "hours", "minutes", "seconds", "nanoseconds", "scale", "basis"],
+      "required":["year_evidence", "ntp_leap_status", "year", "day", "hours", "minutes", "seconds", "nanoseconds", "scale", "basis"],
       "properties": {
+        "year_evidence":{"description":"Selected year source and preserved contradictory candidates. Packet IDs are zero-based file order; null anchor means no DMY anchor (network dates use their protocol).", "type":"object", "additionalProperties":false, "required":["source","anchor_packet","candidates"], "properties":{
+          "source":{"description":"Unknown for partial years, packet for this F1 body's year, session-dmy for another same-session DMY, network for a dated F2 conversion.","enum":["unknown","packet","session-dmy","network"]},
+          "anchor_packet":{"description":"Selected DMY packet ID or null.","anyOf":[{"$ref":"#/$defs/unsigned"},{"type":"null"}]},
+          "candidates":{"description":"Native DMY candidates including contradictions, in native priority order.","type":"array","items":{"type":"object","additionalProperties":false,"required":["supplied","year","packet"],"properties":{
+            "supplied":{"description":"Original DMY year.","type":"integer","minimum":0,"maximum":9999},
+            "year":{"description":"Year advanced to this reference's phase.","type":"integer","minimum":0,"maximum":9999},
+            "packet":{"description":"Candidate DMY packet ID or null.","anyOf":[{"$ref":"#/$defs/unsigned"},{"type":"null"}]}
+          }}}
+        }},
         "ntp_leap_status":{"description":"Per-value NTP leap assessment: folded insertion ambiguity or unknown table coverage remains labelled. Null for non-NTP calendars.","enum":["covered","leap-ambiguous","coverage-unknown",null]},
-        "year":{"description": "F1 packet year or F2 conversion date; null means unknown.", "type": ["integer", "null"], "minimum": 0, "maximum": 9999},
+        "year":{"description": "Selected F1 session year or F2 conversion date; null means unknown.", "type": ["integer", "null"], "minimum": 0, "maximum": 9999},
         "day":{"description": "Day of year, one-based.", "type": "integer", "minimum": 1, "maximum": 366},
         "hours":{"description": "Hour.", "type": "integer", "minimum": 0, "maximum": 23},
         "minutes":{"description": "Minute.", "type": "integer", "minimum": 0, "maximum": 59},

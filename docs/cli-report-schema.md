@@ -1,4 +1,4 @@
-# irigtime JSON report, stable v1, revision 12
+# irigtime JSON report, stable v1, revision 13
 
 The [canonical producer schema](../apps/irig106-time-cli/schema/irigtime-report-v1.schema.json)
 is packaged with the CLI. The [docs snapshot](schema/irigtime-report-v1.schema.json)
@@ -320,3 +320,21 @@ finding or an assertion about leap-table currency for unrelated UTC projections.
 Text appends “possibly out of date: stale leap table” to affected drift values.
 The bounded year-replay library API does not yet change CLI `year_inference`:
 retrospective CLI qualification remains a separate disk-backed integration.
+
+
+## Retrospective native years (revision 13)
+
+Native summary quality now emits `year_inference: session-dmy`: the native
+YEAR-PHASE/D9 rule, using first observed same-session DMY evidence and retaining
+contradictions. F2 dates keep their protocol context. Missing evidence stays
+partial; no caller year, G\OD, setup date or data/time association is guessed.
+The earlier packet-only scope is superseded for native summary quality.
+
+Every quality endpoint adds `year_evidence` with source (`packet`, `session-dmy`,
+`network`, `unknown`), nullable selected `anchor_packet`, and native candidates
+(`supplied`, phase-advanced `year`, nullable `packet`). Years are small integers;
+packet IDs are decimal strings. An unknown source has no selected anchor. Scale
+basis remains separate. Native sessions/year-context gaps constrain inference;
+per-channel CLI reset segments and existing query answers are not reinterpreted.
+Producer schema is revision13; consumers handle the new scope/fields under the
+existing additive compatibility rules. Schema remains stable, not newly frozen.

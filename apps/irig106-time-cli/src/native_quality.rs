@@ -1,5 +1,5 @@
 //! Bounded summary reference quality, separate from legacy CLI correlation.
-//! Partial CLI-104/106 and COR-113: packet-local years, no TMATS declarations.
+//! Partial CLI-104/106 and COR-113: prepared year evidence, no TMATS declarations.
 use irig106_time::{
     Result, Rtc, TimeError,
     edition::EditionEvidence,
@@ -34,6 +34,7 @@ impl Quality {
     pub(super) fn advance(&mut self, high: i128, late_ns: u64) {
         self.drain(Some(high - i128::from(late_ns) / 100));
     }
+    #[cfg(test)]
     pub(super) fn observe(
         &mut self,
         key: PacketKey,
@@ -41,6 +42,18 @@ impl Quality {
         kind: u8,
         version: u8,
         payload: &[u8],
+    ) {
+        self.prepared(
+            key,
+            channel,
+            reference(key, channel, kind, version, payload, self.ntp_era),
+        );
+    }
+    pub(super) fn prepared(
+        &mut self,
+        key: PacketKey,
+        channel: u16,
+        result: Result<TimelineReference>,
     ) {
         if self.unavailable.is_some() {
             return;
@@ -60,7 +73,7 @@ impl Quality {
                 }
             }
         }
-        match reference(key, channel, kind, version, payload, self.ntp_era) {
+        match result {
             Ok(r) => {
                 if self.pending.len() == PENDING_CAP {
                     self.unavailable =
@@ -135,11 +148,23 @@ fn calendar(t: irig106_time::format1::CalendarReading, r: Option<&TimelineRefere
                 },
                 _ => None,
             });
-    json!({"ntp_leap_status":leap,"year":t.year,"day":t.day_of_year,"hours":t.hours,"minutes":t.minutes,"seconds":t.seconds,"nanoseconds":t.nanoseconds,
+    let selected = r.and_then(|r| r.input.year_basis.selected());
+    let source = if t.year.is_none() {
+        "unknown"
+    } else if r.is_some_and(|r| r.input.network.is_some()) {
+        "network"
+    } else if selected.is_some_and(|c| r.is_some_and(|r| c.packet == Some(r.key.packet))) {
+        "packet"
+    } else {
+        "session-dmy"
+    };
+    let candidates:Vec<_>=r.into_iter().flat_map(|r|r.input.year_basis.candidates()).map(|c|
+        json!({"supplied":c.supplied,"year":c.year,"packet":c.packet.map(|p|p.to_string())})).collect();
+    json!({"year_evidence":{"source":source,"anchor_packet":selected.and_then(|c|c.packet).map(|p|p.to_string()),"candidates":candidates},"ntp_leap_status":leap,"year":t.year,"day":t.day_of_year,"hours":t.hours,"minutes":t.minutes,"seconds":t.seconds,"nanoseconds":t.nanoseconds,
         "scale":match t.scale.effective(){TimeScale::Utc=>"UTC",TimeScale::Tai=>"TAI",TimeScale::Gps=>"GPS",TimeScale::Unknown=>"unknown"},
         "basis":match t.scale.origin(){ScaleOrigin::Standard=>"stated",ScaleOrigin::Policy=>"assumed",ScaleOrigin::Unspecified=>"unknown"}})
 }
-fn reference(
+pub(super) fn reference(
     key: PacketKey,
     channel: u16,
     kind: u8,

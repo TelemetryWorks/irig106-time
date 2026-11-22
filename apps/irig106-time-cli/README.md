@@ -306,7 +306,7 @@ passed; `publish = false` remains until the owner’s S20 decision.
 Summary/channels/jumps accept `--format json` (default text), over the same report
 model as text. See the [stable producer schema](https://github.com/TelemetryWorks/irig106-time/blob/main/apps/irig106-time-cli/schema/irigtime-report-v1.schema.json)
 and [compatibility, units and provenance rules](https://github.com/TelemetryWorks/irig106-time/blob/main/docs/cli-report-schema.md).
-The shared envelope is `telemetryworks/irigtime-report`, stable v1, revision 12. JSON is
+The shared envelope is `telemetryworks/irigtime-report`, stable v1, revision 13. JSON is
 ASCII-only; 64/128-bit quantities are decimal strings. Every defined key is
 present; null meanings are field-specific. Consumers ignore unknown fields;
 producer validation stays strict. The schema is frozen after review.
@@ -408,7 +408,7 @@ for the full inventory. Recording-wide sessions and channel reset segments stay 
 
 Summary additionally reports native **Format 1/2 candidate quality**, distinct from
 CLI reset segments. Its declaration-free profile includes undeclared candidates
-but invents no TIMEIN declarations; dates come from packet bodies or explicit network context. Endpoint
+but invents no TIMEIN declarations; dates come from same-session DMY evidence or explicit network context. Endpoint
 calendars retain unknown years and native scales. A 1.1 s late queue is bounded
 at 1,024 references and 64 channels per session; exhaustion labels prefix-only
-quality. NTP requires --ntp-era for nonzero readings and keeps leap ambiguity/coverage labels; PTP endpoints stay native TAI. Retrospective session-year qualification remains pending.
+quality. NTP requires --ntp-era for nonzero readings and keeps leap ambiguity/coverage labels; PTP endpoints stay native TAI. Revision 13 replays raw time prefixes from a private temporary disk file (62 bytes per time packet), using native YEAR-PHASE/D9 and retaining rejected leap-label flags. Earlier DOY values can use a later DMY anchor; missing years remain partial, and anchors never cross native session/year-context gaps. Endpoint year evidence includes the selected source, DMY packet ID and contradictory candidates. No caller-year or TMATS date is guessed. New year-derived TF-004/007/032 and year-gap TF-020 facts use their approved levels; baseline decode/jump findings remain separate. Temporary disk use grows with time-packet count; RAM remains capped.
