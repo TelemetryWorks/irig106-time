@@ -129,7 +129,7 @@ fn in_order_query_keeps_any_and_each_channel_text_exact() {
     let (out, err) = Input::new(&[(7, 0, 0), (8, 0, 3600), (7, 40, 40), (8, 41, 3641)]).query();
     assert_eq!(
         out,
-        "Resolving RTC 0x000002FAF080 (50000000 ticks, 5000000000 ns)\n\n  Any channel  → 100:12:00:05.000000000\n  Channel   7  → 100:12:00:05.000000000\n  Channel   8  → 100:13:00:05.000000000\n"
+        "Resolving RTC 0x000002FAF080 (50000000 ticks, 5000000000 ns)\n\n  Any channel  → 100:12:00:05.000000000 UTC (stated FMT)\n  Channel   7  → 100:12:00:05.000000000 UTC (stated FMT)\n  Channel   8  → 100:13:00:05.000000000 UTC (stated FMT)\n"
     );
     assert_eq!(err, "");
 }
@@ -147,7 +147,7 @@ fn reset_query_keeps_both_segment_answers_and_other_channel_exact() {
     .query();
     assert_eq!(
         out,
-        "Resolving RTC 0x000002FAF080 (50000000 ticks, 5000000000 ns)\n\n  Channel   7 Segment   1  → 100:12:00:05.000000000\n  Channel   7 Segment   2  → 100:12:01:05.000000000\n  Channel   8  → 100:13:00:05.000000000\n"
+        "Resolving RTC 0x000002FAF080 (50000000 ticks, 5000000000 ns)\n\n  Channel   7 Segment   1  → 100:12:00:05.000000000 UTC (stated FMT)\n  Channel   7 Segment   2  → 100:12:01:05.000000000 UTC (stated FMT)\n  Channel   8  → 100:13:00:05.000000000 UTC (stated FMT)\n"
     );
     assert!(err.contains("warning=2"), "{err}");
     assert!(err.contains("RTC is ambiguous across reset segments on channel 7"));
@@ -292,11 +292,11 @@ fn reset_segment_calendar_context_error_is_rendered_unresolved() {
 }
 
 fn query_clock(hour: u8, minute: u8, second: u8) -> serde_json::Value {
-    // DOY100 starts after99 days. Expected native count, not Unix/UTC inference.
+    // DOY100 starts after99 days. Expected native count; UTC is stated by fixture FMT4, not a year inference.
     let ns = (99u64 * 86400 + u64::from(hour) * 3600 + u64::from(minute) * 60 + u64::from(second))
         * 1_000_000_000;
     serde_json::json!({"year":null,"day":100,"hour":hour,"minute":minute,"second":second,"nanosecond":0,
-        "clock_count_ns":ns.to_string(),"scale":"unknown","basis":"unresolved","year_offset":"0"})
+        "clock_count_ns":ns.to_string(),"scale":"UTC","basis":"stated FMT","year_offset":"0"})
 }
 #[test]
 fn correlate_json_matches_native_answers_with_all_query_fields() {

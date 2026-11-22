@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### F1 scale/basis on packet and query clocks
+
+- Retain the selected F1 reference's basis in timeline/correlate text and JSON,
+  including data rows and reset spools. IRIG-A/B/G now show UTC (assumed,
+  RDG-009); FMT4 shows UTC and FMT5 GPS (stated FMT); RTC shows scale unknown.
+  These are intentional output-label changes from the previous bare/unknown
+  F1 row/query clocks. Numeric values and native GPS time are unchanged.
+- Reuse the existing schema enums at revision6; no new fields. CSV's19-column
+  contract stays unchanged and basis-free. No data-source association is implied.
+
 ### CSV packet-fact column addition
 
 - Append `network_time_format`, `network_protocol`, `time_status` and

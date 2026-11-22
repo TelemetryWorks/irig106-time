@@ -84,11 +84,11 @@ fn timeline_rows_golden_pins_counter_and_clock_without_invented_association() {
             {"network_time":null,"kind":"absolute", "packet":"1", "channel":7, "rtc":"10000000", "offset_bytes":"24", "data_type":17,
              "association":"association_unestablished", "candidates":[], "issue":null,
              "clock":{"year":null,"day":100,"hour":12,"minute":0,"second":4,"nanosecond":120000000,
-                      "clock_count_ns":"8596804120000000","scale":"unknown","basis":"unresolved","year_offset":"0"}},
+                      "clock_count_ns":"8596804120000000","scale":"UTC","basis":"stated FMT","year_offset":"0"}},
             {"network_time":null,"kind":"absolute", "packet":"2", "channel":0, "rtc":"20000000", "offset_bytes":"60", "data_type":9,
              "association":"association_unestablished", "candidates":[], "issue":null,
              "clock":{"year":null,"day":100,"hour":12,"minute":0,"second":5,"nanosecond":120000000,
-                      "clock_count_ns":"8596805120000000","scale":"unknown","basis":"unresolved","year_offset":"0"}}
+                      "clock_count_ns":"8596805120000000","scale":"UTC","basis":"stated FMT","year_offset":"0"}}
         ])
     );
     let schema: Value =

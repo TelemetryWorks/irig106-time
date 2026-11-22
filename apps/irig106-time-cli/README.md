@@ -354,3 +354,11 @@ CSV now appends four packet-fact columns to its original15: `network_time_format
 These describe the packet's CSDW, not the source of its resolved clock, and are
 empty for non-F2 or missing CSDW. Future CSV columns append only, never reorder
 or remove existing columns. See the [CSV column contract](../../docs/cli-csv-schema.md) for details.
+
+
+Timeline/correlate clocks now retain the selected F1 reference's scale:
+IRIG-A/B/G are UTC (assumed, RDG-009), FMT4 UTC and FMT5 GPS are stated FMT;
+RTC is scale unknown. Text suffixes and JSON basis follow that reference,
+including closed reset segments, not the packet's own or latest channel FMT.
+Numeric values/unknown years and CSV columns are unchanged; no data-channel
+association is inferred from this counter-reference choice.

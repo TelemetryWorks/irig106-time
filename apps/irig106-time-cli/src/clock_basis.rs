@@ -1,12 +1,17 @@
 //! Bounded metadata alongside the legacy numeric correlators, not a new policy.
+//! Partial Traces: L3-CLI-106 <- L2-CLI-106 <- L1-CLI-006.
 use irig106_time::{AbsoluteTime, Rtc, StreamingTimeCorrelator};
 use std::collections::{BTreeMap, VecDeque};
 pub(super) const COVERED: &str = "UTC (from TAI via leap table)";
 pub(super) const STALE: &str = "UTC (from TAI via stale leap table, possibly out of date)";
-pub(super) fn ptp(label: &str) -> Option<&'static str> {
+pub(super) fn known(label: &str) -> Option<&'static str> {
     match label {
         COVERED => Some(COVERED),
         STALE => Some(STALE),
+        "UTC (assumed, RDG-009)" => Some("UTC (assumed, RDG-009)"),
+        "UTC (stated FMT)" => Some("UTC (stated FMT)"),
+        "GPS (stated FMT)" => Some("GPS (stated FMT)"),
+        "scale unknown" => Some("scale unknown"),
         _ => None,
     }
 }
@@ -32,7 +37,7 @@ impl Window {
     ) {
         let refs = self.0.entry(ch).or_default();
         let index = refs.partition_point(|r| r.0 <= rtc);
-        refs.insert(index, (rtc, ptp(label)));
+        refs.insert(index, (rtc, known(label)));
         // Core evicts only fronts (age/count). Matching its post-insert channel
         // lengths preserves equal-RTC arrival order without retaining lost refs.
         self.0.retain(|ch, refs| {
@@ -92,8 +97,8 @@ mod tests {
             assert!(tags.0.values().map(VecDeque::capacity).sum::<usize>() <= 4 * core.len());
             for target in (0..100).step_by(3).map(Rtc::from_raw) {
                 if let Ok(value) = core.correlate(target, None) {
-                    let expected =
-                        [Some(COVERED), Some(STALE), None][(value.as_total_ns() % 3) as usize];
+                    let expected = [Some(COVERED), Some(STALE), Some("scale unknown")]
+                        [(value.as_total_ns() % 3) as usize];
                     assert_eq!(tags.nearest(target), expected);
                 }
             }

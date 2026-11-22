@@ -138,15 +138,7 @@ fn full_adapter_projection_goldens_cover_protocols_status_scales_and_absence() {
             case["scale"].clone()
         };
         let expected_inventory = clock(time, &value_scale, &case["clock_basis"]);
-        let expected_row = clock(
-            time,
-            &if ptp { json!("UTC") } else { json!("unknown") },
-            &if ptp {
-                case["clock_basis"].clone()
-            } else {
-                json!("unresolved")
-            },
-        );
+        let expected_row = expected_inventory.clone();
         for command in COMMANDS {
             let (text, stderr) = input.output(command, false);
             if command == "csv" {
@@ -334,8 +326,8 @@ fn reset_segment_goldens_agree_across_inventory_rows_csv_and_query() {
                     row["clock"],
                     clock(
                         &json!([null, 100, 12, minute, second, 0]),
-                        &json!("unknown"),
-                        &json!("unresolved")
+                        &json!("UTC"),
+                        &json!("stated FMT")
                     )
                 );
                 assert_eq!(row["association"], "association_unestablished");
@@ -378,8 +370,8 @@ fn reset_segment_goldens_agree_across_inventory_rows_csv_and_query() {
                     answer["clock"],
                     clock(
                         &json!([null, 100, 12, minute, 5, 0]),
-                        &json!("unknown"),
-                        &json!("unresolved")
+                        &json!("UTC"),
+                        &json!("stated FMT")
                     )
                 );
             }
@@ -387,7 +379,7 @@ fn reset_segment_goldens_agree_across_inventory_rows_csv_and_query() {
         } else {
             assert_eq!(
                 String::from_utf8(out).unwrap(),
-                "Resolving RTC 0x000002FAF080 (50000000 ticks, 5000000000 ns)\n\n  Channel   7 Segment   1  → 100:12:00:05.000000000\n  Channel   7 Segment   2  → 100:12:01:05.000000000\n"
+                "Resolving RTC 0x000002FAF080 (50000000 ticks, 5000000000 ns)\n\n  Channel   7 Segment   1  → 100:12:00:05.000000000 UTC (stated FMT)\n  Channel   7 Segment   2  → 100:12:01:05.000000000 UTC (stated FMT)\n"
             );
         }
     }

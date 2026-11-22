@@ -394,8 +394,8 @@ fn decoded_packet_row_basis_follows_selected_reference_not_latest_channel() {
         assert_eq!(rows[4]["clock"]["second"], 1);
         let (_, text, _) = input.output("timeline", false, "never");
         for row in rows.iter().filter(|row| row["clock"]["day"] == 100) {
-            assert_eq!(row["clock"]["basis"], "unresolved", "{row}");
-            assert_eq!(row["clock"]["scale"], "unknown", "{row}");
+            assert_eq!(row["clock"]["basis"], "assumed, RDG-009", "{row}");
+            assert_eq!(row["clock"]["scale"], "UTC", "{row}");
             let line = text
                 .lines()
                 .find(|line| line.split_whitespace().next() == row["packet"].as_str())

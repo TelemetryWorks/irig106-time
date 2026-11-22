@@ -17,8 +17,8 @@ pub(super) struct PacketRow {
     pub(super) network_time: Option<super::NetworkFacts>,
 }
 impl PacketRow {
-    // Retain the selected PTP reference's conversion basis. Other unqualified
-    // lineage stays unresolved; no label comes from a same-ID/latest channel
+    // Retain the selected reference's F1 stated/assumed or PTP conversion basis.
+    // No label comes from a same-ID/latest channel
     // and no data-to-time-channel association is inferred.
     pub(super) fn json(&self) -> serde_json::Value {
         serde_json::json!({

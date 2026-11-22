@@ -1772,7 +1772,7 @@ does not settle it or replace its real-recording evidence.
 
 **Planned verification**: CLI golden text/CSV/JSON reports with quotes/commas/newlines, unknown year/scale, counter-only results and signed/unsigned 64/128-bit extrema (including values above 2^53). Validate emitted JSON schema/version/units, exact decimal strings and full raw/stated/assumed provenance. No library snapshot alignment or untrusted JSON load/roundtrip API is required.
 
-**Clause evidence**: [S17 adapter audit](verification-s17-completion.md); stable schema/projection goldens do not close full policy/defaults/reference provenance.
+**Clause evidence**: [S17 adapter audit](verification-s17-completion.md); F1 row/query scale+basis evidence: [S17 item2](verification-s17-f1-basis.md). Stable schema/projection goldens do not close full policy/defaults/reference provenance.
 
 #### L2-CLI-107
 

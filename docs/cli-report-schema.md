@@ -78,9 +78,10 @@ to command findings; zero is never substituted. Candidate segment answers stay
 empty in timeline. Packet-row ambiguity candidates remain reserved. CSV is its
 own machine format, not another JSON view; see [CSV columns](cli-csv-schema.md).
 
-Packet/query clocks retain covered or stale PTP conversion basis from the
-selected numeric reference, independently of the channel's latest observation.
-Other unqualified lineage stays unknown/unresolved. This does not establish a
+Packet/query clocks retain the selected reference's F1 stated/assumed basis or
+covered/stale PTP conversion basis, independently of the packet's own FMT and
+the channel's latest observation. IRIG-A/B/G use UTC / assumed, RDG-009; FMT4
+uses UTC / stated FMT; FMT5 uses GPS / stated FMT. RTC remains unknown/unresolved. This does not establish a
 data-to-time-channel relationship or change counter selection. Retained basis
 metadata shares the existing reference cap/evictions; closed query segments keep
 it in their private spool.
@@ -128,8 +129,8 @@ Ordinary answer order is channel ID; reset answers retain closure order then fin
 channel order, matching text. Projection holds one answer Value at a time.
 
 These are counter-selection policy answers, not evidence of a data/time-channel
-relationship. Selected PTP reference conversions retain their UTC/table basis;
-other unqualified scale/basis remains unknown/unresolved. No data association
+relationship. F1 stated/assumed and PTP conversion basis follow the selected
+reference; RTC or unavailable scale/basis remains unknown/unresolved. No data association
 is inferred. The reset query golden
 covers two possible clocks and an unaffected channel. Complete multi-command
 adapter qualification remains subsequent work. CSV has its own documented
@@ -167,3 +168,11 @@ and correlate text append the same protocol/TS facts, explicitly prefixed
 `[packet: ...]` and `[reference: ...]` respectively. CSV separately exposes
 packet facts under its approved [19-column append-only contract](cli-csv-schema.md);
 the JSON schema stays at revision6.
+
+
+F1 clock qualification uses the already-reviewed version1 scale/basis enums:
+no key, type, unit, enum value or schema revision changes (revision6). Text now
+suffixes F1 row/query clocks with `UTC (assumed, RDG-009)`, `UTC (stated FMT)`,
+`GPS (stated FMT)` or `scale unknown`. Native GPS values are not converted to
+UTC. No year, origin or data-channel/time-channel association is inferred.
+The19-column CSV remains basis-free and unchanged.
