@@ -1,0 +1,8 @@
+packet_num,offset_hex,channel_id,data_type_hex,data_type_name,rtc_raw,rtc_nanos,day_of_year,hours,minutes,seconds,nanoseconds,year,month,day,network_time_format,network_protocol,time_status,time_status_name
+0,0x0,7,0x11,Time-F1,0,0,100,12,0,0,0,,,,,,,
+1,0x24,9,0x12,Time-F2,10000000,1000000000,2,0,0,0,0,2017,,,2,IEEE1588-2008,1,Valid
+2,0x48,9,0x12,Time-F2,20000000,2000000000,2,0,0,1,0,2017,,,1,IEEE1588-2002,0,NotValid
+3,0x6C,9,0x12,Time-F2,30000000,3000000000,2,0,0,2,0,2017,,,15,reserved,15,RSVD-15
+4,0x90,9,0x12,Time-F2,40000000,4000000000,2,0,0,3,0,2017,,,,,,
+5,0xAC,9,0x12,Time-F2,50000000,5000000000,2,0,0,4,0,2017,,,2,IEEE1588-2008,1,Valid
+6,0xC8,8,0x09,PCM-1,60000000,6000000000,2,0,0,5,0,2017,,,,,,

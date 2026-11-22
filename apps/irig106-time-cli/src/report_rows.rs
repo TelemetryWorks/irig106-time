@@ -4,7 +4,7 @@ use super::fmt_data_type_short;
 use irig106_time::{AbsoluteTime, Rtc};
 use std::io::{self, Write};
 
-pub(super) const CSV_HEADER: &str = "packet_num,offset_hex,channel_id,data_type_hex,data_type_name,rtc_raw,rtc_nanos,day_of_year,hours,minutes,seconds,nanoseconds,year,month,day";
+pub(super) const CSV_HEADER: &str = "packet_num,offset_hex,channel_id,data_type_hex,data_type_name,rtc_raw,rtc_nanos,day_of_year,hours,minutes,seconds,nanoseconds,year,month,day,network_time_format,network_protocol,time_status,time_status_name";
 
 pub(super) struct PacketRow {
     pub(super) packet_num: usize,
@@ -74,11 +74,17 @@ impl PacketRow {
                 write!(out, "{year}")?;
             }
             // Legacy columns reserved for civil month/day: not synthesized.
-            writeln!(out, ",,")
+            write!(out, ",,")?;
         } else {
             // Eight absent calendar fields, including year/month/day.
-            writeln!(out, ",,,,,,,")
+            write!(out, ",,,,,,,")?;
         }
+        if let Some(facts) = self.network_time {
+            facts.write_csv(out)?;
+        } else {
+            out.write_all(b",,,,")?;
+        }
+        writeln!(out)
     }
 }
 
@@ -105,6 +111,59 @@ fn field(out: &mut dyn Write, value: &str) -> io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn appended_csv_write_failures_propagate_even_if_writer_recovers() {
+        struct FailOnce {
+            remaining: usize,
+            failed: bool,
+        }
+        impl Write for FailOnce {
+            fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+                if bytes.is_empty() {
+                    return Ok(0);
+                }
+                if self.failed {
+                    return Ok(bytes.len());
+                }
+                if self.remaining == 0 {
+                    self.failed = true;
+                    return Err(io::Error::other("appended CSV write probe"));
+                }
+                let n = self.remaining.min(bytes.len());
+                self.remaining -= n;
+                Ok(n)
+            }
+            fn flush(&mut self) -> io::Result<()> {
+                Ok(())
+            }
+        }
+        let prefix = "0,0x0,9,0x12,Time-F2,0,0,,,,,,,,";
+        for network_time in [None, Some(super::super::NetworkFacts(0x21))] {
+            let row = PacketRow {
+                packet_num: 0,
+                offset: 0,
+                channel_id: 9,
+                data_type: 0x12,
+                rtc: Rtc::from_raw(0),
+                abs_time: None,
+                basis: None,
+                network_time,
+            };
+            let suffix = if network_time.is_some() {
+                ",2,IEEE1588-2008,1,Valid\n"
+            } else {
+                ",,,,\n"
+            };
+            for remaining in prefix.len()..prefix.len() + suffix.len() {
+                let mut out = FailOnce {
+                    remaining,
+                    failed: false,
+                };
+                assert!(row.write_csv(&mut out).is_err(), "write budget {remaining}");
+                assert!(out.failed);
+            }
+        }
+    }
     #[test]
     fn csv_field_escaping_is_exact() {
         for (value, expected) in [

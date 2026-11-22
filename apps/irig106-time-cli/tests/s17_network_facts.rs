@@ -200,3 +200,74 @@ fn invalid_packet_label_is_explicit_when_clock_comes_from_other_protocol() {
         "{any}"
     );
 }
+
+#[test]
+fn csv_packet_fact_columns_append_to_every_legacy_row_golden() {
+    // Fig11-12/13 FMT4/SRC1 DOY10012:00; Fig11-15/17 packet facts.
+    // PTP UTC2017-01-02 atRTC1; later invalid/malformed packets use that
+    // reference's clock, but their CSV protocol/status remain packet-observed.
+    let input = Input::new(
+        &[
+            packet(7, 0, 0x11, &[0x41, 0, 0, 0, 0, 0, 0, 0x12, 0, 1]),
+            f2(2, 1, 1, 0),
+            f2(1, 0, 2, 999),
+            f2(15, 15, 3, 999),
+            packet(9, 4, 0x12, &[0x21, 0]),
+            packet(9, 5, 0x12, &[0x21, 0, 0, 0]),
+            packet(8, 6, 9, &[]),
+        ]
+        .concat(),
+    );
+    let out = input.output("csv", false);
+    assert_eq!(out, include_str!("golden/s17_packet_facts.csv"));
+    let rows = out
+        .lines()
+        .map(|l| l.split(',').collect::<Vec<_>>())
+        .collect::<Vec<_>>();
+    assert!(rows.iter().all(|r| r.len() == 19));
+    // Append-only contract: the first15 names stay in their original order.
+    assert_eq!(
+        rows[0][..15].join(","),
+        "packet_num,offset_hex,channel_id,data_type_hex,data_type_name,rtc_raw,rtc_nanos,day_of_year,hours,minutes,seconds,nanoseconds,year,month,day"
+    );
+    assert_eq!(&rows[3][15..], ["1", "IEEE1588-2002", "0", "NotValid"]);
+    assert_eq!(rows[3][10], "1"); // Not the invalid packet's raw body (999s).
+    for index in [1, 5, 7] {
+        assert_eq!(&rows[index][15..], ["", "", "", ""]);
+    }
+}
+
+#[test]
+fn csv_raw_and_named_status_are_exact_for_all_nibbles() {
+    for ntf in 0..=15 {
+        for ts in 0..=15 {
+            let input = Input::new(&f2(ntf, ts, 0, 0));
+            let out = input.output("csv", false);
+            let row = out.lines().nth(1).unwrap().split(',').collect::<Vec<_>>();
+            assert_eq!(row.len(), 19);
+            let protocol = match ntf {
+                0 => "NTP",
+                1 => "IEEE1588-2002",
+                2 => "IEEE1588-2008",
+                _ => "reserved",
+            };
+            let status = match ts {
+                0 => "NotValid".into(),
+                1 => "Valid".into(),
+                _ => format!("RSVD-{ts}"),
+            };
+            assert_eq!(row[15], ntf.to_string());
+            assert_eq!(row[16], protocol);
+            assert_eq!(row[17], ts.to_string());
+            assert_eq!(row[18], status);
+            // Independent original15-field prefix, including eight empty calendar
+            // fields whenever the single packet cannot supply a usable PTP time.
+            let expected = if matches!(ntf, 1 | 2) && ts == 1 {
+                "0,0x0,9,0x12,Time-F2,0,0,2,0,0,0,0,2017,,"
+            } else {
+                "0,0x0,9,0x12,Time-F2,0,0,,,,,,,,"
+            };
+            assert_eq!(row[..15].join(","), expected);
+        }
+    }
+}

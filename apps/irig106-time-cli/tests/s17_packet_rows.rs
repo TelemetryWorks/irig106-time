@@ -40,9 +40,9 @@ fn counter_only_csv_is_rectangular_and_matches_timeline() {
     let (text, csv) = outputs(&common::NO_TIME);
     assert!(text.lines().last().unwrap().ends_with("N/A"));
     let lines: Vec<_> = csv.lines().collect();
-    assert_eq!(lines[0].split(',').count(), 15);
-    assert_eq!(lines[1].split(',').count(), 15);
-    assert_eq!(lines[1], "0,0x0,0,0x09,PCM-1,0,0,,,,,,,,");
+    assert_eq!(lines[0].split(',').count(), 19);
+    assert_eq!(lines[1].split(',').count(), 19);
+    assert_eq!(lines[1], "0,0x0,0,0x09,PCM-1,0,0,,,,,,,,,,,,");
 }
 
 #[test]
@@ -72,6 +72,6 @@ fn observed_clock_and_packet_identity_project_identically() {
     );
     assert_eq!(
         csv.lines().nth(1).unwrap(),
-        "0,0x0,7,0x11,Time-F1,10000000,1000000000,100,12,0,4,120000000,,,"
+        "0,0x0,7,0x11,Time-F1,10000000,1000000000,100,12,0,4,120000000,,,,,,,"
     );
 }

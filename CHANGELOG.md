@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### CSV packet-fact column addition
+
+- Append `network_time_format`, `network_protocol`, `time_status` and
+  `time_status_name` (`Valid`/`NotValid`/`RSVD-n`) to the original15 CSV columns.
+  CSV now has19 columns; existing positions/meanings are unchanged. Consumers
+  that validate an exact15-column width must allow the appended fields.
+- The new fields describe the packet, not the resolved clock's source, and are
+  empty for non-F2/missing CSDW. Future columns append only; existing columns
+  will never be reordered or removed. JSON/schema revision6 is unchanged.
+
 ### S17 packet/query network facts
 
 - Schema revision6 adds packet-observed and query-reference `network_time` facts
