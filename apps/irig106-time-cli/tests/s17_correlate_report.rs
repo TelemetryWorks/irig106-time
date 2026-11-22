@@ -148,3 +148,43 @@ fn correlate_report_writer_failure_still_overrides_findings() {
         ExitClass::Output
     );
 }
+
+#[test]
+fn reset_findings_precede_answer_body_in_merged_output() {
+    use std::{
+        cell::RefCell,
+        io::{self, Write},
+    };
+    struct Shared<'a>(&'a RefCell<Vec<u8>>);
+    impl Write for Shared<'_> {
+        fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+            self.0.borrow_mut().extend_from_slice(bytes);
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+    let input = Input::new(&[(7, 0, 0), (7, 40, 40), (7, 1, 61), (7, 10, 70)]);
+    let bytes = RefCell::new(Vec::new());
+    assert_eq!(
+        run(
+            &[
+                "correlate",
+                input.0.to_str().unwrap(),
+                "2FAF080",
+                "--fail-on",
+                "never"
+            ],
+            &mut Shared(&bytes),
+            &mut Shared(&bytes)
+        ),
+        ExitClass::Success
+    );
+    let text = String::from_utf8(bytes.into_inner()).unwrap();
+    assert!(text.find("Resolving RTC").unwrap() < text.find("Findings:").unwrap());
+    assert!(
+        text.find("Findings:").unwrap() < text.find("Channel   7 Segment   1").unwrap(),
+        "{text}"
+    );
+}
