@@ -49,6 +49,7 @@ mod csv_spool;
 /// Bounded raw packet transport; command integration follows in S16b.
 pub mod input;
 mod live_refs;
+mod native_quality;
 mod native_sessions;
 mod report;
 mod report_json;
@@ -348,6 +349,11 @@ impl Ch10TimeScanner {
                         None,
                         format!("Native session analysis needs context: {reason}"),
                     );
+                }
+            }
+            if hdr.data_type == DATA_TYPE_TIME_F1 {
+                if let Some(native) = &mut self.native_sessions {
+                    native.reference(hdr.channel_id, &packet.body_prefix);
                 }
             }
             if self.first_rtc.is_none() {
@@ -1640,7 +1646,7 @@ fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
     )?;
     writeln!(
         stdout,
-        "--format <text|json>: summary/channels/jumps/timeline/correlate; default text. Schema stable v1, revision 9."
+        "--format <text|json>: summary/channels/jumps/timeline/correlate; default text. Schema stable v1, revision 10."
     )?;
     writeln!(
         stdout,

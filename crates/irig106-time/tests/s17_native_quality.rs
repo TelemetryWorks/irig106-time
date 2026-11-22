@@ -157,6 +157,20 @@ fn scope_order_overflow_and_decode_rejection_errors_do_not_change_state() {
     let before = overflow.snapshot();
     assert!(overflow.observe(&hi).is_err());
     assert_eq!(overflow.snapshot(), before);
+    // A failed far-future reference must not consume the ordering key.
+    let mut between = refs[1].clone();
+    between.key.ticks = i128::MIN + 1;
+    overflow.observe(&between).unwrap();
+    assert_eq!(overflow.last_reference().unwrap(), &between);
+    // Subtraction fits; multiplication by 100 alone must be checked.
+    lo.key.ticks = 0;
+    hi.key.ticks = i128::MAX / 50;
+    let mut multiply = OrderedQuality::new(1, 7).unwrap();
+    multiply.observe(&lo).unwrap();
+    let before = multiply.snapshot();
+    assert!(multiply.observe(&hi).is_err());
+    assert_eq!(multiply.snapshot(), before);
+
     fn traits<T: Send + Sync + Clone + core::fmt::Debug>() {}
     traits::<OrderedQuality>();
 }

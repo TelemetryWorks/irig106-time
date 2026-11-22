@@ -1,4 +1,4 @@
-# irigtime JSON report, stable v1, revision 9
+# irigtime JSON report, stable v1, revision 10
 
 The [canonical producer schema](../apps/irig106-time-cli/schema/irigtime-report-v1.schema.json)
 is packaged with the CLI. The [docs snapshot](schema/irigtime-report-v1.schema.json)
@@ -268,3 +268,24 @@ records TF-018 for policy inference under L3-COR-105. The CLI reserves TF-018 fo
 established new-session facts; it does not forward those inferred library findings.
 This is header-counter analysis, not calendar spans, reference quality, admission
 or TMATS association.
+
+
+## Native Format 1 candidate quality (revision 10)
+
+Each native span adds `reference_quality`. Text and JSON use the same bounded
+projection. This is declaration-free candidate analysis (`include_undeclared`
+true), not TIMEIN evidence or a change to query/source selection. Only Format 1
+is evaluated in this slice; `formats` and `year_inference` state that scope.
+Native admission excludes invalid/unreadable payloads; reserved SRC is never
+invented while edition layout remains unresolved. Unknown years remain partial.
+Calendar endpoints are first/last valid reference calendars in RTC order, with
+native scale/basis, not minimum/maximum civil dates or a physical duration.
+
+An active session holds at most 64 channels and 1,024 pending references; the
+native 1.1 s late window orders references before quality accumulation. Counts
+and RTC intervals are decimal strings; density is references/second, drift is
+ppm, and calendar fraction is ns. Unavailable measures are null with reasons.
+Resource exhaustion labels a prefix (`needs-context`); it never reports complete
+statistics after discarding pending inputs. Closed native spans stream from a
+private disk spool; text still caps its session inventory at 20, JSON emits all.
+Format 2, retrospective session-year qualification and TMATS joining remain open.

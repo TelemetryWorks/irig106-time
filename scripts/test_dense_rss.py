@@ -61,10 +61,10 @@ class DenseRss(unittest.TestCase):
             path = Path(tmp)/'steady.ch10'
             meta = write_steady_workload(path, rounds=3)
             data = path.read_bytes()
-        self.assertEqual(meta['time_packets'], 12)
-        self.assertEqual(meta['packets'], 120)
+        self.assertEqual(meta['time_packets'], 1037)
+        self.assertEqual(meta['packets'], 10370)
         stamps = {}
-        offset = 0
+        offset = meta['cap_warmup_references'] * (36 + 9*28)
         while offset < len(data):
             h = data[offset:offset+24]
             length = int.from_bytes(h[4:8], 'little')
@@ -77,6 +77,21 @@ class DenseRss(unittest.TestCase):
                     self.assertEqual(data[offset+28:offset+34], bytes.fromhex('01 00 00 12 00 01'))
             offset += length
         self.assertEqual(stamps, {ch: [0, 100000, 200000] for ch in range(7, 11)})
+
+    def test_steady_warmup_exceeds_the_native_pending_cap_without_advancing_rtc(self):
+        from dense_rss_workload import write_steady_workload, GROUP_BYTES
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp)/'warmup.ch10'
+            meta = write_steady_workload(path, rounds=1)
+            data = path.read_bytes()
+        self.assertEqual(meta.get('cap_warmup_references'), 1025)
+        self.assertEqual(meta['time_packets'], 1029)
+        self.assertEqual(meta['packets'], 10290)
+        self.assertEqual(meta['bytes'], 1029 * GROUP_BYTES)
+        for i in range(1025):
+            offset = i*GROUP_BYTES
+            self.assertEqual(data[offset+16:offset+22], bytes(6))
+            self.assertEqual(data[offset+28:offset+34], bytes.fromhex('00 00 00 12 00 01'))
 
     def test_streamed_summary_footer_after_eight_kib_is_checked(self):
         import io

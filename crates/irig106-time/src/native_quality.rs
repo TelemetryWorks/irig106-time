@@ -36,7 +36,7 @@ pub struct OrderedQuality {
 }
 impl OrderedQuality {
     /// Bind a nonzero session and one channel; does not choose a time source.
-    /// Source:106-24R1 §11.2.1.1 i; contract3.6/5.4.
+    /// Source: 106-24R1 §11.2.1.1 i; contract3.6/5.4.
     /// **Traces:** L3-COR-113 ← L2-COR-113 ← L1-COR-013
     pub fn new(session: usize, channel: u16) -> Result<Self> {
         if session == 0 {
@@ -68,7 +68,7 @@ impl OrderedQuality {
         })
     }
     /// Actual session/channel scope, not a data-channel association.
-    /// Source:106-24R1 §11.2.1.1 i; contract3.6.
+    /// Source: 106-24R1 §11.2.1.1 i; contract3.6.
     /// **Traces:** L3-COR-113 ← L2-COR-113 ← L1-COR-013
     pub fn scope(&self) -> (usize, u16) {
         (self.session, self.channel)
@@ -77,7 +77,7 @@ impl OrderedQuality {
     /// intact. Duplicate RTC with distinct packet IDs counts but disables drift.
     /// Valid means admitted Readable(_,true), exactly as native offline quality;
     /// readable invalids admitted by override do not become valid measurements.
-    /// Source:106-24R1 §11.2.1.1 i/§11.2.3.3; contract3.6/5.4.
+    /// Source: 106-24R1 §11.2.1.1 i/§11.2.3.3; contract3.6/5.4.
     /// **Traces:** L3-COR-113 ← L2-COR-113 ← L1-COR-013
     pub fn observe(&mut self, r: &TimelineReference) -> Result<()> {
         if r.key.session != self.session {
@@ -141,7 +141,7 @@ impl OrderedQuality {
     /// Count classified decode failures with no retained reference (native
     /// offline's extra TF-004 cases). Caller must not also submit those as refs.
     /// No finding severity is inferred; overflow leaves counts unchanged.
-    /// Source:106-24R1 Figs11-13..17; contract3.6/6.
+    /// Source: 106-24R1 Figs11-13..17; contract3.6/6.
     /// **Traces:** L3-COR-113 ← L2-COR-113 ← L1-COR-013
     pub fn add_decode_rejections(&mut self, count: usize) -> Result<()> {
         self.counts.rejected = add(self.counts.rejected, count)?;
@@ -149,7 +149,7 @@ impl OrderedQuality {
     }
     /// All-input counts and measured valid-reference interval; absence is
     /// distinct from zero. Drift shares native scale/year/leap delta arithmetic.
-    /// Source:106-24R1 §11.2.1.1 i/§11.2.3.3; contract3.6/5.4.
+    /// Source: 106-24R1 §11.2.1.1 i/§11.2.3.3; contract3.6/5.4.
     /// **Traces:** L3-COR-113 ← L2-COR-113 ← L1-COR-013
     pub fn snapshot(&self) -> OfflineQuality {
         let mut q = self.counts.clone();
@@ -178,13 +178,13 @@ impl OrderedQuality {
         q
     }
     /// First valid native reference by RTC order, with its original provenance.
-    /// Source:106-24R1 Figs11-13..17; contract3.6/ADR-0011.
+    /// Source: 106-24R1 Figs11-13..17; contract3.6/ADR-0011.
     /// **Traces:** L3-COR-113 ← L2-COR-113 ← L1-COR-013
     pub fn first_reference(&self) -> Option<&TimelineReference> {
         self.first.as_ref()
     }
     /// Last valid native reference by RTC order; not maximum calendar value.
-    /// Source:106-24R1 Figs11-13..17; contract3.6/ADR-0011.
+    /// Source: 106-24R1 Figs11-13..17; contract3.6/ADR-0011.
     /// **Traces:** L3-COR-113 ← L2-COR-113 ← L1-COR-013
     pub fn last_reference(&self) -> Option<&TimelineReference> {
         self.last.as_ref()
@@ -193,7 +193,7 @@ impl OrderedQuality {
     /// None means no valid references; Err means calendar context unavailable.
     /// These endpoints do not assert continuity or provide a physical duration.
     /// Network/table/era provenance stays on first_reference/last_reference.
-    /// Source:106-24R1 Figs11-13..17; RDG-009/010/012; contract3.6/ADR-0011.
+    /// Source: 106-24R1 Figs11-13..17; RDG-009/010/012; contract3.6/ADR-0011.
     /// **Traces:** L3-COR-113 ← L2-COR-113 ← L1-COR-013
     pub fn calendar_endpoints(&self) -> Result<Option<(CalendarReading, CalendarReading)>> {
         match (&self.first, &self.last) {

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Native Format 1 quality/calendar summary (schema revision 10)
+
+- Summary adds bounded per-native-session/channel candidate quality and native
+  calendar endpoints, shared by text/JSON. The explicit declaration-free profile
+  includes undeclared candidates, with packet-local years only; this is not
+  qualified joining or a query-policy change. Late sorting uses the native bound;
+  resource caps label prefix-only analysis. Format 2/session-year integration
+  remains open. Existing CLI reset segments stay separate.
+- Unavailable native quality measures print without misleading ns/ppm units;
+  review fixtures pin session reset, live draining, large spool rows and leap
+  normalization. Dense RSS warmup now exercises the native pending cap.
+- Added overflow transaction/multiplication regressions and corrected source-label
+  spacing in the native quality core. No library behavior change.
+
 ### Bounded native quality core and text session cap
 
 - New public `native_quality::OrderedQuality` accumulates qualified ordered

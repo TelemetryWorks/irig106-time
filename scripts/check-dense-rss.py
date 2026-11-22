@@ -127,6 +127,13 @@ def check_json(binary, root, path, meta, label):
             # streams its potentially long segment history from a private spool.
             value = json.load(out)
             report = value['report']
+            if command == 'summary' and meta.get('steady'):
+                quality = report['native_sessions']['spans'][0]['reference_quality']
+                assert quality['pending_cap'] == '1024'
+                assert quality['status'] == 'needs-context'
+                assert quality['unavailable_reason'] == 'native quality pending cap (1024); prefix only'
+                assert report['reference_count'] == '1024'
+
             assert report['total_packets'] == str(meta['packets'])
             assert report['time_packets'] == str(meta['time_packets'])
             expected = 0 if meta.get('steady') else warnings_for(command, meta)

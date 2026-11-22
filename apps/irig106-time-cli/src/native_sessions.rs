@@ -18,6 +18,7 @@ pub(super) struct NativeSessions {
     clock: SessionClock,
     archive: RefCell<CsvSpool>,
     unavailable: Option<String>,
+    quality: super::native_quality::Quality,
 }
 impl NativeSessions {
     pub(super) fn new() -> io::Result<Self> {
@@ -25,6 +26,7 @@ impl NativeSessions {
             clock: SessionClock::new(&OfflinePolicy::default()).map_err(io::Error::other)?,
             archive: RefCell::new(CsvSpool::new(None)?),
             unavailable: None,
+            quality: Default::default(),
         })
     }
     pub(super) fn observe(&mut self, packet: u64, rtc: Rtc) -> io::Result<Option<String>> {
@@ -40,14 +42,28 @@ impl NativeSessions {
             }
         };
         if let Some(span) = update.closed {
-            let bytes = serde_json::to_vec(&value(span)?)?;
+            let mut closed = value(span)?;
+            closed["reference_quality"] = self.quality.value();
+            self.quality = Default::default();
+            let bytes = serde_json::to_vec(&closed)?;
             let mut spool = self.archive.borrow_mut();
             let file = spool.file()?;
             file.seek(SeekFrom::End(0))?;
             file.write_all(&(bytes.len() as u32).to_le_bytes())?;
             file.write_all(&bytes)?;
         }
+        if let Some(active) = self.clock.active() {
+            self.quality
+                .advance(active.high_ticks, self.clock.late_ns());
+        }
         Ok(None)
+    }
+    pub(super) fn reference(&mut self, channel: u16, payload: &[u8]) {
+        if self.unavailable.is_none() {
+            if let Some(span) = self.clock.active() {
+                self.quality.observe(span.last, channel, payload);
+            }
+        }
     }
     pub(super) fn metadata(&self) -> Value {
         json!({"count":self.clock.active().map_or(0,|s|s.first.session).to_string(),
@@ -64,7 +80,7 @@ impl NativeSessions {
             let mut len = [0; 4];
             file.read_exact(&mut len)?;
             let len = u32::from_le_bytes(len) as usize;
-            if len > 2048 {
+            if len > 131072 {
                 return Err(io::Error::other("invalid private native span record"));
             }
             let mut bytes = vec![0; len];
@@ -72,7 +88,9 @@ impl NativeSessions {
             emit(&serde_json::from_slice(&bytes)?)?;
         }
         if let Some(span) = self.clock.active() {
-            emit(&value(*span)?)?;
+            let mut active = value(*span)?;
+            active["reference_quality"] = self.quality.value();
+            emit(&active)?;
         }
         Ok(())
     }
@@ -119,6 +137,23 @@ impl NativeSessions {
                 ns / 1_000_000_000,
                 ns % 1_000_000_000
             )?;
+            let quality = &v["reference_quality"];
+            writeln!(out,"    Format1 candidate quality: includes undeclared channels; packet years only (no session year inference)")?;
+            if let Some(rows) = quality["channels"].as_array() {
+                for q in rows {
+                    let interval = q["interval_ns"].as_str().map_or_else(|| "unavailable".to_owned(), |n| format!("{n} ns"));
+                    let drift = q["drift_ppm"].as_f64().map_or_else(|| "unavailable".to_owned(), |n| format!("{n} ppm"));
+                    writeln!(out,"    Native quality ch{}: valid {}; rejected {}; admitted {}; interval {}; drift {}",q["channel"],field(q,"valid")?,field(q,"rejected")?,field(q,"admitted")?,interval,drift)?;
+                    if let Some(reason) = q["unavailable_reason"].as_str() { writeln!(out,"      Unavailable: {reason}")?; }
+                    for name in ["first","last"] {
+                        let c = &q[name];
+                        if !c.is_null() {
+                            writeln!(out,"      {name}: {:03}:{:02}:{:02}:{:02}.{:09} {} ({}, year {})",c["day"].as_u64().unwrap_or(0),c["hours"].as_u64().unwrap_or(0),c["minutes"].as_u64().unwrap_or(0),c["seconds"].as_u64().unwrap_or(0),c["nanoseconds"].as_u64().unwrap_or(0),c["scale"].as_str().unwrap_or("unknown"),c["basis"].as_str().unwrap_or("unknown"),c["year"].as_u64().map_or_else(||"unknown".to_owned(),|y|y.to_string()))?;
+                        }
+                    }
+                }
+            }
+            if let Some(reason) = quality["unavailable_reason"].as_str() { writeln!(out,"    Quality prefix only: {reason}")?; }
             shown += 1;
             Ok(())
         })?;
