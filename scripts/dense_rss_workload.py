@@ -75,12 +75,20 @@ def warnings_for(command, meta):
 
 
 def write_steady_workload(path, rounds=100_000):
-    """400k in-order F1 references: four channels at 100Hz for 1000s.
+    """1025 same-counter references, then four channels at 100Hz for 1000s.
 
-    Each channel alone supplies 3000 references per 30s; the shared 1024 cap
-    fills before the age window. No resets can hide unbounded live retention.
+    The initial burst fills the shared correlation cap and exceeds the native
+    quality pending cap (1024) before any RTC advance can drain it. The following
+    400k reset-free references test long-lived storage; neither cap is per-channel.
     """
+    warmup = 1025
     with path.open('wb') as out:
+        for i in range(warmup):
+            p = packet(0x11, 7 + i % 4, 0)
+            p[28:34] = bytes.fromhex('00 00 00 12 00 01')
+            out.write(p)
+            for _ in range(9):
+                out.write(packet(9, 11, 0))
         for n in range(rounds):
             block = bytearray()
             seconds, fraction = divmod(n, 100)
@@ -94,6 +102,6 @@ def write_steady_workload(path, rounds=100_000):
                 for i in range(1, 10):
                     block.extend(packet(9, 11, n*(TICKS//100)+i*(TICKS//1000)))
             out.write(block)
-    return dict(bytes=rounds*4*GROUP_BYTES, packets=rounds*40,
-                time_packets=rounds*4, resets=0, late=0, jumps=0, segments=0,
-                steady=True)
+    return dict(bytes=(rounds*4+warmup)*GROUP_BYTES, packets=rounds*40+warmup*10,
+                time_packets=rounds*4+warmup, resets=0, late=0, jumps=0, segments=0,
+                steady=True, cap_warmup_references=warmup)

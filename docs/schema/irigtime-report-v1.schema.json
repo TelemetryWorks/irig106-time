@@ -28,7 +28,7 @@
       "const": 1
     },
     "schema_revision": {
-      "description": "Additive revision9 adds summary recording-wide native session/header spans, separate from per-channel CLI reset segments; reference quality remains separate.",
+      "description": "Additive revision 10 adds bounded Format 1 candidate quality/calendar endpoints to native summary spans; CLI reset segments and full qualified joining remain separate.",
       "const": 10
     },
     "schema_status": {

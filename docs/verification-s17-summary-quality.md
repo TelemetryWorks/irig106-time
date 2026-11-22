@@ -42,3 +42,28 @@ and wrapping *100. Integration mutants remove sorting, remove late holding or
 lose the DMY year; each compiles and fails its focused test. Sources restored.
 Local fmt/touched Clippy/focused tests/trace/schema sync/diff only; full matrix,
 package, deny, fuzz, schema validation and RSS are delegated to PR CI.
+
+## PR #101 review delta
+
+At approved b4914cb the four new integration fixtures already pass; no core
+behavior was changed. Tests-only 8f9a2c5 adds: the same channel after a native
+session boundary (own count and day101 endpoint); four closed-channel rows whose
+serialized span exceeds 2 KiB; 1,100 live references (complete, exact valid count);
+and UTC 2016-12-31 23:59:59 -> 2017-01-01 00:00:00 at RTC +2 s (36->37 offset,
+zero drift in TAI). All four paths are decoder-independent Figures 11-12..14 fixtures.
+The text assertion initially fails on unavailable-unit wording; text now prints
+bare unavailable and retains both Unavailable:/Quality prefix only: explanations.
+
+Six compiling mutants each fail the relevant test: omit session quality reset
+(second span incomplete), omit live draining (cap instead of valid 1100), restore
+2KiB record ceiling (closed-span read fails), omit TAI normalization (-500000 ppm
+instead of 0), and remove either explanatory text label. Sources restored. The
+summary target has 10 passing tests; trace coverage and partial-clause scope stay.
+
+Tests-only a7d1e3c first fails on the missing warmup metadata. The steady RSS
+workload now prepends 1,025 same-RTC F1 references (one per 10 packets), so the
+shared reference cap fills and the native pending cap is exceeded before any
+RTC advance. CI asserts both outcomes in the actual summary, then runs the long
+reset-free four-channel phase. Seven small Python tests pass; a 298,656-byte CLI
+probe confirms cap 1024, prefix-only native quality and zero scanner findings.
+No large workload was run locally; full RSS evidence is the PR CI run.

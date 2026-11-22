@@ -141,7 +141,9 @@ impl NativeSessions {
             writeln!(out,"    Format1 candidate quality: includes undeclared channels; packet years only (no session year inference)")?;
             if let Some(rows) = quality["channels"].as_array() {
                 for q in rows {
-                    writeln!(out,"    Native quality ch{}: valid {}; rejected {}; admitted {}; interval {} ns; drift {} ppm",q["channel"],field(q,"valid")?,field(q,"rejected")?,field(q,"admitted")?,q["interval_ns"].as_str().unwrap_or("unavailable"),q["drift_ppm"])?;
+                    let interval = q["interval_ns"].as_str().map_or_else(|| "unavailable".to_owned(), |n| format!("{n} ns"));
+                    let drift = q["drift_ppm"].as_f64().map_or_else(|| "unavailable".to_owned(), |n| format!("{n} ppm"));
+                    writeln!(out,"    Native quality ch{}: valid {}; rejected {}; admitted {}; interval {}; drift {}",q["channel"],field(q,"valid")?,field(q,"rejected")?,field(q,"admitted")?,interval,drift)?;
                     if let Some(reason) = q["unavailable_reason"].as_str() { writeln!(out,"      Unavailable: {reason}")?; }
                     for name in ["first","last"] {
                         let c = &q[name];

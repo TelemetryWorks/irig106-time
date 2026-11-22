@@ -61,10 +61,10 @@ class DenseRss(unittest.TestCase):
             path = Path(tmp)/'steady.ch10'
             meta = write_steady_workload(path, rounds=3)
             data = path.read_bytes()
-        self.assertEqual(meta['time_packets'], 12)
-        self.assertEqual(meta['packets'], 120)
+        self.assertEqual(meta['time_packets'], 1037)
+        self.assertEqual(meta['packets'], 10370)
         stamps = {}
-        offset = 0
+        offset = meta['cap_warmup_references'] * (36 + 9*28)
         while offset < len(data):
             h = data[offset:offset+24]
             length = int.from_bytes(h[4:8], 'little')
