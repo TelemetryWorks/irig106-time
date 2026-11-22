@@ -3,8 +3,12 @@
 This documents the existing `irigtime csv` packet projection. The header names
 and order below are the column schema; each row has exactly 15 fields. The
 counter-only row's previously missing final field is corrected in 0.8.0.
-This is not the frozen JSON envelope/schema, which remains v1 revision 2.
-The later S17b JSON rows and qualified basis additions remain separate work.
+CSV is its own machine format, separate from the stable v1 JSON envelope.
+`csv --format json` is unsupported (usage exit 2); use `timeline --format json`
+for packet JSON or `correlate --format json` for counter queries. L1-CLI-006 and
+L2/L3-CLI-106 require the three output formats and consistent report data, not
+JSON wrapping of CSV. This follows the coordinator's conditional S17b instruction;
+it adds no renderer or dependency and does not weaken protocol/basis obligations.
 
 | Column | Representation and unit | Empty meaning |
 | --- | --- | --- |
@@ -29,7 +33,7 @@ still has its day/time fields; a counter-only row leaves all eight calendar
 fields empty. Timeline displays the same observation as `N/A`. Neither renderer
 invents a year, origin, data-to-time-channel association or segment selection.
 The current CSV lacks scale/basis columns: consumers must not interpret every
-resolved clock as UTC. Adding qualified provenance and JSON rows remains S17b
+resolved clock as UTC. Protocol/scale/status and complete qualified provenance remain full-adapter
 work; this document does not claim those clauses are complete.
 
 Output is header-present, comma-delimited ASCII with LF record terminators and
@@ -46,3 +50,12 @@ CSV spools rows as they are analysed; timeline retains only `--limit` rows.
 The established atomic publication, cleanup, permissions and exit precedence
 remain unchanged. Findings still go to stderr; empty calendar fields alone do
 not specify the finding or its severity.
+
+
+PTP readings beyond the table's declared currency retain UTC using the last known
+offset, with a TF-021 warning that labels the UTC value possibly out of date and
+keeps raw TAI operands, applied offset and table identity in sampled diagnostics.
+The warning is packet/channel-located in JSON findings. Summary text renders its
+diagnostics on stdout; CSV and other text commands use stderr. Sampling stays
+bounded with exact counts; this does not promise one raw-evidence record per CSV
+row. Never infer UTC currency from the mere presence of calendar fields.

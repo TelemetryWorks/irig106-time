@@ -197,7 +197,7 @@
           "const": "observed inventory; qualified joining/basis pending"
         },
         "rows": {
-          "description": "Packet rows for timeline (at most options.limit); null for inventory and correlate. CSV JSON remains future work.",
+          "description": "Packet rows for timeline (at most options.limit); null for inventory and correlate. CSV is its own separate machine format, not a JSON envelope view.",
           "anyOf": [
             {
               "type": "array",

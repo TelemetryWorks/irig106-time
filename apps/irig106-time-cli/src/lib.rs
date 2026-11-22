@@ -893,21 +893,26 @@ impl Ch10TimeScanner {
             }
         };
 
-        // Same compatibility conversion as StreamingTimeCorrelator, performed
-        // before eviction so late PTP references can still bracket a known query.
+        // Checked conversion before eviction; retain the table-currency warning
+        // while keeping D7's last-known-offset UTC and exact original TAI.
         let converted = match network_time {
             irig106_time::network_time::NetworkTime::Ntp(_) => Err(TimeError::NeedsContext {
                 context: "NTP era/basis required; use ntp::convert_ntp",
             }),
             irig106_time::network_time::NetworkTime::Ptp(ptp) => {
                 self.leap_table.convert_ptp(ptp).and_then(|result| {
-                    result
-                        .utc()
-                        .ok_or(TimeError::NeedsContext {
-                            context: "no known applicable TAI-UTC offset",
-                        })?
-                        .to_absolute()
-                        .map(|t| t.value)
+                    let utc = result.utc().ok_or(TimeError::NeedsContext {
+                        context: "no known applicable TAI-UTC offset",
+                    })?.to_absolute()?.value;
+                    if result.status() == irig106_time::leap::PtpConversionStatus::PossiblyOutOfDate {
+                        self.note_code(Severity::Warning, Some("TF-021"), format!(
+                            "TF-021: UTC {} possibly out of date (value kept); raw TAI={}s+{}ns; TAI-UTC={}s; table={}; known through Unix={}s",
+                            fmt_abs_time(&utc), result.raw().seconds, result.raw().nanoseconds,
+                            result.basis().offset.map(|o|o.get().to_string()).unwrap_or_else(||"unknown".into()),
+                            result.basis().table.id, result.basis().table.known_current_through.get(),
+                        ));
+                    }
+                    Ok(utc)
                 })
             }
         };

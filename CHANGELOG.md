@@ -7,14 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S17b5 CSV format contract and stale PTP diagnostics
+
+- Document CSV as its own machine format; no CSV-in-JSON mode is required by
+  CLI-106. Packet/query JSON remains available through timeline/correlate.
+- Preserve PTP conversion currency in every adapter: stale UTC is kept with
+  TF-021 warning, exact raw TAI operands, applied offset and table identity in
+  sampled diagnostics. Default error threshold still succeeds; warning gives 1.
+  Covered readings and missing-offset/no-UTC cases are not mislabelled stale.
+- Add cross-command stale-table goldens. Full adapter/qualified provenance
+  coverage remains open; no library, schema-shape or revision change.
+
 ### S17b4 correlate JSON (additive schema revision 4)
 
 - Render correlate JSON from the shared native Query; stream ordinary and reset
   segment answers without collecting a JSON DOM. Retain context errors, missing
   references, ambiguity warnings and unaffected channels, with exact wide values.
 - Add options.query_rtc and report.correlation; previous views emit null for both.
-  Packet rows stay null for queries. No source/UTC association is inferred. CSV
-  JSON and remaining stale-table/multi-command reset goldens remain open.
+  Packet rows stay null for queries. No source/UTC association is inferred. Full
+  adapter qualification and multi-command reset goldens remain open.
 
 ### S17b3 correlate shared report foundation
 
@@ -23,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unchanged, including labelled reset segments and unaffected channels.
 - Store bounded structured segment answers rather than rendered lines in the
   private spool, decoding one record at a time. Ordinary answers stay bounded
-  by channel count. CSV JSON and qualification goldens remain open;
+  by channel count. Full adapter qualification goldens remain open;
   no schema change in this foundation. S17b4 adds the query view. Fold
   compatibility wording into its guide paragraph.
 
@@ -39,7 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   inventory rows/limit stay null. Preserve existing fields and units. Association
   remains explicitly unestablished, with unknown clock scale/basis until source
   lineage is qualified; no channel/segment/UTC inference. Extend the RSS gate to
-  timeline JSON. CSV JSON and remaining qualification goldens stay open.
+  timeline JSON. Full adapter qualification goldens stay open.
 
 ### S17b1 packet row projection
 

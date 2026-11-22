@@ -97,7 +97,7 @@ Timeline accepts `--format text|json` using the shared packet-row model.
 JSON revision 3 adds `options.limit` and bounded `report.rows` with explicit
 counter-only clocks and unresolved association. The entire input is analysed;
 the row cap never hides findings. Inventory `rows` and non-timeline `limit` are
-null. CSV JSON remains subsequent work; no qualified time-source link
+null. CSV is a separate machine format; no qualified time-source link
 is inferred from channel IDs. See [the report schema](cli-report-schema.md).
 
 
@@ -106,3 +106,10 @@ revision 4 adds `options.query_rtc` and `report.correlation`; both are null for
 other commands. Query answers stream one at a time, preserving reset segments,
 unresolved context and findings. Packet `rows` stays null for a counter query;
 no packet identity or data/time-channel association is invented.
+
+
+CSV is a distinct machine format with its own column/quoting contract, not a
+JSON-envelope mode (`csv --format json` gives usage 2). Packet JSON is available
+through timeline. Stale PTP keeps converted UTC with TF-021 warning, raw TAI,
+actual offset/table identity and an explicit possibly-out-of-date label in the
+sampled diagnostic. Exact per-level counts and --fail-on semantics still apply.

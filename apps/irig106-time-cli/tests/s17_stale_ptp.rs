@@ -77,10 +77,15 @@ fn stale_ptp_keeps_utc_and_warns_at_exact_threshold_in_every_command() {
             ] {
                 let (exit, out, err) = input.output(command, false, level);
                 assert_eq!(exit, expected, "{command}: {err}");
-                assert!(err.contains(STALE_MESSAGE), "{command}: {err}");
+                // Summary renders diagnostics on stdout; other commands use stderr.
+                let diagnostics = format!("{out}{err}");
                 assert!(
-                    err.contains("error=0, warning=1, info=0 (total=1)"),
-                    "{err}"
+                    diagnostics.contains(STALE_MESSAGE),
+                    "{command}: {diagnostics}"
+                );
+                assert!(
+                    diagnostics.contains("error=0, warning=1, info=0 (total=1)"),
+                    "{diagnostics}"
                 );
                 if command == "csv" {
                     assert_eq!(

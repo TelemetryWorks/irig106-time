@@ -17,6 +17,9 @@ Timeline also leaves jumps/threshold null. `options.limit` is its effective
 positive row cap as a decimal string; it is null for inventory commands.
 Findings are command-specific; evaluating jumps can add findings. `highest_level`
 is independent of `--fail-on`; that option only determines exit 1.
+Stale PTP conversions raise TF-021 warning with the converted UTC, raw TAI,
+applied offset and table currency/identity in the packet-located sample message.
+UTC is kept, explicitly labelled possibly out of date; schema revision stays 4.
 
 The envelope always contains `schema`, `schema_version`, `schema_revision`,
 `schema_status`, `tool`, `input`, `options`, `highest_level`, `findings`, `report`.
@@ -70,7 +73,8 @@ time rather than retaining a JSON DOM for all rows, in file order, at most `--li
 packet/channel/RTC, `offset_bytes` and `data_type`, direct `clock` or null, and
 `kind` absolute/counter-only. An absent clock has an issue directing the reader
 to command findings; zero is never substituted. Candidate segment answers stay
-empty in timeline. CSV JSON and packet-row ambiguity candidates remain reserved.
+empty in timeline. Packet-row ambiguity candidates remain reserved. CSV is its
+own machine format, not another JSON view; see [CSV columns](cli-csv-schema.md).
 
 Current packet correlation does not retain a qualified source lineage: row
 clocks therefore explicitly keep unknown scale/unresolved basis, even when an
@@ -122,5 +126,6 @@ channel order, matching text. Projection holds one answer Value at a time.
 These are counter-selection policy answers, not evidence of a data/time-channel
 relationship. Clock scale/basis remain unknown/unresolved until lineage is
 qualified; no UTC/year/association assumption is added. The reset query golden
-covers two possible clocks and an unaffected channel. CSV JSON, stale-leap-table
-and complete multi-command reset adapter goldens remain subsequent work.
+covers two possible clocks and an unaffected channel. Complete multi-command
+adapter qualification remains subsequent work. CSV has its own documented
+columns/quoting rather than a JSON wrapper.
