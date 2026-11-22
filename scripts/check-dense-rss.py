@@ -106,11 +106,13 @@ def check_commands(binary, root, path, meta, label):
 
 
 def check_json(binary, root, path, meta, label):
-    for command in ['summary', 'channels', 'jumps', 'timeline']:
+    for command in ['summary', 'channels', 'jumps', 'timeline', 'correlate']:
         with (root/'json.log').open('w+') as out, (root/'json.err').open('w+') as err:
             argv = [binary, command, str(path), '--format', 'json', '--fail-on', 'never']
             if command == 'timeline':
                 argv += ['--limit', str(TIMELINE_LIMIT)]
+            if command == 'correlate':
+                argv.insert(3, '2FAF080')
             code, rss = measure(argv, out, root/'peak.txt', stderr=err)
             assert code == 0, (command, code)
             assert rss < 32*1024, (label, command, rss, 'JSON exceeds 32MiB')
@@ -130,7 +132,15 @@ def check_json(binary, root, path, meta, label):
             else:
                 assert report['rows'] is None
                 assert value['options']['limit'] is None
-            if command in ['channels', 'timeline']:
+            if command == 'correlate':
+                assert value['options']['query_rtc'] == '50000000'
+                query = report['correlation']
+                assert len(query['answers']) == (4 if meta.get('steady') else meta['segments'])
+                assert (query['any']['clock'] is None) == (not meta.get('steady', False))
+            else:
+                assert value['options']['query_rtc'] is None
+                assert report['correlation'] is None
+            if command in ['channels', 'timeline', 'correlate']:
                 assert report['jumps'] is None
                 assert value['options']['threshold_ms'] is None
             else:

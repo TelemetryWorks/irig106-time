@@ -92,7 +92,10 @@ pub fn parse<S: AsRef<OsStr>>(raw: &[S]) -> Result<Request, String> {
         let flag = argument.to_str().ok_or("option name is not UTF-8")?;
         let allowed = match flag {
             "--fail-on" => true,
-            "--format" => matches!(command, "summary" | "channels" | "jumps" | "timeline"),
+            "--format" => matches!(
+                command,
+                "summary" | "channels" | "jumps" | "timeline" | "correlate"
+            ),
             "--threshold-ms" => command == "jumps",
             "--limit" => command == "timeline",
             "--output" => command == "csv",

@@ -1,4 +1,4 @@
-# irigtime JSON report, stable v1, revision 3
+# irigtime JSON report, stable v1, revision 4
 
 The [canonical producer schema](../apps/irig106-time-cli/schema/irigtime-report-v1.schema.json)
 is packaged with the CLI. The [docs snapshot](schema/irigtime-report-v1.schema.json)
@@ -7,10 +7,10 @@ sync test enforces byte identity. The schema is the normative field/type/unit/nu
 contract. It is CLI-owned (ADR-0019), not an IRIG 106 format
 or a library serialization API. The #78 schema review selected the shared
 `telemetryworks/irigtime-report` envelope; the inventory contract was frozen as stable v1,
-revision 2. Current revision 3 adds timeline packet rows and the effective row limit
-without changing the reviewed inventory fields or their meanings.
+revision 2. Revision 3 added timeline packet rows/limit. Revision 4 adds
+correlate query metadata/results, retaining previous field types, units and meanings.
 
-`summary`, `channels`, `jumps` and `timeline` accept `--format text|json`, default `text`.
+`summary`, `channels`, `jumps`, `timeline` and `correlate` accept `--format text|json`, default `text`.
 Both render the same scanner/Report facts. `channels` does not evaluate jumps:
 `report.jumps` and `options.threshold_ms` are **null**, rather than a false zero.
 Timeline also leaves jumps/threshold null. `options.limit` is its effective
@@ -70,7 +70,7 @@ time rather than retaining a JSON DOM for all rows, in file order, at most `--li
 packet/channel/RTC, `offset_bytes` and `data_type`, direct `clock` or null, and
 `kind` absolute/counter-only. An absent clock has an issue directing the reader
 to command findings; zero is never substituted. Candidate segment answers stay
-empty in timeline. CSV/correlate JSON and ambiguous candidates remain reserved.
+empty in timeline. CSV JSON and packet-row ambiguity candidates remain reserved.
 
 Current packet correlation does not retain a qualified source lineage: row
 clocks therefore explicitly keep unknown scale/unresolved basis, even when an
@@ -98,3 +98,29 @@ TF-018 at a different level, and the JSON keeps that distinction.
 Coordinator-accepted 2026-11-21 (owner may override): heuristic reset warnings keep code null; TF-018/information is reserved for an established new-session fact. Do not relabel this warning TF-018 or silently change its
 approved severity, counts or --fail-on behaviour. This PR makes no reset mapping
 change or new finding assignment.
+
+
+## Counter queries (revision 4)
+
+`correlate --format json` renders the same prepared native Query as text.
+`options.query_rtc` is the requested counter in100ns ticks as a decimal string;
+it is null on other commands. `report.correlation` contains `any` (clock/issue)
+and streamed `answers` (channel, one-based segment, labelled, clock/issue).
+It is null on other commands. `report.rows` remains null for correlate: a query
+has no packet index or byte offset. Its limit/threshold/jumps are also null.
+All defined keys are present. An unresolved clock is null with a context issue;
+a resolved clock has null issue. Native per-channel errors omitted by text stay
+in command findings; unresolved printed segment rows are retained.
+
+Across resets, any-channel is explicitly withheld; every matching segment answer
+is emitted, with the existing ambiguity warning, and unaffected channels remain
+answerable. Outside all reset ranges, the existing no-coverage warning remains.
+Without references, any is an explicit missing-reference result, never zero time.
+Ordinary answer order is channel ID; reset answers retain closure order then final
+channel order, matching text. Projection holds one answer Value at a time.
+
+These are counter-selection policy answers, not evidence of a data/time-channel
+relationship. Clock scale/basis remain unknown/unresolved until lineage is
+qualified; no UTC/year/association assumption is added. The reset query golden
+covers two possible clocks and an unaffected channel. CSV JSON, stale-leap-table
+and complete multi-command reset adapter goldens remain subsequent work.

@@ -1337,12 +1337,17 @@ fn cmd_csv(
 
 fn cmd_correlate(
     input: std::fs::File,
-    target: Rtc,
+    args: &args::Args,
+    size: u64,
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
 ) -> Result<Option<Severity>, Failure> {
     let mut scanner = Ch10TimeScanner::new();
+    let target = args.rtc;
     scanner.query_refs = Some(target_refs::TargetReferences::new(target));
+    if args.json {
+        scanner.segment_inventory = Some(segment_inventory::Archive::new()?);
+    }
     scanner.scan(input, false, None)?;
 
     if scanner.reset_count != 0 {
@@ -1370,6 +1375,11 @@ fn cmd_correlate(
         }
     }
     let report = report::Report::from(&scanner);
+    if args.json {
+        report.report_findings(stderr)?;
+        report_json::write(&report, args, size, stdout)?;
+        return Ok(report.highest);
+    }
     if let Some(query) = &report.query {
         query.write_header(stdout)?;
     }
@@ -1456,7 +1466,7 @@ fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
     )?;
     writeln!(
         stdout,
-        "--format <text|json>: summary/channels/jumps/timeline; default text. Schema stable v1, revision 3."
+        "--format <text|json>: summary/channels/jumps/timeline/correlate; default text. Schema stable v1, revision 4."
     )?;
     writeln!(stdout, "Examples:")?;
     writeln!(stdout, "  irigtime summary flight_042.ch10")?;
@@ -1636,7 +1646,7 @@ fn dispatch(
         }
         "timeline" => cmd_timeline(input, &args, file_len, stdout, stderr),
         "csv" => cmd_csv(input, args.output.as_deref(), stdout, stderr, pending),
-        "correlate" => cmd_correlate(input, args.rtc, stdout, stderr),
+        "correlate" => cmd_correlate(input, &args, file_len, stdout, stderr),
         _ => Err(Failure::new(ExitClass::Usage, "unknown command")),
     }
 }
