@@ -43,7 +43,7 @@ fn public_value_derive_inventory() {
     covered.extend(values! { streaming::StreamingRef });
     covered.extend(values! { timeline::ReferenceStrategy, timeline::ChannelChoice, timeline::OfflinePolicy, timeline::TimelineFinding, timeline::PacketKind, timeline::YearOrigin, timeline::ReferenceValue, timeline::ReferenceInput, timeline::PacketObservation, timeline::PacketKey, timeline::Rejection, timeline::TimelineReference, timeline::OfflineSession, timeline::ReferencePosition, timeline::OfflineBasis, timeline::OfflineAnswer, timeline::OfflineQuality });
     covered.extend(values! { version::Format2Availability });
-    covered.extend(values! { years::YearContext, years::YearCandidate, years::YearBasis });
+    covered.extend(values! { years::YearContext, years::YearCandidate, years::YearBasis, years::StampedYearReference });
     verify_inventory(&covered);
 }
 #[test]
@@ -96,6 +96,8 @@ fn verify_inventory(covered: &[&str]) {
         "stream::StreamTimeline",
         "session::SessionClock",
         "native_quality::OrderedQuality",
+        "years::SessionYearCursor",
+        "years::SessionYearResolver",
         "declarations::DeclarationAudit",
         "secondary_packet::SecondaryAudit",
     ]

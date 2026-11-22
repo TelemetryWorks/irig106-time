@@ -137,6 +137,7 @@
                 "calendar_unavailable_reason": null,
                 "channel": 7,
                 "drift_ppm": null,
+                "drift_uses_stale_leap_table": false,
                 "first": {
                   "basis": "assumed",
                   "day": 100,
@@ -221,7 +222,7 @@
     "total_packets": "1"
   },
   "schema": "telemetryworks/irigtime-report",
-  "schema_revision": 11,
+  "schema_revision": 12,
   "schema_status": "stable",
   "schema_version": 1,
   "tool": {

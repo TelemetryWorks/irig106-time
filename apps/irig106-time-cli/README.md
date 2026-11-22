@@ -306,7 +306,7 @@ passed; `publish = false` remains until the owner’s S20 decision.
 Summary/channels/jumps accept `--format json` (default text), over the same report
 model as text. See the [stable producer schema](https://github.com/TelemetryWorks/irig106-time/blob/main/apps/irig106-time-cli/schema/irigtime-report-v1.schema.json)
 and [compatibility, units and provenance rules](https://github.com/TelemetryWorks/irig106-time/blob/main/docs/cli-report-schema.md).
-The shared envelope is `telemetryworks/irigtime-report`, stable v1, revision 11. JSON is
+The shared envelope is `telemetryworks/irigtime-report`, stable v1, revision 12. JSON is
 ASCII-only; 64/128-bit quantities are decimal strings. Every defined key is
 present; null meanings are field-specific. Consumers ignore unknown fields;
 producer validation stays strict. The schema is frozen after review.

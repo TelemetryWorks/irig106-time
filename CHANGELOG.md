@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Bounded session-year replay foundation and stale drift (revision 12)
+
+- **Library behavior fix (L3-COR-110):** offline year replay now rebuilds each
+  pass from original inputs, carrying forward only newly rejected leap labels
+  (coordinator option A). Derived non-leap malformed/admission results no longer
+  contaminate later passes or leave readable dates carrying stale `Malformed`
+  reasons. The bounded cursor protocol and offline results now agree.
+
+- New public `years::{SessionYearCursor, SessionYearResolver, StampedYearReference}`
+  reuse native observation-order year phases and final DMY evidence with bounded
+  state. Callers retain/replay inputs externally; no JSON, I/O or history buffer.
+  Disk-backed CLI retrospective year integration remains next; current summary
+  still reports packet-local years.
+- Native quality rows label available drift that used an out-of-date leap-table
+  offset, including interior references. JSON adds `drift_uses_stale_leap_table`;
+  text adds a possibly-out-of-date suffix. Pure TAI drift is not stale merely
+  because its separate UTC projection is stale. Schema revision 12 is additive.
+- Added undeclared-admission provenance and rejected-reference text assertions.
+  Clause coverage only; totals remain 198 tested / 206 verified of 288.
+
 ### Native Format 2 summary quality (schema revision 11)
 
 - Native candidate quality includes NTP and both PTP versions alongside Format 1;

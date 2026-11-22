@@ -1,4 +1,4 @@
-# irigtime JSON report, stable v1, revision 11
+# irigtime JSON report, stable v1, revision 12
 
 The [canonical producer schema](../apps/irig106-time-cli/schema/irigtime-report-v1.schema.json)
 is packaged with the CLI. The [docs snapshot](schema/irigtime-report-v1.schema.json)
@@ -288,7 +288,7 @@ ppm, and calendar fraction is ns. Unavailable measures are null with reasons.
 Resource exhaustion labels a prefix (`needs-context`); it never reports complete
 statistics after discarding pending inputs. Closed native spans stream from a
 private disk spool; text still caps its session inventory at 20, JSON emits all.
-Format 2, retrospective session-year qualification and TMATS joining remain open.
+Retrospective session-year qualification and TMATS joining remain open.
 
 
 ## Native network quality (revision 11)
@@ -308,3 +308,15 @@ cannot supply physical drift. Each channel's `rejection_reason` is the last
 factory decode/context error, null otherwise; invalid TS/reserved NTF admission
 rejections are counted independently. F1 packet years and F2 conversion dates
 are retained; retrospective session-year qualification remains open.
+
+
+## Stale drift basis (revision 12)
+
+Every native quality channel has `drift_uses_stale_leap_table`. It is true only
+when available drift used a possibly-out-of-date UTC-to-TAI offset on a contributing
+pair, including interior references. It is false when drift is unavailable or
+uses native TAI arithmetic alone. This labels a measurement basis, not a new
+finding or an assertion about leap-table currency for unrelated UTC projections.
+Text appends “possibly out of date: stale leap table” to affected drift values.
+The bounded year-replay library API does not yet change CLI `year_inference`:
+retrospective CLI qualification remains a separate disk-backed integration.
