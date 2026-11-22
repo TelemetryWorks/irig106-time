@@ -159,4 +159,31 @@ mod tests {
             assert_eq!(emitted, 0);
         }
     }
+    #[test]
+    fn oversized_write_is_rejected_before_spool_or_match_state_changes() {
+        // Bounded 4KiB fixture; TimeError requires a static context string.
+        let context = Box::leak("x".repeat(4096).into_boxed_str());
+        let mut answers = SegmentAnswers::new().unwrap();
+        let error = answers
+            .record(7, 1, true, Err(TimeError::NeedsContext { context }))
+            .unwrap_err();
+        assert_eq!(error.to_string(), "private query record too large");
+        assert!(!answers.contains(7));
+        assert_eq!(
+            answers
+                .spool
+                .get_mut()
+                .file()
+                .unwrap()
+                .metadata()
+                .unwrap()
+                .len(),
+            0
+        );
+        assert!(
+            !answers
+                .record(7, 1, true, Ok(AbsoluteTime::new(1, 0, 0, 0, 0).unwrap()))
+                .unwrap()
+        );
+    }
 }

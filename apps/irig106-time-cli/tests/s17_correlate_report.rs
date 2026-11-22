@@ -7,21 +7,42 @@ use std::{
 struct Input(PathBuf);
 impl Input {
     fn new(packets: &[(u16, u64, u32)]) -> Self {
+        Self::bytes(
+            &packets
+                .iter()
+                .flat_map(|&(ch, rtc, sec)| packet(ch, rtc, sec))
+                .collect::<Vec<_>>(),
+        )
+    }
+    fn bytes(bytes: &[u8]) -> Self {
         static NEXT: AtomicUsize = AtomicUsize::new(0);
         let path = std::env::temp_dir().join(format!(
             "s17-query-{}-{}",
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));
-        std::fs::write(
-            &path,
-            packets
-                .iter()
-                .flat_map(|&(ch, rtc, sec)| packet(ch, rtc, sec))
-                .collect::<Vec<_>>(),
-        )
-        .unwrap();
+        std::fs::write(&path, bytes).unwrap();
         Self(path)
+    }
+    fn query_at(&self, seconds: u64) -> (ExitClass, String, String) {
+        let target = format!("{:X}", seconds * 10_000_000);
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        let exit = run(
+            &[
+                "correlate",
+                self.0.to_str().unwrap(),
+                &target,
+                "--fail-on",
+                "warning",
+            ],
+            &mut out,
+            &mut err,
+        );
+        (
+            exit,
+            String::from_utf8(out).unwrap(),
+            String::from_utf8(err).unwrap(),
+        )
     }
     fn query(&self) -> (String, String) {
         let (mut out, mut err) = (Vec::new(), Vec::new());
@@ -187,4 +208,61 @@ fn reset_findings_precede_answer_body_in_merged_output() {
         text.find("Findings:").unwrap() < text.find("Channel   7 Segment   1").unwrap(),
         "{text}"
     );
+}
+
+fn year_boundary_packet(rtc: u64, day: u16, hour: u8, minute: u8, second: u8) -> Vec<u8> {
+    // Fig11-13: sec/min/hour BCD; low day byte tens/units, next byte hundreds.
+    // Change payload only: §11.2.1.1 primary header checksum remains unchanged.
+    let bcd = |n: u16| ((n / 10) * 16 + n % 10) as u8;
+    let mut p = packet(7, rtc, 0);
+    p[29] = bcd(u16::from(second));
+    p[30] = bcd(u16::from(minute));
+    p[31] = bcd(u16::from(hour));
+    p[32] = bcd(day % 100);
+    p[33] = (day / 100) as u8;
+    p
+}
+
+#[test]
+fn any_channel_calendar_context_error_is_counted_and_trips_warning_threshold() {
+    // Twenty 1Hz references end at unknown-year DOY365 23:59:49 (RTC19s).
+    // Query RTC60s requires +41s, crossing the unknown year; both the any-channel
+    // and per-channel queries must independently report their context warning.
+    let bytes = (0..20)
+        .flat_map(|rtc| year_boundary_packet(rtc, 365, 23, 59, 30 + rtc as u8))
+        .collect::<Vec<_>>();
+    let (exit, out, err) = Input::bytes(&bytes).query_at(60);
+    assert_eq!(exit, ExitClass::Findings);
+    assert!(
+        out.lines().any(|line| line
+            == "  Any channel  → Warning: time needs context: unknown year at calendar boundary"),
+        "{out}"
+    );
+    assert!(
+        err.contains("Findings: error=0, warning=2, info=0 (total=2)"),
+        "{err}"
+    );
+    assert_eq!(err.matches("Finding: Warning: Correlation query: time needs context: unknown year at calendar boundary").count(),2,"{err}");
+}
+
+#[test]
+fn reset_segment_calendar_context_error_is_rendered_unresolved() {
+    let mut bytes = (0..6)
+        .flat_map(|rtc| year_boundary_packet(rtc, 365, 23, 59, 50 + rtc as u8))
+        .collect::<Vec<_>>();
+    for rtc in [20, 21] {
+        bytes.extend(year_boundary_packet(rtc, 1, 0, 0, (rtc - 10) as u8));
+    }
+    // Accepted short-reset rule: three increasing references below RTC21s,
+    // beginning at RTC0s, establish segment2. Its range does not cover RTC10..12.
+    for rtc in 0..3 {
+        bytes.extend(year_boundary_packet(rtc, 1, 0, 1, rtc as u8));
+    }
+    let input = Input::bytes(&bytes);
+    for target in 10..=12 {
+        let (exit, out, err) = input.query_at(target);
+        assert_eq!(exit, ExitClass::Findings);
+        assert!(out.lines().any(|line|line=="  Channel   7 Segment   1  → unresolved: time needs context: unknown year at calendar boundary"),"{out}");
+        assert!(err.contains("Finding: Warning: Segment query: time needs context: unknown year at calendar boundary"),"{err}");
+    }
 }

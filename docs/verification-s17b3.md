@@ -76,3 +76,29 @@ Header and answer rendering are now separate views of the same Query so the
 original header → reset findings → answer body order is restored. The RSS gate
 is unchanged. The focused regression passes; the subsequent CI run supplies
 fresh complete memory evidence rather than treating the failed gate as a pass.
+
+## #88 review delta — native error views and write limit
+
+Tests only; production code and coverage statuses are unchanged. The any-channel
+fixture contains20 one-second unknown-year references, DOY365 23:59:30..49;
+RTC60s requires crossing the unresolved calendar boundary. It pins the exact
+Any channel Warning text, exit1 with --fail-on warning, and both independent
+Correlation query diagnostics (any-channel plus per-channel): warning=2,total=2.
+Dropping only the any-channel scanner.note compiles but fails this new test.
+
+The segment fixture has RTC0..5s at DOY365 23:59:50..55, then RTC20/21s at
+DOY001 00:00:10/11. Three increasing RTC0/1/2 references behind the baseline
+establish the accepted short-reset second segment. Targets10,11,12s select the
+preceding DOY365 reference and require unknown-year context; segment1 must
+print the exact unresolved: message and retain its Segment query warning.
+Removing only the unresolved: prefix compiles and fails this new regression.
+Payload fields are hand-weighted from106-24R1 Figure11-13 (BCD seconds/minutes/
+hours, day low tens/units and high hundreds); the primary checksum is unaffected
+by payload-only changes. No encoder or captured output generates these fixtures.
+
+The optional write-limit test supplies a bounded4KiB static-context fixture,
+requiring record-too-large failure before any bytes or per-channel match state
+are written. A subsequent normal record is still the first match. Removing
+only the write-side4096-byte guard compiles and fails the new test. All three
+mutants are restored; focused regressions and fmt/trace/diff checks pass locally.
+The complete platform/package/security/RSS matrix is PR CI evidence only.
