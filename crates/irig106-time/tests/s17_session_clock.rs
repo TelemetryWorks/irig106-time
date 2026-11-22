@@ -155,3 +155,40 @@ fn invalid_policy_identity_and_ambiguous_rtc_do_not_commit_state() {
     fn traits<T: Send + Sync + Clone + std::fmt::Debug>() {}
     traits::<SessionClock>();
 }
+
+#[test]
+fn new_session_after_wrap_rebases_all_span_ticks_to_raw() {
+    // 106-24R1 §11.2.1.1 i:48-bit free-running RTC. The first pair
+    // crosses2^48; then20_000_000->1 is >1100ms backward, or explicit.
+    let wrap = 1i128 << 48;
+    for explicit in [false, true] {
+        let mut clock = SessionClock::new(&OfflinePolicy::default()).unwrap();
+        clock
+            .observe(0, Rtc::from_raw((1u64 << 48) - 10), false)
+            .unwrap();
+        let wrapped = clock.observe(1, Rtc::from_raw(20_000_000), false).unwrap();
+        assert_eq!(wrapped.key.ticks, wrap + 20_000_000);
+        let update = clock.observe(2, Rtc::from_raw(1), explicit).unwrap();
+        let closed = update.closed.unwrap();
+        assert_eq!(closed.high_ticks, wrap + 20_000_000);
+        assert_eq!(closed.first.ticks, wrap - 10);
+        let current = clock.active().unwrap();
+        assert_eq!(update.key.session, 2);
+        assert_eq!(update.key.ticks, 1);
+        assert_eq!(current.first, update.key);
+        assert_eq!(current.last, update.key);
+        assert_eq!(
+            (current.first.ticks, current.low_ticks, current.high_ticks),
+            (1, 1, 1)
+        );
+        assert_eq!(current.packets, 1);
+        assert_eq!(
+            current.start,
+            if explicit {
+                SessionStart::Explicit
+            } else {
+                SessionStart::Inferred
+            }
+        );
+    }
+}
