@@ -306,7 +306,7 @@ passed; `publish = false` remains until the owner’s S20 decision.
 Summary/channels/jumps accept `--format json` (default text), over the same report
 model as text. See the [stable producer schema](https://github.com/TelemetryWorks/irig106-time/blob/main/apps/irig106-time-cli/schema/irigtime-report-v1.schema.json)
 and [compatibility, units and provenance rules](https://github.com/TelemetryWorks/irig106-time/blob/main/docs/cli-report-schema.md).
-The shared envelope is `telemetryworks/irigtime-report`, stable v1, revision 7. JSON is
+The shared envelope is `telemetryworks/irigtime-report`, stable v1, revision 8. JSON is
 ASCII-only; 64/128-bit quantities are decimal strings. Every defined key is
 present; null meanings are field-specific. Consumers ignore unknown fields;
 producer validation stays strict. The schema is frozen after review.
@@ -370,3 +370,21 @@ association is inferred from this counter-reference choice.
 live window/cap, query brackets, reset thresholds and installed leap table,
 even without findings. These are CLI compatibility settings, not native
 SharedPolicy/Standard/Interpolate claims. See the [schema contract](../../docs/cli-report-schema.md).
+
+
+`--ntp-era <N>` explicitly declares one NTP era in **-14..=59** for the whole input
+(all six file commands). Example: `irigtime timeline flight.ch10 --ntp-era 1`.
+Values are separate decimal arguments; missing/duplicate/invalid/out-of-range values give2
+before input access. No option means needs-context, never a host-clock/F1-date
+pivot or era0 guess. Era0 begins1900; era1 begins2036 and ends2172 (136-year
+wrap, not the68-year pivot interval). UTC clocks say caller-declared era, with
+leap ambiguity/coverage uncertainty retained. No cumulative TAI-UTC is added.
+Only seconds **and** fraction both zero are TF-029/no body time (RDG-012;
+coordinator-confirmed2026-11-22). With declared era0, seconds0 plus a nonzero
+fraction legitimately maps1900-01-01; without an option it stays needs-context.
+The accepted era range comprises every era overlapping Gregorian years0..=9999;
+individual instants beyond that calendar still need context. The exact supported
+NTP-second interval is [-59958230400,255611289600); floor-dividing its first and
+last integer seconds by2^32 yields -14 and59. `report.policy` records
+`ntp_era_source` (caller-declared/none) and `ntp_era_inference` (disabled).
+A recording spanning eras needs separate explicit treatment, not auto-unwrapping.

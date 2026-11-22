@@ -87,7 +87,7 @@ command-specific structured findings, exact wide values and reset segments.
 `channels` does not evaluate jumps; its jumps/threshold are null. JSON stdout is
 ASCII-only. Names remain as given. The producer schema is strict and consumers
 ignore unknown fields within a supported schema version. The schema is frozen as
-stable v1, revision 7. Discard output on operational failure (an output error may leave a
+stable v1, revision 8. Discard output on operational failure (an output error may leave a
 partial JSON stream).
 
 Packet CSV column units, quoting and absent values: [CSV column schema](cli-csv-schema.md).
@@ -143,3 +143,21 @@ association is inferred from this counter-reference choice.
 live window/cap, query brackets, reset thresholds and installed leap table,
 even without findings. These are CLI compatibility settings, not native
 SharedPolicy/Standard/Interpolate claims. See the [schema contract](cli-report-schema.md).
+
+
+`--ntp-era <N>` explicitly declares one NTP era in **-14..=59** for the whole input
+(all six file commands). Example: `irigtime timeline flight.ch10 --ntp-era 1`.
+Values are separate decimal arguments; missing/duplicate/invalid/out-of-range values give2
+before input access. No option means needs-context, never a host-clock/F1-date
+pivot or era0 guess. Era0 begins1900; era1 begins2036 and ends2172 (136-year
+wrap, not the68-year pivot interval). UTC clocks say caller-declared era, with
+leap ambiguity/coverage uncertainty retained. No cumulative TAI-UTC is added.
+Only seconds **and** fraction both zero are TF-029/no body time (RDG-012;
+coordinator-confirmed2026-11-22). With declared era0, seconds0 plus a nonzero
+fraction legitimately maps1900-01-01; without an option it stays needs-context.
+The accepted era range comprises every era overlapping Gregorian years0..=9999;
+individual instants beyond that calendar still need context. The exact supported
+NTP-second interval is [-59958230400,255611289600); floor-dividing its first and
+last integer seconds by2^32 yields -14 and59. `report.policy` records
+`ntp_era_source` (caller-declared/none) and `ntp_era_inference` (disabled).
+A recording spanning eras needs separate explicit treatment, not auto-unwrapping.
