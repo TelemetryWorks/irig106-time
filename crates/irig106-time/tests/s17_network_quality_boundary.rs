@@ -45,6 +45,8 @@ fn standalone_network_boundary_keeps_real_session_and_checks_scope() {
     let (r, findings) = admit(observation.clone(), key, 2, &policy, false).unwrap();
     assert_eq!(r.key, key);
     assert!(r.admitted);
+    assert!(!r.declared_timein);
+    assert!(r.reasons.contains(&Rejection::Undeclared));
     assert!(r.input.network.as_ref().unwrap().reference().is_eligible());
     assert!(findings.iter().all(|f| f.session == 2 && f.packet == 7));
     assert!(findings.iter().any(|f| f.code == 8));

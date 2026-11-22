@@ -449,6 +449,8 @@ fn native_network_quality_rejects_unqualified_invalid_and_malformed_observations
     );
     assert!(rows[1]["rejection_reason"].is_null()); // Zero sentinel needs no era.
     assert!(rows[6]["rejection_reason"].is_string());
+    let (_, text) = Input::bytes(&bytes).output("summary", false);
+    assert!(text.contains("Rejected reference: time needs context: NTP era/basis required"));
     // Owner2026-11-17: nonzero raw fraction remains a real era0 reading,
     // even when floor rounding produces0ns. Only raw (0,0) is the sentinel.
     let (_, out) = Input::bytes(&bytes).era_output("summary", true, Some("0"));
@@ -501,4 +503,46 @@ fn native_ntp_endpoints_keep_leap_ambiguity_without_inventing_drift() {
     assert_eq!(q["first"]["nanoseconds"], 500_000_000);
     let (_, text) = input.era_output("summary", false, Some("0"));
     assert!(text.contains("[NTP leap-ambiguous]"));
+}
+
+#[test]
+fn native_drift_marks_stale_offset_use_but_not_native_tai_or_absent_drift() {
+    // 2017Jan2 Unix1483315200 + (18*365+4)*86400 =2035Jan2 2051308800.
+    // Last-known37s offset: TAI2051308837; NTP4260297600. Dates are
+    // beyond builtin table coverage. Only INTERIOR UTC points use the offset.
+    let mut bytes = network_packet(7, 0, 0x21, 2_051_308_837, 0);
+    bytes.extend(network_packet(8, 0, 0x21, 2_051_308_837, 0));
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        10_000_000,
+        &[0x41, 2, 0, 0, 0, 1, 0, 0, 2, 1, 0x35, 0x20],
+    ));
+    bytes.extend(network_packet(7, 20_000_000, 1, 4_260_297_602, 0));
+    bytes.extend(network_packet(8, 20_000_000, 0x21, 2_051_308_839, 0));
+    bytes.extend(network_packet(7, 30_000_000, 0x21, 2_051_308_840, 0));
+    let input = Input::bytes(&bytes);
+    let (_, out) = input.era_output("summary", true, Some("0"));
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let rows = &v["report"]["native_sessions"]["spans"][0]["reference_quality"]["channels"];
+    assert_eq!(rows[0]["drift_ppm"], 0.0);
+    assert_eq!(rows[0]["first"]["scale"], "TAI");
+    assert_eq!(rows[0]["last"]["scale"], "TAI");
+    assert_eq!(rows[0]["drift_uses_stale_leap_table"], true);
+    assert_eq!(rows[1]["drift_ppm"], 0.0);
+    assert_eq!(rows[1]["drift_uses_stale_leap_table"], false);
+    let (_, text) = input.era_output("summary", false, Some("0"));
+    assert!(text.contains("drift 0 ppm (possibly out of date: stale leap table)"));
+    // Unknown RTC scale removes the drift value, so no stale DRIFT is claimed.
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        40_000_000,
+        &[0x31, 2, 0, 0, 0, 4, 0, 0, 2, 1, 0x35, 0x20],
+    ));
+    let (_, out) = Input::bytes(&bytes).era_output("summary", true, Some("0"));
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let row = &v["report"]["native_sessions"]["spans"][0]["reference_quality"]["channels"][0];
+    assert!(row["drift_ppm"].is_null());
+    assert_eq!(row["drift_uses_stale_leap_table"], false);
 }
