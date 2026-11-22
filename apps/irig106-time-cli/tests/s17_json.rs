@@ -79,7 +79,7 @@ fn versioned_report_is_deterministic_exact_and_carries_provenance() {
         assert_eq!(v["options"]["command"], command);
         assert_eq!(v["options"]["fail_on"], "warning");
         assert_eq!(v["schema"], "telemetryworks/irigtime-report");
-        assert_eq!(v["schema_revision"], 5);
+        assert_eq!(v["schema_revision"], 6);
         assert!(v["options"]["limit"].is_null());
         assert!(v["report"]["rows"].is_null());
         assert_eq!(v["highest_level"], "warning");

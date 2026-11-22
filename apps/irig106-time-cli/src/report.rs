@@ -33,6 +33,7 @@ impl<'a> From<&'a Ch10TimeScanner> for Report<'a> {
                 target: q.target,
                 any: s.query_any.as_ref(),
                 any_basis: s.query_any_basis,
+                any_network: s.query_any_network,
                 answers: &s.query_answers,
                 segments: s.segment_answers.as_ref(),
             }),

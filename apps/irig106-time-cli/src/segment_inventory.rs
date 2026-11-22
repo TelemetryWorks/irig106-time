@@ -113,6 +113,7 @@ mod tests {
         for n in 1..=3 {
             for channel in [7, 8] {
                 let first = ObservedReference {
+                    network_time: None,
                     basis: "UTC (from TAI via leap table)",
                     time: AbsoluteTime::new(100, 12, 0, n as u8, 123).unwrap(),
                     rtc: Rtc::from_raw(n as u64),

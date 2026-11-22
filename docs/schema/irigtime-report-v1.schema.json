@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/TelemetryWorks/irig106-time/v0.8.0/docs/schema/irigtime-report-v1.schema.json",
-  "title": "irigtime report v1 revision 5 \u2014 stable",
+  "title": "irigtime report v1 revision 6 \u2014 stable",
   "$comment": "Version-pinned release artifact identifier (resolves when v0.8.0 is published). Schema frozen after the reviewed draft; no tag or publication is performed by this PR.",
   "description": "Producer validation is strict (unknown producer keys fail). Consumers MUST ignore unknown fields within a supported schema_version, accept additive schema_revision increases, and reject unsupported schema_version values. Every defined key is always emitted; null meaning is per field. Incompatible changes require a new schema_version and breaking tool release. All usize and signed/unsigned 64/128-bit values are decimal strings, including future fields; small wire/date fields remain integers. Suffix units: _ns nanoseconds, _ms milliseconds, _bytes bytes, _rtc 100 ns RTC ticks; clock_count_ns is native year-relative time, not Unix. Output is ASCII-only JSON (non-ASCII uses Unicode escapes); ordering is deterministic. Draft->stable is an explicit reviewed revision change. This is CLI output only, not an IRIG 106 wire standard or a JSON loading API. Complete reports are produced on exits 0/1; no report is started on usage/input exits 2/3. On output failure 4 a partial or even complete byte stream may already have been written: consumers must discard it. Existing stderr diagnostics are retained; findings are per command. A revision MAY add values to options.command, row kind and similar enums for newly supported views. Consumers MUST treat unknown enum values as an unsupported view, not an error. Reserved shapes such as rows MAY gain fields until first emitted.",
   "type": "object",
@@ -28,8 +28,8 @@
       "const": 1
     },
     "schema_revision": {
-      "description": "Additive schema revision within version1. Revision5 adds derived, stale leap table basis; revision4 consumers treat this unknown enum as an unsupported view, not a document error.",
-      "const": 5
+      "description": "Additive revision6 adds observed packet and selected-reference network_time facts; older consumers ignore these new fields.",
+      "const": 6
     },
     "schema_status": {
       "description": "Stable contract following the reviewed draft-to-stable transition at revision 2. Further contract changes follow the version and revision rules.",
@@ -825,7 +825,8 @@
         "offset_bytes",
         "data_type",
         "association",
-        "clock"
+        "clock",
+        "network_time"
       ],
       "properties": {
         "kind": {
@@ -892,6 +893,17 @@
               "type": "null"
             }
           ]
+        },
+        "network_time": {
+          "description": "The packet CSDW, independently of its resolved clock or admission. Null means no applicable Format2 facts (non-F2/missing CSDW or no selected F2 answer respectively); raw reserved values remain facts, never imply GPS.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/network_time"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
@@ -927,7 +939,8 @@
       "additionalProperties": false,
       "required": [
         "clock",
-        "issue"
+        "issue",
+        "network_time"
       ],
       "properties": {
         "clock": {
@@ -947,6 +960,17 @@
             "string",
             "null"
           ]
+        },
+        "network_time": {
+          "description": "The reference selected by the numeric correlator, not the channel latest observation. Null means no applicable Format2 facts (non-F2/missing CSDW or no selected F2 answer respectively); raw reserved values remain facts, never imply GPS.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/network_time"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
@@ -959,7 +983,8 @@
         "segment",
         "labelled",
         "clock",
-        "issue"
+        "issue",
+        "network_time"
       ],
       "properties": {
         "channel": {
@@ -983,6 +1008,17 @@
         "issue": {
           "description": "Native unresolved context/error; null when clock is present. Any-channel may be withheld across resets or absent references.",
           "$ref": "#/$defs/query_value/properties/issue"
+        },
+        "network_time": {
+          "description": "The reference selected by the numeric correlator, not the channel latest observation. Null means no applicable Format2 facts (non-F2/missing CSDW or no selected F2 answer respectively); raw reserved values remain facts, never imply GPS.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/network_time"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
@@ -1006,6 +1042,17 @@
             "$ref": "#/$defs/query_answer"
           }
         }
+      }
+    },
+    "network_time": {
+      "description": "106-24R1 Figure11-15 NTF and TS wire fields; observation is distinct from successful conversion.",
+      "type": "object", "additionalProperties": false,
+      "required": ["ntf", "protocol", "ts", "status"],
+      "properties": {
+        "ntf": {"description": "Raw NTF selector bits7..4.", "type": "integer", "minimum": 0, "maximum": 15},
+        "protocol": {"description": "Protocol/revision selected by NTF; reserved retains its raw ntf.", "enum": ["NTP", "IEEE1588-2002", "IEEE1588-2008", "reserved"]},
+        "ts": {"description": "Raw TS selector bits3..0.", "type": "integer", "minimum": 0, "maximum": 15},
+        "status": {"description": "TS0 not-valid,TS1 valid,TS2..15 reserved; not an invented absolute answer.", "enum": ["not-valid", "valid", "reserved"]}
       }
     }
   }

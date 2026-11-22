@@ -87,7 +87,7 @@ command-specific structured findings, exact wide values and reset segments.
 `channels` does not evaluate jumps; its jumps/threshold are null. JSON stdout is
 ASCII-only. Names remain as given. The producer schema is strict and consumers
 ignore unknown fields within a supported schema version. The schema is frozen as
-stable v1, revision 5. Discard output on operational failure (an output error may leave a
+stable v1, revision 6. Discard output on operational failure (an output error may leave a
 partial JSON stream).
 
 Packet CSV column units, quoting and absent values: [CSV column schema](cli-csv-schema.md).

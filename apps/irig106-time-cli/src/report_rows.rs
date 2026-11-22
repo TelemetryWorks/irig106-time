@@ -14,6 +14,7 @@ pub(super) struct PacketRow {
     pub(super) rtc: Rtc,
     pub(super) abs_time: Option<AbsoluteTime>,
     pub(super) basis: Option<&'static str>,
+    pub(super) network_time: Option<super::NetworkFacts>,
 }
 impl PacketRow {
     // Retain the selected PTP reference's conversion basis. Other unqualified
@@ -21,6 +22,7 @@ impl PacketRow {
     // and no data-to-time-channel association is inferred.
     pub(super) fn json(&self) -> serde_json::Value {
         serde_json::json!({
+            "network_time": self.network_time.map(|n|n.json()),
             "kind": if self.abs_time.is_some() { "absolute" } else { "counter-only" },
             "packet": self.packet_num.to_string(), "channel": self.channel_id,
             "rtc": self.rtc.as_raw().to_string(), "offset_bytes": self.offset.to_string(),
@@ -39,10 +41,14 @@ impl PacketRow {
             self.channel_id,
             fmt_data_type_short(self.data_type),
             self.rtc.as_raw(),
-            self.abs_time
-                .as_ref()
-                .map(|t| super::clock_basis::text(t, self.basis))
-                .unwrap_or_else(|| "N/A".to_string()),
+            super::NetworkFacts::annotate(
+                self.abs_time
+                    .as_ref()
+                    .map(|t| super::clock_basis::text(t, self.basis))
+                    .unwrap_or_else(|| "N/A".to_string()),
+                self.network_time,
+                "packet",
+            ),
         )
     }
 
