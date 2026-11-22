@@ -20,7 +20,8 @@ Findings are command-specific; evaluating jumps can add findings. `highest_level
 is independent of `--fail-on`; that option only determines exit 1.
 Stale PTP conversions raise TF-021 warning with the converted UTC, raw TAI,
 applied offset and table currency/identity in the packet-located sample message.
-UTC is kept, explicitly labelled possibly out of date; schema revision stays 4.
+UTC is kept, explicitly labelled possibly out of date; revision5 carries the
+covered/stale distinction in every selected PTP clock basis.
 
 The envelope always contains `schema`, `schema_version`, `schema_revision`,
 `schema_status`, `tool`, `input`, `options`, `highest_level`, `findings`, `report`.
