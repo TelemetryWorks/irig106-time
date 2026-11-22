@@ -140,8 +140,11 @@ columns/quoting rather than a JSON wrapper.
 Every channel/segment/packet/query clock derived from a selected stale PTP
 reference uses `basis: "derived, stale leap table"`. Covered PTP references keep
 `derived, leap table`. Text uses `UTC (from TAI via stale leap table, possibly out
-of date)` wherever that conversion is displayed; covered conversions keep their
-existing table label. TF-021 findings still retain raw operands/currency details.
+of date)` wherever that conversion is displayed. Covered PTP timeline and
+correlate values now also gain `UTC (from TAI via leap table)` in text, and
+their JSON row/answer clocks carry UTC / `derived, leap table`. These covered
+output changes are coordinator-accepted. TF-021 findings still retain raw
+operands/currency details.
 A revision-4 consumer that does not know this new basis treats the view as
 unsupported rather than rejecting the version-1 document. The regression uses
 the frozen revision-4 enum set, not the producer's expanded set. CSV stays

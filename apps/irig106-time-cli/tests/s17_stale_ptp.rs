@@ -345,3 +345,60 @@ fn stale_answer_basis_is_not_replaced_by_later_covered_channel_state() {
             .any(|s| s.contains("179:00:00:00.000000123") && s.contains(STALE_LABEL))
     );
 }
+
+#[test]
+fn decoded_packet_row_basis_follows_selected_reference_not_latest_channel() {
+    // 106-24R1 Fig11-13: IRIG-B DOY100 12:00:00/01, CSDW0, BCD body.
+    // Fig11-15/17: ch9 PTP2008 TS1, stale TAI1893542437/38 (+123ns).
+    // Equal RTCs select lower ch7 in the existing any-channel correlator.
+    for ptp_first in [false, true] {
+        let input = Input::new(2, 1_893_542_437);
+        let template = std::fs::read(&input.0).unwrap();
+        let wire = |ptp: bool, second: u8| {
+            let mut p = template.clone();
+            p[2] = if ptp { 9 } else { 7 };
+            p[16..22].copy_from_slice(&(u64::from(second) * 10_000_000).to_le_bytes()[..6]);
+            if ptp {
+                p[28..32].copy_from_slice(&(1_893_542_437u32 + u32::from(second)).to_le_bytes());
+            } else {
+                p[8] = 10;
+                p[15] = 0x11;
+                p[24..].fill(0);
+                p[28..34].copy_from_slice(&[0, second, 0, 0x12, 0, 1]);
+            }
+            let sum = p[..22].chunks_exact(2).fold(0u16, |s, w| {
+                s.wrapping_add(u16::from_le_bytes([w[0], w[1]]))
+            });
+            p[22..24].copy_from_slice(&sum.to_le_bytes());
+            p
+        };
+        let mut bytes = Vec::new();
+        for second in [0, 1] {
+            bytes.extend(wire(ptp_first, second));
+            bytes.extend(wire(!ptp_first, second));
+        }
+        // Once both exact anchors exist, this decoded PTP row must use IRIG,
+        // even though its own channel's latest reference has a stale basis.
+        bytes.extend(wire(true, 1));
+        std::fs::write(&input.0, bytes).unwrap();
+        let (exit, out, err) = input.output("timeline", true, "never");
+        assert_eq!(exit, ExitClass::Success, "{err}");
+        let v: Value = serde_json::from_str(&out).unwrap();
+        let rows = v["report"]["rows"].as_array().unwrap();
+        assert_eq!(rows.len(), 5);
+        assert_eq!(rows[4]["channel"], 9);
+        assert_eq!(rows[4]["clock"]["day"], 100);
+        assert_eq!(rows[4]["clock"]["second"], 1);
+        let (_, text, _) = input.output("timeline", false, "never");
+        for row in rows.iter().filter(|row| row["clock"]["day"] == 100) {
+            assert_eq!(row["clock"]["basis"], "unresolved", "{row}");
+            assert_eq!(row["clock"]["scale"], "unknown", "{row}");
+            let line = text
+                .lines()
+                .find(|line| line.split_whitespace().next() == row["packet"].as_str())
+                .unwrap();
+            assert!(!line.contains("leap table"), "{line}");
+            assert!(line.contains("100:12:00:"), "{line}");
+        }
+    }
+}

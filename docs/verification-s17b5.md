@@ -96,3 +96,24 @@ live row metadata dropped, target basis dropped, private query basis lost, and
 query-answer basis ignored. Source restored. The prior TF-021 severity/content
 and default/warning/never tests remain passing; covered and missing-offset
 controls stay distinct. No new whole-requirement marker or coverage increase.
+
+
+## #90 selected-reference regression and covered-output acceptance
+
+The mixed-channel fixture supplies IRIG-B ch7 and stale PTP ch9 at equal RTCs,
+in both arrival orders, then a decoded PTP probe after both anchors exist.
+Fig11-13 supplies DOY100 12:00:00/01 BCD; Fig11-15/17 supplies stale PTP2008
+TAI1893542437/38 (+123ns). The numeric correlator's lower-channel tie winner is
+IRIG. Every IRIG-resolved row has no PTP basis in JSON or text, even when the
+row's channel is9 with a stale latest reference. The new test passes unchanged
+production code; it is a regression guard, not a claimed failed-first defect.
+The compiling mutant that always uses decoded rows' own-channel latest basis
+fails the new assertion. Checked independently with each packet order first;
+both fail with stale UTC basis on an IRIG-resolved row. Source restored.
+
+Coordinator acceptance explicitly includes covered-output changes: timeline
+and correlate text gain the covered-table suffix; their JSON row/answer clocks
+become UTC / derived, leap table. CHANGELOG and schema docs now say this plainly.
+No schema/production-code/requirement-marker change in this delta; coverage stays
+198 tested /206 verified of288. Local validation: focused stale tests and the
+mutant, fmt/diff checks. Remaining checks are from the new PR CI run.

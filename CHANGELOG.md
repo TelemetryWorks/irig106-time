@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Schema revision 5 adds `derived, stale leap table`. Carry covered/stale PTP
   basis through channel/segment clocks, bounded packet rows and query answers;
   suffix text conversions with the table-currency label. CSV remains basis-free.
+  Covered PTP timeline/correlate text now gains ` UTC (from TAI via leap table)`;
+  JSON row/answer clocks now carry UTC / `derived, leap table`. These are
+  intentional covered-output changes accepted by the coordinator.
   Numeric correlation is unchanged; basis metadata follows retained reference
   selection, including duplicates, eviction and closed reset segments.
 
