@@ -228,8 +228,10 @@ and treat unknown basis values as unsupported views under the frozen-v1 rule.
 
 ## Automated producer validation (CI-only tooling)
 
-The CLI CI job installs `scripts/requirements-schema.txt` using
-`pip --require-hashes --only-binary=:all:`. jsonschema4.26.0 and every transitive
+The CLI CI job creates `$RUNNER_TEMP/schema-venv` without system site packages.
+It installs `scripts/requirements-schema.txt` using that interpreter with
+`-I -m pip install --require-hashes --only-binary=:all:`; both schema steps use
+the same venv interpreter with `-I` (ignoring Python environment/user paths). jsonschema4.26.0 and every transitive
 Python dependency are version-pinned with SHA-256 wheel hashes. Nothing is added
 to a Cargo dependency tree or shipped with the CLI/library. CI uses Python3.12
 Linux x86_64; the lock also permits Python3.11 Linux aarch64 for focused probes.
@@ -237,7 +239,8 @@ Linux x86_64; the lock also permits Python3.11 Linux aarch64 for focused probes.
 `scripts/validate_cli_reports.py` checks the canonical packaged schema against
 the Draft2020-12 metaschema, then validates live summary, channels, jumps,
 timeline and correlate JSON against that schema's current revision. It resolves
-local `$defs` without fetching release URLs. Thirty small reports cover protocol/
+local `$defs` without fetching release URLs. The exact six fixture labels and thirty fixture/view combinations are pinned
+by a test. Thirty small reports cover protocol/
 status variants, stale PTP, unknown year, resets, ambiguity/counter-only output,
 missing and declared NTP era, and the NTP sentinel. CSV is its own machine format,
 not a JSON view. Full inventory goldens also validate. Negative tests reject

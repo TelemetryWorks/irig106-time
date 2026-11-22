@@ -60,3 +60,19 @@ Initial CI45002883175 rejected the workflow before any job ran: the unquoted
 pip :all: token formed YAML mapping syntax. The command now uses a block scalar,
 with a regression assertion for that wiring; the succeeding run is the CI
 matrix evidence, not that pre-job failure.
+
+## #97 isolation and fixture-set review delta
+
+CI creates $RUNNER_TEMP/schema-venv (no system-site packages), then installs the
+same pinned hash-locked dependencies with its interpreter's -I -m pip. Both
+schema tests and live validation run via that same interpreter with -I; runner
+packages, user site and PYTHONPATH cannot supply the validator dependencies.
+The fixture labels are pinned in order: inventory, reset, no-time, ntp-no-era,
+ntp-era1, ntp-sentinel. Six fixtures times five views must equal30 reports.
+Tests-first afb1ff4: the new isolated-CI wiring assertion fails before the fix;
+the fixture-set assertion and four existing controls pass. Six tests pass after
+the workflow change. A mutation dropping the reset fixture fails the exact-label
+assertion (and reduces the expected combination count to25); sources restored.
+No requirements/schema/coverage or shipped dependency changes.
+The wiring assertion also rejects --system-site-packages and removal of -I
+from the installer; both negative probes fail, then the workflow is restored.

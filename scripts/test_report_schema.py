@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parent.parent
 class ReportSchema(unittest.TestCase):
     def test_ci_installs_hash_locked_tools_and_checks_live_views(self):
         workflow = (ROOT / '.github/workflows/ci.yml').read_text()
-        self.assertIn('python -m venv "$RUNNER_TEMP/schema-venv"', workflow)
+        self.assertIn('          python -m venv "$RUNNER_TEMP/schema-venv"\n', workflow)
         interpreter = '"$RUNNER_TEMP/schema-venv/bin/python" -I'
         # Shell quotes/colon-space commands must stay in YAML block scalars.
         for command in [
