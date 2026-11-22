@@ -202,7 +202,7 @@ fn coverage_edge_basis_is_retained_in_all_clocks_and_text() {
     for command in ["summary", "channels", "jumps", "timeline", "correlate"] {
         let (_, out, _) = input.output(command, true, "never");
         let v: Value = serde_json::from_str(&out).unwrap();
-        assert_eq!(v["schema_revision"], 9);
+        assert_eq!(v["schema_revision"], 10);
         let ch = &v["report"]["channels"][0];
         assert_eq!(ch["first"]["basis"], "derived, leap table");
         assert_eq!(ch["last"]["basis"], "derived, stale leap table");

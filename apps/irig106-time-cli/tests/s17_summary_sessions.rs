@@ -83,8 +83,21 @@ fn native_recording_spans_are_not_channel_reset_segments() {
     let v: Value = serde_json::from_str(&out).unwrap();
     assert_eq!(v["report"]["reset_count"], "0");
     assert_eq!(v["report"]["channels"][0]["segment_count"], "1");
+    let mut native = v["report"]["native_sessions"].clone();
     assert_eq!(
-        v["report"]["native_sessions"],
+        native["spans"][0]["reference_quality"]["channels"][0]["valid"],
+        "2"
+    );
+    assert_eq!(
+        native["spans"][1]["reference_quality"]["channels"][0]["valid"],
+        "1"
+    );
+    for span in native["spans"].as_array_mut().unwrap() {
+        assert!(span["reference_quality"]["channels"].is_array());
+        span.as_object_mut().unwrap().remove("reference_quality");
+    }
+    assert_eq!(
+        native,
         json!({"count":"2","late_bound_ns":"1100000000",
         "infer_sessions":true,"status":"complete","unavailable_reason":null,"spans":[
         {"index":"1","start":"initial","first_packet":"0","last_packet":"1","first_ticks":"0","last_ticks":"200000000","low_ticks":"0","high_ticks":"200000000","counter_span_ns":"20000000000","packets":"2"},
@@ -236,7 +249,7 @@ fn native_summary_quality_orders_late_f1_and_keeps_partial_calendar() {
     ]);
     let (_, out) = input.output("summary", true);
     let v: Value = serde_json::from_str(&out).unwrap();
-    let q = &v["report"]["native_sessions"]["spans"][0]["quality"][0];
+    let q = &v["report"]["native_sessions"]["spans"][0]["reference_quality"]["channels"][0];
     assert_eq!(q["channel"], 7);
     assert_eq!(q["valid"], "4");
     assert_eq!(q["interval_ns"], "3000000000");

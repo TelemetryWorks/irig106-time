@@ -405,3 +405,10 @@ summary does not forward that inferred-session finding policy.
 Native session text lists the first20 known sessions, with exact totals and an
 `N more` line. This is display-only: JSON keeps every session; use `--format json`
 for the full inventory. Recording-wide sessions and channel reset segments stay separate.
+
+Summary additionally reports native **Format 1 candidate quality**, distinct from
+CLI reset segments. Its declaration-free profile includes undeclared candidates
+but invents no TIMEIN declarations; years come only from each packet. Endpoint
+calendars retain unknown years and native scales. A 1.1 s late queue is bounded
+at 1,024 references and 64 channels per session; exhaustion labels prefix-only
+quality. Format 2 and retrospective session-year qualification remain pending.

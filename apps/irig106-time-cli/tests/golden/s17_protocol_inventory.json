@@ -340,6 +340,50 @@
           "last_ticks": "40000000",
           "low_ticks": "0",
           "packets": "5",
+          "reference_quality": {
+            "channel_cap": "64",
+            "channels": [
+              {
+                "admitted": "1",
+                "calendar_unavailable_reason": null,
+                "channel": 7,
+                "drift_ppm": null,
+                "first": {
+                  "basis": "stated",
+                  "day": 100,
+                  "hours": 12,
+                  "minutes": 0,
+                  "nanoseconds": 0,
+                  "scale": "GPS",
+                  "seconds": 0,
+                  "year": null
+                },
+                "interval_ns": null,
+                "last": {
+                  "basis": "stated",
+                  "day": 100,
+                  "hours": 12,
+                  "minutes": 0,
+                  "nanoseconds": 0,
+                  "scale": "GPS",
+                  "seconds": 0,
+                  "year": null
+                },
+                "max_spacing_ns": null,
+                "min_spacing_ns": null,
+                "references_per_second": null,
+                "rejected": "0",
+                "unavailable_reason": "fewer than two valid references",
+                "valid": "1"
+              }
+            ],
+            "formats": "format1",
+            "include_undeclared": true,
+            "pending_cap": "1024",
+            "status": "complete",
+            "unavailable_reason": null,
+            "year_inference": "packet-only"
+          },
           "start": "initial"
         }
       ],
@@ -382,7 +426,7 @@
     "total_packets": "5"
   },
   "schema": "telemetryworks/irigtime-report",
-  "schema_revision": 9,
+  "schema_revision": 10,
   "schema_status": "stable",
   "schema_version": 1,
   "tool": {
