@@ -218,8 +218,38 @@ impl Replay {
                     if closed.is_some() {
                         return Err(io::Error::other("year replay segment changed within pass"));
                     }
-                    let (mut resolved, findings, bad) =
-                        resolver.resolve(stamp).map_err(io::Error::other)?;
+                    let (mut resolved, findings, bad) = match resolver.resolve(stamp) {
+                        Ok(result) => result,
+                        Err(error @ irig106_time::TimeError::NeedsContext { .. }) => {
+                            use irig106_time::findings::{
+                                FindingCode, FindingEvidence, FindingLocation, ValueValidity,
+                            };
+                            let code = FindingCode::from_number(20).map_err(io::Error::other)?;
+                            notes.push(TimelineFinding {
+                                code: 20,
+                                severity: code.resolve_level(None).map_err(io::Error::other)?,
+                                session: rec.key.session,
+                                packet: rec.key.packet,
+                                channel: Some(rec.channel),
+                                related: None,
+                                raw_rtc: Some(irig106_time::Rtc::from_raw(rec.key.ticks as u64)),
+                                delta_ns: None,
+                                evidence: FindingEvidence::new(
+                                    FindingLocation {
+                                        session: Some(rec.key.session),
+                                        packet: Some(rec.key.packet),
+                                        channel: Some(rec.channel),
+                                        byte_offset: None,
+                                    },
+                                    ValueValidity::Unusable,
+                                )
+                                .with_raw_rtc(irig106_time::Rtc::from_raw(rec.key.ticks as u64)),
+                            });
+                            quality.prepared(rec.key, rec.channel, Err(error));
+                            continue;
+                        }
+                        Err(error) => return Err(io::Error::other(error)),
+                    };
                     if bad && !rec.rejected {
                         file.seek(SeekFrom::Start(pos))?;
                         file.write_all(&[1])?;

@@ -19,7 +19,7 @@ No library I/O/serde, JSON loading, new dependency or public API.
 Sources: 106-24R1 Figures 11-13/11-14, contract §5.3, D9/RDG-010 and owner-adopted
 YEAR-PHASE rule 2026-11-15. Resolved ordinary F1 endpoints use the existing checked
 TAI normalization before quality; second 60 retains native context-only admission.
-Only newly derived year TF-004/007/032 and year-gap TF-020 facts are added to the
+Only newly derived year TF-004/007/032 and year-context TF-020 facts are added to the
 scanner's bounded samples/exact counts; baseline decode and jump/rate analysis
 are not repeated. No new severity. Plain evidence-free partial years retain the
 existing summary behavior rather than adding one TF-020 per packet.
@@ -48,3 +48,10 @@ packaging/deny/fuzz/schema and dense RSS gates belong to PR CI. Item 7 remains n
 CI caught a projection-unit fixture that constructed NativeSessions directly
 without the scanner's new finish step. The fixture now finalizes analysis before
 rendering; its assertion that row arrays remain deferred until emission is kept.
+
+Tests-first f665cdc exposed a new-wrapper error-class bug: future DMY year0000
+makes a preceding yearless DOY need year-1. That library NeedsContext was mapped
+to output exit4. The wrapper now counts it as rejected context with TF-020 at
+its approved INFORMATION level, preserving the rest of the report; no malformed
+value or operational failure is invented. Other unexpected invariant/I/O errors
+remain fallible. The year-range regression passes after this correction.
