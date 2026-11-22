@@ -41,6 +41,7 @@ use irig106_time::network_time::{LeapSecondTable, TimeF2Csdw, parse_time_f2_payl
 use irig106_time::*;
 /// Strict, filesystem-free argument parsing.
 pub mod args;
+mod correlate_report;
 mod csv_spool;
 /// Bounded raw packet transport; command integration follows in S16b.
 pub mod input;
@@ -169,6 +170,8 @@ struct Ch10TimeScanner {
     finding_location: Option<(u16, usize)>,
     correlator: StreamingTimeCorrelator,
     query_refs: Option<target_refs::TargetReferences>,
+    query_any: Option<irig106_time::Result<AbsoluteTime>>,
+    query_answers: Vec<correlate_report::Answer>,
     segment_answers: Option<segment_answers::SegmentAnswers>,
     segment_error: Option<io::Error>,
     isolated: live_refs::LiveReferences,
@@ -203,6 +206,8 @@ impl Ch10TimeScanner {
             finding_samples: Vec::new(),
             finding_location: None,
             query_refs: None,
+            query_any: None,
+            query_answers: Vec::new(),
             segment_answers: None,
             segment_error: None,
             isolated: live_refs::LiveReferences::default(),
@@ -1340,53 +1345,36 @@ fn cmd_correlate(
     scanner.query_refs = Some(target_refs::TargetReferences::new(target));
     scanner.scan(input, false, None)?;
 
-    writeln!(
-        stdout,
-        "Resolving RTC {:#014X} ({} ticks, {} ns)",
-        target.as_raw(),
-        target.as_raw(),
-        target.to_nanos()
-    )?;
-    writeln!(stdout)?;
-
     if scanner.reset_count != 0 {
         scanner.finish_segments()?;
-        scanner.report_findings(stderr)?;
-        if let Some(report) = scanner.segment_answers.as_mut() {
-            report.copy_to(stdout)?;
-        }
-        return Ok(scanner.highest);
-    }
-    if scanner.correlator.is_empty() {
+    } else if scanner.correlator.is_empty() {
         scanner.note(Severity::Warning, "No time reference points found in file.");
-        scanner.report_findings(stderr)?;
-        return Ok(scanner.highest);
-    }
-
-    // Correlate with all channels
-    match scanner.correlate(target, None) {
-        Ok(t) => writeln!(stdout, "  Any channel  → {}", fmt_abs_time(&t))?,
-        Err(e) => {
-            let level = decode_level(&e);
-            writeln!(stdout, "  Any channel  → {level:?}: {e}")?;
-            scanner.note(level, format!("Correlation query: {e}"));
+    } else {
+        let any = scanner.correlate(target, None);
+        if let Err(e) = &any {
+            scanner.note(decode_level(e), format!("Correlation query: {e}"));
+        }
+        scanner.query_any = Some(any);
+        let channels: Vec<_> = scanner
+            .time_channels
+            .iter()
+            .filter(|(_, c)| c.first_rtc.is_some())
+            .map(|(&ch, _)| ch)
+            .collect();
+        for ch in channels {
+            if let Some(time) = scanner.resolve(target, Some(ch)) {
+                scanner
+                    .query_answers
+                    .push(correlate_report::Answer::new(ch, 1, false, Ok(time)));
+            }
         }
     }
-
-    // Per-channel
-    let channels: Vec<u16> = scanner
-        .time_channels
-        .iter()
-        .filter(|(_, c)| c.first_rtc.is_some())
-        .map(|(&ch, _)| ch)
-        .collect();
-    for ch in channels {
-        if let Some(t) = scanner.resolve(target, Some(ch)) {
-            writeln!(stdout, "  Channel {:>3}  → {}", ch, fmt_abs_time(&t))?;
-        }
+    let report = report::Report::from(&scanner);
+    if let Some(query) = &report.query {
+        query.write_text(stdout)?;
     }
-    scanner.report_findings(stderr)?;
-    Ok(scanner.highest)
+    report.report_findings(stderr)?;
+    Ok(report.highest)
 }
 
 fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {

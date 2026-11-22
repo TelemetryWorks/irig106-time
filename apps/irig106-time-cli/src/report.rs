@@ -1,9 +1,10 @@
-//! Bounded immutable report projection shared by inventory and packet-row views.
+//! Bounded immutable report projection shared by inventory, packet and query views.
 //! Partial Traces: L3-CLI-106 <- L2-CLI-106 <- L1-CLI-006 (inventory views; qualified joining remains partial).
 use super::*;
 use irig106_time::network_time::NetworkTimeFormat;
 
 pub(super) struct Report<'a> {
+    pub(super) query: Option<correlate_report::Query<'a>>,
     pub(super) packet_rows: &'a [ResolvedPacket],
     pub(super) segment_inventory: Option<&'a segment_inventory::Archive>,
     pub(super) finding_samples: &'a [FindingSample],
@@ -28,6 +29,12 @@ pub(super) struct Report<'a> {
 impl<'a> From<&'a Ch10TimeScanner> for Report<'a> {
     fn from(s: &'a Ch10TimeScanner) -> Self {
         Self {
+            query: s.query_refs.as_ref().map(|q| correlate_report::Query {
+                target: q.target,
+                any: s.query_any.as_ref(),
+                answers: &s.query_answers,
+                segments: s.segment_answers.as_ref(),
+            }),
             packet_rows: &s.resolved,
             segment_inventory: s.segment_inventory.as_ref(),
             finding_samples: &s.finding_samples,

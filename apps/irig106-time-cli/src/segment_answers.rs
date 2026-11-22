@@ -1,19 +1,20 @@
-//! Closed-segment report rows on disk; only per-channel counts remain in RAM.
-use super::{csv_spool::CsvSpool, fmt_abs_time};
+//! Closed-segment native report records on disk; only per-channel counts in RAM.
+use super::{correlate_report::Answer, csv_spool::CsvSpool};
 use irig106_time::{AbsoluteTime, TimeError};
 use std::{
+    cell::RefCell,
     collections::BTreeMap,
-    io::{self, Write},
+    io::{self, Read, Seek, SeekFrom, Write},
 };
 
 pub(super) struct SegmentAnswers {
-    spool: CsvSpool,
+    spool: RefCell<CsvSpool>,
     matches: BTreeMap<u16, usize>,
 }
 impl SegmentAnswers {
     pub(super) fn new() -> io::Result<Self> {
         Ok(Self {
-            spool: CsvSpool::new(None)?,
+            spool: RefCell::new(CsvSpool::new(None)?),
             matches: BTreeMap::new(),
         })
     }
@@ -24,28 +25,38 @@ impl SegmentAnswers {
         labelled: bool,
         answer: Result<AbsoluteTime, TimeError>,
     ) -> io::Result<bool> {
+        let bytes =
+            serde_json::to_vec(&Answer::new(ch, segment, labelled, answer).private_value())?;
+        if bytes.len() > 4096 {
+            return Err(io::Error::other("private query record too large"));
+        }
+        let spool = self.spool.get_mut();
+        spool.write_all(&(bytes.len() as u32).to_le_bytes())?;
+        spool.write_all(&bytes)?;
         let count = self.matches.entry(ch).or_default();
         *count += 1;
-        let value = match answer {
-            Ok(time) => fmt_abs_time(&time),
-            Err(e) => format!("unresolved: {e}"),
-        };
-        if labelled {
-            writeln!(
-                self.spool,
-                "  Channel {:>3} Segment {:>3}  → {}",
-                ch, segment, value
-            )?;
-        } else {
-            writeln!(self.spool, "  Channel {:>3}  → {}", ch, value)?;
-        }
         Ok(labelled && *count == 2)
     }
     pub(super) fn contains(&self, ch: u16) -> bool {
         self.matches.contains_key(&ch)
     }
-    pub(super) fn copy_to(&mut self, out: &mut dyn Write) -> io::Result<()> {
-        self.spool.copy_stdout(out)
+    pub(super) fn each(&self, mut emit: impl FnMut(&Answer) -> io::Result<()>) -> io::Result<()> {
+        let mut spool = self.spool.borrow_mut();
+        let file = spool.file()?;
+        let end = file.seek(SeekFrom::End(0))?;
+        file.seek(SeekFrom::Start(0))?;
+        while file.stream_position()? < end {
+            let mut length = [0; 4];
+            file.read_exact(&mut length)?;
+            let length = u32::from_le_bytes(length) as usize;
+            if length > 4096 {
+                return Err(io::Error::other("invalid private query record length"));
+            }
+            let mut bytes = vec![0; length];
+            file.read_exact(&mut bytes)?;
+            emit(&Answer::from_private(serde_json::from_slice(&bytes)?)?)?;
+        }
+        Ok(())
     }
 }
 
@@ -62,7 +73,7 @@ mod tests {
             .with_year(Some(2025))
             .unwrap();
         answers.record(7, 2, true, Ok(time)).unwrap();
-        let file = answers.spool.file().unwrap();
+        let file = answers.spool.get_mut().file().unwrap();
         file.seek(SeekFrom::Start(0)).unwrap();
         let mut length = [0; 4];
         file.read_exact(&mut length).unwrap();
@@ -78,5 +89,74 @@ mod tests {
         assert_eq!(row["segment"], "2");
         assert_eq!(row["time"], serde_json::json!([100, 12, 0, 5, 123, 2025]));
         assert!(row["issue"].is_null());
+    }
+    #[test]
+    fn structured_answers_preserve_order_year_zero_unknown_year_and_error() {
+        let mut answers = SegmentAnswers::new().unwrap();
+        let known = AbsoluteTime::new(1, 0, 0, 0, 999_999_999)
+            .unwrap()
+            .with_year(Some(0))
+            .unwrap();
+        let partial = AbsoluteTime::new(366, 23, 59, 59, 123).unwrap();
+        answers.record(8, 1, false, Ok(known)).unwrap();
+        answers.record(7, 2, true, Ok(partial)).unwrap();
+        answers
+            .record(
+                7,
+                3,
+                true,
+                Err(TimeError::NeedsContext {
+                    context: "query fixture",
+                }),
+            )
+            .unwrap();
+        for _ in 0..2 {
+            let mut rows = Vec::new();
+            answers
+                .each(|r| {
+                    rows.push((r.channel, r.segment, r.labelled, r.time, r.issue.clone()));
+                    Ok(())
+                })
+                .unwrap();
+            assert_eq!(
+                rows,
+                vec![
+                    (8, 1, false, Some(known), None),
+                    (7, 2, true, Some(partial), None),
+                    (
+                        7,
+                        3,
+                        true,
+                        None,
+                        Some("time needs context: query fixture".into())
+                    )
+                ]
+            );
+        }
+    }
+    #[test]
+    fn private_record_limits_and_truncation_fail_before_emission() {
+        let row = Answer::new(7, 1, false, Ok(AbsoluteTime::new(1, 0, 0, 0, 0).unwrap()));
+        let mut oversized = serde_json::to_vec(&row.private_value()).unwrap();
+        oversized.resize(4097, b' '); // Valid JSON: only the length guard rejects it.
+        for bytes in [
+            [4097u32.to_le_bytes().as_slice(), &oversized].concat(),
+            vec![1, 0, 0],
+            vec![10, 0, 0, 0, b'{'],
+            vec![1, 0, 0, 0, b'?'],
+        ] {
+            let mut answers = SegmentAnswers::new().unwrap();
+            answers.spool.get_mut().write_all(&bytes).unwrap();
+            let mut emitted = 0;
+            assert!(
+                answers
+                    .each(|_| {
+                        emitted += 1;
+                        Ok(())
+                    })
+                    .is_err()
+            );
+            assert_eq!(emitted, 0);
+        }
     }
 }

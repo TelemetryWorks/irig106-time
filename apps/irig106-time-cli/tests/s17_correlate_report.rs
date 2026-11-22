@@ -120,3 +120,31 @@ fn reset_query_keeps_both_segment_answers_and_other_channel_exact() {
         .0
     );
 }
+
+#[test]
+fn correlate_report_writer_failure_still_overrides_findings() {
+    struct Broken;
+    impl std::io::Write for Broken {
+        fn write(&mut self, _: &[u8]) -> std::io::Result<usize> {
+            Err(std::io::Error::other("query writer probe"))
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let input = Input::new(&[(7, 0, 0), (7, 40, 40), (7, 1, 61), (7, 10, 70)]);
+    assert_eq!(
+        run(
+            &[
+                "correlate",
+                input.0.to_str().unwrap(),
+                "2FAF080",
+                "--fail-on",
+                "warning"
+            ],
+            &mut Broken,
+            &mut Vec::new()
+        ),
+        ExitClass::Output
+    );
+}

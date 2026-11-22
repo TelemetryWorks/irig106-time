@@ -26,12 +26,8 @@ not evaluated (jumps on channels). Samples contain explicit lowercase levels,
 a TF code when identified (otherwise null), message, channel and packet.
 No Rust Debug spelling is a JSON identifier.
 
-Coordinator clarification within revision 3:
-
-> A revision MAY add values to options.command, row kind and similar enums for newly supported views. Consumers MUST treat unknown enum values as an unsupported view, not an error. Reserved shapes such as rows MAY gain fields until first emitted.
-
 Consumer compatibility: ignore unknown fields within a supported major
-`schema_version`; additions increment `schema_revision`. Producer validation
+`schema_version`; additions increment `schema_revision`. A revision MAY add values to options.command, row kind and similar enums for newly supported views. Consumers MUST treat unknown enum values as an unsupported view, not an error. Reserved shapes such as rows MAY gain fields until first emitted. Producer validation
 remains strict. Incompatible shape/type/unit/meaning changes require a new major
 schema and a breaking tool release. The reviewed draft-to-stable transition is
 revision 2. Future contract changes require review and follow the version/revision
