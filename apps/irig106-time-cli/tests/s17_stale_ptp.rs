@@ -33,9 +33,19 @@ impl Input {
         Self(path)
     }
     fn output(&self, command: &str, json: bool, level: &str) -> (ExitClass, String, String) {
+        self.output_at(command, json, level, 0)
+    }
+    fn output_at(
+        &self,
+        command: &str,
+        json: bool,
+        level: &str,
+        rtc_seconds: u64,
+    ) -> (ExitClass, String, String) {
+        let target = format!("{:X}", rtc_seconds * 10_000_000);
         let mut args = vec![command, self.0.to_str().unwrap()];
         if command == "correlate" {
-            args.push("0");
+            args.push(&target);
         }
         if json {
             args.extend(["--format", "json"]);
@@ -146,4 +156,132 @@ fn csv_is_its_own_machine_format_and_has_no_json_mode() {
     let (exit, out, _) = input.output("csv", true, "never");
     assert_eq!(exit, ExitClass::Usage);
     assert!(out.is_empty());
+}
+
+fn coverage_pair(reset: bool) -> Input {
+    // C72's last covered UTC second1814140799, +37 TAI; next second stale.
+    let covered = Input::new(2, 1_814_140_836);
+    let stale = Input::new(2, 1_814_140_837);
+    let mut bytes = std::fs::read(&covered.0).unwrap();
+    let mut next = std::fs::read(&stale.0).unwrap();
+    next[16..22].copy_from_slice(&10_000_000u64.to_le_bytes()[..6]);
+    if reset {
+        bytes[16..22].copy_from_slice(&400_000_000u64.to_le_bytes()[..6]);
+    }
+    for p in [&mut bytes, &mut next] {
+        let sum = p[..22].chunks_exact(2).fold(0u16, |s, w| {
+            s.wrapping_add(u16::from_le_bytes([w[0], w[1]]))
+        });
+        p[22..24].copy_from_slice(&sum.to_le_bytes());
+    }
+    bytes.extend(next);
+    std::fs::write(&covered.0, bytes).unwrap();
+    covered
+}
+const COVERED_LABEL: &str = "UTC (from TAI via leap table)";
+const STALE_LABEL: &str = "UTC (from TAI via stale leap table, possibly out of date)";
+#[test]
+fn coverage_edge_basis_is_retained_in_all_clocks_and_text() {
+    let input = coverage_pair(false);
+    for command in ["summary", "channels", "timeline"] {
+        let (_, out, _) = input.output(command, false, "never");
+        assert!(
+            out.lines()
+                .any(|s| s.contains("178:23:59:59.000000123") && s.contains(COVERED_LABEL)),
+            "{command}: {out}"
+        );
+        assert!(
+            out.lines()
+                .any(|s| s.contains("179:00:00:00.000000123") && s.contains(STALE_LABEL)),
+            "{command}: {out}"
+        );
+    }
+    for command in ["summary", "channels", "jumps", "timeline", "correlate"] {
+        let (_, out, _) = input.output(command, true, "never");
+        let v: Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(v["schema_revision"], 5);
+        let ch = &v["report"]["channels"][0];
+        assert_eq!(ch["first"]["basis"], "derived, leap table");
+        assert_eq!(ch["last"]["basis"], "derived, stale leap table");
+        assert_eq!(ch["segments"][0]["first"]["basis"], "derived, leap table");
+        assert_eq!(
+            ch["segments"][0]["last"]["basis"],
+            "derived, stale leap table"
+        );
+        if command == "timeline" {
+            assert_eq!(
+                v["report"]["rows"][0]["clock"]["basis"],
+                "derived, leap table"
+            );
+            assert_eq!(
+                v["report"]["rows"][1]["clock"]["basis"],
+                "derived, stale leap table"
+            );
+        }
+    }
+    for (rtc, label, basis) in [
+        (0, COVERED_LABEL, "derived, leap table"),
+        (1, STALE_LABEL, "derived, stale leap table"),
+    ] {
+        let (_, out, _) = input.output_at("correlate", false, "never", rtc);
+        assert!(
+            out.lines()
+                .filter(|s| s.contains('→'))
+                .all(|s| s.contains(label)),
+            "{out}"
+        );
+        let (_, out, _) = input.output_at("correlate", true, "never", rtc);
+        let v: Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(v["report"]["correlation"]["any"]["clock"]["basis"], basis);
+        assert_eq!(
+            v["report"]["correlation"]["answers"][0]["clock"]["basis"],
+            basis
+        );
+    }
+}
+#[test]
+fn closed_stale_segment_answer_keeps_basis_and_v4_consumer_declines_new_enum() {
+    let input = coverage_pair(true);
+    let (_, out, _) = input.output_at("correlate", true, "never", 1);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let ch = &v["report"]["channels"][0];
+    assert_eq!(ch["segments"][0]["last"]["basis"], "derived, leap table");
+    assert_eq!(
+        ch["segments"][1]["last"]["basis"],
+        "derived, stale leap table"
+    );
+    let answer = &v["report"]["correlation"]["answers"][0]["clock"];
+    assert_eq!(answer["basis"], "derived, stale leap table");
+    // Minimal revision4 consumer: accept supported major version, ignore added
+    // fields, but decline an unsupported basis enum without rejecting document.
+    fn v4_view(basis: &str) -> &str {
+        if [
+            "standard",
+            "stated FMT",
+            "assumed, RDG-009",
+            "derived, leap table",
+            "unresolved",
+        ]
+        .contains(&basis)
+        {
+            "supported"
+        } else {
+            "unsupported-view"
+        }
+    }
+    assert_eq!(v["schema_version"], 1);
+    assert_eq!(
+        v4_view(ch["segments"][0]["last"]["basis"].as_str().unwrap()),
+        "supported"
+    );
+    assert_eq!(
+        v4_view(answer["basis"].as_str().unwrap()),
+        "unsupported-view"
+    );
+    let (_, out, _) = input.output_at("correlate", false, "never", 1);
+    assert!(
+        out.lines()
+            .any(|s| s.contains("Segment   2") && s.contains(STALE_LABEL)),
+        "{out}"
+    );
 }
