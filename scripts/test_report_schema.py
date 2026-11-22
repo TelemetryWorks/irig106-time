@@ -15,6 +15,10 @@ class ReportSchema(unittest.TestCase):
         self.assertIn('python scripts/validate_cli_reports.py', workflow)
         self.assertIn('test_report_schema.py', workflow)
 
+    def test_all_supported_json_views_are_in_the_live_gate(self):
+        from validate_cli_reports import VIEWS
+        self.assertEqual(set(VIEWS), {'summary', 'channels', 'jumps', 'timeline', 'correlate'})
+
     def test_existing_full_goldens_validate(self):
         from validate_cli_reports import validator, validate_report
         check = validator()
