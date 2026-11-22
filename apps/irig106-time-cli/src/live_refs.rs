@@ -27,6 +27,12 @@ impl LiveReferences {
         }
     }
     #[cfg(test)]
+    pub(super) fn actual_window_ns(&self, ch: u16) -> Option<u64> {
+        self.channels
+            .get(&ch)
+            .map(StreamingTimeCorrelator::max_age_ns)
+    }
+    #[cfg(test)]
     pub(super) fn counts(&self) -> (usize, usize) {
         (
             self.channels

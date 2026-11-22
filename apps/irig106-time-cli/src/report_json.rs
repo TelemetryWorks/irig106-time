@@ -609,4 +609,83 @@ mod tests {
             "63072000"
         );
     }
+    // CLI-106 partial: compare the JSON claims to the isolated pool itself.
+    #[test]
+    fn policy_matches_actual_isolated_window_and_pooled_eviction_cap() {
+        let mut scanner = Ch10TimeScanner::new();
+        let args = match args::parse(&["summary", "input", "--format", "json"]).unwrap() {
+            args::Request::File(a) => Some(a),
+            _ => None,
+        }
+        .unwrap();
+        for i in 0..1050 {
+            scanner.isolated.observe(
+                7 + (i % 2) as u16,
+                Rtc::from_raw(i),
+                AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(),
+            );
+        }
+        let value = document(&Report::from(&scanner), &args, 0);
+        let policy = &value["report"]["policy"];
+        for ch in [7, 8] {
+            assert_eq!(
+                policy["reference_window_ns"],
+                scanner.isolated.actual_window_ns(ch).unwrap().to_string()
+            );
+        }
+        let (actual_refs, actual_order) = scanner.isolated.counts();
+        assert_eq!(policy["reference_cap"], actual_refs.to_string());
+        assert_eq!(policy["reference_cap"], actual_order.to_string());
+        assert_eq!(actual_refs, 1024);
+    }
+    // CLI-106 partial: exercise the actual sampling paths, not just constants.
+    #[test]
+    fn policy_sample_caps_match_retained_findings_and_jump_samples() {
+        let mut scanner = Ch10TimeScanner::new();
+        scanner.jump_threshold = Some(0);
+        for i in 0..35 {
+            scanner.note(Severity::Warning, format!("finding {i}"));
+        }
+        // Fig11-12/13: UTC FMT4, DOY10012:mm:ss; +2s clock per+1s RTC
+        // yields31 literal+1s jumps, more than either20-sample bound.
+        for i in 0..32u64 {
+            let seconds = (2 * i % 60) as u8;
+            let minutes = (2 * i / 60) as u8;
+            let payload = [
+                0x41,
+                0,
+                0,
+                0,
+                0,
+                seconds / 10 * 16 + seconds % 10,
+                minutes,
+                0x12,
+                0,
+                1,
+            ];
+            scanner.process_time_packet(
+                &payload,
+                &PktHeader {
+                    channel_id: 7,
+                    data_type: 0x11,
+                    rtc: Rtc::from_raw(i * 10_000_000),
+                },
+            );
+        }
+        let args = match args::parse(&["summary", "input", "--format", "json"]).unwrap() {
+            args::Request::File(a) => Some(a),
+            _ => None,
+        }
+        .unwrap();
+        let value = document(&Report::from(&scanner), &args, 0);
+        let policy = &value["report"]["policy"];
+        assert_eq!(
+            policy["finding_sample_cap"],
+            scanner.finding_samples.len().to_string()
+        );
+        assert_eq!(policy["jump_sample_cap"], scanner.jumps.len().to_string());
+        assert_eq!(policy["finding_sample_cap"], "20");
+        assert_eq!(policy["jump_sample_cap"], "20");
+        assert_eq!(scanner.jumps_seen, 31);
+    }
 }
