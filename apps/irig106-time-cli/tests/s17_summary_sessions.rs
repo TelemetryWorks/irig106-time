@@ -829,3 +829,42 @@ fn native_year_findings_keep_exact_counts_beyond_the_sample_cap() {
         ExitClass::Findings
     );
 }
+
+#[test]
+fn year_inference_outside_calendar_range_is_context_not_output_failure() {
+    // Future DMY year0000 cannot date the preceding DOY365 as year-1.
+    // It is valid Chapter10 input; retain the rest of the summary.
+    let mut bytes = packet_body(7, 0x11, 0, &[0x41, 0, 0, 0, 0, 0x59, 0x59, 0x23, 0x65, 3]);
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        10_000_000,
+        &[0x41, 1, 0, 0, 0, 0, 0, 0, 1, 0],
+    ));
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        20_000_000,
+        &[0x41, 3, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0],
+    ));
+    let input = Input::bytes(&bytes);
+    let (exit, out) = input.output("summary", true);
+    assert_eq!(exit, ExitClass::Success);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let q = &v["report"]["native_sessions"]["spans"][0]["reference_quality"]["channels"][0];
+    assert_eq!(q["valid"], "2");
+    assert_eq!(q["rejected"], "1");
+    assert!(
+        q["rejection_reason"]
+            .as_str()
+            .unwrap()
+            .contains("year rollover outside0..9999")
+    );
+    assert!(
+        v["findings"]["samples"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f["code"] == "TF-020" && f["level"] == "info")
+    );
+}
