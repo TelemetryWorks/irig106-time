@@ -347,3 +347,10 @@ JSON clocks and `UTC (from TAI via stale leap table, possibly out of date)` in
 summary/channels/timeline/correlate text. Covered/stale basis follows the selected
 reference, not the latest channel state. CSV remains basis-free; use findings
 and JSON views for its stale status.
+
+
+CSV now appends four packet-fact columns to its original15: `network_time_format`,
+`network_protocol`, `time_status`, `time_status_name` (`Valid`/`NotValid`/`RSVD-n`).
+These describe the packet's CSDW, not the source of its resolved clock, and are
+empty for non-F2 or missing CSDW. Future CSV columns append only, never reorder
+or remove existing columns. See the [CSV column contract](../../docs/cli-csv-schema.md) for details.

@@ -1,8 +1,12 @@
 # Packet CSV columns (S17b1)
 
 This documents the existing `irigtime csv` packet projection. The header names
-and order below are the column schema; each row has exactly 15 fields. The
-counter-only row's previously missing final field is corrected in 0.8.0.
+and order below are the column schema; each row currently has19 fields. Four packet-fact columns are appended in0.8.0;
+the original15 keep their positions and meanings, including empty calendar fields.
+
+**CSV compatibility rule (coordinator-approved): future columns are appended
+only, never reordered or removed.** Consumers may ignore appended trailing
+columns; fixed-width validators must accept the documented current header.
 CSV is its own machine format, separate from the stable v1 JSON envelope.
 `csv --format json` is unsupported (usage exit 2); use `timeline --format json`
 for packet JSON or `correlate --format json` for counter queries. L1-CLI-006 and
@@ -27,14 +31,22 @@ it adds no renderer or dependency and does not weaken protocol/basis obligations
 | year | Decimal calendar year | Year unknown, or no resolved calendar value |
 | month | Reserved legacy column, always empty | Not projected |
 | day | Reserved legacy column, always empty | Not projected |
+| network_time_format | Packet CSDW raw NTF, decimal0–15 | Non-F2 or missing complete CSDW |
+| network_protocol | `NTP`, `IEEE1588-2002`, `IEEE1588-2008`, `reserved` | Non-F2 or missing complete CSDW |
+| time_status | Packet CSDW raw TS, decimal0–15 | Non-F2 or missing complete CSDW |
+| time_status_name | `Valid`(TS1), `NotValid`(TS0), `RSVD-n`(TS2–15, decimal n) | Non-F2 or missing complete CSDW |
 
 Zero is a value, never a substitute for absent time. A time with unknown year
 still has its day/time fields; a counter-only row leaves all eight calendar
 fields empty. Timeline displays the same observation as `N/A`. Neither renderer
 invents a year, origin, data-to-time-channel association or segment selection.
 The current CSV lacks scale/basis columns: consumers must not interpret every
-resolved clock as UTC. Protocol/scale/status and complete qualified provenance remain full-adapter
-work; this document does not claim those clauses are complete.
+resolved clock as UTC. The four appended fields describe the **PACKET**, not
+the resolved clock's source. A clock may come from a different reference. These
+fields remain present for reserved or invalid values and a malformed time body
+when all4 CSDW bytes exist; fewer than4 bytes gives four empty fields, without
+reading filler. They never repair a time-decode error. Complete clock-scale/basis
+and qualified provenance remain separate obligations.
 
 Output is header-present, comma-delimited ASCII with LF record terminators and
 no BOM. Field quoting follows [RFC 4180 §2](https://www.rfc-editor.org/rfc/rfc4180.html#section-2)

@@ -161,13 +161,29 @@ fn full_adapter_projection_goldens_cover_protocols_status_scales_and_absence() {
                     ]);
                     fields
                 };
-                let expected = format!(
+                let mut expected = format!(
                     "0,0x0,7,0x{kind:02X},Time-F{},0,0,{}",
                     if kind == 17 { 1 } else { 2 },
                     calendar.join(",")
                 );
+                if kind == 17 {
+                    expected.push_str(",,,,");
+                } else {
+                    let word = case["word"].as_u64().unwrap();
+                    let ts = word & 15;
+                    let status = match ts {
+                        0 => "NotValid".into(),
+                        1 => "Valid".into(),
+                        _ => format!("RSVD-{ts}"),
+                    };
+                    expected.push_str(&format!(
+                        ",{},{},{ts},{status}",
+                        word >> 4,
+                        case["format"].as_str().unwrap()
+                    ));
+                }
                 assert_eq!(text.lines().nth(1), Some(expected.as_str()), "{case}");
-                assert_eq!(text.lines().nth(1).unwrap().split(',').count(), 15);
+                assert_eq!(text.lines().nth(1).unwrap().split(',').count(), 19);
                 continue;
             }
             if matches!(command, "summary" | "channels") {
@@ -333,11 +349,11 @@ fn reset_segment_goldens_agree_across_inventory_rows_csv_and_query() {
     assert_eq!(
         csv.lines().skip(1).collect::<Vec<_>>(),
         [
-            "0,0x0,7,0x11,Time-F1,0,0,100,12,0,0,0,,,",
-            "1,0x24,7,0x11,Time-F1,400000000,40000000000,100,12,0,40,0,,,",
-            "2,0x48,7,0x11,Time-F1,10000000,1000000000,100,12,1,1,0,,,",
-            "3,0x6C,7,0x11,Time-F1,100000000,10000000000,100,12,1,10,0,,,",
-            "4,0x90,7,0x09,PCM-1,50000000,5000000000,,,,,,,,"
+            "0,0x0,7,0x11,Time-F1,0,0,100,12,0,0,0,,,,,,,",
+            "1,0x24,7,0x11,Time-F1,400000000,40000000000,100,12,0,40,0,,,,,,,",
+            "2,0x48,7,0x11,Time-F1,10000000,1000000000,100,12,1,1,0,,,,,,,",
+            "3,0x6C,7,0x11,Time-F1,100000000,10000000000,100,12,1,10,0,,,,,,,",
+            "4,0x90,7,0x09,PCM-1,50000000,5000000000,,,,,,,,,,,,"
         ]
     );
     for json in [false, true] {

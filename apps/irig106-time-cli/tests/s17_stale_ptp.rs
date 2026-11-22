@@ -100,7 +100,10 @@ fn stale_ptp_keeps_utc_and_warns_at_exact_threshold_in_every_command() {
                 if command == "csv" {
                     assert_eq!(
                         out.lines().nth(1).unwrap(),
-                        "0,0x0,7,0x12,Time-F2,0,0,2,0,0,0,123,2030,,"
+                        format!(
+                            "0,0x0,7,0x12,Time-F2,0,0,2,0,0,0,123,2030,,,{ntf},IEEE1588-{},1,Valid",
+                            if ntf == 1 { 2002 } else { 2008 }
+                        )
                     );
                 }
                 if ["summary", "channels", "timeline", "correlate"].contains(&command) {
