@@ -1,4 +1,4 @@
-//! Shared native counter-query report; CLI-106 clause only, JSON follows separately.
+//! Shared native counter-query report; text/JSON CLI-106 clauses only.
 use super::{decode_level, fmt_abs_time, segment_answers::SegmentAnswers};
 use irig106_time::{AbsoluteTime, Rtc, TimeError};
 use serde_json::{Value, json};

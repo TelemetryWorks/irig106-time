@@ -306,7 +306,7 @@ passed; `publish = false` remains until the owner’s S20 decision.
 Summary/channels/jumps accept `--format json` (default text), over the same report
 model as text. See the [stable producer schema](https://github.com/TelemetryWorks/irig106-time/blob/main/apps/irig106-time-cli/schema/irigtime-report-v1.schema.json)
 and [compatibility, units and provenance rules](https://github.com/TelemetryWorks/irig106-time/blob/main/docs/cli-report-schema.md).
-The shared envelope is `telemetryworks/irigtime-report`, stable v1, revision 3. JSON is
+The shared envelope is `telemetryworks/irigtime-report`, stable v1, revision 4. JSON is
 ASCII-only; 64/128-bit quantities are decimal strings. Every defined key is
 present; null meanings are field-specific. Consumers ignore unknown fields;
 producer validation stays strict. The schema is frozen after review.
@@ -324,5 +324,12 @@ Timeline accepts `--format text|json` using the shared packet-row model.
 JSON revision 3 adds `options.limit` and bounded `report.rows` with explicit
 counter-only clocks and unresolved association. The entire input is analysed;
 the row cap never hides findings. Inventory `rows` and non-timeline `limit` are
-null. CSV/correlate JSON remain subsequent work; no qualified time-source link
+null. CSV JSON remains subsequent work; no qualified time-source link
 is inferred from channel IDs. See [the report schema](../../docs/cli-report-schema.md).
+
+
+`correlate --format json` uses the same native query report as text. Stable v1
+revision 4 adds `options.query_rtc` and `report.correlation`; both are null for
+other commands. Query answers stream one at a time, preserving reset segments,
+unresolved context and findings. Packet `rows` stays null for a counter query;
+no packet identity or data/time-channel association is invented.

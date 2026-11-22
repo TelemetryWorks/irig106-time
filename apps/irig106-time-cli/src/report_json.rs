@@ -81,6 +81,27 @@ fn emit(value: &Value, r: &Report<'_>, out: &mut dyn Write) -> io::Result<()> {
                         emit(&value, r, out)?;
                     }
                     out.write_all(b"]")?;
+                } else if key == "answers" && object.contains_key("any") && value.is_array() {
+                    out.write_all(b"[")?;
+                    let mut first = true;
+                    let mut answer = |row: &correlate_report::Answer| {
+                        if !first {
+                            out.write_all(b",")?;
+                        }
+                        first = false;
+                        let mut value = query_answer(row);
+                        value.sort_all_objects();
+                        emit(&value, r, out)
+                    };
+                    if let Some(query) = &r.query {
+                        for row in query.answers {
+                            answer(row)?;
+                        }
+                        if let Some(segments) = query.segments {
+                            segments.each(&mut answer)?;
+                        }
+                    }
+                    out.write_all(b"]")?;
                 } else {
                     emit(value, r, out)?;
                 }
@@ -196,15 +217,39 @@ fn native_name(path: &OsStr) -> (String, &'static str) {
         "windows-utf16le",
     )
 }
+fn query_value(time: Option<AbsoluteTime>, issue: Option<&str>) -> Value {
+    json!({"clock":time.map(|t|clock(t,None,0)),"issue":issue})
+}
+fn query_answer(row: &correlate_report::Answer) -> Value {
+    json!({"channel":row.channel,"segment":decimal(row.segment),"labelled":row.labelled,
+        "clock":row.time.map(|t|clock(t,None,0)),"issue":row.issue})
+}
+fn query_metadata(r: &Report<'_>) -> Option<Value> {
+    let query = r.query.as_ref()?;
+    let any = match query.any {
+        Some(Ok(t)) => query_value(Some(*t), None),
+        Some(Err(e)) => query_value(None, Some(&e.to_string())),
+        None => query_value(
+            None,
+            Some(if r.reset_count != 0 {
+                "Any-channel answer withheld across RTC resets; use labelled segment answers"
+            } else {
+                "No time reference points found in file"
+            }),
+        ),
+    };
+    Some(json!({"any":any,"answers":[]})) // Marker; emit() streams native answers.
+}
 fn document(r: &Report<'_>, args: &Args, size: u64) -> Value {
     let path = args.input.as_os_str();
     let (bytes, encoding) = native_name(path);
-    json!({"schema": "telemetryworks/irigtime-report", "schema_version": 1, "schema_revision": 3, "schema_status": "stable",
+    json!({"schema": "telemetryworks/irigtime-report", "schema_version": 1, "schema_revision": 4, "schema_status": "stable",
         "tool": {"name": "irigtime", "version": PKG_VERSION, "library_version": PKG_VERSION,
             "source_revision": option_env!("IRIGTIME_SOURCE_REVISION").or(option_env!("GITHUB_SHA"))},
         "input": {"name": path.to_string_lossy(), "name_lossy": path.to_str().is_none(),
             "native_name_hex": bytes, "native_name_encoding": encoding, "size_bytes": decimal(size)},
         "options": {"command": args.command, "format": "json", "fail_on": level(args.fail_on),
+            "query_rtc": if args.command == "correlate" { Some(decimal(args.rtc.as_raw())) } else { None },
             "limit": if args.command == "timeline" { Some(decimal(args.limit)) } else { None },
             "threshold_ms": r.jump_threshold.map(|ns| decimal(ns / 1_000_000))},
         "highest_level": r.highest.map(|v| level(Some(v))),
@@ -212,7 +257,7 @@ fn document(r: &Report<'_>, args: &Args, size: u64) -> Value {
             "info": decimal(r.finding_counts[0]), "omitted": decimal(r.omitted_findings()),
             "samples": r.finding_samples.iter().map(|s| json!({"level": level(Some(s.level)), "code": s.code,
                 "message": s.message, "channel": s.channel, "packet": s.packet.map(decimal)})).collect::<Vec<_>>()},
-        "report": {"qualification": "observed inventory; qualified joining/basis pending", "rows": if args.command == "timeline" { Some(Vec::<Value>::new()) } else { None },
+        "report": {"correlation": query_metadata(r), "qualification": "observed inventory; qualified joining/basis pending", "rows": if args.command == "timeline" { Some(Vec::<Value>::new()) } else { None },
             "total_packets": decimal(r.total_packets), "time_packets": decimal(r.time_packets),
             "references_seen": decimal(r.references_seen), "reference_count": decimal(r.reference_count),
             "references_evicted": decimal(r.references_evicted), "reset_count": decimal(r.reset_count),
@@ -229,6 +274,39 @@ fn document(r: &Report<'_>, args: &Args, size: u64) -> Value {
 #[allow(clippy::unwrap_used)] // Test fixtures only.
 mod tests {
     use super::*;
+    #[test]
+    fn query_document_defers_answers_until_emission() {
+        let mut scanner = Ch10TimeScanner::new();
+        scanner.query_refs = Some(target_refs::TargetReferences::new(Rtc::from_raw(
+            50_000_000,
+        )));
+        scanner.query_answers.push(correlate_report::Answer::new(
+            7,
+            1,
+            false,
+            Ok(AbsoluteTime::new(100, 12, 0, 5, 0).unwrap()),
+        ));
+        let args = match args::parse(&["correlate", "input", "2FAF080"]).unwrap() {
+            args::Request::File(a) => Some(a),
+            _ => None,
+        }
+        .unwrap();
+        let report = Report::from(&scanner);
+        assert_eq!(
+            document(&report, &args, 36)["report"]["correlation"]["answers"],
+            json!([])
+        );
+        let mut out = Vec::new();
+        write(&report, &args, 36, &mut out).unwrap();
+        let emitted: Value = serde_json::from_slice(&out).unwrap();
+        assert_eq!(
+            emitted["report"]["correlation"]["answers"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+    }
     #[test]
     fn timeline_document_defers_rows_until_emission() {
         let mut scanner = Ch10TimeScanner::new();
@@ -400,7 +478,7 @@ mod tests {
         assert!(out.is_ascii());
         let v: Value = serde_json::from_slice(&out).unwrap();
         assert_eq!(v["schema"], "telemetryworks/irigtime-report");
-        assert_eq!(v["schema_revision"], 3);
+        assert_eq!(v["schema_revision"], 4);
         assert_eq!(v["highest_level"], "error");
         assert_eq!(v["findings"]["error"], "1");
         assert_eq!(v["findings"]["info"], "2");
