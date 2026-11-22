@@ -1529,6 +1529,8 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 
 **Planned verification**: A synthetic recording with both formats, two sessions, gaps/jumps, unknown year and counter-only answers; assert relevant provenance in each command. Test 40->1 seconds and 20->1/2/3 seconds, each with a real +5s post-reset jump; single/two late references, broken increasing runs, EOF and overlapping-segment queries. Reset/isolation clause evidence is in verification-s16b2b3c2.md; other CLI-104 clauses remain partial. Planned: a data channel with one or several declared TIMEIN channels, with/without resets, remains association-unresolved absent real relationship evidence. Counter-query policy selection is not proof of association; adapter evidence remains partial until integration.
 
+**Clause evidence**: [S17 adapter audit](verification-s17-completion.md); full qualified joining and native answer provenance remain open.
+
 **L3-CLI-105** · Parent: L2-CLI-105 · Verification: T
 
 **L1 ancestor**: L1-CLI-005
@@ -1537,7 +1539,7 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 
 **Source**: ROADMAP P6-10; §11.2.3.3.
 
-**Planned verification**: Each NTF with valid and invalid status in every renderer; native GPS Format 1 remains distinct from network time. Partial summary/channels evidence: [S17a1](verification-s17a1.md); CSV/JSON remain unclaimed.
+**Planned verification**: Each NTF with valid and invalid status in every renderer; native GPS Format 1 remains distinct from network time. Current partial evidence: [S17 adapter clause audit](verification-s17-completion.md), including native GPS, every NTF/status, stale PTP and reset goldens. Protocol/status distinctions in packet/query/CSV adapters remain open; inventory evidence does not verify the whole requirement.
 
 **L3-CLI-106** · Parent: L2-CLI-106 · Verification: T
 
@@ -1548,6 +1550,8 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 **Source**: As `irig106-tmats` L1-CLI-006; `irig106-cli` and scripts rely on the output (contract 4.10); architecture section 4.4. Owner 2026-11-13, plan Q5: reviewed versioned snapshot/report JSON schema with units, 64/128-bit quantities as decimal strings, validation on load and raw/stated/assumed provenance. [0.8 plan decisions](analysis/plan-decisions-2026-11-13.md). IRIG 106 does not prescribe JSON representation. Owner decision 2026-11-17; [ADR-0019](adr/0019-json-belongs-to-the-cli.md): Q5 applies to the CLI JSON report format, not library snapshots or untrusted library loads. IRIG 106 prescribes no JSON format. Earlier snapshot/serde/load wording in the cited 2026-11-13 decision is historical and superseded for the library.
 
 **Planned verification**: CLI golden text/CSV/JSON reports with quotes/commas/newlines, unknown year/scale, counter-only results and signed/unsigned 64/128-bit extrema (including values above 2^53). Validate emitted JSON schema/version/units, exact decimal strings and full raw/stated/assumed provenance. No library snapshot alignment or untrusted JSON load/roundtrip API is required.
+
+**Clause evidence**: [S17 adapter audit](verification-s17-completion.md); stable schema/projection goldens do not close full policy/defaults/reference provenance.
 
 **L3-CLI-107** · Parent: L2-CLI-107 · Verification: T
 

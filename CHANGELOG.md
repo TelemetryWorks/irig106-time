@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S17 full-adapter golden and clause audit
+
+- Add decoder-independent adapter goldens across all six commands: FMT0–5,
+  all network protocols/invalid statuses, stale PTP, reset segments, counter-only
+  rows and failed writers. No production or schema change.
+- Record clause-level evidence and remaining native-provenance/protocol/TMATS
+  integration blockers; do not claim whole CLI-104/105/106 coverage or release
+  readiness. Trace coverage remains198 tested/206 verified of288.
+
 ### S17b5 CSV format contract and stale PTP diagnostics
 
 - Schema revision 5 adds `derived, stale leap table`. Carry covered/stale PTP

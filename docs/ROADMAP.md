@@ -22,8 +22,10 @@ until that release is published AND the owner approves. Continue independent
 S17 work; prepare the [consumer seam](analysis/S17-time-view-consumer-seam.md)
 with synthetic plain declarations. Data-row time-channel association remains
 unresolved without real evidence: Chapter 9 supplies no such relationship field.
-The schema review for #78 is separate; its reported head remains frozen pending
-delta review. Passing CI/memory gates does not authorize release or publication.
+The schema review/freeze is complete; stable v1 is now revision5. The
+[S17 adapter audit](verification-s17-completion.md) records implemented rendering
+clauses and remaining native-provenance/protocol/qualified-joining blockers.
+Passing CI/memory gates does not authorize release or publication.
 
 ## Where we left off (2026-09-27)
 
