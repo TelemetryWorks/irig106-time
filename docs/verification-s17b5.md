@@ -7,7 +7,7 @@ coordinator plan is external (as plan-decisions-2026-11-13.md records); it is no
 claimed inspected here. Apply the coordinator's current conditional instruction:
 CSV remains its own machine format. csv --format json stays usage2; timeline
 supplies packet JSON, correlate supplies query JSON. Description-only docs/schema
-clarification keeps revision4 and emitted shape unchanged. No new dependency.
+clarification initially kept revision4; the review delta below extends revision5. No new dependency.
 
 ## Actual defect found and corrected
 
@@ -53,3 +53,46 @@ Review/Design fields change and S17 is NOT declared closed. Next: full-adapter
 protocol/status/scale and reset goldens, then a clause audit/completion summary.
 Keep the full-TMATS0.1+bounded-time-view publication/approval gate (ADR-0021);
 no time→TMATS dependency or invented data/time-channel association is introduced.
+
+
+## #90 option(a): per-conversion basis, revision 5
+
+Coordinator decision: stale UTC must be labelled at the displayed clock, not
+only in bounded finding samples. Revision5 adds the approved basis enum value
+`derived, stale leap table`. Text uses the exact stale-table/currency suffix in
+summary, channels, timeline and correlate. CSV remains unchanged/basis-free;
+its stale status is available through findings and JSON views.
+
+Tests-only751cb99 reproduces both review gaps. The coverage-edge pair uses
+PTP TAI1814140836 and1814140837 (+123ns): UTC1814140799 (2027 DOY178 23:59:59)
+is covered including its fraction; the next UTC second is stale. First/last,
+segment, timeline and any/per-channel query clocks must distinguish them.
+A reset fixture verifies private query records and a minimal revision4 consumer
+using the frozen five-value enum set: supported major document, new enum view
+unsupported, no document error. Added implementation-side tests cover three
+reset windows (covered/stale/covered), last-state independence, and reset-own
+packet rows. These extra tests are not claimed as tests-first failures.
+
+No library or selection policy change. A bounded metadata deque mirrors the
+legacy streaming correlator's ordering, ties and post-eviction channel lengths;
+empty queues are removed and excess capacity compacted. Target brackets retain
+basis alongside their existing bounded candidates and replay identical insertion/
+search ordering. Differential tests compare metadata against native numeric
+selection markers for equal RTCs, ties, late arrivals, count/age eviction and
+clearing; they protect this metadata-only mirror if library internals change.
+PTP basis follows the chosen reference; unknown non-PTP lineage does not inherit
+another point's label. No data-to-time-channel relationship is invented.
+
+Basis passes through native query preparation and bounded private scratch
+records, then the existing one-row-at-a-time JSON emitter. No all-record DOM.
+Revision4 inventory/row/query fields retain their types/units; existing goldens
+change only revision5 unless a PTP clock now has the required basis. No Review
+or Design fields change, no full-requirement markers or coverage increase.
+Local validation remains focused tests/mutants, fmt, trace/schema-sync/diff;
+platform/security/package and memory evidence comes from PR CI.
+
+Five additional compiling label-plumbing mutants fail: stale JSON marked covered,
+live row metadata dropped, target basis dropped, private query basis lost, and
+query-answer basis ignored. Source restored. The prior TF-021 severity/content
+and default/warning/never tests remain passing; covered and missing-offset
+controls stay distinct. No new whole-requirement marker or coverage increase.

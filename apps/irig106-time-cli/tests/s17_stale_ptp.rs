@@ -129,7 +129,7 @@ fn stale_ptp_json_keeps_packet_location_raw_operands_and_clock() {
             assert_eq!(t["nanosecond"], 123);
             assert_eq!(t["clock_count_ns"], "86400000000123");
             assert_eq!(t["scale"], "UTC");
-            assert_eq!(t["basis"], "derived, leap table");
+            assert_eq!(t["basis"], "derived, stale leap table");
             assert_eq!(v["report"]["reference_count"], "1");
         }
     }
@@ -283,5 +283,65 @@ fn closed_stale_segment_answer_keeps_basis_and_v4_consumer_declines_new_enum() {
         out.lines()
             .any(|s| s.contains("Segment   2") && s.contains(STALE_LABEL)),
         "{out}"
+    );
+}
+
+#[test]
+fn stale_answer_basis_is_not_replaced_by_later_covered_channel_state() {
+    fn wire(seconds: u32, rtc: u64) -> Vec<u8> {
+        let p = Input::new(2, seconds);
+        let mut bytes = std::fs::read(&p.0).unwrap();
+        bytes[16..22].copy_from_slice(&(rtc * 10_000_000).to_le_bytes()[..6]);
+        let sum = bytes[..22].chunks_exact(2).fold(0u16, |s, w| {
+            s.wrapping_add(u16::from_le_bytes([w[0], w[1]]))
+        });
+        bytes[22..24].copy_from_slice(&sum.to_le_bytes());
+        bytes
+    }
+    // Three overlapping reset windows; the final channel state is covered.
+    let input = Input::new(2, 1_814_140_796);
+    let bytes = [
+        wire(1_814_140_796, 0),
+        wire(1_814_140_836, 40),
+        wire(1_814_140_837, 0),
+        wire(1_814_140_877, 40),
+        wire(1_483_315_237, 0),
+        wire(1_483_315_238, 1),
+    ]
+    .concat();
+    std::fs::write(&input.0, bytes).unwrap();
+    let (_, out, _) = input.output("correlate", true, "never");
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let answers = v["report"]["correlation"]["answers"].as_array().unwrap();
+    assert_eq!(answers.len(), 3);
+    assert_eq!(
+        answers
+            .iter()
+            .map(|a| a["clock"]["basis"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        [
+            "derived, leap table",
+            "derived, stale leap table",
+            "derived, leap table"
+        ]
+    );
+    let (_, out, _) = input.output("correlate", false, "never");
+    assert!(
+        out.lines()
+            .any(|s| s.contains("Segment   2") && s.contains(STALE_LABEL)),
+        "{out}"
+    );
+    // Reset-own-time path must retain its basis; unassociated data stays empty.
+    let input = coverage_pair(true);
+    let (_, out, _) = input.output("timeline", true, "never");
+    let v: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(
+        v["report"]["rows"][1]["clock"]["basis"],
+        "derived, stale leap table"
+    );
+    let (_, out, _) = input.output("timeline", false, "never");
+    assert!(
+        out.lines()
+            .any(|s| s.contains("179:00:00:00.000000123") && s.contains(STALE_LABEL))
     );
 }

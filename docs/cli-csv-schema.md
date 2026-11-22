@@ -59,3 +59,5 @@ The warning is packet/channel-located in JSON findings. Summary text renders its
 diagnostics on stdout; CSV and other text commands use stderr. Sampling stays
 bounded with exact counts; this does not promise one raw-evidence record per CSV
 row. Never infer UTC currency from the mere presence of calendar fields.
+
+CSV stays basis-free. Stale status for CSV rows is available only through the findings and the JSON views.

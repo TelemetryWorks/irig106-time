@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### S17b5 CSV format contract and stale PTP diagnostics
 
+- Schema revision 5 adds `derived, stale leap table`. Carry covered/stale PTP
+  basis through channel/segment clocks, bounded packet rows and query answers;
+  suffix text conversions with the table-currency label. CSV remains basis-free.
+  Numeric correlation is unchanged; basis metadata follows retained reference
+  selection, including duplicates, eviction and closed reset segments.
+
 - Document CSV as its own machine format; no CSV-in-JSON mode is required by
   CLI-106. Packet/query JSON remains available through timeline/correlate.
 - Preserve PTP conversion currency in every adapter: stale UTC is kept with
@@ -16,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sampled diagnostics. Default error threshold still succeeds; warning gives 1.
   Covered readings and missing-offset/no-UTC cases are not mislabelled stale.
 - Add cross-command stale-table goldens. Full adapter/qualified provenance
-  coverage remains open; no library, schema-shape or revision change.
+  coverage remains open; no library or dependency change.
 
 ### S17b4 correlate JSON (additive schema revision 4)
 

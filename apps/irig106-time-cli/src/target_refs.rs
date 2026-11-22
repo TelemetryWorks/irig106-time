@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 struct Candidate {
     point: ReferencePoint,
     arrival: usize,
+    basis: Option<&'static str>,
 }
 struct Group {
     first: Candidate,
@@ -89,12 +90,23 @@ impl TargetReferences {
     pub(super) fn observe(&mut self, channel_id: u16, rtc: Rtc, time: AbsoluteTime) {
         self.observe_at(channel_id, rtc, time, self.arrivals);
     }
+    #[cfg(test)]
     pub(super) fn observe_at(
         &mut self,
         channel_id: u16,
         rtc: Rtc,
         time: AbsoluteTime,
         arrival: usize,
+    ) {
+        self.observe_tagged_at(channel_id, rtc, time, arrival, None);
+    }
+    pub(super) fn observe_tagged_at(
+        &mut self,
+        channel_id: u16,
+        rtc: Rtc,
+        time: AbsoluteTime,
+        arrival: usize,
+        basis: Option<&'static str>,
     ) {
         let candidate = Candidate {
             point: ReferencePoint {
@@ -103,12 +115,48 @@ impl TargetReferences {
                 time,
             },
             arrival,
+            basis,
         };
         self.arrivals = self.arrivals.max(arrival + 1);
         self.channels
             .entry(channel_id)
             .or_default()
             .observe(self.target, candidate);
+    }
+    pub(super) fn basis(&self, channel: Option<u16>) -> Option<&'static str> {
+        let mut arrivals: Vec<_> = self
+            .channels
+            .iter()
+            .filter(|(ch, _)| channel.is_none_or(|id| id == **ch))
+            .flat_map(|(_, b)| b.candidates())
+            .collect();
+        arrivals.sort_unstable_by_key(|c| c.arrival);
+        let mut refs: Vec<&Candidate> = Vec::new();
+        // Same insertion/search/tie ordering as the TimeCorrelator replay below.
+        for c in arrivals {
+            let i = refs
+                .binary_search_by_key(&c.point.rtc, |r| r.point.rtc)
+                .unwrap_or_else(|i| i);
+            refs.insert(i, c);
+        }
+        if refs.is_empty() {
+            return None;
+        }
+        let i = refs
+            .binary_search_by_key(&self.target, |r| r.point.rtc)
+            .unwrap_or_else(|i| i);
+        let selected = if i == 0 {
+            0
+        } else if i == refs.len() {
+            i - 1
+        } else if super::clock_basis::distance(refs[i - 1].point.rtc, self.target)
+            <= super::clock_basis::distance(refs[i].point.rtc, self.target)
+        {
+            i - 1
+        } else {
+            i
+        };
+        refs[selected].basis
     }
     pub(super) fn covers(&self, channel: u16) -> bool {
         self.channels
@@ -144,5 +192,39 @@ impl TargetReferences {
             pair.add_reference(p.channel_id, p.rtc, p.time);
         }
         pair.correlate(self.target, channel)
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)] // Small replay fixture.
+mod basis_tests {
+    use super::*;
+    #[test]
+    fn target_basis_matches_numeric_replay_with_late_duplicate_candidates() {
+        use crate::clock_basis::{COVERED, STALE};
+        for target in (0..21).step_by(3).map(Rtc::from_raw) {
+            let mut query = TargetReferences::new(target);
+            for n in 0..60usize {
+                let marker = (n / 6) % 3;
+                let basis = [Some(COVERED), Some(STALE), None][marker];
+                // Non-monotonic arrivals plus equal counters exercise the same
+                // before/after duplicate representatives and insertion indices.
+                let rtc = Rtc::from_raw(3 * ((n * 7) % 6) as u64);
+                query.observe_tagged_at(
+                    (n % 2) as u16,
+                    rtc,
+                    AbsoluteTime::new(100, 12, 0, 0, marker as u32).unwrap(),
+                    n,
+                    basis,
+                );
+            }
+            for channel in [None, Some(0), Some(1)] {
+                let value = query.correlate(channel).unwrap();
+                assert_eq!(
+                    query.basis(channel),
+                    [Some(COVERED), Some(STALE), None][(value.as_total_ns() % 3) as usize]
+                );
+            }
+        }
     }
 }

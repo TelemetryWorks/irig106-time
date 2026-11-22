@@ -32,6 +32,7 @@ impl<'a> From<&'a Ch10TimeScanner> for Report<'a> {
             query: s.query_refs.as_ref().map(|q| correlate_report::Query {
                 target: q.target,
                 any: s.query_any.as_ref(),
+                any_basis: s.query_any_basis,
                 answers: &s.query_answers,
                 segments: s.segment_answers.as_ref(),
             }),

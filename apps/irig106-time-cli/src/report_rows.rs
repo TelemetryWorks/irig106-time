@@ -1,6 +1,6 @@
 //! Shared packet observations projected by timeline and CSV.
 //! CLI-105/106 partial clauses; no claim of qualified joining or complete report coverage.
-use super::{fmt_abs_time, fmt_data_type_short};
+use super::fmt_data_type_short;
 use irig106_time::{AbsoluteTime, Rtc};
 use std::io::{self, Write};
 
@@ -13,18 +13,19 @@ pub(super) struct PacketRow {
     pub(super) data_type: u8,
     pub(super) rtc: Rtc,
     pub(super) abs_time: Option<AbsoluteTime>,
+    pub(super) basis: Option<&'static str>,
 }
 impl PacketRow {
-    // Packet-row correlation currently has no qualified source lineage. Keep
-    // clock scale/basis unresolved rather than borrow labels from a same-ID
-    // time channel or invent a reset-segment/data-channel association.
+    // Retain the selected PTP reference's conversion basis. Other unqualified
+    // lineage stays unresolved; no label comes from a same-ID/latest channel
+    // and no data-to-time-channel association is inferred.
     pub(super) fn json(&self) -> serde_json::Value {
         serde_json::json!({
             "kind": if self.abs_time.is_some() { "absolute" } else { "counter-only" },
             "packet": self.packet_num.to_string(), "channel": self.channel_id,
             "rtc": self.rtc.as_raw().to_string(), "offset_bytes": self.offset.to_string(),
             "data_type": self.data_type, "association": "association_unestablished",
-            "clock": self.abs_time.map(|t| super::report_json::clock(t, None, 0)),
+            "clock": self.abs_time.map(|t| super::report_json::clock(t, self.basis, 0)),
             "candidates": [],
             "issue": if self.abs_time.is_none() { Some("No resolved clock; see command findings") } else { None }
         })
@@ -40,7 +41,7 @@ impl PacketRow {
             self.rtc.as_raw(),
             self.abs_time
                 .as_ref()
-                .map(fmt_abs_time)
+                .map(|t| super::clock_basis::text(t, self.basis))
                 .unwrap_or_else(|| "N/A".to_string()),
         )
     }

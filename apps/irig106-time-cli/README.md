@@ -306,7 +306,7 @@ passed; `publish = false` remains until the owner’s S20 decision.
 Summary/channels/jumps accept `--format json` (default text), over the same report
 model as text. See the [stable producer schema](https://github.com/TelemetryWorks/irig106-time/blob/main/apps/irig106-time-cli/schema/irigtime-report-v1.schema.json)
 and [compatibility, units and provenance rules](https://github.com/TelemetryWorks/irig106-time/blob/main/docs/cli-report-schema.md).
-The shared envelope is `telemetryworks/irigtime-report`, stable v1, revision 4. JSON is
+The shared envelope is `telemetryworks/irigtime-report`, stable v1, revision 5. JSON is
 ASCII-only; 64/128-bit quantities are decimal strings. Every defined key is
 present; null meanings are field-specific. Consumers ignore unknown fields;
 producer validation stays strict. The schema is frozen after review.
@@ -340,3 +340,10 @@ JSON-envelope mode (`csv --format json` gives usage 2). Packet JSON is available
 through timeline. Stale PTP keeps converted UTC with TF-021 warning, raw TAI,
 actual offset/table identity and an explicit possibly-out-of-date label in the
 sampled diagnostic. Exact per-level counts and --fail-on semantics still apply.
+
+
+Revision 5 labels selected stale PTP conversions `derived, stale leap table` in
+JSON clocks and `UTC (from TAI via stale leap table, possibly out of date)` in
+summary/channels/timeline/correlate text. Covered/stale basis follows the selected
+reference, not the latest channel state. CSV remains basis-free; use findings
+and JSON views for its stale status.
