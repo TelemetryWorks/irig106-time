@@ -1646,7 +1646,7 @@ fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
     )?;
     writeln!(
         stdout,
-        "--format <text|json>: summary/channels/jumps/timeline/correlate; default text. Schema stable v1, revision 9."
+        "--format <text|json>: summary/channels/jumps/timeline/correlate; default text. Schema stable v1, revision 10."
     )?;
     writeln!(
         stdout,
