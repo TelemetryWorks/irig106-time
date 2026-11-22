@@ -28,3 +28,9 @@ Revision9 is additive. Local focused tests/Clippy/fmt/trace/schema-sync/diff and
 30-view validation pass; full platform/package/deny/fuzz/RSS use PR CI. Item6
 quality/absolute spans, item7 and full published TMATS0.1/bounded-view approval
 remain release work; native counter spans alone do not close CLI-104 or item6.
+
+CI45008572011 passed platform, package, schema and CLI tests, then exposed the
+RSS harness's8KiB prefix assumption: native span rows precede summary findings/
+jump totals. Scan the log line by line for these assertions; keep32MiB and exact
+expected counts unchanged. A small footer-after8KiB/no-slurp regression fails
+before the helper exists and passes after; no local large workload is rerun.

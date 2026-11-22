@@ -51,6 +51,12 @@ def main(cycles=None, steady_rounds=100_000):
             path.unlink()
 
 
+def log_contains(log, text):
+    # Native spans can put summary/footer data beyond the diagnostic prefix.
+    log.seek(0)
+    return any(text in line for line in log)
+
+
 def check_commands(binary, root, path, meta, label):
     for command in ['summary', 'channels', 'jumps', 'timeline', 'csv', 'correlate']:
         argv = [binary, command, str(path), '--fail-on', 'never']
@@ -67,18 +73,18 @@ def check_commands(binary, root, path, meta, label):
             assert code == 0, (command, code, prefix)
             expected = 0 if meta.get('steady') else warnings_for(command, meta)
             if expected:
-                assert f'Findings: error=0, warning={expected}, info=0 (total={expected})' in prefix, (command, expected, prefix)
+                assert log_contains(log, f'Findings: error=0, warning={expected}, info=0 (total={expected})'), (command, expected, prefix)
             else:
-                assert 'Findings:' not in prefix, (command, prefix)
+                assert not log_contains(log, 'Findings:'), (command, prefix)
             assert rss < 32*1024, (command, rss, 'exceeds 32MiB')
             if command == 'summary':
                 assert f"Total Packets      : {meta['packets']:,}" in prefix
                 if meta['jumps']:
-                    assert f"Total: {meta['jumps']} jump(s)" in prefix
+                    assert log_contains(log, f"Total: {meta['jumps']} jump(s)")
                 else:
-                    assert 'Time Jumps         : None detected' in prefix
+                    assert log_contains(log, 'Time Jumps         : None detected')
                 if meta.get('steady'):
-                    assert all(f'Channel {ch:>3}' in prefix for ch in range(7, 11))
+                    assert all(log_contains(log, f'Channel {ch:>3}') for ch in range(7, 11))
             if command == 'timeline':
                 log.seek(0)
                 assert sum(1 for row in log if row.split() and row.split()[0].isdigit()) == TIMELINE_LIMIT
