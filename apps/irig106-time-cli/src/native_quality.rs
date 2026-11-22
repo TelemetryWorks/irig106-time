@@ -186,8 +186,7 @@ mod tests {
         assert!(
             q.value()["unavailable_reason"]
                 .as_str()
-                .unwrap()
-                .contains("channel cap")
+                .is_some_and(|reason| reason.contains("channel cap"))
         );
         let mut q = Quality::default();
         for p in 0..=PENDING_CAP {
@@ -198,8 +197,7 @@ mod tests {
         assert!(
             q.value()["unavailable_reason"]
                 .as_str()
-                .unwrap()
-                .contains("pending cap")
+                .is_some_and(|reason| reason.contains("pending cap"))
         );
     }
 }
