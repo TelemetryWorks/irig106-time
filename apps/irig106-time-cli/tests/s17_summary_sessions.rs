@@ -177,3 +177,23 @@ fn native_text_writer_failure_is_output_four() {
     );
     assert!(out.0);
 }
+
+#[test]
+fn late_header_changes_low_ticks_without_moving_first_observation() {
+    // §11.2.1.1 i:100ns RTC ticks. 1.0s ->0.5s is a -5_000_000-tick
+    // late displacement within the native1.1s bound, not a new session.
+    let input = Input::new(&[(8, 9, 10_000_000), (8, 9, 5_000_000)]);
+    let (exit, out) = input.output("summary", true);
+    assert_eq!(exit, ExitClass::Success);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let native = &v["report"]["native_sessions"];
+    assert_eq!(native["count"], "1");
+    let span = &native["spans"][0];
+    assert_eq!(span["first_ticks"], "10000000");
+    assert_eq!(span["low_ticks"], "5000000");
+    assert_eq!(span["high_ticks"], "10000000");
+    assert_eq!(span["first_packet"], "0");
+    assert_eq!(span["last_packet"], "1");
+    assert_eq!(span["last_ticks"], "5000000");
+    assert_eq!(span["packets"], "2");
+}
