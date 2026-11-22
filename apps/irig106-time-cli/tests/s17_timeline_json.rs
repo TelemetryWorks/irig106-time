@@ -71,7 +71,7 @@ fn timeline_rows_golden_pins_counter_and_clock_without_invented_association() {
     assert_eq!(exit, ExitClass::Findings);
     assert!(out.is_ascii());
     let v: Value = serde_json::from_slice(&out).unwrap();
-    assert_eq!(v["schema_revision"], 8);
+    assert_eq!(v["schema_revision"], 9);
     assert_eq!(v["options"]["limit"], "3");
     assert!(v["options"]["threshold_ms"].is_null());
     assert!(v["report"]["jumps"].is_null());

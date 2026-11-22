@@ -306,7 +306,7 @@ passed; `publish = false` remains until the owner’s S20 decision.
 Summary/channels/jumps accept `--format json` (default text), over the same report
 model as text. See the [stable producer schema](https://github.com/TelemetryWorks/irig106-time/blob/main/apps/irig106-time-cli/schema/irigtime-report-v1.schema.json)
 and [compatibility, units and provenance rules](https://github.com/TelemetryWorks/irig106-time/blob/main/docs/cli-report-schema.md).
-The shared envelope is `telemetryworks/irigtime-report`, stable v1, revision 8. JSON is
+The shared envelope is `telemetryworks/irigtime-report`, stable v1, revision 9. JSON is
 ASCII-only; 64/128-bit quantities are decimal strings. Every defined key is
 present; null meanings are field-specific. Consumers ignore unknown fields;
 producer validation stays strict. The schema is frozen after review.
@@ -388,3 +388,16 @@ NTP-second interval is [-59958230400,255611289600); floor-dividing its first and
 last integer seconds by2^32 yields -14 and59. `report.policy` records
 `ntp_era_source` (caller-declared/none) and `ntp_era_inference` (disabled).
 A recording spanning eras needs separate explicit treatment, not auto-unwrapping.
+
+
+Summary separates recording-wide native sessions (1100ms policy) from per-channel
+CLI reset segments (30s/run heuristic). Revision9 adds `native_sessions` for summary,
+null elsewhere: counter spans, not calendar/reference quality. Ambiguous native
+ordering labels only the known prefix; other analysis continues.
+
+Native ordering needs-context is a coordinator-accepted WARNING with code null:
+TF-018 describes established resets, TF-019 late packets and TF-024 a flag bit.
+CLI policy-inferred sessions remain `start: "inferred"`, without TF-018. The CLI
+reserves TF-018 for established new-session facts. The library differs deliberately:
+`TimelineBuilder` records TF-018 for policy inference under L3-COR-105; the CLI
+summary does not forward that inferred-session finding policy.

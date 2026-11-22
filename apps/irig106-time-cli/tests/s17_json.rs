@@ -79,7 +79,7 @@ fn versioned_report_is_deterministic_exact_and_carries_provenance() {
         assert_eq!(v["options"]["command"], command);
         assert_eq!(v["options"]["fail_on"], "warning");
         assert_eq!(v["schema"], "telemetryworks/irigtime-report");
-        assert_eq!(v["schema_revision"], 8);
+        assert_eq!(v["schema_revision"], 9);
         assert!(v["options"]["limit"].is_null());
         assert!(v["report"]["rows"].is_null());
         assert_eq!(v["highest_level"], "warning");
@@ -382,8 +382,12 @@ fn schema_describes_every_key_and_matches_the_golden_shape() {
             for field in properties.values() {
                 assert!(field["description"].is_string());
             }
-            assert_eq!(s["additionalProperties"], false);
-            assert_eq!(s["required"].as_array().unwrap().len(), properties.len());
+            // if/then/else property fragments constrain selected fields;
+            // complete producer object definitions still require every key.
+            if s["type"] == "object" {
+                assert_eq!(s["additionalProperties"], false);
+                assert_eq!(s["required"].as_array().unwrap().len(), properties.len());
+            }
         }
         match s {
             Value::Object(o) => {

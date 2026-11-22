@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Native session spans in summary
+
+- Summary text/JSON now show recording-wide native counter sessions separately
+  from per-channel compatibility reset segments. Stream closed spans through a
+  bounded private spool; schema revision9 adds nullable report.native_sessions.
+  Ambiguous native ordering labels a known prefix and warns; reference quality
+  and absolute/calendar spans remain separate work. Other commands are unchanged
+  except the additive nullable field and revision number.
+
 ### Bounded native session/span foundation
 
 - **New public API in 0.8.0:** `session::SessionClock`, `SessionStart`,

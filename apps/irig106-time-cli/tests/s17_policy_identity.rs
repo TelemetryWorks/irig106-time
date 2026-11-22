@@ -61,7 +61,7 @@ fn every_json_view_records_effective_cli_defaults_even_without_findings() {
                 _ => Value::Null,
             }
         );
-        assert_eq!(v["schema_revision"], 8);
+        assert_eq!(v["schema_revision"], 9);
         let schema: Value =
             serde_json::from_str(include_str!("../schema/irigtime-report-v1.schema.json")).unwrap();
         let fields = schema["$defs"]["report_policy"]["properties"]

@@ -50,6 +50,7 @@ class ReportSchema(unittest.TestCase):
         original = json.loads((ROOT / 'apps/irig106-time-cli/tests/golden/s17_missing_year.json').read_text())
         for path, replacement in [
             (['schema_revision'], 999),
+            (['report', 'native_sessions', 'status'], 'needs-context'),
             (['unexpected'], True),
             (['report', 'total_packets'], 1),
             (['report', 'channels', 0, 'first', 'basis'], 'invented'),

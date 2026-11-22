@@ -161,3 +161,12 @@ NTP-second interval is [-59958230400,255611289600); floor-dividing its first and
 last integer seconds by2^32 yields -14 and59. `report.policy` records
 `ntp_era_source` (caller-declared/none) and `ntp_era_inference` (disabled).
 A recording spanning eras needs separate explicit treatment, not auto-unwrapping.
+
+
+Native summary sessions and CLI findings have distinct policies. A native ordering
+needs-context condition is WARNING with code null (coordinator-accepted, PR #99).
+No TF code fits: TF-018 is established resets, TF-019 late packets, TF-024 a flag
+bit. Native inferred sessions are labelled `start: "inferred"`, not TF-018. The CLI
+reserves TF-018 for established new-session facts; the library's `TimelineBuilder`
+instead records TF-018 for policy inference under L3-COR-105. This CLI/library
+difference is intentional; session spans and finding interpretation are separate.

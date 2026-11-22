@@ -78,6 +78,18 @@ class DenseRss(unittest.TestCase):
             offset += length
         self.assertEqual(stamps, {ch: [0, 100000, 200000] for ch in range(7, 11)})
 
+    def test_streamed_summary_footer_after_eight_kib_is_checked(self):
+        import io
+        import runpy
+        contains = runpy.run_path('scripts/check-dense-rss.py')['log_contains']
+        class LinesOnly(io.StringIO):
+            def read(self, *args):
+                raise AssertionError('scan lines, do not slurp the log')
+        log = LinesOnly('native session span\n' * 1000 + 'Findings: error=0, warning=7\nTotal: 2 jump(s)\n')
+        self.assertTrue(contains(log, 'Findings: error=0, warning=7'))
+        self.assertTrue(contains(log, 'Total: 2 jump(s)'))
+        self.assertFalse(contains(log, 'warning=8'))
+
     def test_true_measurement_and_32_mib_gate(self):
         source = Path('scripts/check-dense-rss.py').read_text()
         self.assertIn('/usr/bin/time', source)

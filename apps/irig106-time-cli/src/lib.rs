@@ -49,6 +49,7 @@ mod csv_spool;
 /// Bounded raw packet transport; command integration follows in S16b.
 pub mod input;
 mod live_refs;
+mod native_sessions;
 mod report;
 mod report_json;
 mod report_policy;
@@ -174,6 +175,7 @@ struct FindingSample {
 }
 
 struct Ch10TimeScanner {
+    native_sessions: Option<native_sessions::NativeSessions>,
     segment_inventory: Option<segment_inventory::Archive>,
     finding_samples: Vec<FindingSample>,
     finding_location: Option<(u16, usize)>,
@@ -211,6 +213,7 @@ struct Ch10TimeScanner {
 impl Ch10TimeScanner {
     fn new() -> Self {
         Self {
+            native_sessions: None,
             correlator: StreamingTimeCorrelator::with_reference_limit(
                 NanosDuration::new(REFERENCE_WINDOW_NS),
                 REFERENCE_CAP,
@@ -337,6 +340,16 @@ impl Ch10TimeScanner {
                 data_type: packet.header.data_type,
                 rtc: Rtc::from_le_bytes(packet.header.rtc),
             };
+            if let Some(native) = &mut self.native_sessions {
+                if let Some(reason) = native.observe(self.total_packets as u64, hdr.rtc)? {
+                    self.note_at(
+                        (hdr.channel_id, self.total_packets),
+                        Severity::Warning,
+                        None,
+                        format!("Native session analysis needs context: {reason}"),
+                    );
+                }
+            }
             if self.first_rtc.is_none() {
                 self.first_rtc = Some(hdr.rtc);
             }
@@ -1209,6 +1222,22 @@ fn cmd_summary(
     }
     writeln!(stdout)?;
 
+    if let Some(native) = scanner.native_sessions {
+        native.text(stdout)?;
+        writeln!(stdout, "Per-channel CLI reset segments")?;
+        for info in scanner
+            .time_channels
+            .values()
+            .filter(|c| c.first_time.is_some())
+        {
+            writeln!(
+                stdout,
+                "  Channel {}: {} segment(s)",
+                info.channel_id, info.segment
+            )?;
+        }
+        writeln!(stdout)?;
+    }
     // Per-channel summary
     if !scanner.time_channels.is_empty() {
         writeln!(stdout, "Time Channels")?;
@@ -1611,7 +1640,7 @@ fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
     )?;
     writeln!(
         stdout,
-        "--format <text|json>: summary/channels/jumps/timeline/correlate; default text. Schema stable v1, revision 8."
+        "--format <text|json>: summary/channels/jumps/timeline/correlate; default text. Schema stable v1, revision 9."
     )?;
     writeln!(
         stdout,
@@ -1762,6 +1791,9 @@ fn dispatch(
     match args.command.as_str() {
         "summary" | "channels" | "jumps" => {
             let mut scanner = Ch10TimeScanner::configured(&args);
+            if args.command == "summary" {
+                scanner.native_sessions = Some(native_sessions::NativeSessions::new()?);
+            }
             scanner.jump_threshold = match args.command.as_str() {
                 "summary" => Some(1_000_000_000),
                 "jumps" => Some(

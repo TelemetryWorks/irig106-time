@@ -69,6 +69,19 @@ fn emit(value: &Value, r: &Report<'_>, out: &mut dyn Write) -> io::Result<()> {
                         row(&active.value())?;
                     }
                     out.write_all(b"]")?;
+                } else if key == "spans" && object.contains_key("late_bound_ns") {
+                    out.write_all(b"[")?;
+                    let mut first = true;
+                    if let Some(native) = r.native_sessions {
+                        native.each(|row| {
+                            if !first {
+                                out.write_all(b",")?;
+                            }
+                            first = false;
+                            emit(row, r, out)
+                        })?;
+                    }
+                    out.write_all(b"]")?;
                 } else if key == "rows" && object.contains_key("qualification") && value.is_array()
                 {
                     out.write_all(b"[")?;
@@ -254,7 +267,7 @@ fn query_metadata(r: &Report<'_>) -> Option<Value> {
 fn document(r: &Report<'_>, args: &Args, size: u64) -> Value {
     let path = args.input.as_os_str();
     let (bytes, encoding) = native_name(path);
-    json!({"schema": "telemetryworks/irigtime-report", "schema_version": 1, "schema_revision": 8, "schema_status": "stable",
+    json!({"schema": "telemetryworks/irigtime-report", "schema_version": 1, "schema_revision": 9, "schema_status": "stable",
         "tool": {"name": "irigtime", "version": PKG_VERSION, "library_version": PKG_VERSION,
             "source_revision": option_env!("IRIGTIME_SOURCE_REVISION").or(option_env!("GITHUB_SHA"))},
         "input": {"name": path.to_string_lossy(), "name_lossy": path.to_str().is_none(),
@@ -268,7 +281,7 @@ fn document(r: &Report<'_>, args: &Args, size: u64) -> Value {
             "info": decimal(r.finding_counts[0]), "omitted": decimal(r.omitted_findings()),
             "samples": r.finding_samples.iter().map(|s| json!({"level": level(Some(s.level)), "code": s.code,
                 "message": s.message, "channel": s.channel, "packet": s.packet.map(decimal)})).collect::<Vec<_>>()},
-        "report": {"policy":super::report_policy::value(r, args.ntp_era),"correlation": query_metadata(r), "qualification": "observed inventory; qualified joining/basis pending", "rows": if args.command == "timeline" { Some(Vec::<Value>::new()) } else { None },
+        "report": {"native_sessions":r.native_sessions.map(native_sessions::NativeSessions::metadata),"policy":super::report_policy::value(r, args.ntp_era),"correlation": query_metadata(r), "qualification": "observed inventory; qualified joining/basis pending", "rows": if args.command == "timeline" { Some(Vec::<Value>::new()) } else { None },
             "total_packets": decimal(r.total_packets), "time_packets": decimal(r.time_packets),
             "references_seen": decimal(r.references_seen), "reference_count": decimal(r.reference_count),
             "references_evicted": decimal(r.references_evicted), "reset_count": decimal(r.reset_count),
@@ -285,6 +298,34 @@ fn document(r: &Report<'_>, args: &Args, size: u64) -> Value {
 #[allow(clippy::unwrap_used)] // Test fixtures only.
 mod tests {
     use super::*;
+    #[test]
+    fn native_document_defers_closed_and_active_spans_until_emission() {
+        let mut scanner = Ch10TimeScanner::new();
+        let mut native = native_sessions::NativeSessions::new().unwrap();
+        native.observe(0, Rtc::from_raw(20_000_000)).unwrap();
+        native.observe(1, Rtc::ZERO).unwrap();
+        scanner.native_sessions = Some(native);
+        let args = match args::parse(&["summary", "input", "--format", "json"]).unwrap() {
+            args::Request::File(a) => Some(a),
+            _ => None,
+        }
+        .unwrap();
+        let report = Report::from(&scanner);
+        assert_eq!(
+            document(&report, &args, 48)["report"]["native_sessions"]["spans"],
+            json!([])
+        );
+        let mut out = Vec::new();
+        write(&report, &args, 48, &mut out).unwrap();
+        let emitted: Value = serde_json::from_slice(&out).unwrap();
+        assert_eq!(
+            emitted["report"]["native_sessions"]["spans"]
+                .as_array()
+                .unwrap()
+                .len(),
+            2
+        );
+    }
     #[test]
     fn query_document_defers_answers_until_emission() {
         let mut scanner = Ch10TimeScanner::new();
@@ -491,7 +532,7 @@ mod tests {
         assert!(out.is_ascii());
         let v: Value = serde_json::from_slice(&out).unwrap();
         assert_eq!(v["schema"], "telemetryworks/irigtime-report");
-        assert_eq!(v["schema_revision"], 8);
+        assert_eq!(v["schema_revision"], 9);
         assert_eq!(v["highest_level"], "error");
         assert_eq!(v["findings"]["error"], "1");
         assert_eq!(v["findings"]["info"], "2");
