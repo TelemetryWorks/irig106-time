@@ -109,6 +109,19 @@ jobs:
           toolchain: stable
       - run: python3 -m unittest discover -s scripts -p test_cli_workspace.py
       - run: cargo build --manifest-path apps/irig106-time-cli/Cargo.toml
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install pinned CLI schema validation tools (dev only)
+        run: |
+          python -m venv "$RUNNER_TEMP/schema-venv"
+          "$RUNNER_TEMP/schema-venv/bin/python" -I -m pip install --require-hashes --only-binary=:all: -r scripts/requirements-schema.txt
+      - name: Test isolated schema validation tooling
+        run: |
+          "$RUNNER_TEMP/schema-venv/bin/python" -I -m unittest discover -s scripts -p test_report_schema.py
+      - name: Validate every live JSON view against the packaged schema
+        run: |
+          "$RUNNER_TEMP/schema-venv/bin/python" -I scripts/validate_cli_reports.py
       - name: Inspect both package file lists (no publication)
         run: |
           cargo package -p irig106-time --list --locked > /tmp/library-package-files.txt

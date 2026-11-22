@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Automated CLI schema validation
+
+- Validate all five live JSON views against the packaged current Draft2020-12
+  schema in CI, including protocol/status, reset, stale-table and NTP cases.
+  Use pinned/hash-checked Python dev tooling only; no shipped dependency or
+  schema revision change. Retain semantic goldens and memory gates separately.
+
 ### Explicit NTP era option
 
 - Add `--ntp-era <N>` on file commands; checked conversion labels UTC as
