@@ -55,3 +55,8 @@ Local checks: hash-locked install/negative digest probe,5 small Python tests,
 30 live reports, targeted mutations, fmt, trace/schema-sync/diff checks. Full
 platform/package/MSRV/deny/fuzz/RSS checks are delegated to PR CI. No whole
 Requirements markers are added; coverage stays198 tested/206 verified of288.
+
+Initial CI45002883175 rejected the workflow before any job ran: the unquoted
+pip :all: token formed YAML mapping syntax. The command now uses a block scalar,
+with a regression assertion for that wiring; the succeeding run is the CI
+matrix evidence, not that pre-job failure.

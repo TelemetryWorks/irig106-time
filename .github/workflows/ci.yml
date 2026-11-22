@@ -113,7 +113,8 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install pinned CLI schema validation tools (dev only)
-        run: python -m pip install --require-hashes --only-binary=:all: -r scripts/requirements-schema.txt
+        run: |
+          python -m pip install --require-hashes --only-binary=:all: -r scripts/requirements-schema.txt
       - run: python -m unittest discover -s scripts -p test_report_schema.py
       - name: Validate every live JSON view against the packaged schema
         run: python scripts/validate_cli_reports.py

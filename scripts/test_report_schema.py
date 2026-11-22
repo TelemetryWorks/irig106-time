@@ -10,7 +10,8 @@ ROOT = Path(__file__).resolve().parent.parent
 class ReportSchema(unittest.TestCase):
     def test_ci_installs_hash_locked_tools_and_checks_live_views(self):
         workflow = (ROOT / '.github/workflows/ci.yml').read_text()
-        self.assertIn('--require-hashes', workflow)
+        # The colon-space in :all: must stay inside a YAML block scalar.
+        self.assertIn('run: |\n          python -m pip install --require-hashes --only-binary=:all:', workflow)
         self.assertIn('scripts/requirements-schema.txt', workflow)
         self.assertIn('python scripts/validate_cli_reports.py', workflow)
         self.assertIn('test_report_schema.py', workflow)
