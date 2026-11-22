@@ -148,6 +148,9 @@ fn clock_basis(basis: Option<&str>) -> (&'static str, &'static str) {
         Some("UTC (stated FMT)") => ("UTC", "stated FMT"),
         Some("GPS (stated FMT)") => ("GPS", "stated FMT"),
         Some("UTC (from TAI via leap table)") => ("UTC", "derived, leap table"),
+        Some(clock_basis::NTP_DECLARED) => ("UTC", "caller-declared era"),
+        Some(clock_basis::NTP_AMBIGUOUS) => ("UTC", "caller-declared era, leap-ambiguous"),
+        Some(clock_basis::NTP_UNCERTAIN) => ("UTC", "caller-declared era, leap coverage uncertain"),
         Some(clock_basis::STALE) => ("UTC", "derived, stale leap table"),
         _ => ("unknown", "unresolved"),
     }
@@ -251,12 +254,12 @@ fn query_metadata(r: &Report<'_>) -> Option<Value> {
 fn document(r: &Report<'_>, args: &Args, size: u64) -> Value {
     let path = args.input.as_os_str();
     let (bytes, encoding) = native_name(path);
-    json!({"schema": "telemetryworks/irigtime-report", "schema_version": 1, "schema_revision": 7, "schema_status": "stable",
+    json!({"schema": "telemetryworks/irigtime-report", "schema_version": 1, "schema_revision": 8, "schema_status": "stable",
         "tool": {"name": "irigtime", "version": PKG_VERSION, "library_version": PKG_VERSION,
             "source_revision": option_env!("IRIGTIME_SOURCE_REVISION").or(option_env!("GITHUB_SHA"))},
         "input": {"name": path.to_string_lossy(), "name_lossy": path.to_str().is_none(),
             "native_name_hex": bytes, "native_name_encoding": encoding, "size_bytes": decimal(size)},
-        "options": {"command": args.command, "format": "json", "fail_on": level(args.fail_on),
+        "options": {"ntp_era":args.ntp_era.map(|era|era.to_string()),"command": args.command, "format": "json", "fail_on": level(args.fail_on),
             "query_rtc": if args.command == "correlate" { Some(decimal(args.rtc.as_raw())) } else { None },
             "limit": if args.command == "timeline" { Some(decimal(args.limit)) } else { None },
             "threshold_ms": r.jump_threshold.map(|ns| decimal(ns / 1_000_000))},
@@ -488,7 +491,7 @@ mod tests {
         assert!(out.is_ascii());
         let v: Value = serde_json::from_slice(&out).unwrap();
         assert_eq!(v["schema"], "telemetryworks/irigtime-report");
-        assert_eq!(v["schema_revision"], 7);
+        assert_eq!(v["schema_revision"], 8);
         assert_eq!(v["highest_level"], "error");
         assert_eq!(v["findings"]["error"], "1");
         assert_eq!(v["findings"]["info"], "2");

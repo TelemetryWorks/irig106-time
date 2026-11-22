@@ -195,6 +195,7 @@ struct Ch10TimeScanner {
     jumps: Vec<TimeJump>,
     jump_year_days: Vec<(u16, u16)>,
     leap_table: LeapSecondTable,
+    ntp_era: Option<i64>,
     time_channels: BTreeMap<u16, TimeChannelInfo>,
     total_packets: usize,
     time_packets: usize,
@@ -234,6 +235,7 @@ impl Ch10TimeScanner {
             jumps: Vec::new(),
             jump_year_days: Vec::new(),
             leap_table: LeapSecondTable::builtin(),
+            ntp_era: None,
             time_channels: BTreeMap::new(),
             total_packets: 0,
             time_packets: 0,
@@ -245,6 +247,12 @@ impl Ch10TimeScanner {
             finding_counts: [0; 3],
             highest: None,
         }
+    }
+
+    fn configured(args: &args::Args) -> Self {
+        let mut scanner = Self::new();
+        scanner.ntp_era = args.ntp_era;
+        scanner
     }
 
     fn scan(
@@ -936,6 +944,55 @@ impl Ch10TimeScanner {
         info.last_rtc = Some(hdr.rtc);
     }
 
+    fn convert_declared_ntp(
+        &mut self,
+        raw: NtpTime,
+    ) -> irig106_time::Result<Option<(AbsoluteTime, &'static str)>> {
+        use irig106_time::ntp::{
+            EraDeclaration, NtpContext, NtpConversionStatus, NtpLeapStatus, convert_ntp,
+        };
+        // Only the zero sentinel is context-independent. Never call the API's
+        // era0 fallback for a nonzero reading without an explicit declaration.
+        if self.ntp_era.is_none() && (raw.seconds != 0 || raw.fraction != 0) {
+            return Err(TimeError::NeedsContext {
+                context: "NTP era/basis required; supply --ntp-era <N>",
+            });
+        }
+        // Local conversion scope token, not an inferred recorder session. No
+        // pivots are supplied; the explicit option applies to the entire input.
+        let mut context = NtpContext::new(1);
+        context.declared = self.ntp_era.map(|era| EraDeclaration {
+            era,
+            id: "--ntp-era".into(),
+        });
+        let result = convert_ntp(raw, &context, Some(&self.leap_table));
+        if result.status() == NtpConversionStatus::UnknownUnsynchronized {
+            self.note_code(Severity::Warning,Some("TF-029"),format!("TF-029: NTP unknown/unsynchronized; raw seconds={} fraction={}; no absolute value",raw.seconds,raw.fraction));
+            return Ok(None);
+        }
+        if result.calendar_error().is_some() {
+            return Err(TimeError::NeedsContext {
+                context: "NTP era outside supported calendar range",
+            });
+        }
+        let time = result
+            .utc()
+            .ok_or(TimeError::NeedsContext {
+                context: "NTP declared era cannot supply civil time",
+            })?
+            .to_absolute()?
+            .value;
+        let basis = match result.basis().leap {
+            NtpLeapStatus::Ambiguous => {
+                self.note_code(Severity::Warning,Some("TF-030"),format!("TF-030: NTP leap-ambiguous, value kept; raw seconds={} fraction={}; caller-declared era={}; floor={}ns; table={}",raw.seconds,raw.fraction,self.ntp_era.map(|e|e.to_string()).unwrap_or_else(||"unknown".into()),result.nanoseconds(),self.leap_table.metadata().id));
+                clock_basis::NTP_AMBIGUOUS
+            }
+            NtpLeapStatus::UncertainCoverage => clock_basis::NTP_UNCERTAIN,
+            _ => clock_basis::NTP_DECLARED,
+        };
+        Ok(Some((time, basis)))
+    }
+
     fn process_time_f2_packet(&mut self, payload: &[u8], hdr: &PktHeader) {
         // Inventory is factual even when TS/era/body prevents an absolute answer.
         if let Some(bytes) = payload.get(..4).and_then(|b| b.try_into().ok()) {
@@ -964,9 +1021,9 @@ impl Ch10TimeScanner {
         // Checked conversion before eviction; retain the table-currency warning
         // while keeping D7's last-known-offset UTC and exact original TAI.
         let converted = match network_time {
-            irig106_time::network_time::NetworkTime::Ntp(_) => Err(TimeError::NeedsContext {
-                context: "NTP era/basis required; use ntp::convert_ntp",
-            }),
+            irig106_time::network_time::NetworkTime::Ntp(raw) => match self.convert_declared_ntp(raw) {
+                Ok(Some(time)) => Ok(time), Ok(None) => return, Err(e) => Err(e),
+            },
             irig106_time::network_time::NetworkTime::Ptp(ptp) => {
                 self.leap_table.convert_ptp(ptp).and_then(|result| {
                     let utc = result.utc().ok_or(TimeError::NeedsContext {
@@ -1346,7 +1403,7 @@ fn cmd_timeline(
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
 ) -> Result<Option<Severity>, Failure> {
-    let mut scanner = Ch10TimeScanner::new();
+    let mut scanner = Ch10TimeScanner::configured(args);
     let limit = args.limit;
     if args.json {
         scanner.segment_inventory = Some(segment_inventory::Archive::new()?);
@@ -1382,14 +1439,15 @@ fn cmd_timeline(
 
 fn cmd_csv(
     input: std::fs::File,
-    output_path: Option<&Path>,
+    args: &args::Args,
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
     pending: &mut Option<csv_spool::CsvSpool>,
 ) -> Result<Option<Severity>, Failure> {
+    let output_path = args.output.as_deref();
     let mut spool = csv_spool::CsvSpool::new(output_path)?;
     writeln!(spool, "{}", report_rows::CSV_HEADER)?;
-    let mut scanner = Ch10TimeScanner::new();
+    let mut scanner = Ch10TimeScanner::configured(args);
     let mut emit = |row: &ResolvedPacket| row.write_csv(&mut spool);
     scanner.scan_to(input, true, None, Some(&mut emit))?;
     spool.flush()?;
@@ -1415,7 +1473,7 @@ fn cmd_correlate(
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
 ) -> Result<Option<Severity>, Failure> {
-    let mut scanner = Ch10TimeScanner::new();
+    let mut scanner = Ch10TimeScanner::configured(args);
     let target = args.rtc;
     scanner.query_refs = Some(target_refs::TargetReferences::new(target));
     if args.json {
@@ -1553,7 +1611,11 @@ fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
     )?;
     writeln!(
         stdout,
-        "--format <text|json>: summary/channels/jumps/timeline/correlate; default text. Schema stable v1, revision 7."
+        "--format <text|json>: summary/channels/jumps/timeline/correlate; default text. Schema stable v1, revision 8."
+    )?;
+    writeln!(
+        stdout,
+        "--ntp-era <N>: explicit signed i64 era on all file commands; no era guessing; caller-declared era labels."
     )?;
     writeln!(stdout, "Examples:")?;
     writeln!(stdout, "  irigtime summary flight_042.ch10")?;
@@ -1699,7 +1761,7 @@ fn dispatch(
         .len();
     match args.command.as_str() {
         "summary" | "channels" | "jumps" => {
-            let mut scanner = Ch10TimeScanner::new();
+            let mut scanner = Ch10TimeScanner::configured(&args);
             scanner.jump_threshold = match args.command.as_str() {
                 "summary" => Some(1_000_000_000),
                 "jumps" => Some(
@@ -1732,7 +1794,7 @@ fn dispatch(
             }
         }
         "timeline" => cmd_timeline(input, &args, file_len, stdout, stderr),
-        "csv" => cmd_csv(input, args.output.as_deref(), stdout, stderr, pending),
+        "csv" => cmd_csv(input, &args, stdout, stderr, pending),
         "correlate" => cmd_correlate(input, &args, file_len, stdout, stderr),
         _ => Err(Failure::new(ExitClass::Usage, "unknown command")),
     }

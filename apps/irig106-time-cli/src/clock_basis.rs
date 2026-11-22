@@ -4,10 +4,16 @@ use irig106_time::{AbsoluteTime, Rtc, StreamingTimeCorrelator};
 use std::collections::{BTreeMap, VecDeque};
 pub(super) const COVERED: &str = "UTC (from TAI via leap table)";
 pub(super) const STALE: &str = "UTC (from TAI via stale leap table, possibly out of date)";
+pub(super) const NTP_DECLARED: &str = "UTC (caller-declared era)";
+pub(super) const NTP_AMBIGUOUS: &str = "UTC (caller-declared era, leap-ambiguous)";
+pub(super) const NTP_UNCERTAIN: &str = "UTC (caller-declared era, leap coverage uncertain)";
 pub(super) fn known(label: &str) -> Option<&'static str> {
     match label {
         COVERED => Some(COVERED),
         STALE => Some(STALE),
+        NTP_DECLARED => Some(NTP_DECLARED),
+        NTP_AMBIGUOUS => Some(NTP_AMBIGUOUS),
+        NTP_UNCERTAIN => Some(NTP_UNCERTAIN),
         "UTC (assumed, RDG-009)" => Some("UTC (assumed, RDG-009)"),
         "UTC (stated FMT)" => Some("UTC (stated FMT)"),
         "GPS (stated FMT)" => Some("GPS (stated FMT)"),

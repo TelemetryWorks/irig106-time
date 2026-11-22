@@ -171,6 +171,15 @@ fn utc_epoch_dates_fraction_floor_zero_and_ambiguity_follow_rdg012() {
         assert_eq!(c["second"], 0);
         assert_eq!(c["nanosecond"], 999999999);
     }
+    // Full32-bit era, not the RFC half-era pivot interval: final era1 second.
+    let edge = Input::new(u32::MAX, u32::MAX);
+    let (_, out, _) = edge.output("timeline", true, Some("1"), "error");
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let c = &v["report"]["rows"][0]["clock"];
+    assert_eq!(c["year"], 2172);
+    assert_eq!(c["day"], 75);
+    assert_eq!(c["second"], 31);
+    assert_eq!(c["nanosecond"], 999999999);
     for era in [None, Some("0"), Some("1")] {
         let input = Input::new(0, 0);
         let (exit, out, _) = input.output("timeline", true, era, "warning");
@@ -185,6 +194,13 @@ fn utc_epoch_dates_fraction_floor_zero_and_ambiguity_follow_rdg012() {
                 .any(|f| f["code"] == "TF-029" && f["level"] == "warning")
         );
     }
+    // Fraction-only raw values are not the all-zero sentinel, even when floor=0ns.
+    let input = Input::new(0, 1);
+    let (exit, out, _) = input.output("timeline", true, Some("1"), "error");
+    assert_eq!(exit, ExitClass::Success);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(v["report"]["rows"][0]["clock"]["second"], 16);
+    assert_eq!(v["report"]["rows"][0]["clock"]["nanosecond"], 0);
     let input = Input::new(3692217600, 0x80000000); //2017-01-01 insertion coordinate.
     let (exit, out, _) = input.output("timeline", true, Some("0"), "warning");
     assert_eq!(exit, ExitClass::Findings);
@@ -208,6 +224,8 @@ fn era_syntax_errors_precede_input_and_extreme_values_never_panic() {
     for bad in [
         "",
         "+1",
+        "-",
+        "--1",
         "1x",
         "1.0",
         "0x1",
@@ -246,5 +264,51 @@ fn era_syntax_errors_precede_input_and_extreme_values_never_panic() {
         assert_eq!(exit, ExitClass::Success);
         let v: Value = serde_json::from_str(&out).unwrap();
         assert_eq!(v["options"]["ntp_era"], era);
+        if era.len() > 15 {
+            assert_eq!(v["highest_level"], "warning");
+            assert!(v["report"]["channels"][0]["first"].is_null());
+        }
+    }
+}
+
+#[test]
+fn declared_era_does_not_repair_status_and_survives_reset_spooling() {
+    for word in [0, 3, 0x31] {
+        let input = Input::new(63104, 0);
+        let mut bytes = std::fs::read(&input.0).unwrap();
+        bytes[24] = word;
+        std::fs::write(&input.0, bytes).unwrap();
+        let (_, out, _) = input.output("timeline", true, Some("1"), "never");
+        let v: Value = serde_json::from_str(&out).unwrap();
+        assert!(v["report"]["rows"][0]["clock"].is_null());
+        assert!(
+            v["findings"]["samples"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|f| f["code"] == if word == 0 { "TF-003" } else { "TF-006" })
+        );
+    }
+    let input = Input::new(63104, 0x80000000);
+    let mut bytes = Vec::new();
+    for (rtc, seconds) in [(0u64, 63104), (40, 63144), (0, 63164), (10, 63174)] {
+        let wire = Input::new(seconds, 0x80000000);
+        let mut p = std::fs::read(&wire.0).unwrap();
+        p[16..22].copy_from_slice(&(rtc * 10_000_000).to_le_bytes()[..6]);
+        checksum(&mut p);
+        bytes.extend(p);
+    }
+    std::fs::write(&input.0, bytes).unwrap();
+    let (_, out, _) = input.output("correlate", true, Some("1"), "never");
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let answers = v["report"]["correlation"]["answers"].as_array().unwrap();
+    assert_eq!(answers.len(), 2);
+    for (a, minute) in answers.iter().zip([0, 1]) {
+        assert_eq!(a["clock"]["minute"], minute);
+        assert_eq!(a["clock"]["year"], 2036);
+        assert_eq!(
+            a["clock"]["basis"],
+            "caller-declared era, leap coverage uncertain"
+        );
     }
 }

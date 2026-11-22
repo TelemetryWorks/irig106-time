@@ -8,7 +8,7 @@
         "channel": 8,
         "code": null,
         "level": "warning",
-        "message": "Time F2 packet ch=8: correlation error: time needs context: NTP era/basis required; use ntp::convert_ntp",
+        "message": "Time F2 packet ch=8: correlation error: time needs context: NTP era/basis required; supply --ntp-era <N>",
         "packet": "1"
       },
       {
@@ -34,6 +34,7 @@
     "fail_on": "error",
     "format": "json",
     "limit": null,
+    "ntp_era": null,
     "query_rtc": null,
     "threshold_ms": "1000"
   },
@@ -358,7 +359,7 @@
     "total_packets": "5"
   },
   "schema": "telemetryworks/irigtime-report",
-  "schema_revision": 7,
+  "schema_revision": 8,
   "schema_status": "stable",
   "schema_version": 1,
   "tool": {

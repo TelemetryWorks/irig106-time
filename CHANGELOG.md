@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Explicit NTP era option
+
+- Add `--ntp-era <N>` on file commands; checked conversion labels UTC as
+  caller-declared era. Without it, nonzero NTP stays needs-context; no pivots,
+  host clock or era0 guessing. Preserve TF-029/030 and per-clock uncertainty.
+- Schema revision8 adds `options.ntp_era` and caller-era basis values. No CSV
+  column change; PTP/F1 semantics and numeric correlation are unchanged.
+
 ### JSON effective policy/defaults identity
 
 - Add `report.policy` in schema v1 revision7: versioned CLI correlation/default

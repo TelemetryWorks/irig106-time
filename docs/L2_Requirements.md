@@ -1772,7 +1772,7 @@ does not settle it or replace its real-recording evidence.
 
 **Planned verification**: CLI golden text/CSV/JSON reports with quotes/commas/newlines, unknown year/scale, counter-only results and signed/unsigned 64/128-bit extrema (including values above 2^53). Validate emitted JSON schema/version/units, exact decimal strings and full raw/stated/assumed provenance. No library snapshot alignment or untrusted JSON load/roundtrip API is required.
 
-**Clause evidence**: [S17 adapter audit](verification-s17-completion.md); F1 row/query scale+basis evidence: [S17 item2](verification-s17-f1-basis.md). Effective CLI policy/default identity: [S17 item3](verification-s17-policy-identity.md). Complete native answer/reference provenance remains partial.
+**Clause evidence**: [S17 adapter audit](verification-s17-completion.md); F1 row/query scale+basis evidence: [S17 item2](verification-s17-f1-basis.md). Effective CLI policy/default identity: [S17 item3](verification-s17-policy-identity.md). Explicit CLI NTP era/basis: [S17 item4](verification-s17-ntp-era.md); the library era0 fallback policy is unchanged. Complete native answer/reference provenance remains partial.
 
 #### L2-CLI-107
 

@@ -27,6 +27,7 @@ pub struct Args {
     pub(crate) limit: usize,
     pub(crate) fail_on: Option<Severity>,
     pub(crate) json: bool,
+    pub(crate) ntp_era: Option<i64>,
 }
 fn decimal(value: &OsStr) -> Result<u64, String> {
     let text = value.to_str().ok_or("numeric argument is not UTF-8")?;
@@ -67,6 +68,7 @@ pub fn parse<S: AsRef<OsStr>>(raw: &[S]) -> Result<Request, String> {
     let mut parsed = Args {
         command: command.into(),
         json: false,
+        ntp_era: None,
         input: PathBuf::new(),
         output: None,
         rtc: Rtc::from_raw(0),
@@ -91,7 +93,7 @@ pub fn parse<S: AsRef<OsStr>>(raw: &[S]) -> Result<Request, String> {
         }
         let flag = argument.to_str().ok_or("option name is not UTF-8")?;
         let allowed = match flag {
-            "--fail-on" => true,
+            "--fail-on" | "--ntp-era" => true,
             "--format" => matches!(
                 command,
                 "summary" | "channels" | "jumps" | "timeline" | "correlate"
@@ -132,6 +134,14 @@ pub fn parse<S: AsRef<OsStr>>(raw: &[S]) -> Result<Request, String> {
                     Some("json") => true,
                     _ => return Err("format must be text or json".into()),
                 }
+            }
+            "--ntp-era" => {
+                let text = value.to_str().ok_or("NTP era is not UTF-8")?;
+                let digits = text.strip_prefix('-').unwrap_or(text);
+                if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+                    return Err("NTP era must be a signed decimal integer".into());
+                }
+                parsed.ntp_era = Some(text.parse().map_err(|_| "NTP era out of i64 range")?);
             }
             "--output" => parsed.output = Some(PathBuf::from(value)),
             "--fail-on" => parsed.fail_on = threshold(value)?,
