@@ -66,10 +66,17 @@ class CliWorkspace(unittest.TestCase):
             (ROOT / 'docs/schema/irigtime-report-v1.schema.json').read_bytes())
 
     def test_guide_network_snippets_match_packaged_fixture(self):
-        guide = (ROOT / 'docs/usage.md').read_text().split('## 13. Processing Network Time Packets')[1].split('## 14.')[0]
+        guide = (ROOT / 'docs/usage.md').read_text().split('## Format 2 conversion')[1].split('## CLI inspection')[0]
         packaged = (ROOT / 'crates/irig106-time/tests/fixtures/format2_usage.md').read_text()
         def snippets(text):
             return re.findall(r'```rust\n(.*?)\n```', text, re.S)
+        self.assertEqual(snippets(guide), snippets(packaged))
+        self.assertEqual(len(snippets(packaged)), 2)
+
+    def test_typed_migration_snippets_match_packaged_fixture(self):
+        guide = (ROOT / 'docs/MIGRATING-0.8.md').read_text()
+        packaged = (ROOT / 'crates/irig106-time/tests/fixtures/migration_0_8.md').read_text()
+        snippets = lambda text: re.findall(r'```rust\n(.*?)\n```', text, re.S)
         self.assertEqual(snippets(guide), snippets(packaged))
         self.assertEqual(len(snippets(packaged)), 2)
 
