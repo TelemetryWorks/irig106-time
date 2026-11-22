@@ -67,16 +67,16 @@ fn facts(ntf: u8, ts: u8) -> Value {
 }
 #[test]
 fn timeline_preserves_observed_protocol_and_status_even_without_a_clock() {
-    for ntf in 0..=3 {
-        for ts in [0, 1, 3] {
+    for ntf in 0..=15 {
+        for ts in 0..=15 {
             let input = Input::new(&f2(ntf, ts, 0, 0));
             let v: Value = serde_json::from_str(&input.output("timeline", true)).unwrap();
             let row = &v["report"]["rows"][0];
             assert_eq!(row["network_time"], facts(ntf, ts));
             assert_eq!(row["clock"].is_null(), !(matches!(ntf, 1 | 2) && ts == 1));
             let text = input.output("timeline", false);
-            let protocol = if ntf == 3 {
-                "Reserved NTF 3".to_owned()
+            let protocol = if ntf >= 3 {
+                format!("Reserved NTF {ntf}")
             } else {
                 facts(ntf, ts)["protocol"].as_str().unwrap().to_owned()
             };
@@ -88,6 +88,20 @@ fn timeline_preserves_observed_protocol_and_status_even_without_a_clock() {
                 "{text}"
             );
         }
+    }
+    for body in [&[0x21, 0][..], &[0x21, 0, 0, 0][..]] {
+        let input = Input::new(&packet(9, 0, 0x12, body));
+        let v: Value = serde_json::from_str(&input.output("timeline", true)).unwrap();
+        let row = &v["report"]["rows"][0];
+        assert!(row["clock"].is_null());
+        assert_eq!(
+            row["network_time"],
+            if body.len() == 4 {
+                facts(2, 1)
+            } else {
+                Value::Null
+            }
+        );
     }
 }
 #[test]

@@ -42,6 +42,8 @@ use irig106_time::*;
 /// Strict, filesystem-free argument parsing.
 pub mod args;
 mod clock_basis;
+mod network_facts;
+use network_facts::NetworkFacts;
 mod correlate_report;
 mod csv_spool;
 /// Bounded raw packet transport; command integration follows in S16b.
@@ -149,6 +151,7 @@ type RowSink<'a> = &'a mut dyn FnMut(&ResolvedPacket) -> io::Result<()>;
 
 #[derive(Clone, Copy, Debug)]
 struct ObservedReference {
+    network_time: Option<NetworkFacts>,
     basis: &'static str,
     rtc: Rtc,
     time: AbsoluteTime,
@@ -173,6 +176,7 @@ struct Ch10TimeScanner {
     query_refs: Option<target_refs::TargetReferences>,
     query_any: Option<irig106_time::Result<AbsoluteTime>>,
     query_any_basis: Option<&'static str>,
+    query_any_network: Option<NetworkFacts>,
     clock_basis: clock_basis::Window,
     query_answers: Vec<correlate_report::Answer>,
     segment_answers: Option<segment_answers::SegmentAnswers>,
@@ -211,6 +215,7 @@ impl Ch10TimeScanner {
             query_refs: None,
             query_any: None,
             query_any_basis: None,
+            query_any_network: None,
             clock_basis: clock_basis::Window::default(),
             query_answers: Vec::new(),
             segment_answers: None,
@@ -357,6 +362,9 @@ impl Ch10TimeScanner {
                     rtc: hdr.rtc,
                     abs_time,
                     basis,
+                    network_time: (hdr.data_type == DATA_TYPE_TIME_F2)
+                        .then(|| NetworkFacts::observed(&packet.body_prefix))
+                        .flatten(),
                 };
                 if let Some(write_row) = emit.as_mut() {
                     write_row(&row)?;
@@ -446,8 +454,15 @@ impl Ch10TimeScanner {
         self.resolve(hdr.rtc, None)
     }
 
-    fn observe_reference(&mut self, hdr: &PktHeader, time: AbsoluteTime, basis: &'static str) {
+    fn observe_reference(
+        &mut self,
+        hdr: &PktHeader,
+        time: AbsoluteTime,
+        basis: &'static str,
+        network_time: Option<NetworkFacts>,
+    ) {
         let point = ObservedReference {
+            network_time,
             basis,
             rtc: hdr.rtc,
             time,
@@ -514,6 +529,7 @@ impl Ch10TimeScanner {
                 point.time,
                 point.index,
                 clock_basis::ptp(point.basis),
+                point.network_time,
             );
         }
     }
@@ -687,6 +703,10 @@ impl Ch10TimeScanner {
             .as_ref()
             .ok()
             .and_then(|_| query.basis(Some(channel)));
+        let network_time = answer
+            .as_ref()
+            .ok()
+            .and_then(|_| query.network_time(Some(channel)));
         if let Err(error) = &answer {
             self.note(decode_level(error), format!("Segment query: {error}"));
         }
@@ -702,7 +722,7 @@ impl Ch10TimeScanner {
         let Some(report) = self.segment_answers.as_mut() else {
             return;
         };
-        match report.record_with_basis(channel, segment, labelled, answer, basis) {
+        match report.record_with_basis(channel, segment, labelled, answer, basis, network_time) {
             Ok(true) => self.note(
                 Severity::Warning,
                 format!("RTC is ambiguous across reset segments on channel {channel}"),
@@ -888,7 +908,7 @@ impl Ch10TimeScanner {
             }
         };
 
-        self.observe_reference(hdr, abs_time, report::f1_basis(csdw.time_format()));
+        self.observe_reference(hdr, abs_time, report::f1_basis(csdw.time_format()), None);
         // Update channel info
         let info = self
             .time_channels
@@ -972,7 +992,7 @@ impl Ch10TimeScanner {
                 return;
             }
         };
-        self.observe_reference(hdr, abs_time, basis);
+        self.observe_reference(hdr, abs_time, basis, NetworkFacts::observed(payload));
         // Update channel info
         let info = self
             .time_channels
@@ -1411,6 +1431,12 @@ fn cmd_correlate(
             .as_ref()
             .ok()
             .and_then(|_| scanner.basis_for(target, None));
+        scanner.query_any_network = any.as_ref().ok().and_then(|_| {
+            scanner
+                .query_refs
+                .as_ref()
+                .and_then(|q| q.network_time(None))
+        });
         scanner.query_any = Some(any);
         let channels: Vec<_> = scanner
             .time_channels
@@ -1422,6 +1448,10 @@ fn cmd_correlate(
             if let Some(time) = scanner.resolve(target, Some(ch)) {
                 let mut answer = correlate_report::Answer::new(ch, 1, false, Ok(time));
                 answer.basis = scanner.basis_for(target, Some(ch));
+                answer.network_time = scanner
+                    .query_refs
+                    .as_ref()
+                    .and_then(|q| q.network_time(Some(ch)));
                 scanner.query_answers.push(answer);
             }
         }
@@ -1518,7 +1548,7 @@ fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
     )?;
     writeln!(
         stdout,
-        "--format <text|json>: summary/channels/jumps/timeline/correlate; default text. Schema stable v1, revision 5."
+        "--format <text|json>: summary/channels/jumps/timeline/correlate; default text. Schema stable v1, revision 6."
     )?;
     writeln!(stdout, "Examples:")?;
     writeln!(stdout, "  irigtime summary flight_042.ch10")?;

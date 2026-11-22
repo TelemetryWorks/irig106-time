@@ -11,6 +11,7 @@ pub(super) struct Answer {
     pub(super) time: Option<AbsoluteTime>,
     pub(super) issue: Option<String>,
     pub(super) basis: Option<&'static str>,
+    pub(super) network_time: Option<super::NetworkFacts>,
 }
 impl Answer {
     pub(super) fn new(
@@ -30,6 +31,7 @@ impl Answer {
             time,
             issue,
             basis: None,
+            network_time: None,
         }
     }
     pub(super) fn write_text(&self, out: &mut dyn Write) -> io::Result<()> {
@@ -40,6 +42,7 @@ impl Answer {
             .unwrap_or_else(|| {
                 format!("unresolved: {}", self.issue.as_deref().unwrap_or_default())
             });
+        let value = super::NetworkFacts::annotate(value, self.network_time);
         if self.labelled {
             writeln!(
                 out,
@@ -53,7 +56,7 @@ impl Answer {
     // Internal, exclusively-created scratch records, not a published JSON format
     // or a report loader. One bounded record is decoded at a time in the CLI.
     pub(super) fn private_value(&self) -> Value {
-        json!({"channel":self.channel, "segment":self.segment.to_string(), "labelled":self.labelled,"basis":self.basis,
+        json!({"network_time":self.network_time.map(|n|n.0),"channel":self.channel, "segment":self.segment.to_string(), "labelled":self.labelled,"basis":self.basis,
             "time":self.time.map(|t| json!([t.day_of_year(),t.hours(),t.minutes(),t.seconds(),t.nanoseconds(),t.year()])), "issue":self.issue})
     }
     pub(super) fn from_private(v: Value) -> io::Result<Self> {
@@ -107,6 +110,11 @@ impl Answer {
         };
         Ok(Self {
             basis,
+            network_time: if v["network_time"].is_null() {
+                None
+            } else {
+                Some(super::NetworkFacts(small(&v["network_time"])?))
+            },
             channel: small(&v["channel"])?,
             segment,
             labelled: v["labelled"].as_bool().ok_or_else(invalid)?,
@@ -125,6 +133,7 @@ pub(super) struct Query<'a> {
     pub(super) target: Rtc,
     pub(super) any: Option<&'a Result<AbsoluteTime, TimeError>>,
     pub(super) any_basis: Option<&'static str>,
+    pub(super) any_network: Option<super::NetworkFacts>,
     pub(super) answers: &'a [Answer],
     pub(super) segments: Option<&'a SegmentAnswers>,
 }
@@ -144,7 +153,10 @@ impl Query<'_> {
                 Ok(t) => writeln!(
                     out,
                     "  Any channel  → {}",
-                    clock_basis::text(t, self.any_basis)
+                    super::NetworkFacts::annotate(
+                        clock_basis::text(t, self.any_basis),
+                        self.any_network
+                    )
                 )?,
                 Err(e) => writeln!(out, "  Any channel  → {:?}: {e}", decode_level(e))?,
             }

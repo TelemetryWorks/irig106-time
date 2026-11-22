@@ -218,18 +218,23 @@ fn native_name(path: &OsStr) -> (String, &'static str) {
         "windows-utf16le",
     )
 }
-fn query_value(time: Option<AbsoluteTime>, issue: Option<&str>, basis: Option<&str>) -> Value {
-    json!({"clock":time.map(|t|clock(t,basis,0)),"issue":issue})
+fn query_value(
+    time: Option<AbsoluteTime>,
+    issue: Option<&str>,
+    basis: Option<&str>,
+    network_time: Option<super::NetworkFacts>,
+) -> Value {
+    json!({"network_time":network_time.map(|n|n.json()),"clock":time.map(|t|clock(t,basis,0)),"issue":issue})
 }
 fn query_answer(row: &correlate_report::Answer) -> Value {
-    json!({"channel":row.channel,"segment":decimal(row.segment),"labelled":row.labelled,
+    json!({"network_time":row.network_time.map(|n|n.json()),"channel":row.channel,"segment":decimal(row.segment),"labelled":row.labelled,
         "clock":row.time.map(|t|clock(t,row.basis,0)),"issue":row.issue})
 }
 fn query_metadata(r: &Report<'_>) -> Option<Value> {
     let query = r.query.as_ref()?;
     let any = match query.any {
-        Some(Ok(t)) => query_value(Some(*t), None, query.any_basis),
-        Some(Err(e)) => query_value(None, Some(&e.to_string()), None),
+        Some(Ok(t)) => query_value(Some(*t), None, query.any_basis, query.any_network),
+        Some(Err(e)) => query_value(None, Some(&e.to_string()), None, None),
         None => query_value(
             None,
             Some(if r.reset_count != 0 {
@@ -238,6 +243,7 @@ fn query_metadata(r: &Report<'_>) -> Option<Value> {
                 "No time reference points found in file"
             }),
             None,
+            None,
         ),
     };
     Some(json!({"any":any,"answers":[]})) // Marker; emit() streams native answers.
@@ -245,7 +251,7 @@ fn query_metadata(r: &Report<'_>) -> Option<Value> {
 fn document(r: &Report<'_>, args: &Args, size: u64) -> Value {
     let path = args.input.as_os_str();
     let (bytes, encoding) = native_name(path);
-    json!({"schema": "telemetryworks/irigtime-report", "schema_version": 1, "schema_revision": 5, "schema_status": "stable",
+    json!({"schema": "telemetryworks/irigtime-report", "schema_version": 1, "schema_revision": 6, "schema_status": "stable",
         "tool": {"name": "irigtime", "version": PKG_VERSION, "library_version": PKG_VERSION,
             "source_revision": option_env!("IRIGTIME_SOURCE_REVISION").or(option_env!("GITHUB_SHA"))},
         "input": {"name": path.to_string_lossy(), "name_lossy": path.to_str().is_none(),
@@ -320,6 +326,7 @@ mod tests {
             rtc: Rtc::from_raw(10_000_000),
             abs_time: None,
             basis: None,
+            network_time: None,
         });
         let args = match args::parse(&["timeline", "input", "--format", "json"]).unwrap() {
             args::Request::File(a) => Some(a),
@@ -481,7 +488,7 @@ mod tests {
         assert!(out.is_ascii());
         let v: Value = serde_json::from_slice(&out).unwrap();
         assert_eq!(v["schema"], "telemetryworks/irigtime-report");
-        assert_eq!(v["schema_revision"], 5);
+        assert_eq!(v["schema_revision"], 6);
         assert_eq!(v["highest_level"], "error");
         assert_eq!(v["findings"]["error"], "1");
         assert_eq!(v["findings"]["info"], "2");

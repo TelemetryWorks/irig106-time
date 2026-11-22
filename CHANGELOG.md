@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S17 packet/query network facts
+
+- Schema revision6 adds packet-observed and query-reference `network_time` facts
+  (NTF/protocol, TS/status). Timeline/correlate text now shows the same facts,
+  retaining reserved values and facts without a clock. Reset spools preserve
+  the selected reference; numeric correlation and CSV columns are unchanged.
+
 ### S17 full-adapter golden and clause audit
 
 - Add decoder-independent adapter goldens across all six commands: FMT0–5,

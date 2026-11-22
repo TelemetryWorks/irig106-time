@@ -1539,7 +1539,7 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 
 **Source**: ROADMAP P6-10; §11.2.3.3.
 
-**Planned verification**: Each NTF with valid and invalid status in every renderer; native GPS Format 1 remains distinct from network time. Current partial evidence: [S17 adapter clause audit](verification-s17-completion.md), including native GPS, every NTF/status, stale PTP and reset goldens. Protocol/status distinctions in packet/query/CSV adapters remain open; inventory evidence does not verify the whole requirement.
+**Planned verification**: Each NTF with valid and invalid status in every renderer; native GPS Format 1 remains distinct from network time. Current partial evidence: [S17 adapter clause audit](verification-s17-completion.md), including native GPS, every NTF/status, stale PTP and reset goldens. Packet/query text/JSON protocol/status evidence: [S17 follow-up1](verification-s17-network-facts.md). CSV protocol/status columns remain pending a separately approved contract change; no whole-requirement completion claim.
 
 **L3-CLI-106** · Parent: L2-CLI-106 · Verification: T
 

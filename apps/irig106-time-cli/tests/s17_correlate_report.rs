@@ -305,7 +305,7 @@ fn correlate_json_matches_native_answers_with_all_query_fields() {
     let (exit, v, err) = input.json_at(5);
     assert_eq!(exit, ExitClass::Success);
     assert_eq!(err, input.query_at(5).2);
-    assert_eq!(v["schema_revision"], 5);
+    assert_eq!(v["schema_revision"], 6);
     assert_eq!(v["options"]["query_rtc"], "50000000");
     assert!(v["options"]["limit"].is_null());
     assert!(v["options"]["threshold_ms"].is_null());
@@ -314,10 +314,10 @@ fn correlate_json_matches_native_answers_with_all_query_fields() {
     assert_eq!(
         v["report"]["correlation"],
         json!({
-        "any":{"clock":query_clock(12,0,5),"issue":null},
+        "any":{"network_time":null,"clock":query_clock(12,0,5),"issue":null},
         "answers":[
-            {"channel":7,"segment":"1","labelled":false,"clock":query_clock(12,0,5),"issue":null},
-            {"channel":8,"segment":"1","labelled":false,"clock":query_clock(13,0,5),"issue":null}]})
+            {"channel":7,"segment":"1","labelled":false,"network_time":null,"clock":query_clock(12,0,5),"issue":null},
+            {"channel":8,"segment":"1","labelled":false,"network_time":null,"clock":query_clock(13,0,5),"issue":null}]})
     );
     let schema: serde_json::Value =
         serde_json::from_str(include_str!("../schema/irigtime-report-v1.schema.json")).unwrap();
@@ -354,11 +354,11 @@ fn correlate_json_reset_golden_keeps_each_segment_and_unreset_channel() {
     assert_eq!(
         v["report"]["correlation"],
         serde_json::json!({
-        "any":{"clock":null,"issue":"Any-channel answer withheld across RTC resets; use labelled segment answers"},
+        "any":{"network_time":null,"clock":null,"issue":"Any-channel answer withheld across RTC resets; use labelled segment answers"},
         "answers":[
-            {"channel":7,"segment":"1","labelled":true,"clock":query_clock(12,0,5),"issue":null},
-            {"channel":7,"segment":"2","labelled":true,"clock":query_clock(12,1,5),"issue":null},
-            {"channel":8,"segment":"1","labelled":false,"clock":query_clock(13,0,5),"issue":null}]})
+            {"channel":7,"segment":"1","labelled":true,"network_time":null,"clock":query_clock(12,0,5),"issue":null},
+            {"channel":7,"segment":"2","labelled":true,"network_time":null,"clock":query_clock(12,1,5),"issue":null},
+            {"channel":8,"segment":"1","labelled":false,"network_time":null,"clock":query_clock(13,0,5),"issue":null}]})
     );
     assert_eq!(
         v["report"]["channels"][0]["segments"]
@@ -380,7 +380,7 @@ fn correlate_json_preserves_context_errors_and_no_reference_reason() {
     assert_eq!(v["findings"]["warning"], "2");
     assert_eq!(
         v["report"]["correlation"],
-        serde_json::json!({"any":{"clock":null,"issue":"time needs context: unknown year at calendar boundary"},"answers":[]})
+        serde_json::json!({"any":{"network_time":null,"clock":null,"issue":"time needs context: unknown year at calendar boundary"},"answers":[]})
     );
     let mut bytes = (0..6)
         .flat_map(|rtc| year_boundary_packet(rtc, 365, 23, 59, 50 + rtc as u8))
@@ -394,7 +394,7 @@ fn correlate_json_preserves_context_errors_and_no_reference_reason() {
     let (_, v, _) = Input::bytes(&bytes).json_at(12);
     assert_eq!(
         v["report"]["correlation"]["answers"],
-        serde_json::json!([{"channel":7,"segment":"1","labelled":true,"clock":null,"issue":"time needs context: unknown year at calendar boundary"}])
+        serde_json::json!([{"channel":7,"segment":"1","labelled":true,"network_time":null,"clock":null,"issue":"time needs context: unknown year at calendar boundary"}])
     );
     // §11.2.1.1: valid PCM header, zero Data Length, checksum EB25+18+900=F43D.
     let (_, v, _) = Input::bytes(&[
@@ -403,7 +403,7 @@ fn correlate_json_preserves_context_errors_and_no_reference_reason() {
     .json_at(0);
     assert_eq!(
         v["report"]["correlation"],
-        serde_json::json!({"any":{"clock":null,"issue":"No time reference points found in file"},"answers":[]})
+        serde_json::json!({"any":{"network_time":null,"clock":null,"issue":"No time reference points found in file"},"answers":[]})
     );
 }
 #[test]

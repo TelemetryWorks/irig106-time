@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 struct Candidate {
     point: ReferencePoint,
     arrival: usize,
+    network_time: Option<super::NetworkFacts>,
     basis: Option<&'static str>,
 }
 struct Group {
@@ -98,7 +99,7 @@ impl TargetReferences {
         time: AbsoluteTime,
         arrival: usize,
     ) {
-        self.observe_tagged_at(channel_id, rtc, time, arrival, None);
+        self.observe_tagged_at(channel_id, rtc, time, arrival, None, None);
     }
     pub(super) fn observe_tagged_at(
         &mut self,
@@ -107,6 +108,7 @@ impl TargetReferences {
         time: AbsoluteTime,
         arrival: usize,
         basis: Option<&'static str>,
+        network_time: Option<super::NetworkFacts>,
     ) {
         let candidate = Candidate {
             point: ReferencePoint {
@@ -116,6 +118,7 @@ impl TargetReferences {
             },
             arrival,
             basis,
+            network_time,
         };
         self.arrivals = self.arrivals.max(arrival + 1);
         self.channels
@@ -124,6 +127,12 @@ impl TargetReferences {
             .observe(self.target, candidate);
     }
     pub(super) fn basis(&self, channel: Option<u16>) -> Option<&'static str> {
+        self.selected(channel).and_then(|c| c.basis)
+    }
+    pub(super) fn network_time(&self, channel: Option<u16>) -> Option<super::NetworkFacts> {
+        self.selected(channel).and_then(|c| c.network_time)
+    }
+    fn selected(&self, channel: Option<u16>) -> Option<&Candidate> {
         let mut arrivals: Vec<_> = self
             .channels
             .iter()
@@ -155,7 +164,7 @@ impl TargetReferences {
         } else {
             i
         };
-        refs[selected].basis
+        Some(refs[selected])
     }
     pub(super) fn covers(&self, channel: u16) -> bool {
         self.channels
@@ -215,6 +224,7 @@ mod basis_tests {
                     AbsoluteTime::new(100, 12, 0, 0, marker as u32).unwrap(),
                     n,
                     basis,
+                    None,
                 );
             }
             for channel in [None, Some(0), Some(1)] {

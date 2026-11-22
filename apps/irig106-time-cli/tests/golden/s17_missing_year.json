@@ -124,7 +124,7 @@
     "total_packets": "1"
   },
   "schema": "telemetryworks/irigtime-report",
-  "schema_revision": 5,
+  "schema_revision": 6,
   "schema_status": "stable",
   "schema_version": 1,
   "tool": {

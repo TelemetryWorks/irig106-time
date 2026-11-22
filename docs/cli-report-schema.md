@@ -1,4 +1,4 @@
-# irigtime JSON report, stable v1, revision 5
+# irigtime JSON report, stable v1, revision 6
 
 The [canonical producer schema](../apps/irig106-time-cli/schema/irigtime-report-v1.schema.json)
 is packaged with the CLI. The [docs snapshot](schema/irigtime-report-v1.schema.json)
@@ -150,3 +150,18 @@ A revision-4 consumer that does not know this new basis treats the view as
 unsupported rather than rejecting the version-1 document. The regression uses
 the frozen revision-4 enum set, not the producer's expanded set. CSV stays
 basis-free; stale status is available through findings and the JSON views.
+
+
+## Protocol/status facts (revision 6)
+
+`report.rows[].network_time` records that packet's Format2 CSDW fields, separately
+from its numeric clock's selected source. It remains present for reserved TS/NTF
+and missing conversion context. Null means non-F2 or missing four-byte CSDW.
+`report.correlation.any.network_time` and `answers[].network_time` instead record
+the selected reference, including closed reset segments. They are null without
+an applicable selected F2 answer. Keys are `ntf` (raw0..15), `protocol` (NTP,
+IEEE1588-2002, IEEE1588-2008, reserved), `ts` (raw0..15), `status` (not-valid,
+valid, reserved). Facts never establish data-channel association or make an
+invalid reference usable. Older consumers ignore this additive field. Timeline
+and correlate text append the same protocol/TS facts. CSV awaits a separately
+approved column-contract change and stays unchanged here.
