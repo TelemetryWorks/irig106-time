@@ -2,9 +2,11 @@
 //! Effective CLI compatibility policy, not a fabricated library SharedPolicy.
 use super::*;
 use serde_json::{Value, json};
-pub(super) fn value(r: &report::Report<'_>) -> Value {
+pub(super) fn value(r: &report::Report<'_>, ntp_era: Option<i64>) -> Value {
     let table = r.leap_table.metadata();
     json!({"id":"telemetryworks/irigtime-cli-nearest-v1","defaults_id":"telemetryworks/irigtime-cli-defaults-v1",
+        "ntp_era_source":if ntp_era.is_some() {"caller-declared"} else {"none"},
+        "ntp_era_inference":"disabled",
         "reference_selection":"nearest-reference-counter-offset","drift_correction":false,
         "reference_window_ns":r.reference_window_ns.to_string(),"reference_cap":REFERENCE_CAP.get().to_string(),
         "finding_sample_cap":FINDING_SAMPLE_LIMIT.to_string(),"jump_sample_cap":JUMP_SAMPLE_LIMIT.to_string(),

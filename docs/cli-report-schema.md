@@ -208,12 +208,19 @@ window/cap coupling is tested against instantiated channel caches and actual
 pooled evictions, not just the main cache or a repeated default literal.
 
 
-Revision8 adds nullable `options.ntp_era` (signed i64 decimal string) and the
+Revision8 adds nullable `options.ntp_era` (decimal string -14..=59) and the
 UTC basis values `caller-declared era`, with `, leap-ambiguous` or
 `, leap coverage uncertain` when applicable. The explicit declaration applies
 to all NTP packets in the input; it never converts invalid TS or affects PTP/F1.
 No option means no nonzero NTP conversion, even with dated F1 references.
 All-zero raw words are TF-029 unknown/unsynchronized, independent of era;
-TF-030 keeps the ambiguous mapped value. Counts/fractions use the checked
+TF-030 keeps the ambiguous mapped value. Seconds0 with a nonzero fraction is
+not the sentinel: with declared era0 it can map1900-01-01, but without a declaration
+it remains needs-context (coordinator-confirmed2026-11-22, RDG-012).
+`report.policy.ntp_era_source` is `caller-declared` iff the option is present,
+otherwise `none`; `ntp_era_inference` is always `disabled`. These are additive
+within unreleased revision8. The era range includes exactly those2^32-second
+spans overlapping calendar years0..=9999; individual out-of-calendar instants
+still need context. Counts/fractions use the checked
 RDG-012 converter, never a TAI offset. Earlier consumers ignore the new option
 and treat unknown basis values as unsupported views under the frozen-v1 rule.

@@ -257,6 +257,15 @@ fn era_syntax_errors_precede_input_and_extreme_values_never_panic() {
         let v: Value = serde_json::from_str(&out).unwrap();
         assert_eq!(v["options"]["ntp_era"], era);
     }
+    // Exact calendar endpoints within the two partially supported eras.
+    for (era, seconds, year, day) in [("-14", 171311744, 0, 1), ("59", 2208219135, 9999, 365)] {
+        let edge = Input::new(seconds, 0);
+        let (exit, out, _) = edge.output("timeline", true, Some(era), "never");
+        assert_eq!(exit, ExitClass::Success);
+        let v: Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(v["report"]["rows"][0]["clock"]["year"], year);
+        assert_eq!(v["report"]["rows"][0]["clock"]["day"], day);
+    }
     // Proleptic Gregorian year0 inclusive to year10000 exclusive, relative1900:
     // [-59958230400,255611289600) seconds. Floor-divide endpoints by2^32.
     for (era, expected) in [

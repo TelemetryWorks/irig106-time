@@ -127,6 +127,8 @@
         "source": "https://hpiers.obspm.fr/iers/bul/bulc/Leap_Second.dat (Bulletin C72)",
         "supported_start_unix_s": "63072000"
       },
+      "ntp_era_inference": "disabled",
+      "ntp_era_source": "none",
       "query_candidates_per_channel": "6",
       "query_reference_storage": "target-brackets",
       "reference_cap": "1024",

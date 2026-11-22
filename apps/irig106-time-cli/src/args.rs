@@ -141,7 +141,14 @@ pub fn parse<S: AsRef<OsStr>>(raw: &[S]) -> Result<Request, String> {
                 if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
                     return Err("NTP era must be a signed decimal integer".into());
                 }
-                parsed.ntp_era = Some(text.parse().map_err(|_| "NTP era out of i64 range")?);
+                let era = text.parse().map_err(|_| "NTP era out of i64 range")?;
+                // Gregorian years0..=9999 relative to1900 span seconds
+                // [-59958230400,255611289600). Floor-dividing by2^32 gives
+                // intersecting eras -14..=59; individual dates still checked.
+                if !(-14..=59).contains(&era) {
+                    return Err("NTP era must overlap calendar years 0..=9999 (-14..=59)".into());
+                }
+                parsed.ntp_era = Some(era);
             }
             "--output" => parsed.output = Some(PathBuf::from(value)),
             "--fail-on" => parsed.fail_on = threshold(value)?,

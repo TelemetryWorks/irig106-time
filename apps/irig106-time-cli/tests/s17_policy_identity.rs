@@ -27,6 +27,7 @@ fn every_json_view_records_effective_cli_defaults_even_without_findings() {
     std::fs::write(&input.0, p).unwrap();
     let expected = json!({
         "id":"telemetryworks/irigtime-cli-nearest-v1","defaults_id":"telemetryworks/irigtime-cli-defaults-v1",
+        "ntp_era_source":"none","ntp_era_inference":"disabled",
         "reference_selection":"nearest-reference-counter-offset","drift_correction":false,
         "reference_window_ns":"30000000000","reference_cap":"1024",
         "finding_sample_cap":"20","jump_sample_cap":"20",

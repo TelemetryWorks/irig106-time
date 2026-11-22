@@ -155,10 +155,11 @@
           "$ref": "#/$defs/maybe_unsigned"
         },
         "ntp_era": {
-          "description": "Explicit caller NTP era for the whole input, signed i64 decimal string; null means no era declaration and no conversion/guess for nonzero NTP. PTP/F1 unaffected.",
+          "description": "Explicit caller NTP era for the whole input, decimal string -14..=59 (eras overlapping Gregorian years0..=9999); null means no era declaration and no conversion/guess for nonzero NTP. PTP/F1 unaffected.",
           "anyOf": [
             {
-              "$ref": "#/$defs/signed"
+              "type": "string",
+              "pattern": "^(?:-(?:[1-9]|1[0-4])|[0-9]|[1-5][0-9])$"
             },
             {
               "type": "null"
@@ -1109,10 +1110,12 @@
     "report_policy": {
       "description": "Versioned effective CLI settings; current legacy correlation is reported honestly, not relabelled as a native recording policy.",
       "type": "object", "additionalProperties": false,
-      "required": ["id", "defaults_id", "reference_selection", "drift_correction", "reference_window_ns", "reference_cap", "query_reference_storage", "query_candidates_per_channel", "reset_backward_step_ns", "reset_backward_comparison", "reset_run_references", "reset_run_order", "leap_table", "finding_sample_cap", "jump_sample_cap"],
+      "required": ["id", "defaults_id", "reference_selection", "drift_correction", "reference_window_ns", "reference_cap", "query_reference_storage", "query_candidates_per_channel", "reset_backward_step_ns", "reset_backward_comparison", "reset_run_references", "reset_run_order", "leap_table", "finding_sample_cap", "jump_sample_cap", "ntp_era_source", "ntp_era_inference"],
       "properties": {
         "id": {"description": "Versioned CLI correlation algorithm identity; deliberately distinct from library SharedPolicy IDs. Change on algorithm change.", "type": "string", "minLength": 1},
         "defaults_id": {"description": "Versioned CLI defaults catalog; change when fixed defaults change. Effective command overrides remain in options.", "type": "string", "minLength": 1},
+        "ntp_era_source": {"description": "Explicit era context for this input: caller-declared iff options.ntp_era is non-null, otherwise none. All-zero raw NTP remains the unsynchronized sentinel.", "enum": ["caller-declared", "none"]},
+        "ntp_era_inference": {"description": "No pivot, era0 guess, host clock or dated F1 inference is used by this CLI.", "const": "disabled"},
         "reference_selection": {"description": "Actual legacy nearest-reference numeric counter-offset algorithm, not Standard/Interpolate mode.", "enum": ["nearest-reference-counter-offset"]},
         "drift_correction": {"description": "Whether the CLI numeric correlator applies drift correction; currently false.", "type": "boolean"},
         "reference_window_ns": {"description": "Actual live-cache age window in ns; main global age and isolated per-channel ages share the default. Counter queries use separate target brackets.", "$ref": "#/$defs/unsigned"},

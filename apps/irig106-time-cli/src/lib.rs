@@ -1615,7 +1615,7 @@ fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
     )?;
     writeln!(
         stdout,
-        "--ntp-era <N>: explicit signed i64 era on all file commands; no era guessing; caller-declared era labels."
+        "--ntp-era <N>: explicit decimal era -14..=59 on all file commands; no era guessing; caller-declared era labels."
     )?;
     writeln!(stdout, "Examples:")?;
     writeln!(stdout, "  irigtime summary flight_042.ch10")?;

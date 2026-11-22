@@ -11,8 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add `--ntp-era <N>` on file commands; checked conversion labels UTC as
   caller-declared era. Without it, nonzero NTP stays needs-context; no pivots,
-  host clock or era0 guessing. Preserve TF-029/030 and per-clock uncertainty.
-- Schema revision8 adds `options.ntp_era` and caller-era basis values. No CSV
+  host clock or era0 guessing. Accept exactly eras -14..=59 overlapping calendar
+  years0..=9999; reject others with usage exit2 before input. Era1 ends2172,
+  not2104. Only seconds AND fraction zero are the sentinel; with declared era0,
+  seconds0/nonzero fraction legitimately dates1900-01-01. Preserve TF-029/030
+  and per-clock uncertainty.
+- Schema revision8 adds `options.ntp_era`, caller-era basis values and effective
+  policy `ntp_era_source` (caller-declared/none), `ntp_era_inference` (disabled). No CSV
   column change; PTP/F1 semantics and numeric correlation are unchanged.
 
 ### JSON effective policy/defaults identity

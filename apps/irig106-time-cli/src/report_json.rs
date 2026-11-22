@@ -268,7 +268,7 @@ fn document(r: &Report<'_>, args: &Args, size: u64) -> Value {
             "info": decimal(r.finding_counts[0]), "omitted": decimal(r.omitted_findings()),
             "samples": r.finding_samples.iter().map(|s| json!({"level": level(Some(s.level)), "code": s.code,
                 "message": s.message, "channel": s.channel, "packet": s.packet.map(decimal)})).collect::<Vec<_>>()},
-        "report": {"policy":super::report_policy::value(r),"correlation": query_metadata(r), "qualification": "observed inventory; qualified joining/basis pending", "rows": if args.command == "timeline" { Some(Vec::<Value>::new()) } else { None },
+        "report": {"policy":super::report_policy::value(r, args.ntp_era),"correlation": query_metadata(r), "qualification": "observed inventory; qualified joining/basis pending", "rows": if args.command == "timeline" { Some(Vec::<Value>::new()) } else { None },
             "total_packets": decimal(r.total_packets), "time_packets": decimal(r.time_packets),
             "references_seen": decimal(r.references_seen), "reference_count": decimal(r.reference_count),
             "references_evicted": decimal(r.references_evicted), "reset_count": decimal(r.reset_count),
