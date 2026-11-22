@@ -18,6 +18,7 @@ impl SegmentAnswers {
             matches: BTreeMap::new(),
         })
     }
+    #[cfg(test)]
     pub(super) fn record(
         &mut self,
         ch: u16,
@@ -25,8 +26,19 @@ impl SegmentAnswers {
         labelled: bool,
         answer: Result<AbsoluteTime, TimeError>,
     ) -> io::Result<bool> {
-        let bytes =
-            serde_json::to_vec(&Answer::new(ch, segment, labelled, answer).private_value())?;
+        self.record_with_basis(ch, segment, labelled, answer, None)
+    }
+    pub(super) fn record_with_basis(
+        &mut self,
+        ch: u16,
+        segment: usize,
+        labelled: bool,
+        answer: Result<AbsoluteTime, TimeError>,
+        basis: Option<&'static str>,
+    ) -> io::Result<bool> {
+        let mut row = Answer::new(ch, segment, labelled, answer);
+        row.basis = basis;
+        let bytes = serde_json::to_vec(&row.private_value())?;
         if bytes.len() > 4096 {
             return Err(io::Error::other("private query record too large"));
         }

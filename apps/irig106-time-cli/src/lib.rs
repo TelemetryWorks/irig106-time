@@ -41,6 +41,7 @@ use irig106_time::network_time::{LeapSecondTable, TimeF2Csdw, parse_time_f2_payl
 use irig106_time::*;
 /// Strict, filesystem-free argument parsing.
 pub mod args;
+mod clock_basis;
 mod correlate_report;
 mod csv_spool;
 /// Bounded raw packet transport; command integration follows in S16b.
@@ -171,6 +172,8 @@ struct Ch10TimeScanner {
     correlator: StreamingTimeCorrelator,
     query_refs: Option<target_refs::TargetReferences>,
     query_any: Option<irig106_time::Result<AbsoluteTime>>,
+    query_any_basis: Option<&'static str>,
+    clock_basis: clock_basis::Window,
     query_answers: Vec<correlate_report::Answer>,
     segment_answers: Option<segment_answers::SegmentAnswers>,
     segment_error: Option<io::Error>,
@@ -207,6 +210,8 @@ impl Ch10TimeScanner {
             finding_location: None,
             query_refs: None,
             query_any: None,
+            query_any_basis: None,
+            clock_basis: clock_basis::Window::default(),
             query_answers: Vec::new(),
             segment_answers: None,
             segment_error: None,
@@ -332,13 +337,26 @@ impl Ch10TimeScanner {
                 return Err(error.into());
             }
             if resolve_all && limit.is_none_or(|n| self.total_packets < n) {
+                let decoded = self.references_seen != prior_refs;
+                let abs_time = self.resolve_row(&hdr, decoded);
+                let basis = abs_time.and_then(|_| {
+                    if (self.reset_count != 0 || self.pending_channels != 0) && decoded {
+                        self.time_channels
+                            .get(&hdr.channel_id)
+                            .and_then(|c| c.last_basis)
+                            .and_then(clock_basis::ptp)
+                    } else {
+                        self.basis_for(hdr.rtc, None)
+                    }
+                });
                 let row = ResolvedPacket {
                     packet_num: self.total_packets,
                     offset: packet.offset,
                     channel_id: hdr.channel_id,
                     data_type: hdr.data_type,
                     rtc: hdr.rtc,
-                    abs_time: self.resolve_row(&hdr, self.references_seen != prior_refs),
+                    abs_time,
+                    basis,
                 };
                 if let Some(write_row) = emit.as_mut() {
                     write_row(&row)?;
@@ -388,6 +406,18 @@ impl Ch10TimeScanner {
             }
         }
         self.correlator.correlate(rtc, channel)
+    }
+    fn basis_for(&self, rtc: Rtc, channel: Option<u16>) -> Option<&'static str> {
+        if let Some(q) = &self.query_refs {
+            if q.target == rtc {
+                return q.basis(channel);
+            }
+        }
+        if channel.is_none() {
+            self.clock_basis.nearest(rtc)
+        } else {
+            None
+        }
     }
     fn resolve(&mut self, rtc: Rtc, channel: Option<u16>) -> Option<AbsoluteTime> {
         match self.correlate(rtc, channel) {
@@ -474,9 +504,17 @@ impl Ch10TimeScanner {
         }
         self.correlator
             .add_reference(channel, point.rtc, point.time);
+        self.clock_basis
+            .observe(channel, point.rtc, point.basis, &self.correlator);
         self.isolated.observe(channel, point.rtc, point.time);
         if let Some(query) = self.query_refs.as_mut() {
-            query.observe_at(channel, point.rtc, point.time, point.index);
+            query.observe_tagged_at(
+                channel,
+                point.rtc,
+                point.time,
+                point.index,
+                clock_basis::ptp(point.basis),
+            );
         }
     }
     fn report_late(&mut self, channel: u16, late: Vec<ObservedReference>) {
@@ -547,6 +585,7 @@ impl Ch10TimeScanner {
         self.reset_count += 1;
         self.close_segment(channel, true);
         self.correlator.clear_channel(channel);
+        self.clock_basis.clear(channel);
         self.isolated.clear(channel);
         if let Some(query) = self.query_refs.as_mut() {
             query.clear_channel(channel);
@@ -644,6 +683,10 @@ impl Ch10TimeScanner {
         }
         let segment = self.time_channels.get(&channel).map_or(1, |c| c.segment);
         let answer = query.correlate(Some(channel));
+        let basis = answer
+            .as_ref()
+            .ok()
+            .and_then(|_| query.basis(Some(channel)));
         if let Err(error) = &answer {
             self.note(decode_level(error), format!("Segment query: {error}"));
         }
@@ -659,7 +702,7 @@ impl Ch10TimeScanner {
         let Some(report) = self.segment_answers.as_mut() else {
             return;
         };
-        match report.record(channel, segment, labelled, answer) {
+        match report.record_with_basis(channel, segment, labelled, answer, basis) {
             Ok(true) => self.note(
                 Severity::Warning,
                 format!("RTC is ambiguous across reset segments on channel {channel}"),
@@ -893,25 +936,30 @@ impl Ch10TimeScanner {
             }
         };
 
-        // Same compatibility conversion as StreamingTimeCorrelator, performed
-        // before eviction so late PTP references can still bracket a known query.
+        // Checked conversion before eviction; retain the table-currency warning
+        // while keeping D7's last-known-offset UTC and exact original TAI.
         let converted = match network_time {
             irig106_time::network_time::NetworkTime::Ntp(_) => Err(TimeError::NeedsContext {
                 context: "NTP era/basis required; use ntp::convert_ntp",
             }),
             irig106_time::network_time::NetworkTime::Ptp(ptp) => {
                 self.leap_table.convert_ptp(ptp).and_then(|result| {
-                    result
-                        .utc()
-                        .ok_or(TimeError::NeedsContext {
-                            context: "no known applicable TAI-UTC offset",
-                        })?
-                        .to_absolute()
-                        .map(|t| t.value)
+                    let utc = result.utc().ok_or(TimeError::NeedsContext {
+                        context: "no known applicable TAI-UTC offset",
+                    })?.to_absolute()?.value;
+                    if result.status() == irig106_time::leap::PtpConversionStatus::PossiblyOutOfDate {
+                        self.note_code(Severity::Warning, Some("TF-021"), format!(
+                            "TF-021: UTC {} possibly out of date (value kept); raw TAI={}s+{}ns; TAI-UTC={}s; table={}; known through Unix={}s",
+                            fmt_abs_time(&utc), result.raw().seconds, result.raw().nanoseconds,
+                            result.basis().offset.map(|o|o.get().to_string()).unwrap_or_else(||"unknown".into()),
+                            result.basis().table.id, result.basis().table.known_current_through.get(),
+                        ));
+                    }
+                    Ok((utc,if result.status()==irig106_time::leap::PtpConversionStatus::PossiblyOutOfDate {clock_basis::STALE} else {clock_basis::COVERED}))
                 })
             }
         };
-        let abs_time = match converted {
+        let (abs_time, basis) = match converted {
             Ok(t) => t,
             Err(e) => {
                 self.note_decode(
@@ -924,7 +972,7 @@ impl Ch10TimeScanner {
                 return;
             }
         };
-        self.observe_reference(hdr, abs_time, "UTC (from TAI via leap table)");
+        self.observe_reference(hdr, abs_time, basis);
         // Update channel info
         let info = self
             .time_channels
@@ -932,11 +980,11 @@ impl Ch10TimeScanner {
             .or_insert_with(|| TimeChannelInfo::new(hdr.channel_id));
         if info.first_time.is_none() {
             info.first_time = Some(abs_time);
-            info.first_basis = Some("UTC (from TAI via leap table)");
+            info.first_basis = Some(basis);
             info.first_rtc = Some(hdr.rtc);
         }
         info.last_time = Some(abs_time);
-        info.last_basis = Some("UTC (from TAI via leap table)");
+        info.last_basis = Some(basis);
         info.last_rtc = Some(hdr.rtc);
     }
 }
@@ -1359,6 +1407,10 @@ fn cmd_correlate(
         if let Err(e) = &any {
             scanner.note(decode_level(e), format!("Correlation query: {e}"));
         }
+        scanner.query_any_basis = any
+            .as_ref()
+            .ok()
+            .and_then(|_| scanner.basis_for(target, None));
         scanner.query_any = Some(any);
         let channels: Vec<_> = scanner
             .time_channels
@@ -1368,9 +1420,9 @@ fn cmd_correlate(
             .collect();
         for ch in channels {
             if let Some(time) = scanner.resolve(target, Some(ch)) {
-                scanner
-                    .query_answers
-                    .push(correlate_report::Answer::new(ch, 1, false, Ok(time)));
+                let mut answer = correlate_report::Answer::new(ch, 1, false, Ok(time));
+                answer.basis = scanner.basis_for(target, Some(ch));
+                scanner.query_answers.push(answer);
             }
         }
     }
@@ -1466,7 +1518,7 @@ fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
     )?;
     writeln!(
         stdout,
-        "--format <text|json>: summary/channels/jumps/timeline/correlate; default text. Schema stable v1, revision 4."
+        "--format <text|json>: summary/channels/jumps/timeline/correlate; default text. Schema stable v1, revision 5."
     )?;
     writeln!(stdout, "Examples:")?;
     writeln!(stdout, "  irigtime summary flight_042.ch10")?;

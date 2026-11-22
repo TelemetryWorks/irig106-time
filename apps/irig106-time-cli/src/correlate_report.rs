@@ -1,5 +1,5 @@
 //! Shared native counter-query report; text/JSON CLI-106 clauses only.
-use super::{decode_level, fmt_abs_time, segment_answers::SegmentAnswers};
+use super::{clock_basis, decode_level, segment_answers::SegmentAnswers};
 use irig106_time::{AbsoluteTime, Rtc, TimeError};
 use serde_json::{Value, json};
 use std::io::{self, Write};
@@ -10,6 +10,7 @@ pub(super) struct Answer {
     pub(super) labelled: bool,
     pub(super) time: Option<AbsoluteTime>,
     pub(super) issue: Option<String>,
+    pub(super) basis: Option<&'static str>,
 }
 impl Answer {
     pub(super) fn new(
@@ -28,12 +29,17 @@ impl Answer {
             labelled,
             time,
             issue,
+            basis: None,
         }
     }
     pub(super) fn write_text(&self, out: &mut dyn Write) -> io::Result<()> {
-        let value = self.time.as_ref().map(fmt_abs_time).unwrap_or_else(|| {
-            format!("unresolved: {}", self.issue.as_deref().unwrap_or_default())
-        });
+        let value = self
+            .time
+            .as_ref()
+            .map(|t| clock_basis::text(t, self.basis))
+            .unwrap_or_else(|| {
+                format!("unresolved: {}", self.issue.as_deref().unwrap_or_default())
+            });
         if self.labelled {
             writeln!(
                 out,
@@ -47,7 +53,7 @@ impl Answer {
     // Internal, exclusively-created scratch records, not a published JSON format
     // or a report loader. One bounded record is decoded at a time in the CLI.
     pub(super) fn private_value(&self) -> Value {
-        json!({"channel":self.channel, "segment":self.segment.to_string(), "labelled":self.labelled,
+        json!({"channel":self.channel, "segment":self.segment.to_string(), "labelled":self.labelled,"basis":self.basis,
             "time":self.time.map(|t| json!([t.day_of_year(),t.hours(),t.minutes(),t.seconds(),t.nanoseconds(),t.year()])), "issue":self.issue})
     }
     pub(super) fn from_private(v: Value) -> io::Result<Self> {
@@ -89,7 +95,18 @@ impl Answer {
         if time.is_some() == issue.is_some() {
             return Err(invalid());
         }
+        let basis = if v["basis"].is_null() {
+            None
+        } else {
+            Some(
+                v["basis"]
+                    .as_str()
+                    .and_then(clock_basis::ptp)
+                    .ok_or_else(invalid)?,
+            )
+        };
         Ok(Self {
+            basis,
             channel: small(&v["channel"])?,
             segment,
             labelled: v["labelled"].as_bool().ok_or_else(invalid)?,
@@ -107,6 +124,7 @@ fn small<T: TryFrom<u64>>(v: &Value) -> io::Result<T> {
 pub(super) struct Query<'a> {
     pub(super) target: Rtc,
     pub(super) any: Option<&'a Result<AbsoluteTime, TimeError>>,
+    pub(super) any_basis: Option<&'static str>,
     pub(super) answers: &'a [Answer],
     pub(super) segments: Option<&'a SegmentAnswers>,
 }
@@ -123,7 +141,11 @@ impl Query<'_> {
     pub(super) fn write_answers(&self, out: &mut dyn Write) -> io::Result<()> {
         if let Some(answer) = self.any {
             match answer {
-                Ok(t) => writeln!(out, "  Any channel  → {}", fmt_abs_time(t))?,
+                Ok(t) => writeln!(
+                    out,
+                    "  Any channel  → {}",
+                    clock_basis::text(t, self.any_basis)
+                )?,
                 Err(e) => writeln!(out, "  Any channel  → {:?}: {e}", decode_level(e))?,
             }
         }

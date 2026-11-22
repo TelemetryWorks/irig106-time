@@ -1,4 +1,4 @@
-# irigtime JSON report, stable v1, revision 4
+# irigtime JSON report, stable v1, revision 5
 
 The [canonical producer schema](../apps/irig106-time-cli/schema/irigtime-report-v1.schema.json)
 is packaged with the CLI. The [docs snapshot](schema/irigtime-report-v1.schema.json)
@@ -8,7 +8,8 @@ contract. It is CLI-owned (ADR-0019), not an IRIG 106 format
 or a library serialization API. The #78 schema review selected the shared
 `telemetryworks/irigtime-report` envelope; the inventory contract was frozen as stable v1,
 revision 2. Revision 3 added timeline packet rows/limit. Revision 4 adds
-correlate query metadata/results, retaining previous field types, units and meanings.
+correlate query metadata/results, retaining previous field types, units and meanings. Revision 5 adds the
+coordinator-approved `derived, stale leap table` basis value.
 
 `summary`, `channels`, `jumps`, `timeline` and `correlate` accept `--format text|json`, default `text`.
 Both render the same scanner/Report facts. `channels` does not evaluate jumps:
@@ -17,6 +18,9 @@ Timeline also leaves jumps/threshold null. `options.limit` is its effective
 positive row cap as a decimal string; it is null for inventory commands.
 Findings are command-specific; evaluating jumps can add findings. `highest_level`
 is independent of `--fail-on`; that option only determines exit 1.
+Stale PTP conversions raise TF-021 warning with the converted UTC, raw TAI,
+applied offset and table currency/identity in the packet-located sample message.
+UTC is kept, explicitly labelled possibly out of date; schema revision stays 4.
 
 The envelope always contains `schema`, `schema_version`, `schema_revision`,
 `schema_status`, `tool`, `input`, `options`, `highest_level`, `findings`, `report`.
@@ -70,12 +74,15 @@ time rather than retaining a JSON DOM for all rows, in file order, at most `--li
 packet/channel/RTC, `offset_bytes` and `data_type`, direct `clock` or null, and
 `kind` absolute/counter-only. An absent clock has an issue directing the reader
 to command findings; zero is never substituted. Candidate segment answers stay
-empty in timeline. CSV JSON and packet-row ambiguity candidates remain reserved.
+empty in timeline. Packet-row ambiguity candidates remain reserved. CSV is its
+own machine format, not another JSON view; see [CSV columns](cli-csv-schema.md).
 
-Current packet correlation does not retain a qualified source lineage: row
-clocks therefore explicitly keep unknown scale/unresolved basis, even when an
-inventory time-channel clock separately has a stated scale. This preserves the
-existing numeric projection without inventing a data-to-time-channel link.
+Packet/query clocks retain covered or stale PTP conversion basis from the
+selected numeric reference, independently of the channel's latest observation.
+Other unqualified lineage stays unknown/unresolved. This does not establish a
+data-to-time-channel relationship or change counter selection. Retained basis
+metadata shares the existing reference cap/evictions; closed query segments keep
+it in their private spool.
 `association` uses the seam vocabulary association_unestablished /
 association_conflicting / association_evidenced; timeline emits unestablished
 only. Conflicting is unresolved for answers, never an automatic source pick.
@@ -120,7 +127,25 @@ Ordinary answer order is channel ID; reset answers retain closure order then fin
 channel order, matching text. Projection holds one answer Value at a time.
 
 These are counter-selection policy answers, not evidence of a data/time-channel
-relationship. Clock scale/basis remain unknown/unresolved until lineage is
-qualified; no UTC/year/association assumption is added. The reset query golden
-covers two possible clocks and an unaffected channel. CSV JSON, stale-leap-table
-and complete multi-command reset adapter goldens remain subsequent work.
+relationship. Selected PTP reference conversions retain their UTC/table basis;
+other unqualified scale/basis remains unknown/unresolved. No data association
+is inferred. The reset query golden
+covers two possible clocks and an unaffected channel. Complete multi-command
+adapter qualification remains subsequent work. CSV has its own documented
+columns/quoting rather than a JSON wrapper.
+
+
+## Stale conversion labels (revision 5)
+
+Every channel/segment/packet/query clock derived from a selected stale PTP
+reference uses `basis: "derived, stale leap table"`. Covered PTP references keep
+`derived, leap table`. Text uses `UTC (from TAI via stale leap table, possibly out
+of date)` wherever that conversion is displayed. Covered PTP timeline and
+correlate values now also gain `UTC (from TAI via leap table)` in text, and
+their JSON row/answer clocks carry UTC / `derived, leap table`. These covered
+output changes are coordinator-accepted. TF-021 findings still retain raw
+operands/currency details.
+A revision-4 consumer that does not know this new basis treats the view as
+unsupported rather than rejecting the version-1 document. The regression uses
+the frozen revision-4 enum set, not the producer's expanded set. CSV stays
+basis-free; stale status is available through findings and the JSON views.
