@@ -28,19 +28,21 @@ fn standalone_network_boundary_keeps_real_session_and_checks_scope() {
     }
     .decode()
     .unwrap();
+    let admit = |o, k, session, p: &OfflinePolicy, raw| {
+        admit_format2_reference(
+            o,
+            NtpContext::new(session),
+            LeapSecondTable::builtin(),
+            k,
+            p,
+            raw,
+        )
+    };
     let policy = OfflinePolicy {
         include_undeclared: true,
         ..Default::default()
     };
-    let (r, findings) = admit_format2_reference(
-        observation.clone(),
-        NtpContext::new(2),
-        LeapSecondTable::builtin(),
-        key,
-        &policy,
-        false,
-    )
-    .unwrap();
+    let (r, findings) = admit(observation.clone(), key, 2, &policy, false).unwrap();
     assert_eq!(r.key, key);
     assert!(r.admitted);
     assert!(r.input.network.as_ref().unwrap().reference().is_eligible());
@@ -51,37 +53,24 @@ fn standalone_network_boundary_keeps_real_session_and_checks_scope() {
         PacketKey { packet: 8, ..key },
         PacketKey { ticks: 124, ..key },
     ] {
-        assert!(
-            admit_format2_reference(
-                observation.clone(),
-                NtpContext::new(2),
-                LeapSecondTable::builtin(),
-                bad,
-                &policy,
-                false
-            )
-            .is_err()
-        );
+        assert!(admit(observation.clone(), bad, bad.session, &policy, false).is_err());
     }
-    assert!(
-        admit_format2_reference(
-            observation.clone(),
-            NtpContext::new(1),
-            LeapSecondTable::builtin(),
-            key,
-            &policy,
-            false
-        )
-        .is_err()
-    );
-    let (r, _) = admit_format2_reference(
-        observation,
-        NtpContext::new(2),
-        LeapSecondTable::builtin(),
-        key,
-        &OfflinePolicy::default(),
-        false,
-    )
-    .unwrap();
+    assert!(admit(observation.clone(), key, 1, &policy, false).is_err());
+    let wrapped = PacketKey {
+        ticks: (1i128 << 48) + 123,
+        ..key
+    };
+    let (r, _) = admit(observation.clone(), wrapped, 2, &policy, true).unwrap();
+    assert_eq!(r.key, wrapped);
+    assert!(r.input.network.as_ref().unwrap().raw_network_rate());
+    let mut bad_policy = policy.clone();
+    bad_policy.version = 0;
+    assert!(admit(observation.clone(), key, 2, &bad_policy, false).is_err());
+    bad_policy = policy.clone();
+    bad_policy.shared = Some(Box::new(
+        irig106_time::policy::SharedPolicy::new(1, Default::default()).unwrap(),
+    ));
+    assert!(admit(observation.clone(), key, 2, &bad_policy, false).is_err());
+    let (r, _) = admit(observation, key, 2, &OfflinePolicy::default(), false).unwrap();
     assert!(!r.admitted);
 }

@@ -351,9 +351,14 @@ impl Ch10TimeScanner {
                     );
                 }
             }
-            if hdr.data_type == DATA_TYPE_TIME_F1 {
+            if matches!(hdr.data_type, DATA_TYPE_TIME_F1 | DATA_TYPE_TIME_F2) {
                 if let Some(native) = &mut self.native_sessions {
-                    native.reference(hdr.channel_id, &packet.body_prefix);
+                    native.reference(
+                        hdr.channel_id,
+                        hdr.data_type,
+                        packet.header.data_type_version,
+                        &packet.body_prefix,
+                    );
                 }
             }
             if self.first_rtc.is_none() {
@@ -1646,7 +1651,7 @@ fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
     )?;
     writeln!(
         stdout,
-        "--format <text|json>: summary/channels/jumps/timeline/correlate; default text. Schema stable v1, revision 10."
+        "--format <text|json>: summary/channels/jumps/timeline/correlate; default text. Schema stable v1, revision 11."
     )?;
     writeln!(
         stdout,
@@ -1798,7 +1803,7 @@ fn dispatch(
         "summary" | "channels" | "jumps" => {
             let mut scanner = Ch10TimeScanner::configured(&args);
             if args.command == "summary" {
-                scanner.native_sessions = Some(native_sessions::NativeSessions::new()?);
+                scanner.native_sessions = Some(native_sessions::NativeSessions::new(args.ntp_era)?);
             }
             scanner.jump_threshold = match args.command.as_str() {
                 "summary" => Some(1_000_000_000),

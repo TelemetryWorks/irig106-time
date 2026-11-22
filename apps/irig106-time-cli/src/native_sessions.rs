@@ -19,14 +19,16 @@ pub(super) struct NativeSessions {
     archive: RefCell<CsvSpool>,
     unavailable: Option<String>,
     quality: super::native_quality::Quality,
+    ntp_era: Option<i64>,
 }
 impl NativeSessions {
-    pub(super) fn new() -> io::Result<Self> {
+    pub(super) fn new(ntp_era: Option<i64>) -> io::Result<Self> {
         Ok(Self {
             clock: SessionClock::new(&OfflinePolicy::default()).map_err(io::Error::other)?,
             archive: RefCell::new(CsvSpool::new(None)?),
             unavailable: None,
-            quality: Default::default(),
+            quality: super::native_quality::Quality::new(ntp_era),
+            ntp_era,
         })
     }
     pub(super) fn observe(&mut self, packet: u64, rtc: Rtc) -> io::Result<Option<String>> {
@@ -44,7 +46,7 @@ impl NativeSessions {
         if let Some(span) = update.closed {
             let mut closed = value(span)?;
             closed["reference_quality"] = self.quality.value();
-            self.quality = Default::default();
+            self.quality = super::native_quality::Quality::new(self.ntp_era);
             let bytes = serde_json::to_vec(&closed)?;
             let mut spool = self.archive.borrow_mut();
             let file = spool.file()?;
@@ -58,10 +60,11 @@ impl NativeSessions {
         }
         Ok(None)
     }
-    pub(super) fn reference(&mut self, channel: u16, payload: &[u8]) {
+    pub(super) fn reference(&mut self, channel: u16, kind: u8, version: u8, payload: &[u8]) {
         if self.unavailable.is_none() {
             if let Some(span) = self.clock.active() {
-                self.quality.observe(span.last, channel, payload);
+                self.quality
+                    .observe(span.last, channel, kind, version, payload);
             }
         }
     }
@@ -138,17 +141,20 @@ impl NativeSessions {
                 ns % 1_000_000_000
             )?;
             let quality = &v["reference_quality"];
-            writeln!(out,"    Format1 candidate quality: includes undeclared channels; packet years only (no session year inference)")?;
+            writeln!(out,"    Format1/2 candidate quality: includes undeclared channels; packet/network dates only (no session year inference)")?;
+            if let Some(era)=quality["ntp_era"].as_str() {writeln!(out,"    NTP: caller-declared era {era}; automatic era inference disabled")?;}
             if let Some(rows) = quality["channels"].as_array() {
                 for q in rows {
                     let interval = q["interval_ns"].as_str().map_or_else(|| "unavailable".to_owned(), |n| format!("{n} ns"));
                     let drift = q["drift_ppm"].as_f64().map_or_else(|| "unavailable".to_owned(), |n| format!("{n} ppm"));
                     writeln!(out,"    Native quality ch{}: valid {}; rejected {}; admitted {}; interval {}; drift {}",q["channel"],field(q,"valid")?,field(q,"rejected")?,field(q,"admitted")?,interval,drift)?;
                     if let Some(reason) = q["unavailable_reason"].as_str() { writeln!(out,"      Unavailable: {reason}")?; }
+                    if let Some(reason)=q["rejection_reason"].as_str(){writeln!(out,"      Rejected reference: {reason}")?;}
                     for name in ["first","last"] {
                         let c = &q[name];
                         if !c.is_null() {
-                            writeln!(out,"      {name}: {:03}:{:02}:{:02}:{:02}.{:09} {} ({}, year {})",c["day"].as_u64().unwrap_or(0),c["hours"].as_u64().unwrap_or(0),c["minutes"].as_u64().unwrap_or(0),c["seconds"].as_u64().unwrap_or(0),c["nanoseconds"].as_u64().unwrap_or(0),c["scale"].as_str().unwrap_or("unknown"),c["basis"].as_str().unwrap_or("unknown"),c["year"].as_u64().map_or_else(||"unknown".to_owned(),|y|y.to_string()))?;
+                            let qualifier=c["ntp_leap_status"].as_str().map_or_else(String::new,|s|format!(" [NTP {s}]"));
+                            writeln!(out,"      {name}: {:03}:{:02}:{:02}:{:02}.{:09} {} ({}, year {}){}",c["day"].as_u64().unwrap_or(0),c["hours"].as_u64().unwrap_or(0),c["minutes"].as_u64().unwrap_or(0),c["seconds"].as_u64().unwrap_or(0),c["nanoseconds"].as_u64().unwrap_or(0),c["scale"].as_str().unwrap_or("unknown"),c["basis"].as_str().unwrap_or("unknown"),c["year"].as_u64().map_or_else(||"unknown".to_owned(),|y|y.to_string()),qualifier)?;
                         }
                     }
                 }

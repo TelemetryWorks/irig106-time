@@ -447,7 +447,18 @@ fn native_network_quality_rejects_unqualified_invalid_and_malformed_observations
             .unwrap()
             .contains("NTP era/basis required")
     );
+    assert!(rows[1]["rejection_reason"].is_null()); // Zero sentinel needs no era.
     assert!(rows[6]["rejection_reason"].is_string());
+    // Owner2026-11-17: nonzero raw fraction remains a real era0 reading,
+    // even when floor rounding produces0ns. Only raw (0,0) is the sentinel.
+    let (_, out) = Input::bytes(&bytes).era_output("summary", true, Some("0"));
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let rows = &v["report"]["native_sessions"]["spans"][0]["reference_quality"]["channels"];
+    assert_eq!(rows[0]["valid"], "1");
+    assert_eq!(rows[0]["first"]["year"], 1900);
+    assert_eq!(rows[0]["first"]["ntp_leap_status"], "coverage-unknown");
+    assert_eq!(rows[1]["valid"], "0");
+    assert!(rows[1]["first"].is_null());
 }
 #[test]
 fn declared_era_is_applied_in_each_native_session() {

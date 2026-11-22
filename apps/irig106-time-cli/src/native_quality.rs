@@ -20,12 +20,28 @@ pub(super) struct Quality {
     channels: BTreeMap<u16, OrderedQuality>,
     pending: Vec<TimelineReference>,
     unavailable: Option<String>,
+    ntp_era: Option<i64>,
+    issues: BTreeMap<u16, String>,
 }
 impl Quality {
+    pub(super) fn new(ntp_era: Option<i64>) -> Self {
+        Self {
+            ntp_era,
+            ..Default::default()
+        }
+    }
+
     pub(super) fn advance(&mut self, high: i128, late_ns: u64) {
         self.drain(Some(high - i128::from(late_ns) / 100));
     }
-    pub(super) fn observe(&mut self, key: PacketKey, channel: u16, payload: &[u8]) {
+    pub(super) fn observe(
+        &mut self,
+        key: PacketKey,
+        channel: u16,
+        kind: u8,
+        version: u8,
+        payload: &[u8],
+    ) {
         if self.unavailable.is_some() {
             return;
         }
@@ -44,7 +60,7 @@ impl Quality {
                 }
             }
         }
-        match reference(key, channel, payload) {
+        match reference(key, channel, kind, version, payload, self.ntp_era) {
             Ok(r) => {
                 if self.pending.len() == PENDING_CAP {
                     self.unavailable =
@@ -53,7 +69,8 @@ impl Quality {
                     self.pending.push(r);
                 }
             }
-            Err(_) => {
+            Err(error) => {
+                self.issues.insert(channel, error.to_string());
                 if let Some(q) = self.channels.get_mut(&channel) {
                     if let Err(e) = q.add_decode_rejections(1) {
                         self.unavailable = Some(e.to_string());
@@ -85,37 +102,109 @@ impl Quality {
             channels: self.channels.clone(),
             pending: self.pending.clone(),
             unavailable: self.unavailable.clone(),
+            ntp_era: self.ntp_era,
+            issues: self.issues.clone(),
         };
         final_state.drain(None);
         let rows: Vec<_> = final_state.channels.iter().map(|(&channel,q)| {
             let stats = q.snapshot();
             let endpoints = q.calendar_endpoints();
             let (first,last,calendar_issue) = match endpoints {
-                Ok(Some((a,b))) => (calendar(a),calendar(b),None),
+                Ok(Some((a,b))) => (calendar(a,q.first_reference()),calendar(b,q.last_reference()),None),
                 Ok(None) => (Value::Null,Value::Null,None),
                 Err(e) => (Value::Null,Value::Null,Some(e.to_string())),
             };
             json!({"channel":channel,"valid":stats.valid.to_string(),"admitted":stats.admitted.to_string(),"rejected":stats.rejected.to_string(),
                 "interval_ns":stats.interval_ns.map(|n|n.to_string()),"min_spacing_ns":stats.min_spacing_ns.map(|n|n.to_string()),"max_spacing_ns":stats.max_spacing_ns.map(|n|n.to_string()),
                 "references_per_second":stats.references_per_second,"drift_ppm":stats.drift_ppm,"unavailable_reason":stats.unavailable,
-                "first":first,"last":last,"calendar_unavailable_reason":calendar_issue})
+                "first":first,"last":last,"calendar_unavailable_reason":calendar_issue,"rejection_reason":final_state.issues.get(&channel)})
         }).collect();
-        json!({"formats":"format1","include_undeclared":true,"year_inference":"packet-only","channel_cap":CHANNEL_CAP.to_string(),"pending_cap":PENDING_CAP.to_string(),"status":if final_state.unavailable.is_some(){"needs-context"}else{"complete"},"unavailable_reason":final_state.unavailable,"channels":rows})
+        json!({"formats":"format1+format2","ntp_era":self.ntp_era.map(|n|n.to_string()),"ntp_era_source":if self.ntp_era.is_some(){"caller-declared"}else{"none"},"ntp_era_inference":"disabled","include_undeclared":true,"year_inference":"packet-only","channel_cap":CHANNEL_CAP.to_string(),"pending_cap":PENDING_CAP.to_string(),"status":if final_state.unavailable.is_some(){"needs-context"}else{"complete"},"unavailable_reason":final_state.unavailable,"channels":rows})
     }
 }
-fn calendar(t: irig106_time::format1::CalendarReading) -> Value {
-    json!({"year":t.year,"day":t.day_of_year,"hours":t.hours,"minutes":t.minutes,"seconds":t.seconds,"nanoseconds":t.nanoseconds,
+fn calendar(t: irig106_time::format1::CalendarReading, r: Option<&TimelineReference>) -> Value {
+    use irig106_time::{format2::NetworkConversion, ntp::NtpLeapStatus};
+    let leap =
+        r.and_then(|r| r.input.network.as_ref())
+            .and_then(|n| match n.reference().conversion() {
+                NetworkConversion::Ntp(c) => match c.basis().leap {
+                    NtpLeapStatus::UnambiguousCovered => Some("covered"),
+                    NtpLeapStatus::Ambiguous => Some("leap-ambiguous"),
+                    NtpLeapStatus::UncertainCoverage => Some("coverage-unknown"),
+                    NtpLeapStatus::NoValue => None,
+                },
+                _ => None,
+            });
+    json!({"ntp_leap_status":leap,"year":t.year,"day":t.day_of_year,"hours":t.hours,"minutes":t.minutes,"seconds":t.seconds,"nanoseconds":t.nanoseconds,
         "scale":match t.scale.effective(){TimeScale::Utc=>"UTC",TimeScale::Tai=>"TAI",TimeScale::Gps=>"GPS",TimeScale::Unknown=>"unknown"},
         "basis":match t.scale.origin(){ScaleOrigin::Standard=>"stated",ScaleOrigin::Policy=>"assumed",ScaleOrigin::Unspecified=>"unknown"}})
 }
-fn reference(key: PacketKey, channel: u16, payload: &[u8]) -> Result<TimelineReference> {
+fn reference(
+    key: PacketKey,
+    channel: u16,
+    kind: u8,
+    version: u8,
+    payload: &[u8],
+    era: Option<i64>,
+) -> Result<TimelineReference> {
     // Do NOT guess SRC/EXT from the header version or force a modern layout.
     // A one-packet native builder applies admission/calendar checks without
     // retaining recording history or claiming retrospective session year inference.
+    if kind == 0x12 {
+        use irig106_time::{
+            format2::{Format2Input, ReferenceCapture},
+            network_time::NetworkTimeProtocol,
+            ntp::{EraDeclaration, NtpContext},
+        };
+        let observation = Format2Input {
+            payload,
+            data_length: payload.len(),
+            capture: ReferenceCapture {
+                session: key.session,
+                packet: key.packet,
+                channel,
+                rtc: Rtc::from_raw(key.ticks as u64),
+                byte_offset: None,
+            },
+            declared_edition: None,
+            data_type_version: version,
+            declared_timein: false,
+        }
+        .decode()?;
+        // No implicit era0 or pivot guessing. The zero sentinel needs no era.
+        if observation.csdw().time_protocol() == NetworkTimeProtocol::Ntp
+            && era.is_none()
+            && observation.raw_body().iter().any(|b| *b != 0)
+        {
+            return Err(TimeError::NeedsContext {
+                context: "NTP era/basis required; supply --ntp-era <N>",
+            });
+        }
+        let mut context = NtpContext::new(key.session);
+        context.declared = era.map(|era| EraDeclaration {
+            era,
+            id: "--ntp-era".into(),
+        });
+        let (r, _) = irig106_time::reference::admit_format2_reference(
+            observation,
+            context,
+            irig106_time::LeapSecondTable::builtin(),
+            key,
+            &OfflinePolicy {
+                include_undeclared: true,
+                ..Default::default()
+            },
+            false,
+        )?;
+        return Ok(r);
+    }
     let reading = decode_qualified_time_f1(
         payload,
         payload.len(),
-        EditionEvidence::default(),
+        EditionEvidence {
+            data_type_version: Some(version),
+            ..Default::default()
+        },
         ScalePolicy::default(),
     )?;
     let mut input = ReferenceInput::qualified_format1(reading)?;
@@ -170,8 +259,8 @@ mod tests {
         // Fig11-12/14 DATE1/FMT4,2017Jan2 00:00; no guessed SRC layout.
         let bytes = [0x41, 2, 0, 0, 0, 0, 0, 0, 2, 1, 0x17, 0x20];
         let mut q = Quality::default();
-        q.observe(key(0, 0), 7, &bytes);
-        q.observe(key(1, 10_000_000), 7, &[0; 2]);
+        q.observe(key(0, 0), 7, 0x11, 6, &bytes);
+        q.observe(key(1, 10_000_000), 7, 0x11, 6, &[0; 2]);
         let v = q.value();
         let row = &v["channels"][0];
         assert_eq!(row["valid"], "1");
@@ -179,7 +268,7 @@ mod tests {
         assert_eq!(row["first"]["year"], 2017);
         assert_eq!(row["first"]["basis"], "stated");
         for ch in 8..=71 {
-            q.observe(key(u64::from(ch), 0), ch, &[]);
+            q.observe(key(u64::from(ch), 0), ch, 0x11, 6, &[]);
         }
         assert_eq!(q.channels.len(), CHANNEL_CAP);
         assert_eq!(q.value()["status"], "needs-context");
@@ -190,7 +279,7 @@ mod tests {
         );
         let mut q = Quality::default();
         for p in 0..=PENDING_CAP {
-            q.observe(key(p as u64, 0), 7, &bytes);
+            q.observe(key(p as u64, 0), 7, 0x11, 6, &bytes);
         }
         assert_eq!(q.pending.len(), PENDING_CAP);
         assert_eq!(q.value()["status"], "needs-context");

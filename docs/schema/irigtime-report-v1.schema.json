@@ -28,8 +28,8 @@
       "const": 1
     },
     "schema_revision": {
-      "description": "Additive revision 10 adds bounded Format 1 candidate quality/calendar endpoints to native summary spans; CLI reset segments and full qualified joining remain separate.",
-      "const": 10
+      "description": "Additive revision 11 extends native candidate quality to Format 2 with explicit NTP era policy and rejection context; session-year inference and qualified joining remain open.",
+      "const": 11
     },
     "schema_status": {
       "description": "Stable contract following the reviewed draft-to-stable transition at revision 2. Further contract changes follow the version and revision rules.",
@@ -339,7 +339,7 @@
       "allOf":[{"if":{"properties":{"status":{"description":"Conditional completeness discriminator.","const":"complete"}}},"then":{"properties":{"unavailable_reason":{"description":"Complete native analysis has no unresolved reason.","type":"null"}}},"else":{"properties":{"unavailable_reason":{"description":"Incomplete native analysis retains its reason.","type":"string","minLength":1}}}}]
     },
     "native_span": {
-      "description":"All-header native session. _ticks are signed unwrapped100ns RTC ticks. First/last follow file observation order, low/high are extrema; high never decreases on late arrivals. Reference quality is a separate bounded Format1 packet-local view, not a physical duration or retrospective session year inference.", "type":"object", "additionalProperties":false,
+      "description":"All-header native session. _ticks are signed unwrapped100ns RTC ticks. First/last follow file observation order, low/high are extrema; high never decreases on late arrivals. Reference quality is a separate bounded Format1/2 packet-local view, not a physical duration or retrospective session year inference.", "type":"object", "additionalProperties":false,
       "required":["index", "start", "first_packet", "last_packet", "first_ticks", "last_ticks", "low_ticks", "high_ticks", "counter_span_ns", "packets", "reference_quality"],
       "properties": {
         "index":{"description": "One-based recording-wide native session ID, decimal string.", "$ref": "#/$defs/unsigned"},
@@ -356,27 +356,30 @@
       }
     },
     "native_quality": {
-      "description":"Independent bounded Format1 quality. Includes readable undeclared references for analysis only; no declaration, source association or layout is invented. Packet years only; DOY stays partial. Cap exhaustion reports a prefix, not complete statistics.", "type":"object", "additionalProperties":false,
-      "required":["formats", "include_undeclared", "year_inference", "channel_cap", "pending_cap", "status", "unavailable_reason", "channels"],
+      "description":"Independent bounded Format1/2 quality. Includes readable undeclared references for analysis only; no declaration, source association or layout is invented. Packet body/network dates only; DOY stays partial. Cap exhaustion reports a prefix, not complete statistics.", "type":"object", "additionalProperties":false,
+      "required":["ntp_era", "ntp_era_source", "ntp_era_inference", "formats", "include_undeclared", "year_inference", "channel_cap", "pending_cap", "status", "unavailable_reason", "channels"],
       "properties": {
-        "formats":{"description": "Only Format1 is evaluated in this integration slice.", "const": "format1"},
+        "ntp_era":{"description":"Caller-declared NTP era as a decimal string; null when no era was supplied, never a guessed era0.","anyOf":[{"$ref":"#/$defs/signed"},{"type":"null"}]},
+        "ntp_era_source":{"description":"Origin of effective CLI NTP era context, preserved across native sessions.","enum":["caller-declared","none"]},
+        "ntp_era_inference":{"description":"No automatic pivot or era0 assumption is used for nonzero NTP readings.","const":"disabled"},
+        "formats":{"description": "Accepted pipeline formats, not an observed protocol inventory. Unknown scope values mean unsupported view.", "const": "format1+format2"},
         "include_undeclared":{"description": "Explicit declaration-free candidate-quality override; not TIMEIN evidence.", "const": true},
-        "year_inference":{"description": "Only a packet body year is available here; no session-year inference or guessed rollover.", "const": "packet-only"},
+        "year_inference":{"description": "F1 body year or F2 dated conversion only; no session-year inference or guessed rollover.", "const": "packet-only"},
         "channel_cap":{"description": "Maximum quality channels per session, decimal count.", "const": "64"},
         "pending_cap":{"description": "Maximum total late-window references, decimal count.", "const": "1024"},
-        "status":{"description": "Complete for Format1 observations; needs-context reports a bounded prefix.", "enum": ["complete", "needs-context"]},
+        "status":{"description": "Complete for Format1/2 observations; needs-context reports a bounded prefix.", "enum": ["complete", "needs-context"]},
         "unavailable_reason":{"description": "Null for complete quality, otherwise why only a prefix was evaluated.", "type": ["string", "null"]},
         "channels":{"description": "Ascending channel IDs; one bounded accumulator per channel.", "type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/native_quality_channel"}}
       }
     },
     "native_quality_channel": {
       "description":"Native COR-113 metrics; unavailable reasons distinguish context from zero. First/last are valid references in RTC order, not calendar extrema.", "type":"object", "additionalProperties":false,
-      "required":["channel", "valid", "admitted", "rejected", "interval_ns", "min_spacing_ns", "max_spacing_ns", "references_per_second", "drift_ppm", "unavailable_reason", "first", "last", "calendar_unavailable_reason"],
+      "required":["channel", "valid", "admitted", "rejected", "interval_ns", "min_spacing_ns", "max_spacing_ns", "references_per_second", "drift_ppm", "unavailable_reason", "first", "last", "calendar_unavailable_reason", "rejection_reason"],
       "properties": {
         "channel":{"description": "Wire channel identifier.", "type": "integer", "minimum": 0, "maximum": 65535},
         "valid":{"description": "Admitted readable valid references, decimal count.", "$ref": "#/$defs/unsigned"},
         "admitted":{"description": "Admitted references, decimal count.", "$ref": "#/$defs/unsigned"},
-        "rejected":{"description": "Rejected or undecodable Format1 observations, decimal count.", "$ref": "#/$defs/unsigned"},
+        "rejected":{"description": "Rejected or undecodable Format1/2 observations, decimal count.", "$ref": "#/$defs/unsigned"},
         "interval_ns":{"description": "First-to-last valid RTC interval in ns; null with fewer than two.", "anyOf": [{"$ref": "#/$defs/signed"}, {"type": "null"}]},
         "min_spacing_ns":{"description": "Minimum adjacent valid RTC spacing in ns; null if not measurable.", "anyOf": [{"$ref": "#/$defs/signed"}, {"type": "null"}]},
         "max_spacing_ns":{"description": "Maximum adjacent valid RTC spacing in ns; null if not measurable.", "anyOf": [{"$ref": "#/$defs/signed"}, {"type": "null"}]},
@@ -385,14 +388,16 @@
         "unavailable_reason":{"description": "Null when drift measurable; otherwise native reason, independent of calendar endpoints.", "type": ["string", "null"]},
         "first":{"description": "First valid native calendar in RTC order; null absent/unavailable. Unknown year remains null in a present calendar.", "anyOf": [{"$ref": "#/$defs/quality_calendar"}, {"type": "null"}]},
         "last":{"description": "Last valid native calendar in RTC order; null absent/unavailable.", "anyOf": [{"$ref": "#/$defs/quality_calendar"}, {"type": "null"}]},
-        "calendar_unavailable_reason":{"description": "Null when absent or representable; calendar context error otherwise.", "type": ["string", "null"]}
+        "calendar_unavailable_reason":{"description": "Null when absent or representable; calendar context error otherwise.", "type": ["string", "null"]},
+        "rejection_reason":{"description":"Most recent decoder/context factory error on this channel, or null. Admission rejections such as invalid TS or reserved NTF are counted independently and need not have a factory error.","type":["string","null"]}
       }
     },
     "quality_calendar": {
       "description":"Native calendar endpoint; no UTC relabelling of GPS/TAI. A partial calendar is not an absolute instant.", "type":"object", "additionalProperties":false,
-      "required":["year", "day", "hours", "minutes", "seconds", "nanoseconds", "scale", "basis"],
+      "required":["ntp_leap_status", "year", "day", "hours", "minutes", "seconds", "nanoseconds", "scale", "basis"],
       "properties": {
-        "year":{"description": "Packet-provided year; null means unknown.", "type": ["integer", "null"], "minimum": 0, "maximum": 9999},
+        "ntp_leap_status":{"description":"Per-value NTP leap assessment: folded insertion ambiguity or unknown table coverage remains labelled. Null for non-NTP calendars.","enum":["covered","leap-ambiguous","coverage-unknown",null]},
+        "year":{"description": "F1 packet year or F2 conversion date; null means unknown.", "type": ["integer", "null"], "minimum": 0, "maximum": 9999},
         "day":{"description": "Day of year, one-based.", "type": "integer", "minimum": 1, "maximum": 366},
         "hours":{"description": "Hour.", "type": "integer", "minimum": 0, "maximum": 23},
         "minutes":{"description": "Minute.", "type": "integer", "minimum": 0, "maximum": 59},
