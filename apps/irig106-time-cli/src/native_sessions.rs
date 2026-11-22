@@ -1,5 +1,5 @@
 //! Summary-only native spans: one active session, closed rows in a private spool.
-//! Partial Traces: L3-CLI-104/106; reference quality and TMATS remain separate.
+//! Partial Traces: L3-CLI-104/106; native year/quality clauses, TMATS gated.
 use super::csv_spool::CsvSpool;
 use irig106_time::{
     Rtc,
@@ -18,7 +18,9 @@ pub(super) struct NativeSessions {
     clock: SessionClock,
     archive: RefCell<CsvSpool>,
     unavailable: Option<String>,
-    quality: super::native_quality::Quality,
+    quality: super::year_replay::Replay,
+    current_quality: Option<Value>,
+    pub(super) year_notes: super::year_replay::Notes,
     ntp_era: Option<i64>,
 }
 impl NativeSessions {
@@ -27,7 +29,9 @@ impl NativeSessions {
             clock: SessionClock::new(&OfflinePolicy::default()).map_err(io::Error::other)?,
             archive: RefCell::new(CsvSpool::new(None)?),
             unavailable: None,
-            quality: super::native_quality::Quality::new(ntp_era),
+            quality: super::year_replay::Replay::new(ntp_era)?,
+            current_quality: None,
+            year_notes: Default::default(),
             ntp_era,
         })
     }
@@ -45,8 +49,10 @@ impl NativeSessions {
         };
         if let Some(span) = update.closed {
             let mut closed = value(span)?;
-            closed["reference_quality"] = self.quality.value();
-            self.quality = super::native_quality::Quality::new(self.ntp_era);
+            let (quality, notes) = self.quality.finish()?;
+            closed["reference_quality"] = quality;
+            self.year_notes.merge(notes);
+            self.quality = super::year_replay::Replay::new(self.ntp_era)?;
             let bytes = serde_json::to_vec(&closed)?;
             let mut spool = self.archive.borrow_mut();
             let file = spool.file()?;
@@ -55,18 +61,33 @@ impl NativeSessions {
             file.write_all(&bytes)?;
         }
         if let Some(active) = self.clock.active() {
-            self.quality
-                .advance(active.high_ticks, self.clock.late_ns());
+            self.quality.advance(active.high_ticks);
         }
         Ok(None)
     }
-    pub(super) fn reference(&mut self, channel: u16, kind: u8, version: u8, payload: &[u8]) {
+    pub(super) fn reference(
+        &mut self,
+        channel: u16,
+        kind: u8,
+        version: u8,
+        payload: &[u8],
+    ) -> io::Result<()> {
         if self.unavailable.is_none() {
             if let Some(span) = self.clock.active() {
                 self.quality
-                    .observe(span.last, channel, kind, version, payload);
+                    .observe(span.last, channel, kind, version, payload)?;
             }
         }
+        Ok(())
+    }
+    pub(super) fn finish(&mut self) -> io::Result<()> {
+        if self.current_quality.is_some() {
+            return Ok(());
+        }
+        let (value, notes) = self.quality.finish()?;
+        self.current_quality = Some(value);
+        self.year_notes.merge(notes);
+        Ok(())
     }
     pub(super) fn metadata(&self) -> Value {
         json!({"count":self.clock.active().map_or(0,|s|s.first.session).to_string(),
@@ -92,7 +113,10 @@ impl NativeSessions {
         }
         if let Some(span) = self.clock.active() {
             let mut active = value(*span)?;
-            active["reference_quality"] = self.quality.value();
+            active["reference_quality"] = self
+                .current_quality
+                .clone()
+                .ok_or_else(|| io::Error::other("native quality not finalized"))?;
             emit(&active)?;
         }
         Ok(())
@@ -141,7 +165,7 @@ impl NativeSessions {
                 ns % 1_000_000_000
             )?;
             let quality = &v["reference_quality"];
-            writeln!(out,"    Format1/2 candidate quality: includes undeclared channels; packet/network dates only (no session year inference)")?;
+            writeln!(out,"    Format1/2 candidate quality: includes undeclared channels; session DMY year evidence; no TMATS/caller year guessing")?;
             if let Some(era)=quality["ntp_era"].as_str() {writeln!(out,"    NTP: caller-declared era {era}; automatic era inference disabled")?;}
             if let Some(rows) = quality["channels"].as_array() {
                 for q in rows {
@@ -153,6 +177,9 @@ impl NativeSessions {
                     if let Some(reason)=q["rejection_reason"].as_str(){writeln!(out,"      Rejected reference: {reason}")?;}
                     for name in ["first","last"] {
                         let c = &q[name];
+                        if let Some(source)=c["year_evidence"]["source"].as_str() {
+                            writeln!(out,"      Year evidence ({name}): {source}; anchor packet {}",c["year_evidence"]["anchor_packet"].as_str().unwrap_or("none"))?;
+                        }
                         if !c.is_null() {
                             let qualifier=c["ntp_leap_status"].as_str().map_or_else(String::new,|s|format!(" [NTP {s}]"));
                             writeln!(out,"      {name}: {:03}:{:02}:{:02}:{:02}.{:09} {} ({}, year {}){}",c["day"].as_u64().unwrap_or(0),c["hours"].as_u64().unwrap_or(0),c["minutes"].as_u64().unwrap_or(0),c["seconds"].as_u64().unwrap_or(0),c["nanoseconds"].as_u64().unwrap_or(0),c["scale"].as_str().unwrap_or("unknown"),c["basis"].as_str().unwrap_or("unknown"),c["year"].as_u64().map_or_else(||"unknown".to_owned(),|y|y.to_string()),qualifier)?;

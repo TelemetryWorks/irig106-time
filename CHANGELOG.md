@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Disk-backed native summary session years (schema revision 13)
+
+- Summary quality replays private raw time records using native YEAR-PHASE/D9;
+  a later DMY can qualify earlier DOY dates without retaining the recording in
+  RAM. Unknown years remain partial and session/year-gap boundaries are kept.
+  Endpoint year source, selected DMY anchor and contradictory candidates are
+  reported separately from scale basis. No TMATS or caller year is invented.
+- Newly derived year TF-004/007/032 and year-context TF-020 findings retain approved
+  levels, exact counts and bounded samples, including unsampled fatal findings.
+  Decode/jump evaluation is not repeated. Existing query/source selection stays
+  unchanged. Temporary disk storage is 62 bytes/time packet; no new dependency
+  or library I/O/API. Existing RAM/channel/late-queue caps remain.
+- Clause-only CLI-104/106/COR-110/113 evidence; coverage stays 198 tested /
+  206 verified of 288. Item 7 documentation/migration follows this integration.
+
 ### Bounded session-year replay foundation and stale drift (revision 12)
 
 - **Library behavior fix (L3-COR-110):** offline year replay now rebuilds each

@@ -55,6 +55,7 @@ mod report;
 mod report_json;
 mod report_policy;
 mod report_rows;
+mod year_replay;
 use report_rows::PacketRow as ResolvedPacket;
 mod segment_answers;
 mod segment_inventory;
@@ -358,7 +359,7 @@ impl Ch10TimeScanner {
                         hdr.data_type,
                         packet.header.data_type_version,
                         &packet.body_prefix,
-                    );
+                    )?;
                 }
             }
             if self.first_rtc.is_none() {
@@ -414,6 +415,37 @@ impl Ch10TimeScanner {
         }
         if self.total_packets == 0 {
             return Err(Failure::new(ExitClass::Input, "no valid Chapter 10 header"));
+        }
+        if let Some(native) = &mut self.native_sessions {
+            native.finish()?;
+        }
+        let notes = self
+            .native_sessions
+            .as_mut()
+            .map(|n| std::mem::take(&mut n.year_notes));
+        if let Some(notes) = notes {
+            let mut remaining = notes.counts;
+            for f in notes.samples {
+                remaining[usize::from(rank(f.severity))] -= 1;
+                self.finding_location = f.channel.map(|c| (c, f.packet as usize));
+                let title = irig106_time::findings::FindingCode::from_number(f.code)
+                    .map_err(io::Error::other)?
+                    .title();
+                self.note(
+                    f.severity,
+                    format!("TF-{:03}: native session year: {title}", f.code),
+                );
+            }
+            self.finding_location = None;
+            for (level, count) in [Severity::Information, Severity::Warning, Severity::Error]
+                .into_iter()
+                .zip(remaining)
+            {
+                if count != 0 {
+                    self.observe(level);
+                    self.finding_counts[usize::from(rank(level))] += count;
+                }
+            }
         }
         self.finish_pending();
         if self.time_packets == 0 {
@@ -797,7 +829,7 @@ impl Ch10TimeScanner {
 
     fn note(&mut self, level: Severity, message: impl Into<String>) {
         self.observe(level);
-        // <=3 facts per complete packet plus terminal/query facts. Checked
+        // A fixed number (<24) of facts per packet, including native year facts. Checked
         // u64 byte offsets and >=24-byte frames bound these counts below u64::MAX.
         self.finding_counts[usize::from(rank(level))] += 1;
         if self.errors.len() < FINDING_SAMPLE_LIMIT {
@@ -1651,7 +1683,7 @@ fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
     )?;
     writeln!(
         stdout,
-        "--format <text|json>: summary/channels/jumps/timeline/correlate; default text. Schema stable v1, revision 12."
+        "--format <text|json>: summary/channels/jumps/timeline/correlate; default text. Schema stable v1, revision 13."
     )?;
     writeln!(
         stdout,

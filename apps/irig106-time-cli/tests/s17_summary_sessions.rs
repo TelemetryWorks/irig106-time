@@ -575,3 +575,343 @@ fn native_drift_stale_first_only_and_last_only_endpoints() {
         );
     }
 }
+
+#[test]
+fn native_summary_replays_future_dmy_without_crossing_sessions() {
+    // Figs11-13/14: DOY36523:59:59 -> day100:00 -> DMY2024Jan100:00:01.
+    // The first two references must date2023/2024 using the later DMY anchor.
+    let mut bytes = packet_body(7, 0x11, 0, &[0x41, 0, 0, 0, 0, 0x59, 0x59, 0x23, 0x65, 3]);
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        10_000_000,
+        &[0x41, 1, 0, 0, 0, 0, 0, 0, 1, 0],
+    ));
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        20_000_000,
+        &[0x41, 3, 0, 0, 0, 1, 0, 0, 1, 1, 0x24, 0x20],
+    ));
+    // A >1.1s backward header starts a separate native session, with no year.
+    bytes.extend(packet_body(7, 0x11, 0, &[0x41, 0, 0, 0, 0, 0, 0, 0, 1, 0]));
+    let input = Input::bytes(&bytes);
+    let (_, out) = input.output("summary", true);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let spans = &v["report"]["native_sessions"]["spans"];
+    let q = &spans[0]["reference_quality"];
+    assert_eq!(q["year_inference"], "session-dmy");
+    let row = &q["channels"][0];
+    assert_eq!(row["valid"], "3");
+    assert_eq!(row["first"]["year"], 2023);
+    assert_eq!(row["first"]["year_evidence"]["source"], "session-dmy");
+    assert_eq!(row["first"]["year_evidence"]["anchor_packet"], "2");
+    assert_eq!(row["last"]["year"], 2024);
+    assert_eq!(row["drift_ppm"], 0.0);
+    assert!(spans[1]["reference_quality"]["channels"][0]["first"]["year"].is_null());
+    let (_, text) = input.output("summary", false);
+    assert!(text.contains("session DMY year evidence"));
+    assert!(text.contains("year 2023"));
+    assert!(
+        text.lines()
+            .any(|line| line == "      Year evidence (first): session-dmy; anchor packet 2")
+    );
+    assert!(
+        text.lines()
+            .any(|line| line == "      Year evidence (last): packet; anchor packet 2")
+    );
+}
+#[test]
+fn native_year_replay_backdates_a_prefix_larger_than_the_pending_cap() {
+    let mut bytes = Vec::new();
+    //1320 yearless F1 points (22min), followed by dated2024Jan2.
+    for i in 0..1320u64 {
+        let bcd = |n: u64| (((n / 10) << 4) | (n % 10)) as u8;
+        bytes.extend(packet_body(
+            7,
+            0x11,
+            i * 10_000_000,
+            &[0x41, 1, 0, 0, 0, bcd(i % 60), bcd(i / 60), 0, 2, 0],
+        ));
+    }
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        1320 * 10_000_000,
+        &[0x41, 3, 0, 0, 0, 0, 0x22, 0, 2, 1, 0x24, 0x20],
+    ));
+    let (_, out) = Input::bytes(&bytes).output("summary", true);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let q = &v["report"]["native_sessions"]["spans"][0]["reference_quality"];
+    assert_eq!(q["status"], "complete");
+    assert_eq!(q["channels"][0]["valid"], "1321");
+    assert_eq!(q["channels"][0]["first"]["year"], 2024);
+    assert_eq!(q["channels"][0]["drift_ppm"], 0.0);
+}
+#[test]
+fn native_year_replay_reports_new_malformed_and_contradictory_years() {
+    // Day366 is readable with LY=1 before a future2017 common-year anchor.
+    let mut bytes = packet_body(7, 0x11, 0, &[0x41, 1, 0, 0, 0, 0, 0, 0, 0x66, 3]);
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        10_000_000,
+        &[0x41, 2, 0, 0, 0, 1, 0, 0, 0x31, 0x12, 0x17, 0x20],
+    ));
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        20_000_000,
+        &[0x41, 3, 0, 0, 0, 2, 0, 0, 0x31, 0x12, 0x16, 0x20],
+    ));
+    let (_, out) = Input::bytes(&bytes).output("summary", true);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let samples = v["findings"]["samples"].as_array().unwrap();
+    assert!(samples.iter().any(|f| f["code"] == "TF-004"));
+    assert!(samples.iter().any(|f| f["code"] == "TF-032"));
+    let evidence = &v["report"]["native_sessions"]["spans"][0]["reference_quality"]["channels"][0]
+        ["last"]["year_evidence"];
+    assert_eq!(evidence["source"], "packet");
+    assert!(
+        evidence["candidates"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|c| c["supplied"] == 2017)
+    );
+    assert!(
+        evidence["candidates"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|c| c["supplied"] == 2016)
+    );
+}
+
+#[test]
+fn replay_qualifies_real_leap_and_rebuilds_forbidden_label_without_credit() {
+    for (day, dmy_date, expect) in [
+        (0x66, (1, 1, 0x17, 0x20), 0.0),
+        (0x65, (0x31, 0x12, 0x16, 0x20), -250_000.0),
+    ] {
+        // RDG-010:2016 day366 allows second60, day365 forbids it.
+        let mut bytes = packet_body(7, 0x11, 0, &[0x41, 1, 0, 0, 0, 0x59, 0x59, 0x23, day, 3]);
+        bytes.extend(packet_body(
+            7,
+            0x11,
+            10_000_000,
+            &[0x41, 1, 0, 0, 0, 0x60, 0x59, 0x23, day, 3],
+        ));
+        let (d, h) = if day == 0x66 { (1, 0) } else { (0x66, 3) };
+        bytes.extend(packet_body(
+            7,
+            0x11,
+            20_000_000,
+            &[0x41, 1, 0, 0, 0, 0, 0, 0, d, h],
+        ));
+        bytes.extend(packet_body(
+            7,
+            0x11,
+            30_000_000,
+            &[
+                0x41,
+                if day == 0x66 { 2 } else { 3 },
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                dmy_date.0,
+                dmy_date.1,
+                dmy_date.2,
+                dmy_date.3,
+            ],
+        ));
+        let input = Input::bytes(&bytes);
+        let (_, out) = input.output("summary", true);
+        let (_, again) = input.output("summary", true);
+        assert_eq!(out, again);
+        let v: Value = serde_json::from_str(&out).unwrap();
+        let q = &v["report"]["native_sessions"]["spans"][0]["reference_quality"]["channels"][0];
+        assert_eq!(q["valid"], "3");
+        assert_eq!(q["rejected"], "1"); // Native second60 remains a context-only label.
+        assert_eq!(q["first"]["year"], 2016);
+        assert_eq!(q["drift_ppm"], expect);
+    }
+}
+#[test]
+fn replay_does_not_extend_a_dmy_year_across_a_native_year_context_gap() {
+    // Owner YEAR-PHASE F8:2025 day1 -> day365 at+181days has best
+    // residual183days (>182.5day bound), so the later year stays partial.
+    let mut bytes = packet_body(7, 0x11, 0, &[0x41, 0, 0, 0, 0, 0, 0, 0, 1, 0]);
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        10_000_000,
+        &[0x41, 2, 0, 0, 0, 1, 0, 0, 1, 1, 0x25, 0x20],
+    ));
+    // Intermediate opaque headers make native counter ordering unambiguous;
+    // only the time references are separated by181days.
+    for day in [45, 90, 135] {
+        bytes.extend(packet_body(8, 9, day * 86400 * 10_000_000, &[]));
+    }
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        181 * 86400 * 10_000_000,
+        &[0x41, 0, 0, 0, 0, 0, 0, 0, 0x65, 3],
+    ));
+    let (_, out) = Input::bytes(&bytes).output("summary", true);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let q = &v["report"]["native_sessions"]["spans"][0]["reference_quality"]["channels"][0];
+    assert_eq!(q["first"]["year"], 2025);
+    assert!(q["last"]["year"].is_null(), "{q}");
+    assert!(q["drift_ppm"].is_null());
+    assert!(
+        v["findings"]["samples"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f["code"] == "TF-020")
+    );
+}
+
+#[test]
+fn native_year_findings_keep_exact_counts_beyond_the_sample_cap() {
+    let mut bytes = Vec::new();
+    for i in 0..30u64 {
+        let second = (((i % 60) / 10) << 4 | (i % 10)) as u8;
+        let (ly, year) = if i % 2 == 0 { (2, 0x17) } else { (2, 0x18) };
+        bytes.extend(packet_body(
+            7,
+            0x11,
+            i * 10_000_000,
+            &[0x41, ly, 0, 0, 0, second, 0, 0, 0x31, 0x12, year, 0x20],
+        ));
+    }
+    let input = Input::bytes(&bytes);
+    let (_, out) = input.output("summary", true);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(v["findings"]["warning"], "30");
+    assert_eq!(v["findings"]["samples"].as_array().unwrap().len(), 20);
+    assert_eq!(v["findings"]["omitted"], "10");
+    assert_eq!(
+        run(
+            &["summary", input.0.to_str().unwrap(), "--fail-on", "warning"],
+            &mut Vec::new(),
+            &mut Vec::new()
+        ),
+        ExitClass::Findings
+    );
+    // The error comes AFTER the first20 native samples. Its level/count must
+    // still drive --fail-on error even though its message is omitted.
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        30 * 10_000_000,
+        &[0x41, 1, 0, 0, 0, 0, 0, 0, 0x66, 3],
+    ));
+    let input = Input::bytes(&bytes);
+    let (_, out) = input.output("summary", true);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(
+        v["findings"]["error"], "1",
+        "{}",
+        v["report"]["native_sessions"]
+    );
+    assert_eq!(v["highest_level"], "error");
+    assert!(
+        v["findings"]["samples"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|f| f["level"] != "error")
+    );
+    assert_eq!(
+        run(
+            &["summary", input.0.to_str().unwrap()],
+            &mut Vec::new(),
+            &mut Vec::new()
+        ),
+        ExitClass::Findings
+    );
+}
+
+#[test]
+fn year_inference_outside_calendar_range_is_context_not_output_failure() {
+    // Future DMY year0000 cannot date the preceding DOY365 as year-1.
+    // It is valid Chapter10 input; retain the rest of the summary.
+    let mut bytes = packet_body(7, 0x11, 0, &[0x41, 0, 0, 0, 0, 0x59, 0x59, 0x23, 0x65, 3]);
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        10_000_000,
+        &[0x41, 1, 0, 0, 0, 0, 0, 0, 1, 0],
+    ));
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        20_000_000,
+        &[0x41, 3, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0],
+    ));
+    let input = Input::bytes(&bytes);
+    let (exit, out) = input.output("summary", true);
+    assert_eq!(exit, ExitClass::Success);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let q = &v["report"]["native_sessions"]["spans"][0]["reference_quality"]["channels"][0];
+    assert_eq!(q["valid"], "2");
+    assert_eq!(q["rejected"], "1");
+    assert!(
+        q["rejection_reason"]
+            .as_str()
+            .unwrap()
+            .contains("year rollover outside0..9999")
+    );
+    assert!(
+        v["findings"]["samples"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f["code"] == "TF-020" && f["level"] == "info")
+    );
+}
+
+#[test]
+fn packet_local_year_facts_keep_main_summary_findings() {
+    // Figs11-12..14. Main9674598 emits no findings for either one-packet
+    // fixture. Packet-local LY facts must not be re-emitted by year replay.
+    let bodies: [&[u8]; 2] = [
+        &[0x41, 0, 0, 0, 0, 0, 0, 0, 0x66, 3], // DOY366,LY0,year unknown.
+        &[0x41, 3, 0, 0, 0, 0, 0, 0, 2, 1, 0x17, 0x20], //2017Jan2,LY1 contradicts body year.
+    ];
+    for body in bodies {
+        let (_, out) = Input::bytes(&packet_body(7, 0x11, 0, body)).output("summary", true);
+        let v: Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(
+            v["findings"],
+            json!({"error":"0","warning":"0","info":"0","omitted":"0","samples":[]})
+        );
+    }
+}
+#[test]
+fn future_dmy_derives_a_new_ly_finding() {
+    // Unknown-year day2/LY0 is not contradictory by itself; future2024 DMY
+    // supplies a leap year and derives TF-007 on the earlier packet.
+    let mut bytes = packet_body(7, 0x11, 0, &[0x41, 0, 0, 0, 0, 0, 0, 0, 2, 0]);
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        10_000_000,
+        &[0x41, 3, 0, 0, 0, 1, 0, 0, 2, 1, 0x24, 0x20],
+    ));
+    let (_, out) = Input::bytes(&bytes).output("summary", true);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(v["findings"]["warning"], "1");
+    let samples = v["findings"]["samples"].as_array().unwrap();
+    assert_eq!(samples.len(), 1);
+    assert_eq!(samples[0]["code"], "TF-007");
+    assert_eq!(samples[0]["level"], "warning");
+    assert_eq!(samples[0]["packet"], "0");
+    assert_eq!(samples[0]["channel"], 7);
+}
