@@ -525,4 +525,49 @@ mod tests {
         assert!(v["report"]["jumps"].is_null());
         assert!(v["options"]["threshold_ms"].is_null());
     }
+    // CLI-106 partial: effective settings must come from actual scanner state.
+    #[test]
+    fn policy_identity_tracks_cache_and_installed_table_not_a_fresh_builtin() {
+        let mut scanner = Ch10TimeScanner::new();
+        let args = args::parse(&["summary", "input", "--format", "json"]).unwrap();
+        let args = match args {
+            args::Request::File(a) => Some(a),
+            _ => None,
+        }
+        .unwrap();
+        let base = document(&Report::from(&scanner), &args, 0);
+        assert_eq!(
+            base["report"]["policy"]["reference_window_ns"],
+            "30000000000"
+        );
+        for i in 0..1050 {
+            scanner.correlator.add_reference(
+                7,
+                Rtc::from_raw(i),
+                AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(),
+            );
+        }
+        let value = document(&Report::from(&scanner), &args, 0);
+        assert_eq!(scanner.correlator.len(), 1024);
+        assert_eq!(
+            value["report"]["policy"]["reference_cap"],
+            scanner.correlator.len().to_string()
+        );
+        scanner.correlator = StreamingTimeCorrelator::with_reference_limit(
+            NanosDuration::new(47_000_000_000),
+            REFERENCE_CAP,
+        );
+        scanner.leap_table = LeapSecondTable::empty();
+        let value = document(&Report::from(&scanner), &args, 0);
+        let policy = &value["report"]["policy"];
+        assert_eq!(policy["reference_window_ns"], "47000000000");
+        assert_eq!(policy["leap_table"]["id"], "empty");
+        assert_eq!(policy["leap_table"]["source"], "caller");
+        assert_eq!(policy["leap_table"]["entries"], "0");
+        assert_eq!(policy["leap_table"]["supported_start_unix_s"], "63072000");
+        assert_eq!(
+            policy["leap_table"]["known_current_through_unix_s"],
+            "63072000"
+        );
+    }
 }
