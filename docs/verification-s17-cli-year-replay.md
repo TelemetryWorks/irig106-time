@@ -44,3 +44,7 @@ and per-pass sample cap. All sources restored. The extra count/error/corruption
 checks arrived with implementation, not tests-first.
 Focused CLI tests/Clippy, fmt and trace/schema checks locally; full OS/MSRV/WASM,
 packaging/deny/fuzz/schema and dense RSS gates belong to PR CI. Item 7 remains next.
+
+CI caught a projection-unit fixture that constructed NativeSessions directly
+without the scanner's new finish step. The fixture now finalizes analysis before
+rendering; its assertion that row arrays remain deferred until emission is kept.

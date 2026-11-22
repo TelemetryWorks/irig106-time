@@ -304,6 +304,7 @@ mod tests {
         let mut native = native_sessions::NativeSessions::new(None).unwrap();
         native.observe(0, Rtc::from_raw(20_000_000)).unwrap();
         native.observe(1, Rtc::ZERO).unwrap();
+        native.finish().unwrap(); // Mirror scanner analysis before rendering.
         scanner.native_sessions = Some(native);
         let args = match args::parse(&["summary", "input", "--format", "json"]).unwrap() {
             args::Request::File(a) => Some(a),
