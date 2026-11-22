@@ -7,11 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### S17b3 correlate shared report foundation
+
+- Prepare correlate's any-channel and per-channel native answers before rendering
+  through the shared Report. Keep successful/findings text and warning counts
+  unchanged, including labelled reset segments and unaffected channels.
+- Store bounded structured segment answers rather than rendered lines in the
+  private spool, decoding one record at a time. Ordinary answers stay bounded
+  by channel count. CSV/correlate JSON and qualification goldens remain open;
+  no public schema change. Fold compatibility wording into its guide paragraph.
+
 ### S17b2 timeline JSON rows (additive schema revision 3)
 
 - Stream timeline JSON row projection one row at a time, including large explicit
-  row limits; extend the true-CLI32MiB RSS gate to100000 rows. Clarify additive
-  enum/reserved-shape compatibility within revision3.
+  row limits; extend the true-CLI 32 MiB RSS gate to 100,000 rows. Clarify additive
+  enum/reserved-shape compatibility within revision 3.
 - Accept timeline --format text|json. Render the same bounded packet-row report
   in both views; keep analysing the whole file beyond --limit. Expose packet
   identity, offsets, raw RTC and explicit counter-only/unknown-year clocks.
