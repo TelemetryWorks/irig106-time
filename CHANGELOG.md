@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bounded native session/span foundation
 
-- Add `session::SessionClock`, an allocation-free header-span cursor sharing
+- **New public API in 0.8.0:** `session::SessionClock`, `SessionStart`,
+  `SessionSpan` and `SessionUpdate` (coordinator-accepted for the CLI).
+  The allocation-free header-span cursor shares
   the native offline session calculation (default1100ms late bound, explicit
   boundaries, wrap-safe unwrapped ticks). Closed spans are returned, not retained.
   CLI summary/quality integration follows separately; existing CLI output,

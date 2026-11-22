@@ -9,7 +9,7 @@ No Review/Design, dependency, finding level or TMATS decision changes.
 | Chain | Evidence in this PR | Deferred |
 |---|---|---|
 | L1-CLI-004 → L2/L3-CLI-104 | Bounded native session/header-span API needed by the joining/report loop | CLI summary integration, native reference admission/quality, qualified declarations |
-| L1-COR-005/007 → L2/L3-COR-105/107 | SessionClock shares TimelineBuilder's native nearest-counter/session positioning; independent StreamTimeline parity controls | No new reference/correlation/quality guarantee claimed |
+| L1-COR-005 → L2/L3-COR-105 | SessionClock shares TimelineBuilder's native nearest-counter/session positioning; independent StreamTimeline parity controls | No new reference/correlation/quality guarantee claimed |
 
 ## Native policy, not the compatibility reset heuristic
 
@@ -82,3 +82,22 @@ and the mutable clock with controllers (its Clone/Debug/Send/Sync assertions are
 in the new tests). The guard remains exact; no wildcard/exemption was added.
 The failed run was canceled to stop its remaining RSS work. Focused inventory
 and session tests pass after correction; the succeeding run is final CI evidence.
+
+## #98 post-wrap rebase and public documentation review
+
+The new literal regression starts at2^48-10, crosses to raw20_000_000
+(unwrapped2^48+20_000_000), then resets to raw1 by more than1100ms.
+The new span first/low/high ticks and key must all rebase to1, session2, with
+one packet. The explicit-boundary variant pins the same raw rebase and explicit
+provenance. Removing the shared calculation's ticks=raw rebase fails the inferred
+case at the key's literal expected1; restored production behavior passes4 tests.
+This is a test for correct existing behavior, not a new production fix.
+
+Every public session type and method now has a full functional Traces lineage
+and §11.2.1.1 i free-running-RTC citation. Boundary/late settings remain labelled
+reader policy (contract5.4/ADR-0010), not standard flags. Remove the old partial
+COR-107 reference: that requirement concerns source transitions, not this cursor.
+Coordinator accepts the new public API in0.8.0 for the CLI; CHANGELOG states it.
+Next summary integration must distinguish recording-wide native sessions from
+per-channel compatibility reset segments, never merge them. No output/schema/
+Review/Design/coverage change in this review delta.

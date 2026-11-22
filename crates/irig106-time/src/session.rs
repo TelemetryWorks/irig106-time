@@ -4,6 +4,9 @@
 //! as TimelineBuilder. It holds one active span; callers may stream closed spans
 //! to a report sink. No reference admission, channel association, calendar/year
 //! inference or quality/drift assessment is performed by this counter-only API.
+//!
+//! Source: 106-24R1 §11.2.1.1 i: "shall remain free-running during each session".
+//! Boundary inference/1100ms are reader policy (contract §5.4; ADR-0010), not wire flags.
 use crate::{
     Result, Rtc, TimeError,
     rtc::{CounterOrder, SessionRtc},
@@ -11,6 +14,8 @@ use crate::{
 };
 
 /// Why a reader began this session; inferred boundaries are policy, not wire facts.
+/// Source: 106-24R1 §11.2.1.1 i (free-running RTC); contract §5.4/ADR-0010 reader policy.
+/// **Traces:** L3-COR-105 ← L2-COR-105 ← L1-COR-005
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SessionStart {
     /// First observed packet.
@@ -22,6 +27,8 @@ pub enum SessionStart {
 }
 /// Observed header span across all channels in one native session.
 /// First/last are file-order observations; low/high are unwrapped extrema.
+/// Source: 106-24R1 §11.2.1.1 i (free-running RTC); contract §5.4/ADR-0010 reader policy.
+/// **Traces:** L3-COR-105 ← L2-COR-105 ← L1-COR-005
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SessionSpan {
     /// Boundary provenance; does not establish data/time-channel association.
@@ -38,6 +45,8 @@ pub struct SessionSpan {
     pub packets: u64,
 }
 /// One atomic progress result; a closed span is returned once at a boundary.
+/// Source: 106-24R1 §11.2.1.1 i (free-running RTC); contract §5.4/ADR-0010 reader policy.
+/// **Traces:** L3-COR-105 ← L2-COR-105 ← L1-COR-005
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SessionUpdate {
     /// Native query position of this observation.
@@ -51,7 +60,8 @@ pub struct SessionUpdate {
 /// No whole recording, seen-ID set, references or closed spans are retained.
 /// IDs must strictly increase, as for StreamTimeline. Errors leave state intact.
 /// The CLI's per-channel30s/run reset heuristic is a separate compatibility view.
-/// Partial Traces: L3-COR-105/107; L3-CLI-104 (bounded session spans only).
+/// Source: 106-24R1 §11.2.1.1 i (free-running RTC); contract §5.4/ADR-0010 reader policy.
+/// **Traces:** L3-COR-105 ← L2-COR-105 ← L1-COR-005
 #[derive(Debug, Clone)]
 pub struct SessionClock {
     active: Option<SessionSpan>,
@@ -60,6 +70,8 @@ pub struct SessionClock {
 }
 impl SessionClock {
     /// Validate the supplied native policy; freeze its two session settings.
+    /// Source: 106-24R1 §11.2.1.1 i (free-running RTC); contract §5.4/ADR-0010 reader policy.
+    /// **Traces:** L3-POL-102 ← L2-POL-102 ← L1-POL-002
     pub fn new(policy: &OfflinePolicy) -> Result<Self> {
         policy.validate()?;
         Ok(Self {
@@ -69,18 +81,27 @@ impl SessionClock {
         })
     }
     /// Actual frozen late-packet bound in ns.
+    /// Source: 106-24R1 §11.2.1.1 i (free-running RTC); contract §5.4/ADR-0010 reader policy.
+    /// **Traces:** L3-POL-101 ← L2-POL-101 ← L1-POL-001
     pub fn late_ns(&self) -> u64 {
         self.late_ns
     }
     /// Whether backward displacements beyond the bound infer new sessions.
+    /// Source: 106-24R1 §11.2.1.1 i (free-running RTC); contract §5.4/ADR-0010 reader policy.
+    /// **Traces:** L3-POL-101 ← L2-POL-101 ← L1-POL-001
     pub fn infer_sessions(&self) -> bool {
         self.infer_sessions
     }
     /// Current span, including the final span at EOF; None before first packet.
+    /// Source: 106-24R1 §11.2.1.1 i (free-running RTC); contract §5.4/ADR-0010 reader policy.
+    /// **Traces:** L3-COR-105 ← L2-COR-105 ← L1-COR-005
     pub fn active(&self) -> Option<&SessionSpan> {
         self.active.as_ref()
     }
     /// Observe a header; explicit caller boundaries take priority over inference.
+    /// Source: 106-24R1 §11.2.1.1 i (free-running RTC); contract §5.4/ADR-0010 reader policy.
+    /// **Traces:** L3-COR-105 ← L2-COR-105 ← L1-COR-005
+    /// **Traces:** L3-RTC-103 ← L2-RTC-103 ← L1-RTC-003
     pub fn observe(&mut self, id: u64, rtc: Rtc, boundary: bool) -> Result<SessionUpdate> {
         if self.active.is_some_and(|s| id <= s.last.packet) {
             return Err(TimeError::InvalidTimelineInput(
