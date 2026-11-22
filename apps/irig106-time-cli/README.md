@@ -401,3 +401,7 @@ CLI policy-inferred sessions remain `start: "inferred"`, without TF-018. The CLI
 reserves TF-018 for established new-session facts. The library differs deliberately:
 `TimelineBuilder` records TF-018 for policy inference under L3-COR-105; the CLI
 summary does not forward that inferred-session finding policy.
+
+Native session text lists the first20 known sessions, with exact totals and an
+`N more` line. This is display-only: JSON keeps every session; use `--format json`
+for the full inventory. Recording-wide sessions and channel reset segments stay separate.

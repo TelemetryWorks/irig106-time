@@ -12,6 +12,8 @@ use std::{
     io::{self, Read, Seek, SeekFrom, Write},
 };
 
+const TEXT_SESSION_LIMIT: usize = 20;
+
 pub(super) struct NativeSessions {
     clock: SessionClock,
     archive: RefCell<CsvSpool>,
@@ -92,7 +94,17 @@ impl NativeSessions {
                 "  Needs context; spans cover known prefix only: {reason}"
             )?;
         }
+        let total = self.clock.active().map_or(0, |s| s.first.session);
+        writeln!(
+            out,
+            "  Native sessions: {total} (showing {})",
+            total.min(TEXT_SESSION_LIMIT)
+        )?;
+        let mut shown = 0;
         self.each(|v| {
+            if shown >= TEXT_SESSION_LIMIT {
+                return Ok(());
+            }
             let ns: u128 = field(v, "counter_span_ns")?
                 .parse()
                 .map_err(io::Error::other)?;
@@ -106,8 +118,14 @@ impl NativeSessions {
                 field(v, "packets")?,
                 ns / 1_000_000_000,
                 ns % 1_000_000_000
-            )
-        })
+            )?;
+            shown += 1;
+            Ok(())
+        })?;
+        if total > shown {
+            writeln!(out, "  ... and {} more native sessions", total - shown)?;
+        }
+        Ok(())
     }
 }
 fn field<'a>(v: &'a Value, key: &str) -> io::Result<&'a str> {

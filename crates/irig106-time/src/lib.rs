@@ -158,6 +158,8 @@ pub mod extracted;
 pub mod intra_packet;
 /// Validated leap-table snapshots and qualified PTP conversions.
 pub mod leap;
+/// Constant-memory quality and calendar endpoints for qualified ordered refs.
+pub mod native_quality;
 /// Time Data Format 2 (0x12) Network Time: NTP, PTP, and leap-second table.
 pub mod network_time;
 /// RDG-012 NTP era/UTC and leap-ambiguity conversion with explicit evidence.

@@ -95,6 +95,7 @@ fn verify_inventory(covered: &[&str]) {
         "timeline::OfflineTimeline",
         "stream::StreamTimeline",
         "session::SessionClock",
+        "native_quality::OrderedQuality",
         "declarations::DeclarationAudit",
         "secondary_packet::SecondaryAudit",
     ]

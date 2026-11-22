@@ -197,3 +197,29 @@ fn late_header_changes_low_ticks_without_moving_first_observation() {
     assert_eq!(span["last_ticks"], "5000000");
     assert_eq!(span["packets"], "2");
 }
+
+#[test]
+fn native_text_caps_twenty_sessions_but_json_keeps_exact_full_inventory() {
+    let rows: Vec<_> = (0..24)
+        .flat_map(|_| [(8, 9, 400_000_000), (8, 9, 0)])
+        .collect();
+    let input = Input::new(&rows);
+    let (_, text) = input.output("summary", false);
+    assert_eq!(
+        text.lines().filter(|l| l.starts_with("  Session ")).count(),
+        20
+    );
+    assert!(text.contains("Native sessions: 25 (showing 20)"));
+    assert!(text.contains("... and 5 more native sessions"));
+    let (_, out) = input.output("summary", true);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(v["report"]["native_sessions"]["count"], "25");
+    assert_eq!(
+        v["report"]["native_sessions"]["spans"]
+            .as_array()
+            .unwrap()
+            .len(),
+        25
+    );
+    assert_eq!(v["report"]["native_sessions"]["spans"][24]["index"], "25");
+}
