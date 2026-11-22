@@ -111,14 +111,16 @@ pub(super) struct Query<'a> {
     pub(super) segments: Option<&'a SegmentAnswers>,
 }
 impl Query<'_> {
-    pub(super) fn write_text(&self, out: &mut dyn Write) -> io::Result<()> {
+    pub(super) fn write_header(&self, out: &mut dyn Write) -> io::Result<()> {
         writeln!(
             out,
             "Resolving RTC {:#014X} ({} ticks, {} ns)\n",
             self.target.as_raw(),
             self.target.as_raw(),
             self.target.to_nanos()
-        )?;
+        )
+    }
+    pub(super) fn write_answers(&self, out: &mut dyn Write) -> io::Result<()> {
         if let Some(answer) = self.any {
             match answer {
                 Ok(t) => writeln!(out, "  Any channel  → {}", fmt_abs_time(t))?,

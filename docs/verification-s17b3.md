@@ -67,3 +67,12 @@ bytes and severity/counts remain unchanged. On scratch I/O failure, output may
 stop before the old header was printed; exit4 still requires discarding partial
 output. No claim of identical partial bytes on output failure. The existing
 true-CLI32MiB dense RSS gate covers all reset answers and ordinary channels.
+
+
+CI44981909032 exposed a combined-output ordering regression: reset findings
+followed the long answer list, outside the RSS gate's diagnostic prefix. The
+small merged-writer regression in tests-only210e6a3 fails at the initial head.
+Header and answer rendering are now separate views of the same Query so the
+original header → reset findings → answer body order is restored. The RSS gate
+is unchanged. The focused regression passes; the subsequent CI run supplies
+fresh complete memory evidence rather than treating the failed gate as a pass.

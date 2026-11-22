@@ -1371,9 +1371,17 @@ fn cmd_correlate(
     }
     let report = report::Report::from(&scanner);
     if let Some(query) = &report.query {
-        query.write_text(stdout)?;
+        query.write_header(stdout)?;
     }
-    report.report_findings(stderr)?;
+    if report.reset_count != 0 {
+        report.report_findings(stderr)?;
+    }
+    if let Some(query) = &report.query {
+        query.write_answers(stdout)?;
+    }
+    if report.reset_count == 0 {
+        report.report_findings(stderr)?;
+    }
     Ok(report.highest)
 }
 
