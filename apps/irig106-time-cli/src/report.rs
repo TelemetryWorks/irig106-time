@@ -4,6 +4,7 @@ use super::*;
 use irig106_time::network_time::NetworkTimeFormat;
 
 pub(super) struct Report<'a> {
+    pub(super) native_sessions: Option<&'a native_sessions::NativeSessions>,
     pub(super) reference_window_ns: u64,
     pub(super) leap_table: &'a LeapSecondTable,
     pub(super) query: Option<correlate_report::Query<'a>>,
@@ -31,6 +32,7 @@ pub(super) struct Report<'a> {
 impl<'a> From<&'a Ch10TimeScanner> for Report<'a> {
     fn from(s: &'a Ch10TimeScanner) -> Self {
         Self {
+            native_sessions: s.native_sessions.as_ref(),
             reference_window_ns: s.correlator.max_age_ns(),
             leap_table: &s.leap_table,
             query: s.query_refs.as_ref().map(|q| correlate_report::Query {

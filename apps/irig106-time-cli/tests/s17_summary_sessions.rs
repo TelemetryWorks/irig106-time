@@ -108,12 +108,14 @@ fn forward_wrap_is_one_span_and_ambiguity_keeps_only_a_labelled_prefix() {
         ((1i128 << 48) + 20).to_string()
     );
     assert_eq!(n["spans"][0]["counter_span_ns"], "3000");
-    let input = Input::new(&[(8, 9, 0), (8, 9, 1u64 << 47), (8, 9, (1u64 << 47) + 1)]);
+    let input = Input::new(&[(7, 0x11, 0), (8, 9, 1u64 << 47), (8, 9, (1u64 << 47) + 1)]);
     let (exit, out) = input.output("summary", true);
     assert_eq!(exit, ExitClass::Success);
     let v: Value = serde_json::from_str(&out).unwrap();
     let n = &v["report"]["native_sessions"];
     assert_eq!(n["status"], "needs-context");
+    assert_eq!(n["count"], "1");
+    assert_eq!(n["spans"].as_array().unwrap().len(), 1);
     assert!(n["unavailable_reason"].is_string());
     assert_eq!(n["spans"][0]["packets"], "1");
     assert_eq!(v["report"]["total_packets"], "3");
@@ -130,6 +132,23 @@ fn forward_wrap_is_one_span_and_ambiguity_keeps_only_a_labelled_prefix() {
         .collect::<Vec<_>>();
     assert_eq!(findings.len(), 1);
     assert_eq!(findings[0]["level"], "warning");
+    assert_eq!(findings[0]["channel"], 8);
+    assert_eq!(findings[0]["packet"], "1");
+    assert!(findings[0]["code"].is_null());
+    for (level, expected) in [
+        ("error", ExitClass::Success),
+        ("warning", ExitClass::Findings),
+        ("never", ExitClass::Success),
+    ] {
+        assert_eq!(
+            run(
+                &["summary", input.0.to_str().unwrap(), "--fail-on", level],
+                &mut Vec::new(),
+                &mut Vec::new()
+            ),
+            expected
+        );
+    }
 }
 #[test]
 fn native_text_writer_failure_is_output_four() {

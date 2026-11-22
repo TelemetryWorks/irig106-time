@@ -1529,7 +1529,7 @@ exercised in offline and both stream modes, with explicit data bridging RTC wrap
 
 **Planned verification**: A synthetic recording with both formats, two sessions, gaps/jumps, unknown year and counter-only answers; assert relevant provenance in each command. Test 40->1 seconds and 20->1/2/3 seconds, each with a real +5s post-reset jump; single/two late references, broken increasing runs, EOF and overlapping-segment queries. Reset/isolation clause evidence is in verification-s16b2b3c2.md; other CLI-104 clauses remain partial. Planned: a data channel with one or several declared TIMEIN channels, with/without resets, remains association-unresolved absent real relationship evidence. Counter-query policy selection is not proof of association; adapter evidence remains partial until integration.
 
-**Clause evidence**: [S17 adapter audit](verification-s17-completion.md); [bounded native session infrastructure](verification-s17-native-sessions.md) is available, while CLI summary integration/quality, full qualified joining and native answer provenance remain open.
+**Clause evidence**: [S17 adapter audit](verification-s17-completion.md); [bounded native session infrastructure](verification-s17-native-sessions.md) is available; [summary native counter spans](verification-s17-summary-spans.md) are integrated, while native quality, absolute spans, full qualified joining and native answer provenance remain open.
 
 **L3-CLI-105** · Parent: L2-CLI-105 · Verification: T
 

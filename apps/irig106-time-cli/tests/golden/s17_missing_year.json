@@ -114,6 +114,27 @@
       "samples": []
     },
     "last_rtc": "0",
+    "native_sessions": {
+      "count": "1",
+      "infer_sessions": true,
+      "late_bound_ns": "1100000000",
+      "spans": [
+        {
+          "counter_span_ns": "0",
+          "first_packet": "0",
+          "first_ticks": "0",
+          "high_ticks": "0",
+          "index": "1",
+          "last_packet": "0",
+          "last_ticks": "0",
+          "low_ticks": "0",
+          "packets": "1",
+          "start": "initial"
+        }
+      ],
+      "status": "complete",
+      "unavailable_reason": null
+    },
     "policy": {
       "defaults_id": "telemetryworks/irigtime-cli-defaults-v1",
       "drift_correction": false,
@@ -150,7 +171,7 @@
     "total_packets": "1"
   },
   "schema": "telemetryworks/irigtime-report",
-  "schema_revision": 8,
+  "schema_revision": 9,
   "schema_status": "stable",
   "schema_version": 1,
   "tool": {

@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/TelemetryWorks/irig106-time/v0.8.0/docs/schema/irigtime-report-v1.schema.json",
-  "title": "irigtime report v1 revision 8 \u2014 stable",
+  "title": "irigtime report v1 revision 9 \u2014 stable",
   "$comment": "Version-pinned release artifact identifier (resolves when v0.8.0 is published). Schema frozen after the reviewed draft; no tag or publication is performed by this PR.",
-  "description": "Producer validation is strict (unknown producer keys fail). Consumers MUST ignore unknown fields within a supported schema_version, accept additive schema_revision increases, and reject unsupported schema_version values. Every defined key is always emitted; null meaning is per field. Incompatible changes require a new schema_version and breaking tool release. All usize and signed/unsigned 64/128-bit values are decimal strings, including future fields; small wire/date fields remain integers. Suffix units: _ns nanoseconds, _ms milliseconds, _bytes bytes, _rtc 100 ns RTC ticks, _unix_s Unix-style UTC seconds since1970; clock_count_ns is native year-relative time, not Unix. Output is ASCII-only JSON (non-ASCII uses Unicode escapes); ordering is deterministic. Draft->stable is an explicit reviewed revision change. This is CLI output only, not an IRIG 106 wire standard or a JSON loading API. Complete reports are produced on exits 0/1; no report is started on usage/input exits 2/3. On output failure 4 a partial or even complete byte stream may already have been written: consumers must discard it. Existing stderr diagnostics are retained; findings are per command. A revision MAY add values to options.command, row kind and similar enums for newly supported views. Consumers MUST treat unknown enum values as an unsupported view, not an error. Reserved shapes such as rows MAY gain fields until first emitted.",
+  "description": "Producer validation is strict (unknown producer keys fail). Consumers MUST ignore unknown fields within a supported schema_version, accept additive schema_revision increases, and reject unsupported schema_version values. Every defined key is always emitted; null meaning is per field. Incompatible changes require a new schema_version and breaking tool release. All usize and signed/unsigned 64/128-bit values are decimal strings, including future fields; small wire/date fields remain integers. Suffix units: _ticks signed unwrapped100ns RTC coordinates, _ns nanoseconds, _ms milliseconds, _bytes bytes, _rtc 100 ns RTC ticks, _unix_s Unix-style UTC seconds since1970; clock_count_ns is native year-relative time, not Unix. Output is ASCII-only JSON (non-ASCII uses Unicode escapes); ordering is deterministic. Draft->stable is an explicit reviewed revision change. This is CLI output only, not an IRIG 106 wire standard or a JSON loading API. Complete reports are produced on exits 0/1; no report is started on usage/input exits 2/3. On output failure 4 a partial or even complete byte stream may already have been written: consumers must discard it. Existing stderr diagnostics are retained; findings are per command. A revision MAY add values to options.command, row kind and similar enums for newly supported views. Consumers MUST treat unknown enum values as an unsupported view, not an error. Reserved shapes such as rows MAY gain fields until first emitted.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -28,8 +28,8 @@
       "const": 1
     },
     "schema_revision": {
-      "description": "Additive revision8 records explicit options.ntp_era and caller-declared-era clock basis/coverage values; no automatic era guessing.",
-      "const": 8
+      "description": "Additive revision9 adds summary recording-wide native session/header spans, separate from per-channel CLI reset segments; reference quality remains separate.",
+      "const": 9
     },
     "schema_status": {
       "description": "Stable contract following the reviewed draft-to-stable transition at revision 2. Further contract changes follow the version and revision rules.",
@@ -203,9 +203,11 @@
         "data_types",
         "jumps",
         "correlation",
-        "policy"
+        "policy",
+        "native_sessions"
       ],
       "properties": {
+        "native_sessions": {"description": "Summary-only recording-wide native RTC sessions; null when not evaluated in other commands. Separate from compatibility reset_count and channels[].segments. Unknown native ordering keeps a clearly labelled prefix, not a guessed boundary.", "anyOf": [{"$ref":"#/$defs/native_sessions"},{"type":"null"}]},
         "qualification": {
           "description": "Honest current qualification boundary.",
           "const": "observed inventory; qualified joining/basis pending"
@@ -322,6 +324,37 @@
     }
   },
   "$defs": {
+    "native_sessions": {
+      "description": "Native SessionClock across every packet header. Policy-inferred boundaries are not TMATS evidence or data/time-channel association. Complete means all complete parsed headers were analysed, not that time references/calendar/quality are complete.",
+      "type":"object", "additionalProperties":false,
+      "required":["count","late_bound_ns","infer_sessions","status","unavailable_reason","spans"],
+      "properties": {
+        "count":{"description":"Number of native sessions in the analysed prefix; decimal count.","$ref":"#/$defs/unsigned"},
+        "late_bound_ns":{"description":"Actual frozen native late bound in ns; strictly greater backward displacement infers a session if enabled. Independent of the CLI30s channel heuristic.","$ref":"#/$defs/unsigned"},
+        "infer_sessions":{"description":"Actual native session-inference policy; explicit caller boundaries are supported by the library but not supplied by this CLI reader.","type":"boolean"},
+        "status":{"description":"complete for all parsed headers; needs-context if native RTC ordering became ambiguous and the spans cover only the prior prefix.","enum":["complete","needs-context"]},
+        "unavailable_reason":{"description":"Null when complete; reason native analysis stopped otherwise. Other report views still analyse the full input.","type":["string","null"]},
+        "spans":{"description":"Observation-order native sessions, streamed from private spool plus current span; not per-channel reset segments or absolute calendar spans.","type":"array","items":{"$ref":"#/$defs/native_span"}}
+      },
+      "allOf":[{"if":{"properties":{"status":{"description":"Conditional completeness discriminator.","const":"complete"}}},"then":{"properties":{"unavailable_reason":{"description":"Complete native analysis has no unresolved reason.","type":"null"}}},"else":{"properties":{"unavailable_reason":{"description":"Incomplete native analysis retains its reason.","type":"string","minLength":1}}}}]
+    },
+    "native_span": {
+      "description":"All-header native session. _ticks are signed unwrapped100ns RTC ticks. First/last follow file observation order, low/high are extrema; high never decreases on late arrivals. Absolute/calendar spans and reference quality are not evaluated here.",
+      "type":"object","additionalProperties":false,
+      "required":["index","start","first_packet","last_packet","first_ticks","last_ticks","low_ticks","high_ticks","counter_span_ns","packets"],
+      "properties": {
+        "index":{"description":"One-based recording-wide native session ID, decimal string.","$ref":"#/$defs/unsigned"},
+        "start":{"description":"Boundary provenance: initial observation, caller-explicit or native-policy-inferred. Not a wire session flag.","enum":["initial","explicit","inferred"]},
+        "first_packet":{"description":"Zero-based global packet ID of first session observation, decimal string.","$ref":"#/$defs/unsigned"},
+        "last_packet":{"description":"Zero-based global packet ID of last session observation, decimal string.","$ref":"#/$defs/unsigned"},
+        "first_ticks":{"description":"First observed unwrapped100ns RTC coordinate, decimal string.","$ref":"#/$defs/signed"},
+        "last_ticks":{"description":"Last observed unwrapped100ns RTC coordinate, decimal string; can be below high_ticks.","$ref":"#/$defs/signed"},
+        "low_ticks":{"description":"Minimum unwrapped100ns RTC coordinate, decimal string; may precede first_ticks on late arrival.","$ref":"#/$defs/signed"},
+        "high_ticks":{"description":"High-water unwrapped100ns RTC coordinate, decimal string.","$ref":"#/$defs/signed"},
+        "counter_span_ns":{"description":"(high_ticks-low_ticks)*100 in ns, decimal string; zero for one counter value, not null or an absolute date.","$ref":"#/$defs/unsigned"},
+        "packets":{"description":"Count of all headers in the span, including non-time channels, decimal string.","$ref":"#/$defs/unsigned"}
+      }
+    },
     "unsigned": {
       "description": "Nonnegative decimal string; all usize/u64/u128 quantities use this representation.",
       "type": "string",
