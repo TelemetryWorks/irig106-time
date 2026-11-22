@@ -326,6 +326,12 @@ mod tests {
                 .value,
             ReferenceValue::Malformed
         ));
+        // A corrupted rejection flag is distinct from an oversized payload.
+        file.seek(SeekFrom::Start(SIZE))?;
+        file.write_all(&[2])?;
+        assert!(Record::read(file, SIZE, 1).is_err());
+        file.seek(SeekFrom::Start(SIZE))?;
+        file.write_all(&[1])?;
         file.seek(SeekFrom::Start(SIZE + 3))?;
         file.write_all(&[17])?;
         assert!(Record::read(file, SIZE, 1).is_err());

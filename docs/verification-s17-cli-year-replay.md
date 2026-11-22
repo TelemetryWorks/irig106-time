@@ -55,3 +55,20 @@ to output exit4. The wrapper now counts it as rejected context with TF-020 at
 its approved INFORMATION level, preserving the rest of the report; no malformed
 value or operational failure is invented. Other unexpected invariant/I/O errors
 remain fallible. The year-range regression passes after this correction.
+
+## Review delta — derived-only findings and display/flag guards
+
+Packet-local DOY366/LY0 with no year evidence and DMY2017Jan2/LY1 each
+produce exactly zero summary findings, verified against isolated main9674598.
+Future DMY2024Jan2 derives exactly one TF-007 WARNING on the earlier DOY/LY0
+packet (channel7, packet0); the existing derived TF-032 case remains. Exact text
+pins first=session-dmy and last=packet, both with anchor packet2. Corrupt flag2
+is rejected independently of the existing invalid payload-length check.
+
+Five compiling mutants fail assertions: unfiltered findings, unchanged-basis
+reemission, suppressed derived LY, wrong anchor text and accepted corrupt flag.
+After the shared-target main comparison, forced root recompilation ensured these
+runs used the mutated current sources, not baseline artifacts. Sources restored;
+no production change, whole-requirement marker or coverage change. The reviewer's
+decode-twice runtime concern is deferred to a separate optimization, outside this
+tests-only delta. Local focused tests/fmt/Clippy/trace; full checks remain PR CI.

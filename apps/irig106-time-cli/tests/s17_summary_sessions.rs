@@ -612,6 +612,14 @@ fn native_summary_replays_future_dmy_without_crossing_sessions() {
     let (_, text) = input.output("summary", false);
     assert!(text.contains("session DMY year evidence"));
     assert!(text.contains("year 2023"));
+    assert!(
+        text.lines()
+            .any(|line| line == "      Year evidence (first): session-dmy; anchor packet 2")
+    );
+    assert!(
+        text.lines()
+            .any(|line| line == "      Year evidence (last): packet; anchor packet 2")
+    );
 }
 #[test]
 fn native_year_replay_backdates_a_prefix_larger_than_the_pending_cap() {
@@ -867,4 +875,43 @@ fn year_inference_outside_calendar_range_is_context_not_output_failure() {
             .iter()
             .any(|f| f["code"] == "TF-020" && f["level"] == "info")
     );
+}
+
+#[test]
+fn packet_local_year_facts_keep_main_summary_findings() {
+    // Figs11-12..14. Main9674598 emits no findings for either one-packet
+    // fixture. Packet-local LY facts must not be re-emitted by year replay.
+    let bodies: [&[u8]; 2] = [
+        &[0x41, 0, 0, 0, 0, 0, 0, 0, 0x66, 3], // DOY366,LY0,year unknown.
+        &[0x41, 3, 0, 0, 0, 0, 0, 0, 2, 1, 0x17, 0x20], //2017Jan2,LY1 contradicts body year.
+    ];
+    for body in bodies {
+        let (_, out) = Input::bytes(&packet_body(7, 0x11, 0, body)).output("summary", true);
+        let v: Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(
+            v["findings"],
+            json!({"error":"0","warning":"0","info":"0","omitted":"0","samples":[]})
+        );
+    }
+}
+#[test]
+fn future_dmy_derives_a_new_ly_finding() {
+    // Unknown-year day2/LY0 is not contradictory by itself; future2024 DMY
+    // supplies a leap year and derives TF-007 on the earlier packet.
+    let mut bytes = packet_body(7, 0x11, 0, &[0x41, 0, 0, 0, 0, 0, 0, 0, 2, 0]);
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        10_000_000,
+        &[0x41, 3, 0, 0, 0, 1, 0, 0, 2, 1, 0x24, 0x20],
+    ));
+    let (_, out) = Input::bytes(&bytes).output("summary", true);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(v["findings"]["warning"], "1");
+    let samples = v["findings"]["samples"].as_array().unwrap();
+    assert_eq!(samples.len(), 1);
+    assert_eq!(samples[0]["code"], "TF-007");
+    assert_eq!(samples[0]["level"], "warning");
+    assert_eq!(samples[0]["packet"], "0");
+    assert_eq!(samples[0]["channel"], 7);
 }
