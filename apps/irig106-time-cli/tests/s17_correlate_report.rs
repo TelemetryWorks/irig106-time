@@ -24,6 +24,30 @@ impl Input {
         std::fs::write(&path, bytes).unwrap();
         Self(path)
     }
+    fn json_at(&self, seconds: u64) -> (ExitClass, serde_json::Value, String) {
+        let target = format!("{:X}", seconds * 10_000_000);
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        let exit = run(
+            &[
+                "correlate",
+                self.0.to_str().unwrap(),
+                &target,
+                "--format",
+                "json",
+                "--fail-on",
+                "warning",
+            ],
+            &mut out,
+            &mut err,
+        );
+        assert_ne!(exit, ExitClass::Usage, "{}", String::from_utf8_lossy(&err));
+        assert!(out.is_ascii());
+        (
+            exit,
+            serde_json::from_slice(&out).unwrap(),
+            String::from_utf8(err).unwrap(),
+        )
+    }
     fn query_at(&self, seconds: u64) -> (ExitClass, String, String) {
         let target = format!("{:X}", seconds * 10_000_000);
         let (mut out, mut err) = (Vec::new(), Vec::new());
@@ -264,5 +288,160 @@ fn reset_segment_calendar_context_error_is_rendered_unresolved() {
         assert_eq!(exit, ExitClass::Findings);
         assert!(out.lines().any(|line|line=="  Channel   7 Segment   1  → unresolved: time needs context: unknown year at calendar boundary"),"{out}");
         assert!(err.contains("Finding: Warning: Segment query: time needs context: unknown year at calendar boundary"),"{err}");
+    }
+}
+
+fn query_clock(hour: u8, minute: u8, second: u8) -> serde_json::Value {
+    // DOY100 starts after99 days. Expected native count, not Unix/UTC inference.
+    let ns = (99u64 * 86400 + u64::from(hour) * 3600 + u64::from(minute) * 60 + u64::from(second))
+        * 1_000_000_000;
+    serde_json::json!({"year":null,"day":100,"hour":hour,"minute":minute,"second":second,"nanosecond":0,
+        "clock_count_ns":ns.to_string(),"scale":"unknown","basis":"unresolved","year_offset":"0"})
+}
+#[test]
+fn correlate_json_matches_native_answers_with_all_query_fields() {
+    use serde_json::json;
+    let input = Input::new(&[(7, 0, 0), (8, 0, 3600), (7, 40, 40), (8, 41, 3641)]);
+    let (exit, v, err) = input.json_at(5);
+    assert_eq!(exit, ExitClass::Success);
+    assert_eq!(err, input.query_at(5).2);
+    assert_eq!(v["schema_revision"], 4);
+    assert_eq!(v["options"]["query_rtc"], "50000000");
+    assert!(v["options"]["limit"].is_null());
+    assert!(v["options"]["threshold_ms"].is_null());
+    assert!(v["report"]["rows"].is_null());
+    assert!(v["report"]["jumps"].is_null());
+    assert_eq!(
+        v["report"]["correlation"],
+        json!({
+        "any":{"clock":query_clock(12,0,5),"issue":null},
+        "answers":[
+            {"channel":7,"segment":"1","labelled":false,"clock":query_clock(12,0,5),"issue":null},
+            {"channel":8,"segment":"1","labelled":false,"clock":query_clock(13,0,5),"issue":null}]})
+    );
+    let schema: serde_json::Value =
+        serde_json::from_str(include_str!("../schema/irigtime-report-v1.schema.json")).unwrap();
+    for (value, definition) in [
+        (&v["report"]["correlation"], "query_report"),
+        (&v["report"]["correlation"]["any"], "query_value"),
+        (&v["report"]["correlation"]["answers"][0], "query_answer"),
+    ] {
+        assert_eq!(
+            value.as_object().unwrap().keys().collect::<Vec<_>>(),
+            schema["$defs"][definition]["properties"]
+                .as_object()
+                .unwrap()
+                .keys()
+                .collect::<Vec<_>>()
+        );
+    }
+    assert_eq!(v, input.json_at(5).1);
+}
+#[test]
+fn correlate_json_reset_golden_keeps_each_segment_and_unreset_channel() {
+    let input = Input::new(&[
+        (7, 0, 0),
+        (8, 0, 3600),
+        (7, 40, 40),
+        (7, 1, 61),
+        (7, 10, 70),
+        (8, 41, 3641),
+    ]);
+    let (exit, v, err) = input.json_at(5);
+    assert_eq!(exit, ExitClass::Findings);
+    assert_eq!(err, input.query_at(5).2);
+    assert_eq!(v["findings"]["warning"], "2");
+    assert_eq!(
+        v["report"]["correlation"],
+        serde_json::json!({
+        "any":{"clock":null,"issue":"Any-channel answer withheld across RTC resets; use labelled segment answers"},
+        "answers":[
+            {"channel":7,"segment":"1","labelled":true,"clock":query_clock(12,0,5),"issue":null},
+            {"channel":7,"segment":"2","labelled":true,"clock":query_clock(12,1,5),"issue":null},
+            {"channel":8,"segment":"1","labelled":false,"clock":query_clock(13,0,5),"issue":null}]})
+    );
+    assert_eq!(
+        v["report"]["channels"][0]["segments"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+}
+#[test]
+fn correlate_json_preserves_context_errors_and_no_reference_reason() {
+    let bytes = (0..20)
+        .flat_map(|rtc| year_boundary_packet(rtc, 365, 23, 59, 30 + rtc as u8))
+        .collect::<Vec<_>>();
+    let input = Input::bytes(&bytes);
+    let (exit, v, err) = input.json_at(60);
+    assert_eq!(exit, ExitClass::Findings);
+    assert_eq!(err, input.query_at(60).2);
+    assert_eq!(v["findings"]["warning"], "2");
+    assert_eq!(
+        v["report"]["correlation"],
+        serde_json::json!({"any":{"clock":null,"issue":"time needs context: unknown year at calendar boundary"},"answers":[]})
+    );
+    let mut bytes = (0..6)
+        .flat_map(|rtc| year_boundary_packet(rtc, 365, 23, 59, 50 + rtc as u8))
+        .collect::<Vec<_>>();
+    for rtc in [20, 21] {
+        bytes.extend(year_boundary_packet(rtc, 1, 0, 0, (rtc - 10) as u8));
+    }
+    for rtc in 0..3 {
+        bytes.extend(year_boundary_packet(rtc, 1, 0, 1, rtc as u8));
+    }
+    let (_, v, _) = Input::bytes(&bytes).json_at(12);
+    assert_eq!(
+        v["report"]["correlation"]["answers"],
+        serde_json::json!([{"channel":7,"segment":"1","labelled":true,"clock":null,"issue":"time needs context: unknown year at calendar boundary"}])
+    );
+    // §11.2.1.1: valid PCM header, zero Data Length, checksum EB25+18+900=F43D.
+    let (_, v, _) = Input::bytes(&[
+        0x25, 0xeb, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0x3d, 0xf4,
+    ])
+    .json_at(0);
+    assert_eq!(
+        v["report"]["correlation"],
+        serde_json::json!({"any":{"clock":null,"issue":"No time reference points found in file"},"answers":[]})
+    );
+}
+#[test]
+fn correlate_json_usage_and_writer_failure_keep_exit_classes() {
+    struct Broken;
+    impl std::io::Write for Broken {
+        fn write(&mut self, _: &[u8]) -> std::io::Result<usize> {
+            Err(std::io::Error::other("query JSON writer"))
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let input = Input::new(&[(7, 0, 0), (7, 40, 40)]);
+    assert_eq!(
+        run(
+            &[
+                "correlate",
+                input.0.to_str().unwrap(),
+                "2FAF080",
+                "--format",
+                "json"
+            ],
+            &mut Broken,
+            &mut Vec::new()
+        ),
+        ExitClass::Output
+    );
+    for tail in [
+        vec!["--format", "JSON"],
+        vec!["--format", "json", "--format", "text"],
+        vec!["--format"],
+    ] {
+        let mut args = vec!["correlate", "/missing-input", "0"];
+        args.extend(tail);
+        assert_eq!(
+            run(&args, &mut Vec::new(), &mut Vec::new()),
+            ExitClass::Usage
+        );
     }
 }

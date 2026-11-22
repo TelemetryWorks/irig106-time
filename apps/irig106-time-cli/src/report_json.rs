@@ -230,6 +230,39 @@ fn document(r: &Report<'_>, args: &Args, size: u64) -> Value {
 mod tests {
     use super::*;
     #[test]
+    fn query_document_defers_answers_until_emission() {
+        let mut scanner = Ch10TimeScanner::new();
+        scanner.query_refs = Some(target_refs::TargetReferences::new(Rtc::from_raw(
+            50_000_000,
+        )));
+        scanner.query_answers.push(correlate_report::Answer::new(
+            7,
+            1,
+            false,
+            Ok(AbsoluteTime::new(100, 12, 0, 5, 0).unwrap()),
+        ));
+        let args = match args::parse(&["correlate", "input", "2FAF080"]).unwrap() {
+            args::Request::File(a) => Some(a),
+            _ => None,
+        }
+        .unwrap();
+        let report = Report::from(&scanner);
+        assert_eq!(
+            document(&report, &args, 36)["report"]["correlation"]["answers"],
+            json!([])
+        );
+        let mut out = Vec::new();
+        write(&report, &args, 36, &mut out).unwrap();
+        let emitted: Value = serde_json::from_slice(&out).unwrap();
+        assert_eq!(
+            emitted["report"]["correlation"]["answers"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+    }
+    #[test]
     fn timeline_document_defers_rows_until_emission() {
         let mut scanner = Ch10TimeScanner::new();
         scanner.resolved.push(ResolvedPacket {
