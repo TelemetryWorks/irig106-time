@@ -20,6 +20,9 @@ fn packet(channel: u16, kind: u8, ticks: u64) -> Vec<u8> {
     } else {
         &[]
     };
+    packet_body(channel, kind, ticks, body)
+}
+fn packet_body(channel: u16, kind: u8, ticks: u64, body: &[u8]) -> Vec<u8> {
     let mut p = vec![0; (24 + body.len()).next_multiple_of(4)];
     p[..2].copy_from_slice(&[0x25, 0xeb]);
     p[2..4].copy_from_slice(&channel.to_le_bytes());
@@ -38,19 +41,21 @@ fn packet(channel: u16, kind: u8, ticks: u64) -> Vec<u8> {
 }
 impl Input {
     fn new(rows: &[(u16, u8, u64)]) -> Self {
+        Self::bytes(
+            &rows
+                .iter()
+                .flat_map(|&(c, k, r)| packet(c, k, r))
+                .collect::<Vec<_>>(),
+        )
+    }
+    fn bytes(bytes: &[u8]) -> Self {
         static N: AtomicUsize = AtomicUsize::new(0);
         let path = std::env::temp_dir().join(format!(
             "s17-native-{}-{}",
             std::process::id(),
             N.fetch_add(1, Ordering::Relaxed)
         ));
-        std::fs::write(
-            &path,
-            rows.iter()
-                .flat_map(|&(c, k, r)| packet(c, k, r))
-                .collect::<Vec<_>>(),
-        )
-        .unwrap();
+        std::fs::write(&path, bytes).unwrap();
         Self(path)
     }
     fn output(&self, command: &str, json: bool) -> (ExitClass, String) {
@@ -264,4 +269,98 @@ fn native_summary_quality_orders_late_f1_and_keeps_partial_calendar() {
     let (_, text) = input.output("summary", false);
     assert!(text.contains("Native quality ch7: valid 4; rejected 0; admitted 4"));
     assert!(text.contains("year unknown"));
+}
+
+#[test]
+fn quality_resets_same_channel_and_large_closed_span_roundtrips() {
+    // Fig11-12/13: UTC/DOY10012:00. Four native time channels give a
+    // closed span >2KiB; the SAME ch7 then starts day101 in session2.
+    let mut bytes = Vec::new();
+    for ch in 7..=10 {
+        bytes.extend(packet(ch, 0x11, u64::from(ch - 7) * 10_000_000));
+    }
+    let day101 = [0x41, 0, 0, 0, 0, 0, 0, 0x12, 1, 1];
+    bytes.extend(packet_body(7, 0x11, 0, &day101));
+    bytes.extend(packet_body(7, 0x11, 10_000_000, &day101));
+    let input = Input::bytes(&bytes);
+    let (exit, out) = input.output("summary", true);
+    assert_eq!(exit, ExitClass::Success);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let spans = &v["report"]["native_sessions"]["spans"];
+    assert_eq!(spans.as_array().unwrap().len(), 2);
+    assert!(serde_json::to_vec(&spans[0]).unwrap().len() > 2048);
+    assert_eq!(
+        spans[0]["reference_quality"]["channels"]
+            .as_array()
+            .unwrap()
+            .len(),
+        4
+    );
+    for row in spans[0]["reference_quality"]["channels"]
+        .as_array()
+        .unwrap()
+    {
+        assert_eq!(row["valid"], "1");
+        assert_eq!(row["first"]["day"], 100);
+    }
+    let q = &spans[1]["reference_quality"];
+    assert_eq!(q["status"], "complete");
+    assert!(q["unavailable_reason"].is_null());
+    assert_eq!(q["channels"].as_array().unwrap().len(), 1);
+    assert_eq!(q["channels"][0]["channel"], 7);
+    assert_eq!(q["channels"][0]["valid"], "2");
+    assert_eq!(q["channels"][0]["first"]["day"], 101);
+}
+#[test]
+fn live_quality_drains_more_than_1024_references_without_losing_counts() {
+    let input = Input::new(
+        &(0..1100)
+            .map(|i| (7, 0x11, i * 10_000_000))
+            .collect::<Vec<_>>(),
+    );
+    let (exit, out) = input.output("summary", true);
+    assert_eq!(exit, ExitClass::Success);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let q = &v["report"]["native_sessions"]["spans"][0]["reference_quality"];
+    assert_eq!(q["status"], "complete");
+    assert!(q["unavailable_reason"].is_null());
+    assert_eq!(q["channels"][0]["valid"], "1100");
+    assert_eq!(q["channels"][0]["interval_ns"], "1099000000000");
+}
+#[test]
+fn native_utc_quality_counts_the_2016_insertion_in_tai() {
+    // Fig11-12/14 DATE1/FMT4: LY1 2016Dec31 23:59:59 -> LY0
+    // 2017Jan1 00:00:00. IERS36->37 makes this2s, exactly RTC2s.
+    let mut bytes = packet_body(
+        7,
+        0x11,
+        0,
+        &[0x41, 3, 0, 0, 0, 0x59, 0x59, 0x23, 0x31, 0x12, 0x16, 0x20],
+    );
+    bytes.extend(packet_body(
+        7,
+        0x11,
+        20_000_000,
+        &[0x41, 2, 0, 0, 0, 0, 0, 0, 1, 1, 0x17, 0x20],
+    ));
+    let (exit, out) = Input::bytes(&bytes).output("summary", true);
+    assert_eq!(exit, ExitClass::Success);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    let q = &v["report"]["native_sessions"]["spans"][0]["reference_quality"]["channels"][0];
+    assert_eq!(q["valid"], "2");
+    assert_eq!(q["interval_ns"], "2000000000");
+    assert_eq!(q["drift_ppm"], 0.0);
+    assert!(q["unavailable_reason"].is_null());
+    assert_eq!(q["first"]["year"], 2016);
+    assert_eq!(q["last"]["year"], 2017);
+}
+#[test]
+fn native_quality_text_reports_unavailable_measures_and_cap_prefix() {
+    let (_, text) = Input::new(&[(7, 0x11, 0)]).output("summary", false);
+    assert!(text.contains("Unavailable: fewer than two valid references"));
+    assert!(text.contains("interval unavailable; drift unavailable"));
+    assert!(!text.contains("unavailable ns"));
+    assert!(!text.contains("null ppm"));
+    let (_, text) = Input::new(&vec![(7, 0x11, 0); 1025]).output("summary", false);
+    assert!(text.contains("Quality prefix only: native quality pending cap (1024); prefix only"));
 }
