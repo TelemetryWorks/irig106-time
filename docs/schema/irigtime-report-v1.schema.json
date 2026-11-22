@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/TelemetryWorks/irig106-time/v0.8.0/docs/schema/irigtime-report-v1.schema.json",
-  "title": "irigtime report v1 revision 6 \u2014 stable",
+  "title": "irigtime report v1 revision 7 \u2014 stable",
   "$comment": "Version-pinned release artifact identifier (resolves when v0.8.0 is published). Schema frozen after the reviewed draft; no tag or publication is performed by this PR.",
-  "description": "Producer validation is strict (unknown producer keys fail). Consumers MUST ignore unknown fields within a supported schema_version, accept additive schema_revision increases, and reject unsupported schema_version values. Every defined key is always emitted; null meaning is per field. Incompatible changes require a new schema_version and breaking tool release. All usize and signed/unsigned 64/128-bit values are decimal strings, including future fields; small wire/date fields remain integers. Suffix units: _ns nanoseconds, _ms milliseconds, _bytes bytes, _rtc 100 ns RTC ticks; clock_count_ns is native year-relative time, not Unix. Output is ASCII-only JSON (non-ASCII uses Unicode escapes); ordering is deterministic. Draft->stable is an explicit reviewed revision change. This is CLI output only, not an IRIG 106 wire standard or a JSON loading API. Complete reports are produced on exits 0/1; no report is started on usage/input exits 2/3. On output failure 4 a partial or even complete byte stream may already have been written: consumers must discard it. Existing stderr diagnostics are retained; findings are per command. A revision MAY add values to options.command, row kind and similar enums for newly supported views. Consumers MUST treat unknown enum values as an unsupported view, not an error. Reserved shapes such as rows MAY gain fields until first emitted.",
+  "description": "Producer validation is strict (unknown producer keys fail). Consumers MUST ignore unknown fields within a supported schema_version, accept additive schema_revision increases, and reject unsupported schema_version values. Every defined key is always emitted; null meaning is per field. Incompatible changes require a new schema_version and breaking tool release. All usize and signed/unsigned 64/128-bit values are decimal strings, including future fields; small wire/date fields remain integers. Suffix units: _ns nanoseconds, _ms milliseconds, _bytes bytes, _rtc 100 ns RTC ticks, _unix_s Unix-style UTC seconds since1970; clock_count_ns is native year-relative time, not Unix. Output is ASCII-only JSON (non-ASCII uses Unicode escapes); ordering is deterministic. Draft->stable is an explicit reviewed revision change. This is CLI output only, not an IRIG 106 wire standard or a JSON loading API. Complete reports are produced on exits 0/1; no report is started on usage/input exits 2/3. On output failure 4 a partial or even complete byte stream may already have been written: consumers must discard it. Existing stderr diagnostics are retained; findings are per command. A revision MAY add values to options.command, row kind and similar enums for newly supported views. Consumers MUST treat unknown enum values as an unsupported view, not an error. Reserved shapes such as rows MAY gain fields until first emitted.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -28,8 +28,8 @@
       "const": 1
     },
     "schema_revision": {
-      "description": "Additive revision6 adds observed packet and selected-reference network_time facts; older consumers ignore these new fields.",
-      "const": 6
+      "description": "Additive revision7 records the effective CLI policy/default identities, bounds/reset rules and installed leap-table identity; consumers ignore unknown fields.",
+      "const": 7
     },
     "schema_status": {
       "description": "Stable contract following the reviewed draft-to-stable transition at revision 2. Further contract changes follow the version and revision rules.",
@@ -189,7 +189,8 @@
         "channels",
         "data_types",
         "jumps",
-        "correlation"
+        "correlation",
+        "policy"
       ],
       "properties": {
         "qualification": {
@@ -299,6 +300,10 @@
               "type": "null"
             }
           ]
+        },
+        "policy": {
+          "description": "Effective CLI compatibility policy for this entire report, present even without findings. This is not a library SharedPolicy snapshot or a data-source association.",
+          "$ref": "#/$defs/report_policy"
         }
       }
     }
@@ -1046,13 +1051,76 @@
     },
     "network_time": {
       "description": "106-24R1 Figure11-15 NTF and TS wire fields; observation is distinct from successful conversion.",
-      "type": "object", "additionalProperties": false,
-      "required": ["ntf", "protocol", "ts", "status"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ntf",
+        "protocol",
+        "ts",
+        "status"
+      ],
       "properties": {
-        "ntf": {"description": "Raw NTF selector bits7..4.", "type": "integer", "minimum": 0, "maximum": 15},
-        "protocol": {"description": "Protocol/revision selected by NTF; reserved retains its raw ntf.", "enum": ["NTP", "IEEE1588-2002", "IEEE1588-2008", "reserved"]},
-        "ts": {"description": "Raw TS selector bits3..0.", "type": "integer", "minimum": 0, "maximum": 15},
-        "status": {"description": "TS0 not-valid,TS1 valid,TS2..15 reserved; not an invented absolute answer.", "enum": ["not-valid", "valid", "reserved"]}
+        "ntf": {
+          "description": "Raw NTF selector bits7..4.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15
+        },
+        "protocol": {
+          "description": "Protocol/revision selected by NTF; reserved retains its raw ntf.",
+          "enum": [
+            "NTP",
+            "IEEE1588-2002",
+            "IEEE1588-2008",
+            "reserved"
+          ]
+        },
+        "ts": {
+          "description": "Raw TS selector bits3..0.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15
+        },
+        "status": {
+          "description": "TS0 not-valid,TS1 valid,TS2..15 reserved; not an invented absolute answer.",
+          "enum": [
+            "not-valid",
+            "valid",
+            "reserved"
+          ]
+        }
+      }
+    },
+    "report_policy": {
+      "description": "Versioned effective CLI settings; current legacy correlation is reported honestly, not relabelled as a native recording policy.",
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "defaults_id", "reference_selection", "drift_correction", "reference_window_ns", "reference_cap", "query_reference_storage", "query_candidates_per_channel", "reset_backward_step_ns", "reset_backward_comparison", "reset_run_references", "reset_run_order", "leap_table"],
+      "properties": {
+        "id": {"description": "Versioned CLI correlation algorithm identity; deliberately distinct from library SharedPolicy IDs. Change on algorithm change.", "type": "string", "minLength": 1},
+        "defaults_id": {"description": "Versioned CLI defaults catalog; change when fixed defaults change. Effective command overrides remain in options.", "type": "string", "minLength": 1},
+        "reference_selection": {"description": "Actual legacy nearest-reference numeric counter-offset algorithm, not Standard/Interpolate mode.", "enum": ["nearest-reference-counter-offset"]},
+        "drift_correction": {"description": "Whether the CLI numeric correlator applies drift correction; currently false.", "type": "boolean"},
+        "reference_window_ns": {"description": "Actual live-cache age window in ns; main global age and isolated per-channel ages share the default. Counter queries use separate target brackets.", "$ref": "#/$defs/unsigned"},
+        "reference_cap": {"description": "Reference-count cap per main live cache and per combined isolated pool; not a total-report memory count and not a target-query cap.", "$ref": "#/$defs/unsigned"},
+        "query_reference_storage": {"description": "Target-specific bracketing independent of live-cache eviction; preserves old requested RTCs.", "enum": ["target-brackets"]},
+        "query_candidates_per_channel": {"description": "Maximum retained candidates per queried channel, including duplicate representatives, across two RTC groups.", "$ref": "#/$defs/unsigned"},
+        "reset_backward_step_ns": {"description": "Immediate reset for a backward step strictly greater than this bound, ns; a reader heuristic, not a wire reset flag.", "$ref": "#/$defs/unsigned"},
+        "reset_backward_comparison": {"description": "Strict threshold: equality alone is out-of-order, not immediate reset.", "enum": ["strictly-greater"]},
+        "reset_run_references": {"description": "Consecutive behind-baseline references needed to declare the short-reset run at its first packet.", "$ref": "#/$defs/unsigned"},
+        "reset_run_order": {"description": "The reset run must increase strictly among its members while all remain behind the accepted baseline.", "enum": ["strictly-increasing-behind-baseline"]},
+        "leap_table": {"description": "Table actually installed in the scanner, even if no PTP value uses it; identity/currency do not imply every reported clock is covered.", "$ref": "#/$defs/policy_leap_table"}
+      }
+    },
+    "policy_leap_table": {
+      "description": "Installed table provenance and declared UTC currency. No host clock is consulted.",
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "source", "supported_start_unix_s", "known_current_through_unix_s", "entries"],
+      "properties": {
+        "id": {"description": "Actual installed leap table identity, including the built-in source-content hash.", "type": "string", "minLength": 1},
+        "source": {"description": "Authority/source description supplied with the table; runtime does not fetch it.", "type": "string", "minLength": 1},
+        "supported_start_unix_s": {"description": "First supported UTC second, inclusive, Unix seconds; no offset is guessed before support.", "$ref": "#/$defs/unsigned"},
+        "known_current_through_unix_s": {"description": "Final covered UTC second, inclusive of all its fractions, Unix seconds. Later PTP UTC uses the last known offset and TF-021.", "$ref": "#/$defs/unsigned"},
+        "entries": {"description": "Actual installed transition-entry count; does not equal the coverage end.", "$ref": "#/$defs/unsigned"}
       }
     }
   }

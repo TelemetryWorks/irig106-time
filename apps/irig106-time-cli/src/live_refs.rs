@@ -13,7 +13,9 @@ impl LiveReferences {
     pub(super) fn observe(&mut self, ch: u16, rtc: Rtc, time: AbsoluteTime) {
         self.channels
             .entry(ch)
-            .or_insert_with(|| StreamingTimeCorrelator::new(NanosDuration::new(30_000_000_000)))
+            .or_insert_with(|| {
+                StreamingTimeCorrelator::new(NanosDuration::new(super::REFERENCE_WINDOW_NS))
+            })
             .add_reference(ch, rtc, time);
         self.order.push_back((ch, rtc));
         if self.order.len() > super::REFERENCE_CAP.get() {

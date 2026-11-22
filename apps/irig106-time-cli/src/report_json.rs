@@ -251,7 +251,7 @@ fn query_metadata(r: &Report<'_>) -> Option<Value> {
 fn document(r: &Report<'_>, args: &Args, size: u64) -> Value {
     let path = args.input.as_os_str();
     let (bytes, encoding) = native_name(path);
-    json!({"schema": "telemetryworks/irigtime-report", "schema_version": 1, "schema_revision": 6, "schema_status": "stable",
+    json!({"schema": "telemetryworks/irigtime-report", "schema_version": 1, "schema_revision": 7, "schema_status": "stable",
         "tool": {"name": "irigtime", "version": PKG_VERSION, "library_version": PKG_VERSION,
             "source_revision": option_env!("IRIGTIME_SOURCE_REVISION").or(option_env!("GITHUB_SHA"))},
         "input": {"name": path.to_string_lossy(), "name_lossy": path.to_str().is_none(),
@@ -265,7 +265,7 @@ fn document(r: &Report<'_>, args: &Args, size: u64) -> Value {
             "info": decimal(r.finding_counts[0]), "omitted": decimal(r.omitted_findings()),
             "samples": r.finding_samples.iter().map(|s| json!({"level": level(Some(s.level)), "code": s.code,
                 "message": s.message, "channel": s.channel, "packet": s.packet.map(decimal)})).collect::<Vec<_>>()},
-        "report": {"correlation": query_metadata(r), "qualification": "observed inventory; qualified joining/basis pending", "rows": if args.command == "timeline" { Some(Vec::<Value>::new()) } else { None },
+        "report": {"policy":super::report_policy::value(r),"correlation": query_metadata(r), "qualification": "observed inventory; qualified joining/basis pending", "rows": if args.command == "timeline" { Some(Vec::<Value>::new()) } else { None },
             "total_packets": decimal(r.total_packets), "time_packets": decimal(r.time_packets),
             "references_seen": decimal(r.references_seen), "reference_count": decimal(r.reference_count),
             "references_evicted": decimal(r.references_evicted), "reset_count": decimal(r.reset_count),
@@ -488,7 +488,7 @@ mod tests {
         assert!(out.is_ascii());
         let v: Value = serde_json::from_slice(&out).unwrap();
         assert_eq!(v["schema"], "telemetryworks/irigtime-report");
-        assert_eq!(v["schema_revision"], 6);
+        assert_eq!(v["schema_revision"], 7);
         assert_eq!(v["highest_level"], "error");
         assert_eq!(v["findings"]["error"], "1");
         assert_eq!(v["findings"]["info"], "2");
@@ -540,6 +540,45 @@ mod tests {
             base["report"]["policy"]["reference_window_ns"],
             "30000000000"
         );
+        // Reset metadata must describe the actual comparison/run boundaries.
+        for (rtcs, expected) in [
+            (vec![30, 0], 0),
+            (vec![31, 0], 1),
+            (vec![20, 1, 2], 0),
+            (vec![20, 1, 2, 3], 1),
+        ] {
+            let mut probe = Ch10TimeScanner::new();
+            for rtc in rtcs {
+                let second = (rtc % 60) as u8;
+                let payload = [
+                    0x41,
+                    0,
+                    0,
+                    0,
+                    0,
+                    second / 10 * 16 + second % 10,
+                    0,
+                    0x12,
+                    0,
+                    1,
+                ];
+                probe.process_time_packet(
+                    &payload,
+                    &PktHeader {
+                        channel_id: 7,
+                        data_type: 0x11,
+                        rtc: Rtc::from_raw(rtc * 10_000_000),
+                    },
+                );
+            }
+            let observed = document(&Report::from(&probe), &args, 0);
+            assert_eq!(observed["report"]["reset_count"], expected.to_string());
+            assert_eq!(
+                observed["report"]["policy"]["reset_backward_step_ns"],
+                "30000000000"
+            );
+            assert_eq!(observed["report"]["policy"]["reset_run_references"], "3");
+        }
         for i in 0..1050 {
             scanner.correlator.add_reference(
                 7,

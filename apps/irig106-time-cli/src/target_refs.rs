@@ -236,4 +236,26 @@ mod basis_tests {
             }
         }
     }
+    // CLI-106 report bound: two RTC groups, first/second/latest duplicate reps.
+    #[test]
+    fn reported_six_candidate_bound_matches_actual_duplicate_storage() {
+        let mut query = TargetReferences::new(Rtc::from_raw(10));
+        for _ in 0..8 {
+            for rtc in [0, 20] {
+                query.observe(
+                    7,
+                    Rtc::from_raw(rtc),
+                    AbsoluteTime::new(100, 12, 0, 0, 0).unwrap(),
+                );
+            }
+        }
+        assert_eq!(
+            query
+                .channels
+                .values()
+                .flat_map(Bracket::candidates)
+                .count(),
+            6
+        );
+    }
 }

@@ -306,7 +306,7 @@ passed; `publish = false` remains until the owner’s S20 decision.
 Summary/channels/jumps accept `--format json` (default text), over the same report
 model as text. See the [stable producer schema](https://github.com/TelemetryWorks/irig106-time/blob/main/apps/irig106-time-cli/schema/irigtime-report-v1.schema.json)
 and [compatibility, units and provenance rules](https://github.com/TelemetryWorks/irig106-time/blob/main/docs/cli-report-schema.md).
-The shared envelope is `telemetryworks/irigtime-report`, stable v1, revision 6. JSON is
+The shared envelope is `telemetryworks/irigtime-report`, stable v1, revision 7. JSON is
 ASCII-only; 64/128-bit quantities are decimal strings. Every defined key is
 present; null meanings are field-specific. Consumers ignore unknown fields;
 producer validation stays strict. The schema is frozen after review.
@@ -362,3 +362,11 @@ RTC is scale unknown. Text suffixes and JSON basis follow that reference,
 including closed reset segments, not the packet's own or latest channel FMT.
 Numeric values/unknown years and CSV columns are unchanged; no data-channel
 association is inferred from this counter-reference choice.
+
+
+## Effective report policy (revision 7)
+
+`report.policy` records the CLI nearest-reference/default identities, actual
+live window/cap, query brackets, reset thresholds and installed leap table,
+even without findings. These are CLI compatibility settings, not native
+SharedPolicy/Standard/Interpolate claims. See the [schema contract](../../docs/cli-report-schema.md).

@@ -51,6 +51,7 @@ pub mod input;
 mod live_refs;
 mod report;
 mod report_json;
+mod report_policy;
 mod report_rows;
 use report_rows::PacketRow as ResolvedPacket;
 mod segment_answers;
@@ -64,6 +65,9 @@ mod target_refs;
 const DATA_TYPE_TIME_F1: u8 = 0x11;
 const DATA_TYPE_TIME_F2: u8 = 0x12;
 const FINDING_SAMPLE_LIMIT: usize = 20;
+const REFERENCE_WINDOW_NS: u64 = 30_000_000_000;
+const RESET_BACKWARD_TICKS: u64 = REFERENCE_WINDOW_NS / 100;
+const RESET_RUN_REFERENCES: usize = 3;
 // Resource policy, not a standard-imposed time/reference bound.
 const REFERENCE_CAP: core::num::NonZeroUsize = match core::num::NonZeroUsize::new(1024) {
     Some(n) => n,
@@ -206,7 +210,7 @@ impl Ch10TimeScanner {
     fn new() -> Self {
         Self {
             correlator: StreamingTimeCorrelator::with_reference_limit(
-                NanosDuration::new(30_000_000_000),
+                NanosDuration::new(REFERENCE_WINDOW_NS),
                 REFERENCE_CAP,
             ),
             segment_inventory: None,
@@ -480,7 +484,7 @@ impl Ch10TimeScanner {
             self.pending_channels -= 1;
         }
         if let Some(previous) = baseline.filter(|previous| point.rtc < *previous) {
-            if previous.as_raw() - point.rtc.as_raw() > 300_000_000 {
+            if previous.as_raw() - point.rtc.as_raw() > RESET_BACKWARD_TICKS {
                 self.report_late(hdr.channel_id, late);
                 self.start_reset(hdr.channel_id, previous, point);
                 self.observe_pair(hdr.channel_id, point);
@@ -489,7 +493,7 @@ impl Ch10TimeScanner {
                     self.report_late(hdr.channel_id, core::mem::take(&mut late));
                 }
                 late.push(point);
-                if late.len() == 3 {
+                if late.len() == RESET_RUN_REFERENCES {
                     if let Some(first) = late.first().copied() {
                         self.start_reset(hdr.channel_id, previous, first);
                     }
@@ -1548,7 +1552,7 @@ fn print_usage(stdout: &mut dyn Write) -> Result<(), Failure> {
     )?;
     writeln!(
         stdout,
-        "--format <text|json>: summary/channels/jumps/timeline/correlate; default text. Schema stable v1, revision 6."
+        "--format <text|json>: summary/channels/jumps/timeline/correlate; default text. Schema stable v1, revision 7."
     )?;
     writeln!(stdout, "Examples:")?;
     writeln!(stdout, "  irigtime summary flight_042.ch10")?;

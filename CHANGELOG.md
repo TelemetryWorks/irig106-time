@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### JSON effective policy/defaults identity
+
+- Add `report.policy` in schema v1 revision7: versioned CLI correlation/default
+  identities, actual live window/cap, query-bracket storage, reset thresholds
+  and installed leap-table identity/currency. It is present without findings.
+- Report the actual legacy nearest-reference policy, not a library Standard/
+  Interpolate policy the CLI does not yet run. No numeric, text or CSV change.
+
 ### F1 scale/basis on packet and query clocks
 
 - Retain the selected F1 reference's basis in timeline/correlate text and JSON,
