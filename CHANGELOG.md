@@ -16,6 +16,26 @@ Published release sections below are retained unchanged.
 
 ### Breaking changes and migration
 
+- **Silent default change:** `TimeCorrelator::DEFAULT_OOO_WINDOW_NS` remains
+  u64 but narrows from **2s to 1.1s** (2_000_000_000 → 1_100_000_000); typed
+  `DEFAULT_OOO_WINDOW: NanosDuration` is added. Constant consumers get a
+  narrower policy without a compile error (contract §5.4 / ADR-0010: accepted
+  100ms generation + 1000ms commit allowance). `new`/`Default` still store None,
+  not that constant. Set an explicit 2s duration to preserve a caller's old bound.
+- Nanosecond u64 arguments become `NanosDuration`: TimeCorrelator's
+  `with_ooo_window(Option<NanosDuration>)` and `detect_time_jump`; streaming
+  `new(max_age: NanosDuration)` and new `with_reference_limit(age, NonZeroUsize)`.
+  [Before/after code](docs/MIGRATING-0.8.md#nanosecond-parameters-are-typed-durations)
+  is compiled and executed; age-only construction is not a count cap.
+- Leap/network helpers are typed and fallible: `offset_at_tai(TaiSeconds)`,
+  `offset_at_unix(UnixSeconds)` and `offset_for_f1` return Result<TaiUtcOffset>;
+  `add` returns Result<()>, `is_near_leap_second` takes UnixSeconds. PTP
+  `to_utc_seconds(TaiUtcOffset)` returns Result<u64> and deprecated `to_absolute`
+  takes TaiUtcOffset. Deprecated NTP `to_unix_seconds` changes Option<u64> to
+  Result<u64>, not automatic era resolution. Handle context/underflow errors;
+  prefer basis-preserving convert_ntp/convert_ptp. Full signatures and checked
+  examples are in the [migration table](docs/MIGRATING-0.8.md#leap-table-and-network-conversions-are-typed-and-fallible).
+
 - Library serde/JSON feature, derives, loaders, `snapshot` and `AnswerOutput`
   removed. Use CLI report JSON; Rust `AnswerView`/basis replay stays. Types'
   independent serde feature stays; no time-library JSON rehydration obligation.
@@ -81,6 +101,14 @@ contexts are documented in the contract, not inferred from the host clock.
 - Summary distinguishes recording-wide native sessions from per-channel CLI
   resets, computes F1/F2 candidate quality, replays same-session DMY evidence and
   preserves contradictions/unknown years. It is not TMATS-qualified joining.
+
+### Public API migration audit
+
+- A source declaration/value diff against pinned v0.7.0 now runs in CI without
+  new tooling/dependencies. Its full log and migration-review fingerprint cover
+  local API additions/removals/signatures and constant values, including the
+  silent default-window change. This conservative gate is not a semver proof;
+  expanded/external APIs and runtime semantics still require human review.
 
 ### Remaining before release
 

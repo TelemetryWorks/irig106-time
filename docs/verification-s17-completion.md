@@ -65,3 +65,20 @@ than dropping one. No runtime implementation was changed to fit documentation.
 Historical usage and development notes remain at the linked immutable commit; the published
 0.1–0.7 changelog sections are byte-for-byte unchanged. No tests-first runtime
 failure claim is made for this docs-only slice.
+
+
+PR105 migration-review delta: added explicit u64→NanosDuration before/after
+calls, typed/fallible leap/network signatures and executed migration snippets.
+The silent DEFAULT_OOO_WINDOW_NS 2s→1.1s change is prominent, with contract §5.4 /
+ADR-0010 basis; new/Default still store None. No runtime semantics were changed.
+The Python/Git source API gate pins v0.7.0's peeled commit, prints the complete
+local-declaration diff in CI and requires a matching migration acknowledgement.
+Supporting private types/constants are included conservatively; external API
+expansion/cfg reachability and behavior still require human/compiler review.
+Six unit probes cover declarations, constants, aliases, literals, attributes,
+macros, cfg/test filtering, stale markers and CI wiring. Live negative probes
+changed the duration constant and added a public constant: both failed the gate;
+restoring sources passed. No Rust build/mutation campaign is claimed for these
+source-only probes. The migration examples run with deny(deprecated); the old
+0.7-only snippet is labelled ignore. Baseline sources are read, never built, so
+old chrono/serde dependencies are not installed. No new tools/shipped dependencies.

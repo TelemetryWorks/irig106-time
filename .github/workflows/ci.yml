@@ -179,6 +179,9 @@ jobs:
         with:
           python-version: "3.12"
       - run: python scripts/build-trace-matrix.py --check
+      - run: git fetch --no-tags --depth=1 origin 4ea0006723fc8d75925bd57b107e6dd8893be66e
+      - run: python -m unittest discover -s scripts -p test_public_api_audit.py
+      - run: python scripts/public_api_audit.py --check --report
 
   deny:
     name: Dependency policy (cargo-deny)

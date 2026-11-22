@@ -73,6 +73,13 @@ class CliWorkspace(unittest.TestCase):
         self.assertEqual(snippets(guide), snippets(packaged))
         self.assertEqual(len(snippets(packaged)), 2)
 
+    def test_typed_migration_snippets_match_packaged_fixture(self):
+        guide = (ROOT / 'docs/MIGRATING-0.8.md').read_text()
+        packaged = (ROOT / 'crates/irig106-time/tests/fixtures/migration_0_8.md').read_text()
+        snippets = lambda text: re.findall(r'```rust\n(.*?)\n```', text, re.S)
+        self.assertEqual(snippets(guide), snippets(packaged))
+        self.assertEqual(len(snippets(packaged)), 2)
+
     def test_fuzz_remains_a_separate_workspace_with_its_own_lock(self):
         result = subprocess.run(['cargo', 'metadata', '--manifest-path',
                                  str(ROOT / 'fuzz/Cargo.toml'), '--no-deps',
