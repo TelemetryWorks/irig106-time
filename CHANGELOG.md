@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Bounded native session/span foundation
+
+- Add `session::SessionClock`, an allocation-free header-span cursor sharing
+  the native offline session calculation (default1100ms late bound, explicit
+  boundaries, wrap-safe unwrapped ticks). Closed spans are returned, not retained.
+  CLI summary/quality integration follows separately; existing CLI output,
+  per-channel reset heuristics and schema revision8 are unchanged.
+
 ### Automated CLI schema validation
 
 - Validate all five live JSON views against the packaged current Draft2020-12

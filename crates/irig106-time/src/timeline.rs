@@ -5,7 +5,7 @@ extern crate alloc;
 use crate::findings::{
     Finding, FindingCode, FindingEvidence, FindingLocation, RawField, RawValue, ValueValidity,
 };
-use crate::rtc::{CounterOrder, SessionRtc, SignedRtcTicks};
+use crate::rtc::SignedRtcTicks;
 use crate::scale::{ScaleEvidence, ScalePolicy, TimeScale};
 use crate::{
     AbsoluteTime, IrigTimeSource, Result, Rtc, TimeError, TimeF1Layout, TimeF1Source, TimeFormat,
@@ -547,33 +547,17 @@ impl TimelineBuilder {
             ));
         }
         let raw = i128::from(packet.rtc.as_raw());
-        let mut ticks = raw;
-        let mut late = None;
-        let mut reset = false;
-        if let Some(s) = self.sessions.last().filter(|_| !boundary) {
-            let delta = SessionRtc {
-                session: s.id,
-                rtc: Rtc::from_raw((s.high_ticks & MASK) as u64),
-            }
-            .delta_to(
-                SessionRtc {
-                    session: s.id,
-                    rtc: packet.rtc,
-                },
-                CounterOrder::Nearest,
-            )?
-            .get();
-            ticks = s
-                .high_ticks
-                .checked_add(delta)
-                .ok_or(TimeError::QuantityOverflow {
-                    quantity: "unwrapped RTC ticks",
-                })?;
-            if delta < 0 && -delta * 100 > i128::from(self.policy.late_ns) {
-                late = Some(delta * 100);
-                reset = self.policy.infer_sessions;
-            }
-        }
+        let next = crate::session::position(
+            self.sessions.last().map(|s| (s.id, s.high_ticks)),
+            packet.rtc,
+            packet.id,
+            boundary,
+            self.policy.late_ns,
+            self.policy.infer_sessions,
+        )?;
+        let mut ticks = next.key.ticks;
+        let late = next.late;
+        let reset = next.reset;
         if let Some(policy) = &self.policy.shared {
             let session = if self.sessions.is_empty() || boundary || reset {
                 self.sessions.len() + 1
