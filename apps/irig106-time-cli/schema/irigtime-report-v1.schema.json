@@ -884,7 +884,7 @@
           ]
         },
         "clock": {
-          "description": "Native calendar resolution or null when counter-only. Selected PTP references retain covered/stale table basis; other unqualified lineage stays unknown/unresolved. This does not establish data-channel association.",
+          "description": "Native calendar resolution or null when counter-only. Selected references retain F1 stated FMT / assumed UTC RDG-009 or PTP covered/stale table basis; RTC or unavailable lineage remains unknown/unresolved. This does not establish data-channel association.",
           "anyOf": [
             {
               "$ref": "#/$defs/clock"
@@ -944,7 +944,7 @@
       ],
       "properties": {
         "clock": {
-          "description": "Numeric native query clock, or null when unresolved. Selected PTP conversion retains its covered/stale table basis; other unqualified lineage stays unknown/unresolved.",
+          "description": "Numeric native query clock, or null when unresolved. The selected reference retains its F1 stated/assumed or PTP table basis; RTC or unavailable lineage remains unknown/unresolved.",
           "anyOf": [
             {
               "$ref": "#/$defs/clock"
@@ -1002,7 +1002,7 @@
           "type": "boolean"
         },
         "clock": {
-          "description": "Numeric native query clock, or null when unresolved. Scale/basis stay unknown/unresolved until source lineage is qualified; no UTC or year assumption.",
+          "description": "Numeric native query clock, or null when unresolved. Scale/basis follow the selected reference: IRIG assumes UTC RDG-009, FMT4 states UTC, FMT5 states GPS, PTP uses its conversion table; RTC/unavailable lineage stays unknown. No year or data-channel association is inferred.",
           "$ref": "#/$defs/query_value/properties/clock"
         },
         "issue": {

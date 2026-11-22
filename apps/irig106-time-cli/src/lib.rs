@@ -349,7 +349,7 @@ impl Ch10TimeScanner {
                         self.time_channels
                             .get(&hdr.channel_id)
                             .and_then(|c| c.last_basis)
-                            .and_then(clock_basis::ptp)
+                            .and_then(clock_basis::known)
                     } else {
                         self.basis_for(hdr.rtc, None)
                     }
@@ -528,7 +528,7 @@ impl Ch10TimeScanner {
                 point.rtc,
                 point.time,
                 point.index,
-                clock_basis::ptp(point.basis),
+                clock_basis::known(point.basis),
                 point.network_time,
             );
         }

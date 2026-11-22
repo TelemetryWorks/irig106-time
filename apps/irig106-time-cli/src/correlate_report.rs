@@ -104,7 +104,7 @@ impl Answer {
             Some(
                 v["basis"]
                     .as_str()
-                    .and_then(clock_basis::ptp)
+                    .and_then(clock_basis::known)
                     .ok_or_else(invalid)?,
             )
         };

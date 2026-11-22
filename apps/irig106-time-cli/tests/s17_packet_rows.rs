@@ -67,7 +67,7 @@ fn observed_clock_and_packet_identity_project_identically() {
         text.lines()
             .last()
             .unwrap()
-            .ends_with("100:12:00:04.120000000"),
+            .ends_with("100:12:00:04.120000000 UTC (stated FMT)"),
         "{text}"
     );
     assert_eq!(
