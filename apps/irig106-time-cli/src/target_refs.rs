@@ -147,10 +147,9 @@ impl TargetReferences {
             .unwrap_or_else(|i| i);
         let selected = if i == 0 {
             0
-        } else if i == refs.len() {
-            i - 1
-        } else if super::clock_basis::distance(refs[i - 1].point.rtc, self.target)
-            <= super::clock_basis::distance(refs[i].point.rtc, self.target)
+        } else if i == refs.len()
+            || super::clock_basis::distance(refs[i - 1].point.rtc, self.target)
+                <= super::clock_basis::distance(refs[i].point.rtc, self.target)
         {
             i - 1
         } else {
