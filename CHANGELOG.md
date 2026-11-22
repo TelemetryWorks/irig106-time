@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bounded session-year replay foundation and stale drift (revision 12)
 
+- **Library behavior fix (L3-COR-110):** offline year replay now rebuilds each
+  pass from original inputs, carrying forward only newly rejected leap labels
+  (coordinator option A). Derived non-leap malformed/admission results no longer
+  contaminate later passes or leave readable dates carrying stale `Malformed`
+  reasons. The bounded cursor protocol and offline results now agree.
+
 - New public `years::{SessionYearCursor, SessionYearResolver, StampedYearReference}`
   reuse native observation-order year phases and final DMY evidence with bounded
   state. Callers retain/replay inputs externally; no JSON, I/O or history buffer.

@@ -869,15 +869,22 @@ pub(crate) fn resolve_session(
     refs: &mut [TimelineReference],
     policy: &OfflinePolicy,
 ) -> Result<Vec<TimelineFinding>> {
-    // A future DMY can disqualify an earlier yearless leap label. Rebuild
-    // phase evidence without newly malformed labels so their contribution is
-    // not retained. Rejections are monotone: at most refs.len() new labels,
-    // with no unbounded queue and no revision of stream answers.
+    // L3-COR-110 / coordinator option A: rebuild from original admission/values,
+    // retaining ONLY newly rejected leap labels. Other resolved/malformed
+    // references are derived pass results, never inputs to the next pass.
+    let mut inputs = refs.to_vec();
     loop {
-        let before = refs.iter().filter(|r| invalid_resolved_label(r)).count();
+        refs.clone_from_slice(&inputs);
         let findings = resolve_session_pass(refs, policy)?;
-        let after = refs.iter().filter(|r| invalid_resolved_label(r)).count();
-        if after <= before {
+        let mut changed = false;
+        for (input, resolved) in inputs.iter_mut().zip(refs.iter()) {
+            if invalid_resolved_label(resolved) && !invalid_resolved_label(input) {
+                *input = resolved.clone();
+                changed = true;
+            }
+        }
+        // Rejections are monotone: at most refs.len() newly rejected labels.
+        if !changed {
             return Ok(findings);
         }
     }
@@ -961,7 +968,9 @@ pub struct SessionYearResolver {
     last: u64,
 }
 /// Opaque phase-stamped reference, not yet resolved against future DMY evidence.
-/// Replay must reproduce observation order and retain newly rejected leap labels.
+/// Replay must reproduce ORIGINAL inputs in observation order, replacing only
+/// newly rejected leap labels with their rejected result. Never feed back other
+/// resolved values, admission decisions or derived year evidence.
 /// Source: contract §5.3 / D9; 106-24R1 Figures 11-13/11-14.
 /// **Traces:** L3-COR-110 ← L2-COR-110 ← L1-COR-010
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1119,8 +1128,10 @@ impl SessionYearResolver {
     }
     /// Resolve a stamp from the same segment/origin/policy using final anchors.
     /// Returns the reference, native findings and whether a forbidden leap label
-    /// requires a rebuilt pass. Retain that rejection and repeat until no NEW
-    /// rejections remain, as the offline engine does; no opaque state is loaded.
+    /// requires a rebuilt pass. Rebuild from original inputs, retaining ONLY
+    /// newly rejected leap-label results, until no NEW rejections remain. Other
+    /// resolved references are outputs, never next-pass inputs. This matches the
+    /// offline engine; no opaque state is loaded.
     /// Source: contract §5.3 / D9/RDG-010; 106-24R1 Figures 11-13/11-14.
     /// **Traces:** L3-COR-110 ← L2-COR-110 ← L1-COR-010
     pub fn resolve(

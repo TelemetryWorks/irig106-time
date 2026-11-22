@@ -42,3 +42,30 @@ range, counter overflow/headroom, rebuilt-label signal, future anchors and phase
 anchors substituted for final DMY evidence. Sources restored after each probe.
 Focused tests, fmt, touched Clippy and trace/schema checks locally; OS/MSRV/WASM,
 package/deny/fuzz/schema/RSS checks run in PR CI. No full local matrix.
+
+
+## Review delta — original-input replay (coordinator option A)
+
+Tests-first 9a0bf28: the eight-packet DOY366 23:58:50..56 / 13-hour-later
+2016-01-01 12:58:59 anchor regression (and its second-60 rebuild variant) and
+seeded equivalence test fail on e0e5fed. Seeded fixtures initially included an
+ineligible day1 second60; corrected before the tests-first commit, then the test
+failed on cursor/offline inequality. No invalid-fixture failure is claimed.
+The 192 deterministic eight-reference sessions compare complete references and
+assert no readable value carries a stale Malformed rejection. The cursor driver
+rebuilds original inputs, carrying forward only newly rejected leap-label results.
+Offline previously fed back every resolved reference, including other malformed
+results. This pre-existing library behavior is corrected under L3-COR-110; no
+year arithmetic, admission policy, finding ID/level or stream behavior changes.
+Offline retains one original-input vector (linear in its existing timeline),
+while the replay controllers remain bounded in recording length.
+
+Gap closure already used the separate evidence collector at e0e5fed; the new
+test compares the closed resolver with freeze() using DMY evidence skipped by
+the phase clock. Stale-first-only and stale-last-only endpoint fixtures pass the
+reviewed code. Four compiling/assertion-failing mutations prove these paths:
+old resolved-pass feedback; closed resolver from the phase clock; stale-first
+omitted; stale-last omitted. Sources restored. Existing S08 year/phase/leap
+regressions and focused CLI summary tests are run locally, with fmt/Clippy and
+trace/schema checks; the full matrix and RSS gate remain PR CI responsibilities.
+Coverage and deferred CLI integration are unchanged.
